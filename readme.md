@@ -217,3 +217,11 @@ Traceback (most recent call last):
 RuntimeError: Failed to start Java VM
 ```
 
+## Change log
+
+20190614 
+
+ - Fixed sort order of files.
+ - Calling ** bConvertFolder_Headers.py** with no path will open a dialog allowing the folder to be chosen.
+
+

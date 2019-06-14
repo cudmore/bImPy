@@ -1,6 +1,7 @@
 # Author: Robert Cudmore
 # Date: 20190424
 
+import os
 from collections import OrderedDict
 
 #import javabridge
@@ -45,7 +46,8 @@ class bStackHeader:
 		return self.header['yVoxel']
 
 	def prettyPrint(self):
-		print('   channels:', self.numChannels, ',',
+		print('   file:', os.path.split(self.path)[1],
+			'channels:', self.numChannels, ',',
 			'images:', self.numImages, ',',
 			'x/y pixels:', self.pixelsPerLine, '/', self.linesPerFrame, ',',
 			'x/y um/pixel:', self.xVoxel, '/', self.yVoxel,

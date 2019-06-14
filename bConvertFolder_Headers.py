@@ -12,6 +12,9 @@ This allows double click to open in Microsoft Excel.
 
 import os, sys, time
 
+import tkinter
+from tkinter.filedialog import askdirectory
+
 import javabridge
 import bioformats
 
@@ -36,7 +39,7 @@ def convert(path):
 
 		#
 		# build a list of oir header dictionaries
-		for file in os.listdir(path):
+		for file in sorted(os.listdir(path)):
 			if file.startswith('.'):
 				continue
 			if file.endswith('.oir'):
@@ -72,12 +75,18 @@ if __name__ == '__main__':
 	if len(sys.argv) == 2:
 		path = sys.argv[1]
 	else:
-		path = '/Volumes/t3/data/20190429/20190429_tst2'
+		#path = '/Volumes/t3/data/20190429/20190429_tst2'
+
+		root = tkinter.Tk()
+		path = askdirectory(initialdir = "/",title = "Select a folder")
+		root.update()
+		root.withdraw()
 
 	# strip trailing '/'
 	if path.endswith('/'):
 		path = path[:-1]
 
+	print('path:', path)
 	if os.path.isdir(path):
 		convert(path)
 		stopSeconds = time.time()
