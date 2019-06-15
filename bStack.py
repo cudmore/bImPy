@@ -188,7 +188,7 @@ class bStack:
 if __name__ == '__main__':
 
 	"""
-	debuggin
+	debugging
 	"""
 
 	import javabridge
