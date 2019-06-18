@@ -193,14 +193,13 @@ class bStackHeader:
 			self.header['numImages'] = omeXml.image().Pixels.SizeZ # number of images
 			self.header['numFrames'] = omeXml.image().Pixels.SizeT # number of images
 
-			self.header['stackType'] = 'Unknown' #'ZStack'
+			if self.header['numImages'] > 1:
+				self.header['stackType'] = 'ZStack' #'ZStack'
 
 			# swap numFrames into numImages
-			"""
 			if self.header['numImages'] == 1 and self.header['numFrames'] > 1:
 				self.header['numImages'] = self.header['numFrames']
 				self.header['stackType'] = 'TSeries'
-			"""
 
 			self.header['xVoxel'] = omeXml.image().Pixels.PhysicalSizeX # um/pixel
 			self.header['yVoxel'] = omeXml.image().Pixels.PhysicalSizeY
