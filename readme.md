@@ -26,9 +26,13 @@ This makes heavy use of [Python bio-formats][python-bio-formats] which in itself
 
 Use bConvertFolder_Headers.py to save a comma-seperated text file containing the header information for each file in a folder
 
+The command
+
 ```
 python3 bConvertFolder_Headers.py /Users/cudmore/box/data/testoir/
 ```
+
+Will output two different text files, one will be a .csv file with one row per original file in the folder.
 
 |path                                             |date      |time              |fileVersion|programVersion|laserWavelength|pmtGain1|pmtOffset1|pmtVoltage1|pmtGain2|pmtOffset2|pmtVoltage2|pmtGain3|pmtOffset3|pmtVoltage3|scanner|zoom|bitsPerPixel|numChannels|stackType|xPixels|yPixels|numImages|numFrames|xVoxel           |yVoxel           |zVoxel|frameSpeed       |lineSpeed|pixelSpeed|xMotor|yMotor|zMotor|
 |-------------------------------------------------|----------|------------------|-----------|--------------|---------------|--------|----------|-----------|--------|----------|-----------|--------|----------|-----------|-------|----|------------|-----------|---------|-------|-------|---------|---------|-----------------|-----------------|------|-----------------|---------|----------|------|------|------|
@@ -39,6 +43,43 @@ python3 bConvertFolder_Headers.py /Users/cudmore/box/data/testoir/
 |/Users/cudmore/box/data/testoir/20190514_0003.oir|2019-05-14|16:27:07.287-07:00|2.1.2.3    |2.3.1.163     |920.0          |1.0     |0         |550        |1.0     |0         |596        |1.0     |0         |550        |Galvano|2.0 |12          |1          |TSeries  |128    |233    |200      |200      |0.497184455521791|0.497184455521791|1.0   |319.9500000000001|1.35     |0.002     |None  |None  |None  |
 |/Users/cudmore/box/data/testoir/20190514_0001.oir|2019-05-14|15:43:24.544-07:00|2.1.2.3    |2.3.1.163     |920.0          |1.0     |0         |557        |1.0     |0         |569        |1.0     |0         |557        |Galvano|2.0 |12          |1          |TSeries  |148    |218    |200      |200      |0.497184455521791|0.497184455521791|1.0   |307.19           |1.39     |0.002     |None  |None  |None  |
 
+The second will be a .txt file for each original file in the folder.
+
+```
+path=/Users/cudmore/box/data/nathan/20190613/20190613__0005.oir
+date=2019-06-13
+time=12:54:31.420-07:00
+fileVersion=2.1.2.3
+programVersion=2.3.1.163
+laserWavelength=920.0
+pmtGain1=1.0
+pmtOffset1=0
+pmtVoltage1=537
+pmtGain2=1.0
+pmtOffset2=0
+pmtVoltage2=541
+pmtGain3=1.0
+pmtOffset3=0
+pmtVoltage3=537
+scanner=Galvano
+zoom=1.0
+bitsPerPixel=12
+numChannels=1
+stackType=ZStack
+xPixels=42
+yPixels=512
+numImages=1
+numFrames=1
+xVoxel=0.994368911043582
+yVoxel=0.994368911043582
+zVoxel=1.0
+frameSpeed=11780.0
+lineSpeed=1.178
+pixelSpeed=0.002
+xMotor=None
+yMotor=None
+zMotor=None
+```
 
 ## Known bugs
 

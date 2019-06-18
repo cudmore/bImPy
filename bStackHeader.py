@@ -1,13 +1,14 @@
 # Author: Robert Cudmore
 # Date: 20190424
 
-import os
+import os, sys
 from collections import OrderedDict
 
 #import javabridge
 import bioformats
 
 import xml
+import xml.dom.minidom # to pretty print
 
 class bStackHeader:
 
@@ -47,6 +48,7 @@ class bStackHeader:
 
 	def prettyPrint(self):
 		print('   file:', os.path.split(self.path)[1],
+			'stackType:', self.stackType, ',',
 			'channels:', self.numChannels, ',',
 			'images:', self.numImages, ',',
 			'x/y pixels:', self.pixelsPerLine, '/', self.linesPerFrame, ',',
@@ -54,6 +56,9 @@ class bStackHeader:
 			)
 
 	def getMetaData(self):
+		"""
+		Get all header items as text in a single line
+		"""
 		ijmetadataStr = ''
 		for k, v in self.header.items():
 			ijmetadataStr += k + '=' + str(v) + '\n'
@@ -80,7 +85,7 @@ class bStackHeader:
 
 		self.header = OrderedDict()
 
-		self.header['path'] = self.path
+		self.header['path'] = self.path # full path to the file
 		self.header['date'] = ''
 		self.header['time'] = ''
 
@@ -88,6 +93,7 @@ class bStackHeader:
 		self.header['programVersion'] = '' # Of the Olympus software
 
 		self.header['laserWavelength'] = None #
+		self.header['laserPercent'] = None #
 
 		# 1
 		self.header['pmtGain1'] = None #
@@ -149,6 +155,12 @@ class bStackHeader:
 			metaData = bioformats.get_omexml_metadata(path=self.path)
 			omeXml = bioformats.OMEXML(metaData)
 
+			# leave this here, will extract ome-xml as pretty printed string
+			#print('omeXml:', omeXml.prettyprintxml())
+			pretty_xml = xml.dom.minidom.parseString(str(omeXml))
+			print(pretty_xml.toprettyxml())
+			sys.exit()
+
 			# this does not work, always gives us time as late in the PM?
 			'''
 			dateTime = omeXml.image().AcquisitionDate
@@ -181,18 +193,21 @@ class bStackHeader:
 			self.header['numImages'] = omeXml.image().Pixels.SizeZ # number of images
 			self.header['numFrames'] = omeXml.image().Pixels.SizeT # number of images
 
-			self.header['stackType'] = 'ZStack'
+			self.header['stackType'] = 'Unknown' #'ZStack'
 
 			# swap numFrames into numImages
+			"""
 			if self.header['numImages'] == 1 and self.header['numFrames'] > 1:
 				self.header['numImages'] = self.header['numFrames']
 				self.header['stackType'] = 'TSeries'
+			"""
 
 			self.header['xVoxel'] = omeXml.image().Pixels.PhysicalSizeX # um/pixel
 			self.header['yVoxel'] = omeXml.image().Pixels.PhysicalSizeY
 			self.header['zVoxel'] = omeXml.image().Pixels.PhysicalSizeZ
 
 			root = xml.etree.ElementTree.fromstring(str(omeXml))
+
 			i=0
 			pixelSpeed2, pixelSpeed3 = None, None
 			lineSpeed2, lineSpeed3 = None, None
@@ -205,6 +220,30 @@ class bStackHeader:
 								i+=1
 								finalKey = greatgreatgrandchild[0].text
 								finalValue = greatgreatgrandchild[1].text
+
+								# 20190617
+								"""
+								<ome:OriginalMetadata>
+									<ome:Key>20190613__0028.oir method sequentialType #1</ome:Key>
+									<ome:Value>Line</ome:Value>
+								</ome:OriginalMetadata>
+								"""
+								if 'method sequentialType' in finalKey:
+									print(finalKey)
+									print('   ', finalValue)
+									self.header['stackType'] = finalValue
+
+								# 20190617, very specific for our scope
+								"""
+								<ome:OriginalMetadata>
+									<ome:Key>- Laser Chameleon Vision II transmissivity</ome:Key>
+									<ome:Value>[9.3]</ome:Value>
+								</ome:OriginalMetadata>
+								"""
+								if '- Laser Chameleon Vision II transmissivity' in finalKey:
+									finalValue = finalValue.strip('[')
+									finalValue = finalValue.strip(']')
+									self.header['laserPercent'] = finalValue
 
 								if 'general creationDateTime' in finalKey:
 									theDate, theTime = finalValue.split('T')

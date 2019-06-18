@@ -22,7 +22,7 @@ import bStack
 
 def convert(path):
 
-	headerList = []
+	headerList = [] # used to generate one csv file for folder
 
 	tmpPath, enclosingFolder = os.path.split(path)
 
@@ -37,7 +37,6 @@ def convert(path):
 		log4j.enableLogging()
 		log4j.setRootLevel("WARN")
 
-		#
 		# build a list of oir header dictionaries
 		for file in sorted(os.listdir(path)):
 			if file.startswith('.'):
@@ -49,8 +48,14 @@ def convert(path):
 				myStack = bStack.bStack(filePath)
 				myStack.loadHeader()
 				myStack.header.prettyPrint() # print to command line
-				headerList.append(myStack.header.header)
+				headerList.append(myStack.header.header) # used to generate one csv file for folder
 
+				# save the .txt file
+				baseFileName = os.path.basename(file)
+				baseFileName, ext = baseFileName.split('.')
+				textFilePath = os.path.join(path, baseFileName + '.txt')
+				with open(textFilePath, 'w') as textFile:
+					textFile.write(myStack.header.getMetaData())
 		#
 		# generate one file with one row for each oir header
 		if len(headerList) > 0:
