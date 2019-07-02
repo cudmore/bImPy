@@ -18,9 +18,9 @@ This makes heavy use of [Python bio-formats][python-bio-formats] which in itself
 
 **bConvertOir.py** : Convert a single OIR file.
 
-**bStack.py** : Back end code to open, manipulate, and save image stacks.
+**Stack.py** : Back end code to open, manipulate, and save image stacks.
 
-**bStackHeader** : Back end code to read and write both proprietary and Tiff file headers.
+**StackHeader** : Back end code to read and write both proprietary and Tiff file headers.
 
 ## Examples
 

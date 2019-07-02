@@ -4,7 +4,7 @@ import javabridge
 import bioformats
 
 
-import bStack
+import Stack
 
 covertIfTifExists = False
 
@@ -20,7 +20,7 @@ def convert(path):
 	
 			filePath = os.path.join(path, file)
 		
-			myStack = bStack.bStack(filePath)
+			myStack = Stack.Stack(filePath)
 			savePath = myStack.convert_getSaveFile(channelNumber=1)
 
 			if covertIfTifExists or not os.path.isfile(savePath):
@@ -47,7 +47,7 @@ def convert(path):
 
 			for idx, oirFile in enumerate(convertTheseOirFiles):
 				print(str(idx+1), 'of', len(convertTheseOirFiles), 'converting:', oirFile)
-				bStack.bStack(oirFile).convert()
+				Stack.Stack(oirFile).convert()
 
 if __name__ == '__main__':
 

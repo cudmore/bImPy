@@ -28,7 +28,7 @@ print('bioformats.JARS:', bioformats.JARS)
 
 import javabridge
 
-import bStack
+import Stack
 
 if __name__ == '__main__':
 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
 		log4j.enableLogging()
 		log4j.setRootLevel("WARN")
 
-		myStack = bStack.bStack(path)
+		myStack = Stack.Stack(path)
 		
 		savePath = myStack.convert_getSaveFile(channelNumber=1)
 		
