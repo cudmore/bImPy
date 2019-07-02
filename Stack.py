@@ -30,6 +30,8 @@ class Stack:
 	def __init__(self, path=''):
 		self.path = path # path to file
 
+		#print('Stack.__init__() self.path:', self.path)
+		
 		self.fileNameWithoutExtension = ''
 		if os.path.isfile(path):
 			fileName = os.path.split(self.path)[1]
@@ -70,9 +72,12 @@ class Stack:
 	# Loading
 	#
 	def loadHeader(self):
-		if self.header is None and os.path.isfile(self.path):
-			self.header = StackHeader.StackHeader(self.path)
-
+		if self.header is None:
+			if os.path.isfile(self.path):
+				self.header = StackHeader.StackHeader(self.path)
+			else:
+				print('loadHeader() did not find self.path:', self.path)
+				
 	def loadStack(self):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
 		print('   bStack.loadStack() oir file', self.path)
@@ -211,10 +216,15 @@ if __name__ == '__main__':
 
 		path = '/Volumes/t3/data/20190429/20190429_tst2/20190429_tst2_0006.oir'
 
+		path = 'E:\\cudmore\\data\\20190429\\20190429_tst2\\20190429_tst2_0002.oir'
+		
 		# good to test caiman alignment
 		#path = '/Users/cudmore/box/data/nathan/030119/030119_HCN4-GCaMP8_SAN_phen10uM.oir'
 
-		myStack = bStack(path)
+		#print('path:', path)
+		
+		
+		myStack = Stack(path)
 
 		with javabridge.vm(
 				run_headless=True,

@@ -46,8 +46,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
 # I am assuming file names are unique
 fakeImages = OrderedDict()
-rowStep = 500
-colStep = 700
+rowStep = 550
+colStep = 550
 numRows = 20
 numCols = 20
 xPos = 150
@@ -127,8 +127,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixmapWidth = pixmap.width()
 			pixmapHeight = pixmap.height()
 			# scale image
-			newWidth = pixmapWidth / 2
-			newHeight = pixmapHeight / 2
+			newWidth = pixmapWidth #/ 2
+			newHeight = pixmapHeight #/ 2
 			pixmap = pixmap.scaled(newWidth, newHeight, QtCore.Qt.KeepAspectRatio)
 			# insert
 			#pixMapItem = QtWidgets.QGraphicsPixmapItem(pixmap)
