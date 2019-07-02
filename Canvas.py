@@ -102,6 +102,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	def __init__(self, parent=None):
 		super(QtWidgets.QGraphicsView, self).__init__(parent)
 
+		'''
+		bgColor = QtWidgets.QWidget().palette().background().color();
+		self.setStyleSheet(QtWidgets.QString("background-color:") + bgColor.name(QColor.HexArgb))
+		'''
+		
 		scene = QtWidgets.QGraphicsScene()
 
 		# add an object at really small x/y
