@@ -2,3 +2,5 @@ numpy
 tifffile
 javabridge
 python-bioformats
+PyQt5 # version >=5.13 has 16bit indexed image !!!
+scikit-image

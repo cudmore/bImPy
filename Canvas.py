@@ -4,6 +4,9 @@
 from functools import partial
 from collections import OrderedDict
 
+import skimage
+import tifffile
+
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -14,8 +17,8 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.centralwidget.setObjectName("centralwidget")
 
 		self.myQHBoxLayout = QtWidgets.QHBoxLayout(self.centralwidget)
-		
-		self.title = 'PyQt5 image - pythonspot.com'
+
+		self.title = 'Canvas'
 		self.left = 10
 		self.top = 10
 		self.width = 1024 #640
@@ -27,7 +30,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		self.myGraphicsView = myQGraphicsView() #myQGraphicsView(self.centralwidget)
 		self.myQHBoxLayout.addWidget(self.myGraphicsView)
-	
+
 		# here I am linking the toolbar to the graphics view
 		# i can't figure out how to use QAction !!!!!!
 		self.toolbarWidget = myToolbarWidget(self.myGraphicsView)
@@ -41,16 +44,17 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.myGraphicsView.keyPressEvent(event)
 
 # I am assuming file names are unique
+# 1920 x 1200
 fakeImages = OrderedDict()
-rowStep = 550
-colStep = 550
+rowStep = 1230
+colStep = 1950
 numRows = 10
 numCols = 10
 xPos = 150
 yPos = 50
 imageNumber = 1
 for row in range(numRows):
-	xPos = 50
+	xPos = 150
 	for col in range(numCols):
 		fakeImages[str(imageNumber)] = OrderedDict({
 		'path': 'onfile.tif',
@@ -70,7 +74,7 @@ xPos = 1500
 yPos = 1500
 imageNumber = 1
 for row in range(numRows):
-	xPos = 50
+	xPos = 1500
 	for col in range(numCols):
 		fakeTwoPImages[str(imageNumber)] = OrderedDict({
 		'path': 'onfile.tif',
@@ -96,7 +100,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 	def __init__(self, myLayer, parent=None):
 		super(QtWidgets.QGraphicsPixmapItem, self).__init__(parent)
 		self.myLayer = myLayer
-		
+
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)
 		"""
@@ -104,10 +108,12 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		painter.setPen(self.pen)
 		painter.drawEllipse(self.rect)
 		"""
+		print('myQGraphicsPixmapItem.paint() isSelected', self.isSelected())
 		if self.isSelected():
 			self.drawFocusRect(painter)
 
 	def drawFocusRect(self, painter):
+		print('myQGraphicsPixmapItem.drawFocusRect()')
 		self.focusbrush = QtGui.QBrush()
 		'''
 		self.focuspen = QtGui.QPen(QtCore.Qt.SolidLine)
@@ -123,7 +129,22 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		#painter.drawRect(self.focusrect)
 		# ???
 		painter.drawRect(self.boundingRect())
-					
+
+	def mousePressEvent(self, event):
+		print('   myQGraphicsPixmapItem.mousePressEvent()')
+		super().mousePressEvent(event)
+		#self.setSelected(True)
+		event.setAccepted(False)
+	def mouseMoveEvent(self, event):
+		#print('   myQGraphicsPixmapItem.mouseMoveEvent()')
+		super().mouseMoveEvent(event)
+		event.setAccepted(False)
+	def mouseReleaseEvent(self, event):
+		print('   myQGraphicsPixmapItem.mouseReleaseEvent()')
+		super().mouseReleaseEvent(event)
+		#self.setSelected(False)
+		event.setAccepted(False)
+
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
 	To display rectangles in canvas.
@@ -132,7 +153,7 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	def __init__(self, myLayer, parent=None):
 		super(QtWidgets.QGraphicsRectItem, self).__init__(parent)
 		self.myLayer = myLayer
-		
+
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)
 		if self.isSelected():
@@ -147,7 +168,21 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		painter.setBrush(self.focusbrush)
 		painter.setPen(self.focuspen)
 		painter.drawRect(self.boundingRect())
-					
+
+	"""
+	def mousePressEvent(self, event):
+		print('   myQGraphicsRectItem.mousePressEvent()')
+		super().mousePressEvent(event)
+		event.setAccepted(False)
+	def mouseMoveEvent(self, event):
+		#print('myQGraphicsRectItem.mouseMoveEvent()')
+		super().mouseMoveEvent(event)
+		event.setAccepted(False)
+	def mouseReleaseEvent(self, event):
+		print('   myQGraphicsRectItem.mouseReleaseEvent()')
+		super().mouseReleaseEvent(event)
+		event.setAccepted(False)
+	"""
 #
 # amazing post
 #
@@ -163,20 +198,20 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		super(QtWidgets.QGraphicsView, self).__init__(parent)
 
 		self.setBackgroundBrush(QtCore.Qt.darkGray)
-		
+
 		self.myScene = QtWidgets.QGraphicsScene()
-		
+
 		# visually turn off scroll bars
 		self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-		
+
 		# these work
 		self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 		self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
 		# I want to set the initial videw of the scene to include all items ??????
 		#self.myScene.setSceneRect(QtCore.QRectF())
-		
+
 		# add an object at really small x/y
 		#rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(0, 0, 100, 100))
 		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(-10000, -10000, 100, 100))
@@ -187,21 +222,42 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			xMotor = fakeImages[image]['xMotor']
 			yMotor = fakeImages[image]['yMotor']
 			# load the image (need to somehow load max of stack ???
-			
+
 			#
-			# todo: 
-			# 1) load as qimage (keep copy), 
-			# 2) adjust brightness, second copy, 
+			# todo:
+			# 1) load as qimage (keep copy),
+			# 2) adjust brightness, second copy,
 			# 3) insert brightness adjusted into QPixmap/myGraphicsPixMapItem
 			#
-			
-			pixmap = QtGui.QPixmap(path)
+
+			# see here for code to do proper contrast adjustment
+			# https://stackoverflow.com/questions/14464449/using-numpy-to-efficiently-convert-16-bit-image-data-to-8-bit-for-display-with
+
+			image_stack = tifffile.imread(path)
+			# this generally works, need to check bit depth of video images
+			#image_stack = skimage.img_as_ubyte(image_stack, force_copy=False)
+			#print('image_stack.dtype:', image_stack.dtype)
+			imageStackHeight, imageStackWidth = image_stack.shape
+			# only available in Qt>=5.13
+			# QtGui.QImage.Format_Grayscale16
+			#print('imageStackWidth:', imageStackWidth, 'imageStackHeight:', imageStackHeight)
+			myQImage = QtGui.QImage(image_stack.data,
+				imageStackWidth, imageStackHeight,
+				QtGui.QImage.Format_Indexed8)
+			pixmap = QtGui.QPixmap(myQImage)
+
+			tmpQImage = pixmap.toImage()
+			# was this but does not work with .tif
+			#pixmap = QtGui.QPixmap(path)
+
+			'''
 			pixmapWidth = pixmap.width()
 			pixmapHeight = pixmap.height()
 			# scale image
 			newWidth = pixmapWidth #/ 2
 			newHeight = pixmapHeight #/ 2
 			pixmap = pixmap.scaled(newWidth, newHeight, QtCore.Qt.KeepAspectRatio)
+			'''
 			# insert
 			#pixMapItem = QtWidgets.QGraphicsPixmapItem(pixmap)
 			pixMapItem = myQGraphicsPixmapItem('Video Layer', pixmap)
@@ -209,7 +265,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixMapItem.setToolTip(str(idx))
 			pixMapItem.setPos(xMotor,yMotor)
 			self.myScene.addItem(pixMapItem)
-		
+
 		for idx, image in enumerate(fakeTwoPImages.keys()):
 			path = fakeTwoPImages[image]['path']
 			xMotor = fakeTwoPImages[image]['xMotor']
@@ -256,7 +312,20 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		for item in self.myScene.items():
 			if item.myLayer == thisLayer:
 				item.setVisible(isVisible)
-				
+
+	def mousePressEvent(self, event):
+		print('=== myQGraphicsView.mousePressEvent()')
+		super().mousePressEvent(event)
+		#event.setAccepted(False)
+	def mouseMoveEvent(self, event):
+		#print('=== myQGraphicsView.mouseMoveEvent()')
+		super().mouseMoveEvent(event)
+		#event.setAccepted(False)
+	def mouseReleaseEvent(self, event):
+		print('=== myQGraphicsView.mouseReleaseEvent()')
+		super().mouseReleaseEvent(event)
+		#event.setAccepted(False)
+
 	'''
 	def mousePressEvent(self, event):
 		print('=== myQGraphicsView.mousePressEvent()')
@@ -268,7 +337,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#super(QtWidgets.QGraphicsView, self).mousePressEvent(event)
 		super().mousePressEvent(event)
 	'''
-	
+
 	# I want to drag the scene around when click+drag on an image ?????
 	# see:
 	# https://stackoverflow.com/questions/55007339/allow-qgraphicsview-to-move-outside-scene
@@ -286,10 +355,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# this almost works !!!!
 		print('   self.rect():', self.rect())
 		self.scene().update(self.mapToScene(self.rect()).boundingRect());
-		
+
 		#self.scene().mouseMoveEvent(event) # this is an error because scene is wrong class???
 	'''
-	
+
 	def keyPressEvent(self, event):
 		print('=== myCanvasWidget.keyPressEvent() event.key():', event.key())
 		# QtCore.Qt.Key_Tab
@@ -351,7 +420,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	'''
 
 	def zoom(self, zoom):
-		print('=== myCanvasWidget.zoom()', zoom)
+		#print('=== myCanvasWidget.zoom()', zoom)
 		if zoom == 'in':
 			scale = 1.2
 		else:
@@ -384,14 +453,14 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		self.showVideoCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.showVideoCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.showVideoCheckBox))
 		self.addWidget(self.showVideoCheckBox)
-		
+
 		checkBoxName = '2P Max Layer'
 		self.show2pMaxCheckBox = QtWidgets.QCheckBox(checkBoxName)
 		self.show2pMaxCheckBox.setToolTip('Load a canvas from disk')
 		self.show2pMaxCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.show2pMaxCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.show2pMaxCheckBox))
 		self.addWidget(self.show2pMaxCheckBox)
-		
+
 		checkBoxName = '2P Squares Layer'
 		self.show2pSquaresCheckBox = QtWidgets.QCheckBox(checkBoxName)
 		self.show2pSquaresCheckBox.setToolTip('Load a canvas from disk')
@@ -407,14 +476,14 @@ class myToolbarWidget(QtWidgets.QToolBar):
 	def on_checkbox_click(self, name, checkBoxObject):
 		print('=== myToolbarWidget.on_checkbox_click() name:', name, 'checkBoxObject:', checkBoxObject)
 		checkState = checkBoxObject.checkState()
-		
+
 		if name == 'Video Layer':
 			self.myQGraphicsView.hideShowLayer('Video Layer', checkState==2)
 		if name == '2P Max Layer':
 			self.myQGraphicsView.hideShowLayer('2P Max Layer', checkState==2)
 		if name == '2P Squares Layer':
 			self.myQGraphicsView.hideShowLayer('2P Squares Layer', checkState==2)
-		
+
 if __name__ == '__main__':
 	import sys
 
