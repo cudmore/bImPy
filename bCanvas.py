@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from bStack import bStack
 from bStack import bStack
-from bVideoFile import bVideoFile
+#from bVideoFile import bVideoFile
 		
 class bCanvas:
 	"""
@@ -50,6 +50,14 @@ class bCanvas:
 				import_stackNameList = line.split(',')
 			if line.startswith('stackType'): 
 				import_stackTypeList = line.split(',')
+			if line.startswith('numSlices'): 
+				import_numSlicesList = line.split(',')
+
+			if line.startswith('pixelsPerLine'): 
+				import_pixelsPerLine = line.split(',')
+			if line.startswith('linesPerFrame'): 
+				import_linesPerFrame = line.split(',')
+
 			if line.startswith('vWidth'): 
 				import_vWidthList = line.split(',')
 			if line.startswith('vHeight'): 
@@ -69,8 +77,14 @@ class bCanvas:
 				self.import_stackDict[stack] = OrderedDict()
 				print(import_xMotorList[idx])
 				self.import_stackDict[stack]['stackType'] = import_stackTypeList[idx]
-				self.import_stackDict[stack]['umWidth'] = float(import_vWidthList[idx])
-				self.import_stackDict[stack]['umHeight'] = float(import_vHeightList[idx])
+				self.import_stackDict[stack]['numImages'] = int(import_numSlicesList[idx]) # just for video
+				self.import_stackDict[stack]['numChannels'] = 1 # just for video
+
+				self.import_stackDict[stack]['xPixels'] = int(import_pixelsPerLine[idx]) # just for video
+				self.import_stackDict[stack]['yPixels'] = int(import_linesPerFrame[idx]) # just for video
+
+				self.import_stackDict[stack]['umWidth'] = float(import_vWidthList[idx]) # just for video
+				self.import_stackDict[stack]['umHeight'] = float(import_vHeightList[idx]) # just for video
 				self.import_stackDict[stack]['xMotor'] = float(import_xMotorList[idx])
 				self.import_stackDict[stack]['yMotor'] = float(import_yMotorList[idx])
 		#print(self.import_stackDict)
@@ -96,9 +110,18 @@ class bCanvas:
 			videoFilePath = os.path.join(videoFolderPath, videoFile)
 			if not os.path.isfile(videoFilePath):
 				continue
+			
 			print('bCanvas.buildFromScratch() videoFilePath:', videoFilePath)
 			#videoTif = self.openVideoFile(videoFilePath)
-			videoFile = bVideoFile(self, videoFilePath)
+			# 20190708, was this
+			#videoFile = bVideoFile(self, videoFilePath)
+			videoFile = bStack(videoFilePath)
+			videoFile.loadHeader() # at least makes default bStackHeader()
+			#videoFile.getHeaderFromDict(self.import_stackDict)
+			videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
+			videoFile.loadStack()
+			# this is only for import from igor
+			# append to list
 			self._videoFileList.append(videoFile)
 			
 		#

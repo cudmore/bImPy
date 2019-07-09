@@ -61,11 +61,32 @@ class bStackHeader:
 		if convertedStackHeaderPath is not None:
 			# lead from converted stack header .txt file
 			self._loadHeaderFromConverted(convertedStackHeaderPath)
-		else:
-			# load the header from the raw scope file
-			if path.endswith('.oir'):
+		elif path.endswith('.oir'):
 				self.readOirHeader()
-
+		else:
+			print('warning: bStackHeader.__init__() di dnot load header')
+			
+	'''
+	def getHeaderFromDict(self, igorImportDict):
+		"""
+		Used to import video from Igor canvas
+		theDict: created in bCanvas.importIgorCanvas()
+		"""
+		fullFileName = os.path.basename(self.path)
+		baseFileName, extension = os.path.splitext(fullFileName)
+		if baseFileName in igorImportDict.keys():
+			self._header = igorImportDict[baseFileName] # may fail
+		else:
+			print('bStack.getHeaderFromDict() did not find imported header information for file:', self.path)
+	'''
+	def importVideoHeaderFromIgor(self, igorImportDict):
+		fullFileName = os.path.basename(self.path)
+		baseFileName, extension = os.path.splitext(fullFileName)
+		if baseFileName in igorImportDict.keys():
+			self.header = igorImportDict[baseFileName] # may fail
+		else:
+			print('bStackHeader.importVideoHeaderFromIgor() did not find imported header information for file:', self.path)
+		
 	@property
 	def stackType(self):
 		return self.header['stackType']
@@ -210,6 +231,9 @@ class bStackHeader:
 		self.header['xVoxel'] = None # um/pixel
 		self.header['yVoxel'] = None
 		self.header['zVoxel'] = None
+
+		self.header['umWidth'] = None
+		self.header['umHeight'] = None
 
 		self.header['frameSpeed'] = None #
 		self.header['lineSpeed'] = None # time of each line scan (ms)

@@ -36,7 +36,7 @@ class bVideoFile:
 		"""
 		return self.lut_display0(self._ndarray, theMin, theMax)
 		
-	def display0(self, image, display_min, display_max): # copied from Bi Rico
+	def _display0(self, image, display_min, display_max): # copied from Bi Rico
 		# Here I set copy=True in order to ensure the original image is not
 		# modified. If you don't mind modifying the original image, you can
 		# set copy=False or skip this step.
@@ -50,5 +50,5 @@ class bVideoFile:
 	def lut_display0(self, image, display_min, display_max) :
 		#lut = np.arange(2**16, dtype='uint16')
 		lut = np.arange(2**8, dtype='uint8')
-		lut = self.display0(lut, display_min, display_max)
+		lut = self._display0(lut, display_min, display_max)
 		return np.take(lut, image)

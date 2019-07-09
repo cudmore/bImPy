@@ -29,13 +29,13 @@ class bLockFile:
 		os.remove(self.myLockFile)
 
 class bStack:
-
 	def __init__(self, path=''):
+		"""
+		"""
 		self.path = path # path to file
-
-		#print('Stack.__init__() self.path:', self.path)
-		
 		self._fileName = os.path.basename(path)
+		
+		self.currentSlice = 0
 		
 		self.fileNameWithoutExtension = ''
 		if os.path.isfile(path):
@@ -57,6 +57,13 @@ class bStack:
 	def linesPerFrame(self):
 		return self.header.linesPerFrame
 
+	def getHeaderVal(self, key):
+		if key in self.header.header.keys():
+			return self.header.header[key]
+		else:
+			print('error: bStack.getHeaderVal() did not find key "' + key + '" in self.header.header. Available keys are:', self.header.header.keys())
+			return None
+			
 	def convert(self):
 		try:
 			myLock = bLockFile(self.path)
@@ -74,6 +81,45 @@ class bStack:
 			myLock.unlock()
 
 	#
+	# Display
+	#
+	def setSlice(self, sliceNum):
+		if sliceNum < self.header.numImages:
+			self.currentSlice = sliceNum
+		else:
+			print('warning bStack.setSlice()', sliceNum, 'but stack only has', self.header.numImages)
+	
+	def getImage(self, channel=1, sliceNum=None):
+		channelIdx = channel - 1
+		if sliceNum is None:
+			sliceNum = self.currentSlice
+		return self.stack[channelIdx,sliceNum,:,:]
+		
+	def _display0(self, image, display_min, display_max): # copied from Bi Rico
+		# Here I set copy=True in order to ensure the original image is not
+		# modified. If you don't mind modifying the original image, you can
+		# set copy=False or skip this step.
+		image = np.array(image, copy=True)
+		image.clip(display_min, display_max, out=image)
+		image -= display_min
+		np.floor_divide(image, (display_max - display_min + 1) / 256,
+						out=image, casting='unsafe')
+		return image.astype(np.uint8)
+
+	def getImage_ContrastEnhanced(self, display_min, display_max, channel=1, sliceNum=None, useMaxProject=False) :
+		"""
+		sliceNum: pass NOne to use self.currentImage
+		"""
+		#lut = np.arange(2**16, dtype='uint16')
+		lut = np.arange(2**8, dtype='uint8')
+		lut = self._display0(lut, display_min, display_max)
+		if useMaxProject:
+			# need to specify channel !!!!!!
+			return np.take(lut, self.maxProjectImage)
+		else:
+			return np.take(lut, self.getImage(channel=channel, sliceNum=sliceNum))
+
+	#
 	# Loading
 	#
 	def loadHeader(self):
@@ -81,7 +127,7 @@ class bStack:
 			if os.path.isfile(self.path):
 				self.header = bStackHeader.bStackHeader(self.path)
 			else:
-				print('loadHeader() did not find self.path:', self.path)
+				print('bStack.loadHeader() did not find self.path:', self.path)
 				
 	def loadMax(self, channel=1, convertTo8Bit=False):
 		#print('bStack.loadMax() channel:', channel, 'self.path:', self.path)
@@ -95,13 +141,15 @@ class bStack:
 				theArray = tif.asarray()
 			if convertTo8Bit:
 				theArray = skimage.img_as_ubyte(theArray, force_copy=False)
+			# need to specify channel !!!!!!
+			self.maxProjectImage = theArray
 			return theArray
 		else:
 			return None
-			
+				
 	def loadStack(self):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
-		print('   bStack.loadStack() oir file', self.path)
+		print('   bStack.loadStack()', self.path)
 
 		self.loadHeader()
 		#if self.header is None:
@@ -112,11 +160,22 @@ class bStack:
 		t = 0
 		channel_names = None
 
+		print('self.header:', self.header.header)
+		
 		rows = self.linesPerFrame
 		cols = self.pixelsPerLine
 		slices = self.numImages
 		channels = self.numChannels
 
+		if rows is None:
+			print('error: bStack.loadStack() -->> None rows')
+		if cols is None:
+			print('error: bStack.loadStack() -->> None cols')
+		if slices is None:
+			print('error: bStack.loadStack() -->> None slices')
+		if channels is None:
+			print('error: bStack.loadStack() -->> None channels')
+			
 		self.stack = np.zeros((channels, slices, rows, cols), dtype=np.int16)
 
 		#with bioformats.GetImageReader(self.path) as reader:

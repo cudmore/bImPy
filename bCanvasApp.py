@@ -18,7 +18,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
 		self.canvas = bCanvas(folderPath=tmpCanvasFolderPath)
+		
+		# this is only for import from igor
 		self.canvas.importIgorCanvas()
+		
 		self.canvas.buildFromScratch()
 
 		self.centralwidget = QtWidgets.QWidget(parent)
@@ -237,15 +240,16 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		numItems = 0 # used to stack items with item.setZValue()
 		
 		for idx, videoFile in enumerate(theCanvas.videoFileList):
-			path = videoFile._videoFilePath # todo: remove use of ._ ## fakeImages[image]['path']
+			path = videoFile.path # todo: remove use of ._ ## fakeImages[image]['path']
 			fileName = videoFile._fileName
-			videoFileHeader = videoFile.getHeader()
-			xMotor = videoFileHeader['xMotor']
-			yMotor = videoFileHeader['yMotor']
-			umWidth = videoFileHeader['umWidth']
-			umHeight = videoFileHeader['umHeight']
+			#videoFileHeader = videoFile.getHeader()
+			xMotor = videoFile.header.header['xMotor']
+			yMotor = videoFile.header.header['yMotor']
+			umWidth = videoFile.header.header['umWidth']
+			umHeight = videoFile.header.header['umHeight']
 
-			videoImage = videoFile.getVideoImage() # ndarray
+			#videoImage = videoFile.getVideoImage() # ndarray
+			videoImage = videoFile.getImage() # ndarray
 			imageStackHeight, imageStackWidth = videoImage.shape
 			
 			myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
@@ -566,6 +570,27 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		self.addWidget(self.show2pSquaresCheckBox)
 
 		#
+		# radio buttons to select type of contrast (selected, video layer, scope layer)
+		self.contrastGroupBox = QtWidgets.QGroupBox('Image Contrast')
+		
+		self.selectedContrast = QtWidgets.QRadioButton('Selected')
+		self.videoLayerContrast = QtWidgets.QRadioButton('Video Layer')
+		self.scopeLayerContrast = QtWidgets.QRadioButton('Scope Layer')
+		
+		'''
+		self.selectedContrast.toggled.connect(self.on_toggle_image_contrast)
+		self.videoLayerContrast.toggled.connect(self.on_toggle_image_contrast)
+		self.scopeLayerContrast.toggled.connect(self.on_toggle_image_contrast)
+		'''
+		
+		self.selectedContrast.setChecked(True)
+		
+		contrastVBox = QtWidgets.QVBoxLayout()
+		contrastVBox.addWidget(self.selectedContrast)
+		contrastVBox.addWidget(self.videoLayerContrast)
+		contrastVBox.addWidget(self.scopeLayerContrast)
+		
+		#
 		# contrast sliders
 		# min
 		self.minSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -573,15 +598,20 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		self.minSlider.setMaximum(255)
 		self.minSlider.setValue(0)
 		self.minSlider.valueChanged.connect(partial(self.on_contrast_slider, 'minSlider', self.minSlider))
-		self.addWidget(self.minSlider)
+		#self.addWidget(self.minSlider)
+		contrastVBox.addWidget(self.minSlider)
 		# max
 		self.maxSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
 		self.maxSlider.setMinimum(0)
 		self.maxSlider.setMaximum(255)
 		self.maxSlider.setValue(255)
 		self.maxSlider.valueChanged.connect(partial(self.on_contrast_slider, 'maxSlider', self.maxSlider))
-		self.addWidget(self.maxSlider)
+		#self.addWidget(self.maxSlider)
+		contrastVBox.addWidget(self.maxSlider)
 		
+		self.contrastGroupBox.setLayout(contrastVBox)		
+		self.addWidget(self.contrastGroupBox)
+
 		#
 		# file list
 		self.fileList = QtWidgets.QListWidget()
@@ -597,34 +627,87 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		
 		print('myToolbarWidget.__init__() done')
 			
+	'''
+	def on_toggle_image_contrast(self):
+		print('=== on_toggle_image_contrast()')
+	'''
+	def getSelectedContrast(self):
+		if self.selectedContrast.isChecked():
+			return 'selected'
+		elif self.videoLayerContrast.isChecked():
+			return 'Video Layer'
+		elif self.scopeLayerContrast.isChecked():
+			return '2P Max Layer'
+		
 	def on_contrast_slider(self, name, object):
-		print('=== on_contrast_slider', name, object.value())
 		
 		theMin = self.minSlider.value()
 		theMax = self.maxSlider.value()
 		
-		selectedItems = self.myQGraphicsView.myScene.selectedItems()
-		#print('selectedItems:', selectedItems)
+		adjustThisLayer = self.getSelectedContrast() # todo: work out the strings I am using !!!!!!!!!!!!!
+
+		selectedItem = None
+		selectedItems = self.myQGraphicsView.myScene.selectedItems() # can be none
+		if len(selectedItems) > 0:
+			# the first selected item
+			selectedItem = selectedItems[0]
 		
-		# scene.itmes does not work as it is returning a copy !!!!!
-		#firstItem = self.myQGraphicsView.myScene.items()[-1]
-		
-		'''firstItem = selectedItems[0]
-		print('firstItem:', firstItem._fileName, firstItem)
-		'''
-		
-		'''videoFile = self.myQGraphicsView.myCanvas.videoFileList[0]
-		'''
+		useMaxProject = False
+		#todo: work out these string s!!!!!!!! (VIdeo LAyer, 2P Max Layer)
+		if adjustThisLayer == 'Video Layer':
+			useMaxProject = False
+		elif adjustThisLayer == '2P Max Layer':
+			# todo: change this in future
+			useMaxProject = True
+		#elif adjustThisLayer == 'selected':
+		#	selectedItems = self.myQGraphicsView.myScene.selectedItems()
+		#	print('NOT IMPLEMENTED')
+			
+		print('=== on_contrast_slider', 'adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject)
 		
 		for item in  self.myQGraphicsView.myScene.items():
 		
-			if item.myLayer == 'Video Layer':
-				videoFile = self.myQGraphicsView.myCanvas.videoFileList[item._index]
-				umWidth = videoFile.getHeader()['umWidth']
-				umHeight = videoFile.getHeader()['umWidth']
-		
+			# CHANGE TO GENERALIZE
+			#if item.myLayer == 'Video Layer':
+			#if item.myLayer == '2P Max Layer':
+			print('item.myLayer:', item.myLayer)
+			
+			# decide if we adjust this item
+			# noramlly we are using layers
+			# there is a special case where we are adjusting the selected it !!!!!!!!!!!!!!!!!!!!
+			#adjustThisItem = 
+			if adjustThisLayer == 'selected':
+				adjustThisItem = item == selectedItem
+			else:
+				adjustThisItem = item.myLayer ==adjustThisLayer
+				
+			#if item.myLayer == adjustThisLayer:
+			if adjustThisItem:
+				# CHANGE TO GENERALIZE
+				# todo: canvas should have one list of stacks (not separate video and scope lists)
+				#if adjustThisLayer == 'Video Layer':
+				if item.myLayer == 'Video Layer':
+					videoFile = self.myQGraphicsView.myCanvas.videoFileList[item._index]
+				#elif adjustThisLayer == '2P Max Layer':
+				elif item.myLayer == '2P Max Layer':
+					videoFile = self.myQGraphicsView.myCanvas.scopeFileList[item._index]
+				else:
+					print('bCanvasApp.on_contrast_slider() ERRRRRRRORRORORORRORORRORORORORORRORORO')
+					continue
+					
+				umWidth = videoFile.getHeaderVal('umWidth')
+				umHeight = videoFile.getHeaderVal('umHeight')
+				#print('umWidth:', umWidth)
+				
+				
 				# get an contrast enhanced ndarray
-				videoImage = videoFile.getContrastEnhanced(theMin, theMax) # return the original as an nd_array
+				# CHANGE TO GENERALIZE
+				#videoImage = videoFile.getImage_ContrastEnhanced(theMin, theMax) # return the original as an nd_array
+				
+				# each scope stack needs to know if it is diplaying a real stack OR just a max project
+				# where do I put this ???????
+				videoImage = videoFile.getImage_ContrastEnhanced(theMin, theMax, useMaxProject=useMaxProject) # return the original as an nd_array
+
 				imageStackHeight, imageStackWidth = videoImage.shape
 				
 				#print('mean:', np.mean(videoImage))
