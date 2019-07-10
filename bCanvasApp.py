@@ -17,11 +17,12 @@ class MainWindow(QtWidgets.QMainWindow):
 		super(MainWindow, self).__init__(parent)
 
 		tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
+		tmpCanvasFolderPath = '/Volumes/fourt0/Dropbox/data/20190429/20190429_tst2'
 		self.canvas = bCanvas(folderPath=tmpCanvasFolderPath)
-		
+
 		# this is only for import from igor
 		self.canvas.importIgorCanvas()
-		
+
 		self.canvas.buildFromScratch()
 
 		self.centralwidget = QtWidgets.QWidget(parent)
@@ -78,7 +79,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		painter.setPen(self.pen)
 		painter.drawEllipse(self.rect)
 		"""
-		
+
 		#print('myQGraphicsPixmapItem.paint() isSelected', self.isSelected())
 		if self.isSelected():
 			self.drawFocusRect(painter)
@@ -137,7 +138,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 			self.setZValue(previous_zvalue)
 		else:
 			print('   myQGraphicsPixmapItem.bringToFront() item is already front most')
-			
+
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
 	To display rectangles in canvas.
@@ -215,7 +216,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		super(QtWidgets.QGraphicsView, self).__init__(parent)
 
 		self.myCanvas = theCanvas
-		
+
 		self.setBackgroundBrush(QtCore.Qt.darkGray)
 
 		self.myScene = QtWidgets.QGraphicsScene()
@@ -236,9 +237,9 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(-20000, -20000, 100, 100))
 		self.myScene.addItem(rect_item)
 		'''
-		
+
 		numItems = 0 # used to stack items with item.setZValue()
-		
+
 		for idx, videoFile in enumerate(theCanvas.videoFileList):
 			path = videoFile.path # todo: remove use of ._ ## fakeImages[image]['path']
 			fileName = videoFile._fileName
@@ -251,7 +252,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			#videoImage = videoFile.getVideoImage() # ndarray
 			videoImage = videoFile.getImage() # ndarray
 			imageStackHeight, imageStackWidth = videoImage.shape
-			
+
 			myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 
 			pixmap = QtGui.QPixmap(myQImage)
@@ -263,12 +264,12 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixMapItem.setToolTip(str(idx))
 			pixMapItem.setPos(xMotor,yMotor)
 			pixMapItem.setZValue(numItems)
-			
+
 			# add to scene
 			self.myScene.addItem(pixMapItem)
 
 			numItems += 1
-			
+
 		# this is to load 2p file ... put back in
 		#for idx, image in enumerate(fakeTwoPImages.keys()):
 		for idx, scopeFile in enumerate(theCanvas.scopeFileList):
@@ -279,27 +280,27 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			print('   umWidth:', scopeFile.header.header['umWidth'])
 			print('   umHeight:', scopeFile.header.header['umHeight'])
 			'''
-			
+
 			# THESE ARE FUCKING STRINGS !!!!!!!!!!!!!!!!!!!!
 			fileName = scopeFile._fileName
 			xMotor = scopeFile.header.header['xMotor']
 			yMotor = scopeFile.header.header['yMotor']
 			umWidth = scopeFile.header.header['umWidth']
 			umHeight = scopeFile.header.header['umHeight']
-			
+
 			if xMotor == 'None':
 				xMotor = None
 			if yMotor == 'None':
 				yMotor = None
-				
+
 			if xMotor is None or yMotor is None:
 				print('bCanvasApp.myQGraphicsView() not inserting scopeFile -->> xMotor or yMotor is None ???')
 				continue
-				
+
 			# todo: specify channel (1,2,3,4,...)
 			stackMax = scopeFile.loadMax(channel=1, convertTo8Bit=True)
 			imageStackHeight, imageStackWidth = stackMax.shape
-			
+
 			myQImage = QtGui.QImage(stackMax, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 
 			pixmap = QtGui.QPixmap(myQImage)
@@ -324,7 +325,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 			self.myScene.addItem(rect_item)
 			'''
-			
+
 			'''
 			path = fakeTwoPImages[image]['path']
 			xMotor = fakeTwoPImages[image]['xMotor']
@@ -350,7 +351,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixMapItem.setVisible(True) # this works
 			self.myScene.addItem(pixMapItem)
 			'''
-			
+
 			# 20190705 removed scope rectangles
 			if xMotor is not None and yMotor is not None:
 				myPen = QtGui.QPen(QtCore.Qt.cyan)
@@ -359,16 +360,16 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				rect_item.setPen(myPen) #QBrush
 				rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 				self.myScene.addItem(rect_item)
-			
+
 			numItems += 1
 
-			
+
 		# add an object at really big x/y
 		'''
 		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(20000, 20000, 100, 100))
 		self.myScene.addItem(rect_item)
 		'''
-		
+
 		self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 		self.setScene(self.myScene)
 
@@ -380,11 +381,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		selectThisItem = None
 		for item in self.myScene.items():
 			if item._fileName == fileName:
-				selectThisItem = item		
+				selectThisItem = item
 		if selectThisItem is not None:
 			print('myQGraphicsView.setSelectedItem:', selectThisItem, selectThisItem._fileName)
 		self.myScene.setFocusItem(selectThisItem)
-		
+
 	def hideShowLayer(self, thisLayer, isVisible):
 		print('myQGraphicsView.hideShowLayer()', thisLayer, isVisible)
 		for item in self.myScene.items():
@@ -466,7 +467,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			#print('b for send to back')
 			self.changeOrder('send to back')
 
-		
+
 	def changeOrder(self, this):
 		"""
 		this can be:
@@ -481,7 +482,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				selectedItem.bringForward()
 			else:
 				print('myQGraphicsView.changeOrder() did not find a selected item???')
-				
+
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
 		if 1:
@@ -535,12 +536,14 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		self.myQGraphicsView = myQGraphicsView
 
 		# a button
+		'''
 		buttonName = 'Load Canvas'
 		button = QtWidgets.QPushButton(buttonName)
 		button.setToolTip('Load a canvas from disk')
 		#button.move(100,70)
 		button.clicked.connect(partial(self.on_button_click,buttonName))
 		self.addWidget(button)
+		'''
 
 		buttonName = 'Save Canvas'
 		button = QtWidgets.QPushButton(buttonName)
@@ -572,24 +575,24 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#
 		# radio buttons to select type of contrast (selected, video layer, scope layer)
 		self.contrastGroupBox = QtWidgets.QGroupBox('Image Contrast')
-		
+
 		self.selectedContrast = QtWidgets.QRadioButton('Selected')
 		self.videoLayerContrast = QtWidgets.QRadioButton('Video Layer')
 		self.scopeLayerContrast = QtWidgets.QRadioButton('Scope Layer')
-		
+
 		'''
 		self.selectedContrast.toggled.connect(self.on_toggle_image_contrast)
 		self.videoLayerContrast.toggled.connect(self.on_toggle_image_contrast)
 		self.scopeLayerContrast.toggled.connect(self.on_toggle_image_contrast)
 		'''
-		
+
 		self.selectedContrast.setChecked(True)
-		
+
 		contrastVBox = QtWidgets.QVBoxLayout()
 		contrastVBox.addWidget(self.selectedContrast)
 		contrastVBox.addWidget(self.videoLayerContrast)
 		contrastVBox.addWidget(self.scopeLayerContrast)
-		
+
 		#
 		# contrast sliders
 		# min
@@ -608,25 +611,40 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		self.maxSlider.valueChanged.connect(partial(self.on_contrast_slider, 'maxSlider', self.maxSlider))
 		#self.addWidget(self.maxSlider)
 		contrastVBox.addWidget(self.maxSlider)
-		
-		self.contrastGroupBox.setLayout(contrastVBox)		
+
+		self.contrastGroupBox.setLayout(contrastVBox)
 		self.addWidget(self.contrastGroupBox)
 
 		#
 		# file list
-		self.fileList = QtWidgets.QListWidget()
+		#self.fileList = QtWidgets.QListWidget()
+		self.fileList = QtWidgets.QTreeWidget()
 		self.fileList.itemSelectionChanged.connect(self.fileSelected)
 		self.addWidget(self.fileList)
-		
+
+		self.fileList.setHeaderLabels(['File'])
+
+		itemList = []
 		for videoFile in theCanvas.videoFileList:
 			print(videoFile._fileName)
-			self.fileList.addItem(videoFile._fileName)
+			#self.fileList.addItem(videoFile._fileName)
+			item = QtWidgets.QTreeWidgetItem(self.fileList)
+			item.setText(0, videoFile._fileName)
+			item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+			item.setCheckState(0, QtCore.Qt.Checked)
+			itemList.append(item)
 		for scopeFile in theCanvas.scopeFileList:
 			print(scopeFile._fileName)
-			self.fileList.addItem(scopeFile._fileName)
-		
+			#self.fileList.addItem(scopeFile._fileName)
+			item = QtWidgets.QTreeWidgetItem(self.fileList)
+			item.setText(0, scopeFile._fileName)
+			item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+			item.setCheckState(0, QtCore.Qt.Checked)
+			itemList.append(item)
+		self.fileList.insertTopLevelItems(0, itemList)
+
 		print('myToolbarWidget.__init__() done')
-			
+
 	'''
 	def on_toggle_image_contrast(self):
 		print('=== on_toggle_image_contrast()')
@@ -638,12 +656,12 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			return 'Video Layer'
 		elif self.scopeLayerContrast.isChecked():
 			return '2P Max Layer'
-		
+
 	def on_contrast_slider(self, name, object):
-		
+
 		theMin = self.minSlider.value()
 		theMax = self.maxSlider.value()
-		
+
 		adjustThisLayer = self.getSelectedContrast() # todo: work out the strings I am using !!!!!!!!!!!!!
 
 		selectedItem = None
@@ -651,7 +669,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		if len(selectedItems) > 0:
 			# the first selected item
 			selectedItem = selectedItems[0]
-		
+
 		useMaxProject = False
 		#todo: work out these string s!!!!!!!! (VIdeo LAyer, 2P Max Layer)
 		if adjustThisLayer == 'Video Layer':
@@ -662,25 +680,25 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#elif adjustThisLayer == 'selected':
 		#	selectedItems = self.myQGraphicsView.myScene.selectedItems()
 		#	print('NOT IMPLEMENTED')
-			
+
 		print('=== on_contrast_slider', 'adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject)
-		
+
 		for item in  self.myQGraphicsView.myScene.items():
-		
+
 			# CHANGE TO GENERALIZE
 			#if item.myLayer == 'Video Layer':
 			#if item.myLayer == '2P Max Layer':
 			print('item.myLayer:', item.myLayer)
-			
+
 			# decide if we adjust this item
 			# noramlly we are using layers
 			# there is a special case where we are adjusting the selected it !!!!!!!!!!!!!!!!!!!!
-			#adjustThisItem = 
+			#adjustThisItem =
 			if adjustThisLayer == 'selected':
 				adjustThisItem = item == selectedItem
 			else:
 				adjustThisItem = item.myLayer ==adjustThisLayer
-				
+
 			#if item.myLayer == adjustThisLayer:
 			if adjustThisItem:
 				# CHANGE TO GENERALIZE
@@ -694,39 +712,42 @@ class myToolbarWidget(QtWidgets.QToolBar):
 				else:
 					print('bCanvasApp.on_contrast_slider() ERRRRRRRORRORORORRORORRORORORORORRORORO')
 					continue
-					
+
 				umWidth = videoFile.getHeaderVal('umWidth')
 				umHeight = videoFile.getHeaderVal('umHeight')
 				#print('umWidth:', umWidth)
-				
-				
+
+
 				# get an contrast enhanced ndarray
 				# CHANGE TO GENERALIZE
 				#videoImage = videoFile.getImage_ContrastEnhanced(theMin, theMax) # return the original as an nd_array
-				
+
 				# each scope stack needs to know if it is diplaying a real stack OR just a max project
 				# where do I put this ???????
 				videoImage = videoFile.getImage_ContrastEnhanced(theMin, theMax, useMaxProject=useMaxProject) # return the original as an nd_array
 
 				imageStackHeight, imageStackWidth = videoImage.shape
-				
+
 				#print('mean:', np.mean(videoImage))
-				
+
 				myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 				pixmap = QtGui.QPixmap(myQImage)
 				pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
-	
+
 				item.setPixmap(pixmap)
 		#firstItem.setPixmap(pixmap)
-		
+
 	def fileSelected(self):
+		print('fileSelected() FIX')
+		'''
 		theItems = self.fileList.selectedItems()
 		if len(theItems) > 0:
 			theItem = theItems[0]
 			selectedRow = self.fileList.currentRow()
 			print('fileSelected()', theItem.text(), 'row:', selectedRow)
 			self.myQGraphicsView.setSelectedItem(theItem.text())
-			
+		'''
+
 	@QtCore.pyqtSlot()
 	def on_button_click(self, name):
 		print('=== myToolbarWidget.on_button_click() name:', name)
@@ -746,10 +767,10 @@ class myToolbarWidget(QtWidgets.QToolBar):
 if __name__ == '__main__':
 	import sys
 	import bJavaBridge
-	
+
 	import logging
 	import traceback
-	
+
 	try:
 		from bJavaBridge import bJavaBridge
 		myJavaBridge = bJavaBridge()
