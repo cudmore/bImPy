@@ -41,11 +41,11 @@ class bSlabList:
 		self.y = None
 		self.z = None
 
-		self.edgeList = []
+		self.edgeList = [] # this should be .annotationList
 
 		# todo: change this to _slabs.txt
 		pointFilePath, ext = os.path.splitext(tifPath)
-		pointFilePath += '.txt'
+		pointFilePath += '_slabs.txt'
 
 		if not os.path.isfile(pointFilePath):
 			print('bSlabList error, did not find', pointFilePath)
@@ -54,7 +54,8 @@ class bSlabList:
 			df = pd.read_csv(pointFilePath)
 
 			nSlabs = len(df.index)
-			self.id = np.full(nSlabs, np.nan) #df.iloc[:,0].values # each point/slab will have an edge id
+			#self.id = np.full(nSlabs, np.nan) #df.iloc[:,0].values # each point/slab will have an edge id
+			self.id = np.full(nSlabs, 0) #df.iloc[:,0].values # each point/slab will have an edge id
 			
 			self.x = df.iloc[:,0].values
 			self.y = df.iloc[:,1].values
@@ -72,6 +73,29 @@ class bSlabList:
 	def numEdges(self):
 		return len(self.edgeList)
 
+	def save(self):
+		"""
+		Save _ann.txt file from self.annotationList
+		"""
+		print('bSlabList.save()')
+		
+		# headers are keys of xxxx
+		
+		# each element in xxx is a comma seperated row
+		
+	
+	def load(self):
+		"""
+		Load _ann.txt file
+		Store in self.annotationList
+		"""
+		print('bSlabList.load()')
+		
+	def toggleBadEdge(self, edgeIdx):
+		print('bSlabList.toggleBadEdge() edgeIdx:', edgeIdx)
+		self.edgeList[edgeIdx]['Good'] = not self.edgeList[edgeIdx]['Good']
+		print('   edge', edgeIdx, 'is now', self.edgeList[edgeIdx]['Good'])
+		
 	def getEdge(self, edgeIdx):
 		"""
 		return a list of slabs in an edge
@@ -89,7 +113,7 @@ class bSlabList:
 		self.edgeList = []
 		
 		edgeIdx = 0
-		edgeDict = {'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None}
+		edgeDict = {'type': 'edge', 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good': True}
 		n = self.numSlabs
 		for pointIdx in range(n):
 			self.id[pointIdx] = edgeIdx
@@ -103,7 +127,7 @@ class bSlabList:
 				edgeDict['Length 3D'] = round(edgeDict['Length 3D'],2)
 				edgeDict['Length 2D'] = round(edgeDict['Length 2D'],2)
 				self.edgeList.append(edgeDict)
-				edgeDict = {'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None} # reset
+				edgeDict = {'type':'edge', 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good':True} # reset
 				edgeIdx += 1
 				continue
 
@@ -118,6 +142,11 @@ class bSlabList:
 			
 		#print(self.edgeList)
 
+		'''
+		for idx, id in enumerate(self.id):
+			print(self.id[idx], ',', self.x[idx], ',', self.y[idx], ',', self.z[idx])
+		'''
+		
 ################################################################################
 class bSimpleStack:
 	def __init__(self, path):
@@ -169,6 +198,13 @@ class bSimpleStack:
 		print('self._images.shape:', self._images.shape)
 		print('self._images.dtype:', self._images.dtype)
 
+	def saveAnnotations(self):
+		self.slabList.save()
+	
+	def setAnnotation(self, this, value):
+		if this == 'toggle bad edge':
+			self.slabList.toggleBadEdge(value)
+	
 	#
 	# I really have no idea what the next two functions are doing 
 	'''
@@ -208,45 +244,113 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 		self.myQVBoxLayout = QtWidgets.QVBoxLayout(self)
 
+		#
+		# buttons
+		mySaveButton = QtWidgets.QPushButton('Save')
+		mySaveButton.clicked.connect(self.saveButton_Callback)
+		self.myQVBoxLayout.addWidget(mySaveButton)
+		
+		#
+		# table of annotations
 		self.myTableWidget = QtWidgets.QTableWidget()
 		self.myTableWidget.setRowCount(self.slabList.numEdges)
 		self.myTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 		self.myTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+		# signals/slots
 		self.myTableWidget.cellClicked.connect(self.on_clicked)
+		# todo: this work to select edge when arrow keys are used but casuses bug in interface
+		# figure out how to get this to work
+		#self.myTableWidget.currentCellChanged.connect(self.on_clicked)
 
-		self.myTableWidget.setColumnCount(4)
-		headerLabels = ['n', 'Length 3D', 'Length 2D', 'z']
+		headerLabels = ['type', 'n', 'Length 3D', 'Length 2D', 'z', 'Good']
+		self.myTableWidget.setColumnCount(len(headerLabels))
 		self.myTableWidget.setHorizontalHeaderLabels(headerLabels)
 
 		header = self.myTableWidget.horizontalHeader()
 		header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+		header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+		header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
+		header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
+		header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)
+		header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
 		# QHeaderView will automatically resize the section to fill the available space.
 		# The size cannot be changed by the user or programmatically.
 		#header.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
 
 		for idx, stat in enumerate(self.slabList.edgeList):
-			myString = str(stat['n'])
+			myString = str(stat['type'])
 			item = QtWidgets.QTableWidgetItem(myString)
 			self.myTableWidget.setItem(idx, 0, item)
 
-			myString = str(stat['Length 3D'])
+			myString = str(stat['n'])
 			item = QtWidgets.QTableWidgetItem(myString)
 			self.myTableWidget.setItem(idx, 1, item)
 
-			myString = str(stat['Length 2D'])
+			myString = str(stat['Length 3D'])
 			item = QtWidgets.QTableWidgetItem(myString)
 			self.myTableWidget.setItem(idx, 2, item)
 
-			myString = str(stat['z'])
+			myString = str(stat['Length 2D'])
 			item = QtWidgets.QTableWidgetItem(myString)
 			self.myTableWidget.setItem(idx, 3, item)
 
+			myString = str(stat['z'])
+			item = QtWidgets.QTableWidgetItem(myString)
+			self.myTableWidget.setItem(idx, 4, item)
+
+			if stat['Good']:
+				myString = ''
+			else:
+				myString = 'False'
+			#myString = str(stat['Good'])
+			item = QtWidgets.QTableWidgetItem(myString)
+			self.myTableWidget.setItem(idx, 5, item)
+
 		self.myQVBoxLayout.addWidget(self.myTableWidget)
 
+	def saveButton_Callback(self):
+		"""
+		Save the current annotation list
+		"""
+		print('bAnnotationTable.saveButton_Callback()')
+		self.mainWindow.signal('save')
+		
+	def refreshRow(self, idx):
+		stat = self.slabList.edgeList[idx]
+
+		myString = str(stat['type'])
+		item = QtWidgets.QTableWidgetItem(myString)
+		self.myTableWidget.setItem(idx, 0, item)
+
+		myString = str(stat['n'])
+		item = QtWidgets.QTableWidgetItem(myString)
+		self.myTableWidget.setItem(idx, 1, item)
+
+		myString = str(stat['Length 3D'])
+		item = QtWidgets.QTableWidgetItem(myString)
+		self.myTableWidget.setItem(idx, 2, item)
+
+		myString = str(stat['Length 2D'])
+		item = QtWidgets.QTableWidgetItem(myString)
+		self.myTableWidget.setItem(idx, 3, item)
+
+		myString = str(stat['z'])
+		item = QtWidgets.QTableWidgetItem(myString)
+		self.myTableWidget.setItem(idx, 4, item)
+
+		if stat['Good']:
+			myString = ''
+		else:
+			myString = 'False'
+		#myString = str(stat['Good'])
+		item = QtWidgets.QTableWidgetItem(myString)
+		self.myTableWidget.setItem(idx, 5, item)
+		
 	def selectRow(self, row):
-		print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! bAnnotationTable.selectRow()', row)
-		#self.selectRow(row)
+		print('bAnnotationTable.selectRow()', row)
+		self.myTableWidget.selectRow(row)
+		self.repaint()
 		
 	@QtCore.pyqtSlot()
 	def on_clicked(self):
@@ -269,10 +373,17 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.mySimpleStack = simpleStack #bSimpleStack(path)
 		self.mainWindow = mainWindow
 		
+		self.mySelectedEdge = None # edge index of selected edge
+		
 		self.currentSlice = 0
 		self.minContrast = 0
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth # -1
 
+		self.idMasked = None
+		self.xMasked = None
+		self.yMasked = None
+		self.zMasked = None
+		
 		self.showTracing = True
 
 		self.imgplot = None
@@ -351,20 +462,22 @@ class bStackView(QtWidgets.QGraphicsView):
 			print('bStackView.selectEdge() -->> NONE')
 			#markersize = 10
 			#self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color='c', s=markersize, picker=True)
+			self.mySelectedEdge = None
 			self.myEdgeSelectionPlot.set_offsets(np.c_[[], []])
 		else:
+			self.mySelectedEdge = edgeIdx
+
 			theseIndices = self.mySimpleStack.slabList.getEdge(edgeIdx)
 			
 			#print('selectEdge() theseIndices:', theseIndices)
 			
 			z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
 			z = int(z)
-			#print('z:', z)
 			self.setSlice(z)
 			
-			self.xMasked = self.mySimpleStack.slabList.y[theseIndices]
-			self.yMasked = self.mySimpleStack.slabList.x[theseIndices]
-			self.myEdgeSelectionPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
+			xMasked = self.mySimpleStack.slabList.y[theseIndices] # flipped
+			yMasked = self.mySimpleStack.slabList.x[theseIndices]
+			self.myEdgeSelectionPlot.set_offsets(np.c_[xMasked, yMasked])
 
 			QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, True))
 			
@@ -431,9 +544,10 @@ class bStackView(QtWidgets.QGraphicsView):
 			lowerz = index + 5
 			#try:
 			if 1:
-				self.zMask = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
-				self.xMasked = self.mySimpleStack.slabList.y[~self.zMask.mask] # swapping
-				self.yMasked = self.mySimpleStack.slabList.x[~self.zMask.mask]
+				self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
+				self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
+				self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
+				self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
 			#except:
 			#	print('ERROR: bStackWindow.setSlice')
 
@@ -507,22 +621,34 @@ class bStackView(QtWidgets.QGraphicsView):
 		event.setAccepted(True)
 
 	def onpick(self, event):
-		print('\n====== bStackView.onpick()')
+		print('\n=== bStackView.onpick()')
 		xdata = event.mouseevent.xdata
 		ydata = event.mouseevent.ydata
 		ind = event.ind
 	
+		'''
+		print('   event.mouseevent.xdata:', event.mouseevent.xdata)
+		print('   event.mouseevent.ydata:', event.mouseevent.ydata)
+		print('   event.artist:', event.artist)
+		print('   event.ind:', event.ind)
+		'''
+		
 		# find the first ind in bSlabList.id
 		firstInd = ind[0]
-		edgeIdx = self.mySimpleStack.slabList.id[firstInd]
+		#edgeIdx = self.mySimpleStack.slabList.id[firstInd]
+		edgeIdx = self.idMasked[firstInd]
 		edgeIdx = int(edgeIdx)
 		
-		edgeIdx += 1
 		
-		print('   firstInd:', firstInd, 'edgeIdx:', edgeIdx)
+		#edgeIdx += 1
+		
+		#print('   firstInd:', firstInd, 'edgeIdx:', edgeIdx)
 		
 		#self.selectEdge(edgeIdx)
 		print('   edge:', edgeIdx, self.mySimpleStack.slabList.edgeList[edgeIdx])
+		
+		if self.mainWindow is not None:
+			self.mainWindow.signal('selectEdge', edgeIdx)
 		
 ################################################################################
 class bStackWidget(QtWidgets.QWidget):
@@ -615,13 +741,14 @@ class bStackWidget(QtWidgets.QWidget):
 	def getStack(self):
 		return self.mySimpleStack
 	
-	def signal(self, signal, value, fromTable=False):
+	def signal(self, signal, value=None, fromTable=False):
 		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
 		if signal == 'selectEdge':
+			print('=== bStackWidget.signal() selectEdge')
 			self.selectEdge(value)
 			if not fromTable:
 				self.annotationTable.selectRow(value)
-		
+			
 		if signal == 'contrast change':
 			minContrast = value['minContrast']
 			maxContrast = value['maxContrast']
@@ -634,25 +761,39 @@ class bStackWidget(QtWidgets.QWidget):
 			self.myStackView.setSlice(value, recursion=False)
 			self.mySliceSlider.setValue(value)
 			
+		if signal == 'save':
+			self.mySimpleStack.saveAnnotations()
+			
 	def selectEdge(self, edgeIdx):
+		print('bStackWidget.selectEdge() edgeIdx:', edgeIdx)
 		self.myStackView.selectEdge(edgeIdx)
-	
+		#self.repaint() # this is updating the widget !!!!!!!!
+
 	def keyPressEvent(self, event):
 		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
 		if event.key() in [QtCore.Qt.Key_Escape]:
 			self.myStackView.selectEdge(None)
-		if event.key() in [QtCore.Qt.Key_L]:
+		elif event.key() in [QtCore.Qt.Key_L]:
 			self.showLeftControlBar = not self.showLeftControlBar
 			self.updateDisplayedWidgets()
-		if event.key() in [QtCore.Qt.Key_C]:
+		elif event.key() in [QtCore.Qt.Key_C]:
 			self.showContrastBar = not self.showContrastBar
 			self.updateDisplayedWidgets()
-		if event.key() in [QtCore.Qt.Key_F]:
+		elif event.key() in [QtCore.Qt.Key_F]:
 			self.showFeebackBar = not self.showFeebackBar
 			self.updateDisplayedWidgets()
-		if event.key() in [QtCore.Qt.Key_H]:
+		elif event.key() in [QtCore.Qt.Key_H]:
 			self.printHelp()
-
+		elif event.key() in [QtCore.Qt.Key_B]:
+			print('set selected edge to bad')
+			selectedEdge = self.myStackView.mySelectedEdge
+			self.mySimpleStack.setAnnotation('toggle bad edge', selectedEdge)
+			# force refresh of table, I need to use model/view/controller !!!!
+			self.annotationTable.refreshRow(selectedEdge)
+			
+		else:
+			print('bStackWidget.keyPressEvent() not handled', event.text())
+			
 	def printHelp(self):
 		print('=============================================================')
 		print('bStackWidget help')
