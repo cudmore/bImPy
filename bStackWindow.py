@@ -165,7 +165,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		#self.path = path
 		self.options_defaults()
-		
+
 		self.mySimpleStack = simpleStack #bSimpleStack(path)
 		self.mainWindow = mainWindow
 
@@ -173,7 +173,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.displayThisStack = 'ch1'
 		self.displaySlidingZ = False
-		
+
 		self.currentSlice = 0
 		self.minContrast = 0
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth # -1
@@ -287,7 +287,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
 				z = int(z)
 				self.setSlice(z)
-			
+
 			xMasked = self.mySimpleStack.slabList.y[theseIndices] # flipped
 			yMasked = self.mySimpleStack.slabList.x[theseIndices]
 			self.myEdgeSelectionPlot.set_offsets(np.c_[xMasked, yMasked])
@@ -329,7 +329,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		return img
 	'''
-	
+
 	def setSlice(self, index=None, recursion=True):
 		#print('bStackView.setSlice()', index)
 
@@ -402,7 +402,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event.key() == QtCore.Qt.Key_T:
 			self.showTracing = not self.showTracing
 			self.setSlice() #refresh
-		
+
 		# choose which stack to display
 		elif event.key() == QtCore.Qt.Key_1:
 			self.displayThisStack = 'ch1'
@@ -419,10 +419,10 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event.key() == QtCore.Qt.Key_0:
 			self.displayThisStack = 'skel'
 			self.setSlice(recursion=False) # just refresh
-		
+
 		elif event.key() == QtCore.Qt.Key_Z:
 			self._toggleSlidingZ()
-		
+
 		else:
 			event.setAccepted(False)
 
@@ -432,7 +432,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		if not noRecursion:
 			self.mainWindow.bStackFeebackWidget.setFeedback('sliding z', self.displaySlidingZ)
 		self.setSlice(recursion=False) # just refresh
-	
+
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -532,7 +532,7 @@ class bStackWidget(QtWidgets.QWidget):
 		super(bStackWidget, self).__init__(parent)
 
 		#self.options_defaults()
-		
+
 		self.path = path
 
 		basename = os.path.basename(self.path)
@@ -594,7 +594,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.updateDisplayedWidgets()
 
 		self.move(100,100)
-		
+
 	def sliceSliderValueChanged(self):
 		theSlice = self.mySliceSlider.value()
 		self.signal('set slice', theSlice)
@@ -648,7 +648,7 @@ class bStackWidget(QtWidgets.QWidget):
 
 		if signal == 'toggle sliding z':
 			self.myStackView._toggleSlidingZ(noRecursion=noRecursion)
-			
+
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()
 
@@ -707,7 +707,7 @@ class bStackWidget(QtWidgets.QWidget):
 		print('   z: toggle sliding z-projection on/off, will apply to all "Stacks To Display"')
 		print(' ' )
 
-			
+
 	'''
 	def mousePressEvent(self, event):
 		print('=== bStackWidget.mousePressEvent()')
