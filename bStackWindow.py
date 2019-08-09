@@ -56,7 +56,7 @@ class bSlabList:
 			nSlabs = len(df.index)
 			#self.id = np.full(nSlabs, np.nan) #df.iloc[:,0].values # each point/slab will have an edge id
 			self.id = np.full(nSlabs, 0) #df.iloc[:,0].values # each point/slab will have an edge id
-			
+
 			self.x = df.iloc[:,0].values
 			self.y = df.iloc[:,1].values
 			self.z = df.iloc[:,2].values
@@ -78,46 +78,46 @@ class bSlabList:
 		Save _ann.txt file from self.annotationList
 		"""
 		print('bSlabList.save()')
-		
+
 		# headers are keys of xxxx
-		
+
 		# each element in xxx is a comma seperated row
-		
-	
+
+
 	def load(self):
 		"""
 		Load _ann.txt file
 		Store in self.annotationList
 		"""
 		print('bSlabList.load()')
-		
+
 	def toggleBadEdge(self, edgeIdx):
 		print('bSlabList.toggleBadEdge() edgeIdx:', edgeIdx)
 		self.edgeList[edgeIdx]['Good'] = not self.edgeList[edgeIdx]['Good']
 		print('   edge', edgeIdx, 'is now', self.edgeList[edgeIdx]['Good'])
-		
+
 	def getEdge(self, edgeIdx):
 		"""
 		return a list of slabs in an edge
 		"""
 		theseIndices = np.argwhere(self.id == edgeIdx)
 		return theseIndices
-		
+
 	def analyze(self):
 		def euclideanDistance(x1, y1, z1, x2, y2, z2):
 			if z1 is None and z2 is None:
 				return math.sqrt((x2-x1)**2 + (y2-y1)**2)
 			else:
 				return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
-			
+
 		self.edgeList = []
-		
+
 		edgeIdx = 0
 		edgeDict = {'type': 'edge', 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good': True}
 		n = self.numSlabs
 		for pointIdx in range(n):
 			self.id[pointIdx] = edgeIdx
-			
+
 			x1 = self.x[pointIdx]
 			y1 = self.y[pointIdx]
 			z1 = self.z[pointIdx]
@@ -139,27 +139,27 @@ class bSlabList:
 			prev_x1 = x1
 			prev_y1 = y1
 			prev_z1 = z1
-			
+
 		#print(self.edgeList)
 
 		'''
 		for idx, id in enumerate(self.id):
 			print(self.id[idx], ',', self.x[idx], ',', self.y[idx], ',', self.z[idx])
 		'''
-		
+
 ################################################################################
 class bSimpleStack:
 	def __init__(self, path):
 		self.path = path
-		
+
 		self._voxelx = 1
 		self._voxely = 1
 
 		self._images = None
 		self.loadStack()
-		
+
 		self.slabList = bSlabList(self.path)
-		
+
 	@property
 	def voxelx(self):
 		return self._voxelx
@@ -167,15 +167,15 @@ class bSimpleStack:
 	@property
 	def voxely(self):
 		return self._voxely
-	
+
 	@property
 	def pixelsPerLine(self):
 		return self._images.shape[2]
-		
+
 	@property
 	def linesPerFrame(self):
 		return self._images.shape[1]
-		
+
 	@property
 	def numSlices(self):
 		if self._images is not None:
@@ -190,7 +190,7 @@ class bSimpleStack:
 			return 8
 		else:
 			return 16
-		
+
 	def loadStack(self):
 		with tifffile.TiffFile(path) as tif:
 			self._images = tif.asarray()
@@ -200,13 +200,13 @@ class bSimpleStack:
 
 	def saveAnnotations(self):
 		self.slabList.save()
-	
+
 	def setAnnotation(self, this, value):
 		if this == 'toggle bad edge':
 			self.slabList.toggleBadEdge(value)
-	
+
 	#
-	# I really have no idea what the next two functions are doing 
+	# I really have no idea what the next two functions are doing
 	'''
 	def _display0(self, image, display_min, display_max): # copied from Bi Rico
 		# Here I set copy=True in order to ensure the original image is not
@@ -249,7 +249,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		mySaveButton = QtWidgets.QPushButton('Save')
 		mySaveButton.clicked.connect(self.saveButton_Callback)
 		self.myQVBoxLayout.addWidget(mySaveButton)
-		
+
 		#
 		# table of annotations
 		self.myTableWidget = QtWidgets.QTableWidget()
@@ -315,7 +315,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		"""
 		print('bAnnotationTable.saveButton_Callback()')
 		self.mainWindow.signal('save')
-		
+
 	def refreshRow(self, idx):
 		stat = self.slabList.edgeList[idx]
 
@@ -346,12 +346,12 @@ class bAnnotationTable(QtWidgets.QWidget):
 		#myString = str(stat['Good'])
 		item = QtWidgets.QTableWidgetItem(myString)
 		self.myTableWidget.setItem(idx, 5, item)
-		
+
 	def selectRow(self, row):
 		print('bAnnotationTable.selectRow()', row)
 		self.myTableWidget.selectRow(row)
 		self.repaint()
-		
+
 	@QtCore.pyqtSlot()
 	def on_clicked(self):
 		#print('bAnnotationTable.on_clicked')
@@ -364,17 +364,18 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.mainWindow.signal('selectEdge', row, fromTable=True)
 
 ################################################################################
+#class bStackView(QtWidgets.QWidget):
 class bStackView(QtWidgets.QGraphicsView):
-	def __init__(self, simpleStack, mainWindow=None):
-		QtWidgets.QGraphicsView.__init__(self)
+	def __init__(self, simpleStack, mainWindow=None, parent=None):
+		super(bStackView, self).__init__(parent)
 
 		#self.path = path
-		
+
 		self.mySimpleStack = simpleStack #bSimpleStack(path)
 		self.mainWindow = mainWindow
-		
+
 		self.mySelectedEdge = None # edge index of selected edge
-		
+
 		self.currentSlice = 0
 		self.minContrast = 0
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth # -1
@@ -383,12 +384,12 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.xMasked = None
 		self.yMasked = None
 		self.zMasked = None
-		
+
 		self.showTracing = True
 
 		self.imgplot = None
 		self._images = None
-				
+
 		self.iLeft = 0
 		self.iTop = 0
 		self.iRight = self.mySimpleStack.voxelx * self.mySimpleStack.pixelsPerLine # reversed
@@ -400,11 +401,12 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# for click and drag
 		self.clickPos = None
-		
+
 		#
 		scene = QtWidgets.QGraphicsScene(self)
 		#self.scene = scene
 
+		# was this
 		# visually turn off scroll bars
 		self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -435,8 +437,16 @@ class bStackView(QtWidgets.QGraphicsView):
 		#self.canvas.mpl_connect('scroll_event', self.onscroll)
 		self.canvas.mpl_connect('pick_event', self.onpick)
 
+		# trying this
+		'''
+		layout = QtWidgets.QVBoxLayout()
+		layout.addWidget(self.canvas)
+		self.setLayout(layout)
+		'''
+
+		# was this
 		scene.addWidget(self.canvas)
-		
+
 		self.setScene(scene)
 
 	def flashEdge(self, edgeIdx, on):
@@ -455,7 +465,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		#
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
-	
+
 	def selectEdge(self, edgeIdx):
 		#print('=== bStackView.selectEdge():', edgeIdx)
 		if edgeIdx is None:
@@ -468,25 +478,25 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.mySelectedEdge = edgeIdx
 
 			theseIndices = self.mySimpleStack.slabList.getEdge(edgeIdx)
-			
+
 			#print('selectEdge() theseIndices:', theseIndices)
-			
+
 			z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
 			z = int(z)
 			self.setSlice(z)
-			
+
 			xMasked = self.mySimpleStack.slabList.y[theseIndices] # flipped
 			yMasked = self.mySimpleStack.slabList.x[theseIndices]
 			self.myEdgeSelectionPlot.set_offsets(np.c_[xMasked, yMasked])
 
 			QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, True))
-			
+
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
-		
+
 	def setSliceContrast(self, sliceNumber):
 		img = self.mySimpleStack._images[sliceNumber, :, :].copy()
-		
+
 		#print('setSliceContrast() BEFORE min:', img.min(), 'max:', img.max(), 'mean:', img.mean(), 'dtype:', img.dtype)
 
 		maxInt = 2 ** self.mySimpleStack.bitDepth - 1
@@ -501,33 +511,33 @@ class bStackView(QtWidgets.QGraphicsView):
 		if denominator != 0:
 			mult = maxInt / denominator
 		else:
-			mult = maxInt 
-			
+			mult = maxInt
+
 		#img.astype(numpy.uint16)
 		img[img < lowContrast] = lowContrast
 		img[img > highContrast] = highContrast
 		img -= lowContrast
-		
+
 		img = img * mult
 		img = img.astype(np.uint8)
 
 		#print('setSliceContrast() AFTER min:', img.min(), 'max:', img.max(), 'mean:', img.mean(), 'dtype:', img.dtype, 'int(mult):', int(mult))
-		
+
 		return img
-		
+
 	def setSlice(self, index=None, recursion=True):
 		#print('bStackView.setSlice()', index)
-		
+
 		if index is None:
 			index = self.currentSlice
-		
+
 		if index < 0:
 			index = 0
 		if index > self.mySimpleStack.numSlices-1:
 			index = self.mySimpleStack.numSlices -1
 
 		showImage = True
-		
+
 		if showImage:
 			image = self.setSliceContrast(index)
 			if self.imgplot is None:
@@ -536,7 +546,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				self.imgplot.set_data(image)
 		else:
 			pass
-		
+
 		#
 		# update point annotations
 		if self.showTracing:
@@ -554,12 +564,12 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
 		else:
 			self.mySlabPlot.set_offsets(np.c_[[], []])
-		
+
 		self.currentSlice = index # update slice
 
 		if self.mainWindow is not None and recursion:
 			self.mainWindow.signal('set slice', index)
-		
+
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
 
@@ -582,7 +592,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.setSlice() #refresh
 		else:
 			event.setAccepted(False)
-				
+
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -625,31 +635,31 @@ class bStackView(QtWidgets.QGraphicsView):
 		xdata = event.mouseevent.xdata
 		ydata = event.mouseevent.ydata
 		ind = event.ind
-	
+
 		'''
 		print('   event.mouseevent.xdata:', event.mouseevent.xdata)
 		print('   event.mouseevent.ydata:', event.mouseevent.ydata)
 		print('   event.artist:', event.artist)
 		print('   event.ind:', event.ind)
 		'''
-		
+
 		# find the first ind in bSlabList.id
 		firstInd = ind[0]
 		#edgeIdx = self.mySimpleStack.slabList.id[firstInd]
 		edgeIdx = self.idMasked[firstInd]
 		edgeIdx = int(edgeIdx)
-		
-		
+
+
 		#edgeIdx += 1
-		
+
 		#print('   firstInd:', firstInd, 'edgeIdx:', edgeIdx)
-		
+
 		#self.selectEdge(edgeIdx)
 		print('   edge:', edgeIdx, self.mySimpleStack.slabList.edgeList[edgeIdx])
-		
+
 		if self.mainWindow is not None:
 			self.mainWindow.signal('selectEdge', edgeIdx)
-		
+
 ################################################################################
 class bStackWidget(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None, parent=None, path=''):
@@ -665,20 +675,20 @@ class bStackWidget(QtWidgets.QWidget):
 		#
 		self.mySimpleStack = bSimpleStack(path) # backend stack
 		#
-		
+
 		self.showLeftControlBar = True
 		self.showContrastBar = True
 		self.showFeebackBar = True
-		
+
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
 
 		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
 
 		self.myContrastWidget = bContrastWidget(mainWindow=self)
-		
+
 		self.bStackFeebackWidget = bStackFeebackWidget(self)
 		self.bStackFeebackWidget.set('num slices', self.mySimpleStack.numSlices)
-		
+
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
 
 		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
@@ -689,21 +699,21 @@ class bStackWidget(QtWidgets.QWidget):
 		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numSlices
 		self.mySliceSlider.setMinimum(0)
 		self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
-		
+
 		self.myHBoxLayout2.addWidget(self.myStackView)
 		self.myHBoxLayout2.addWidget(self.mySliceSlider)
-		
+
 		# add
 		self.myVBoxLayout.addWidget(self.myContrastWidget) #, stretch=0.1)
 		self.myVBoxLayout.addWidget(self.bStackFeebackWidget) #, stretch=0.1)
 		#self.myVBoxLayout.addWidget(self.myStackView) #, stretch = 9)
 		self.myVBoxLayout.addLayout(self.myHBoxLayout2) #, stretch = 9)
-		
+
 		self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
-		#self.verticalSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding) 
+		#self.verticalSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
 
 
-		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) # stretch=10, not sure on the units???		
+		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) # stretch=10, not sure on the units???
 		#self.myHBoxLayout.addItem(self.verticalSpacer)
 		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=7) # stretch=10, not sure on the units???
 
@@ -714,11 +724,11 @@ class bStackWidget(QtWidgets.QWidget):
 		'''
 
 		self.updateDisplayedWidgets()
-		
+
 	def sliceSliderValueChanged(self):
 		theSlice = self.mySliceSlider.value()
 		self.signal('set slice', theSlice)
-		
+
 	def updateDisplayedWidgets(self):
 		# left control bar
 		if self.showLeftControlBar:
@@ -736,11 +746,11 @@ class bStackWidget(QtWidgets.QWidget):
 		else:
 			self.bStackFeebackWidget.hide()
 
-			
+
 	# get rid of this
 	def getStack(self):
 		return self.mySimpleStack
-	
+
 	def signal(self, signal, value=None, fromTable=False):
 		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
 		if signal == 'selectEdge':
@@ -748,22 +758,22 @@ class bStackWidget(QtWidgets.QWidget):
 			self.selectEdge(value)
 			if not fromTable:
 				self.annotationTable.selectRow(value)
-			
+
 		if signal == 'contrast change':
 			minContrast = value['minContrast']
 			maxContrast = value['maxContrast']
 			self.myStackView.minContrast = minContrast
 			self.myStackView.maxContrast = maxContrast
 			self.myStackView.setSlice(index=None) # will just refresh current slice
-			
+
 		if signal == 'set slice':
 			self.bStackFeebackWidget.set('set slice', value)
 			self.myStackView.setSlice(value, recursion=False)
 			self.mySliceSlider.setValue(value)
-			
+
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()
-			
+
 	def selectEdge(self, edgeIdx):
 		print('bStackWidget.selectEdge() edgeIdx:', edgeIdx)
 		self.myStackView.selectEdge(edgeIdx)
@@ -790,10 +800,10 @@ class bStackWidget(QtWidgets.QWidget):
 			self.mySimpleStack.setAnnotation('toggle bad edge', selectedEdge)
 			# force refresh of table, I need to use model/view/controller !!!!
 			self.annotationTable.refreshRow(selectedEdge)
-			
+
 		else:
 			print('bStackWidget.keyPressEvent() not handled', event.text())
-			
+
 	def printHelp(self):
 		print('=============================================================')
 		print('bStackWidget help')
@@ -810,7 +820,7 @@ class bStackWidget(QtWidgets.QWidget):
 		print('   +/-: zoom in/out (follows mouse position)')
 		print('   click + drag: pan')
 		print(' ' )
-		
+
 	'''
 	def mousePressEvent(self, event):
 		print('=== bStackWidget.mousePressEvent()')
@@ -828,7 +838,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myStackView.mousePressEvent(event)
 		event.setAccepted(False)
 	'''
-	
+
 	"""
 	def dragEnterEvent(self, event):
 		#print('dragEnterEvent:', event)
@@ -854,7 +864,7 @@ class bStackWidget(QtWidgets.QWidget):
 		else:
 			event.ignore()
 	"""
-		
+
 	'''
 	def onkey(self, event):
 		print('bStackWindow.onkey()', event.key)
@@ -873,7 +883,7 @@ class bStackWidget(QtWidgets.QWidget):
 	def onpick(self, event):
 		print('bStackWindow.onpick()', event.ind)
 	'''
-	
+
 if __name__ == '__main__':
 	import sys
 
@@ -883,7 +893,7 @@ if __name__ == '__main__':
 	else:
 		path = '/Users/cudmore/box/DeepVess/data/mytest.tif'
 		path = '/Users/cudmore/box/DeepVess/data/invivo/20190613__0028.tif'
-		
+
 	app = QtWidgets.QApplication(sys.argv)
 
 	sw = bStackWidget(mainWindow=app, parent=None, path=path)
