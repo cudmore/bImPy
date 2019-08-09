@@ -13,9 +13,8 @@ on selecting segment, select in list
 take stats on vessel segments
 """
 
-import os, math, time
-
-import tifffile
+import os, time
+from collections import OrderedDict
 
 import pandas as pd
 import numpy as np
@@ -28,212 +27,7 @@ from matplotlib.backends import backend_qt5agg
 
 from bContrastWidget import bContrastWidget
 from bStackFeebackWidget import bStackFeebackWidget
-
-################################################################################
-class bSlabList:
-	"""
-	full list of all points in a vascular tracing
-	"""
-	def __init__(self, tifPath):
-
-		self.id = None # to count edges
-		self.x = None
-		self.y = None
-		self.z = None
-
-		self.edgeList = [] # this should be .annotationList
-
-		# todo: change this to _slabs.txt
-		pointFilePath, ext = os.path.splitext(tifPath)
-		pointFilePath += '_slabs.txt'
-
-		if not os.path.isfile(pointFilePath):
-			print('bSlabList error, did not find', pointFilePath)
-			return
-		else:
-			df = pd.read_csv(pointFilePath)
-
-			nSlabs = len(df.index)
-			#self.id = np.full(nSlabs, np.nan) #df.iloc[:,0].values # each point/slab will have an edge id
-			self.id = np.full(nSlabs, 0) #df.iloc[:,0].values # each point/slab will have an edge id
-
-			self.x = df.iloc[:,0].values
-			self.y = df.iloc[:,1].values
-			self.z = df.iloc[:,2].values
-
-			print('tracing z max:', np.nanmax(self.z))
-
-		self.analyze()
-
-	@property
-	def numSlabs(self):
-		return len(self.x)
-
-	@property
-	def numEdges(self):
-		return len(self.edgeList)
-
-	def save(self):
-		"""
-		Save _ann.txt file from self.annotationList
-		"""
-		print('bSlabList.save()')
-
-		# headers are keys of xxxx
-
-		# each element in xxx is a comma seperated row
-
-
-	def load(self):
-		"""
-		Load _ann.txt file
-		Store in self.annotationList
-		"""
-		print('bSlabList.load()')
-
-	def toggleBadEdge(self, edgeIdx):
-		print('bSlabList.toggleBadEdge() edgeIdx:', edgeIdx)
-		self.edgeList[edgeIdx]['Good'] = not self.edgeList[edgeIdx]['Good']
-		print('   edge', edgeIdx, 'is now', self.edgeList[edgeIdx]['Good'])
-
-	def getEdge(self, edgeIdx):
-		"""
-		return a list of slabs in an edge
-		"""
-		theseIndices = np.argwhere(self.id == edgeIdx)
-		return theseIndices
-
-	def analyze(self):
-		def euclideanDistance(x1, y1, z1, x2, y2, z2):
-			if z1 is None and z2 is None:
-				return math.sqrt((x2-x1)**2 + (y2-y1)**2)
-			else:
-				return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
-
-		self.edgeList = []
-
-		edgeIdx = 0
-		edgeDict = {'type': 'edge', 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good': True}
-		n = self.numSlabs
-		for pointIdx in range(n):
-			self.id[pointIdx] = edgeIdx
-
-			x1 = self.x[pointIdx]
-			y1 = self.y[pointIdx]
-			z1 = self.z[pointIdx]
-
-			if np.isnan(z1):
-				# move on to a new edge/vessel
-				edgeDict['Length 3D'] = round(edgeDict['Length 3D'],2)
-				edgeDict['Length 2D'] = round(edgeDict['Length 2D'],2)
-				self.edgeList.append(edgeDict)
-				edgeDict = {'type':'edge', 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good':True} # reset
-				edgeIdx += 1
-				continue
-
-			edgeDict['n'] = edgeDict['n'] + 1
-			if pointIdx > 0:
-				edgeDict['Length 3D'] = edgeDict['Length 3D'] + euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
-				edgeDict['Length 2D'] = edgeDict['Length 2D'] + euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
-			edgeDict['z'] = int(z1)
-			prev_x1 = x1
-			prev_y1 = y1
-			prev_z1 = z1
-
-		#print(self.edgeList)
-
-		'''
-		for idx, id in enumerate(self.id):
-			print(self.id[idx], ',', self.x[idx], ',', self.y[idx], ',', self.z[idx])
-		'''
-
-################################################################################
-class bSimpleStack:
-	def __init__(self, path):
-		self.path = path
-
-		self._voxelx = 1
-		self._voxely = 1
-
-		self._images = None
-		self.loadStack()
-
-		self.slabList = bSlabList(self.path)
-
-	@property
-	def voxelx(self):
-		return self._voxelx
-
-	@property
-	def voxely(self):
-		return self._voxely
-
-	@property
-	def pixelsPerLine(self):
-		return self._images.shape[2]
-
-	@property
-	def linesPerFrame(self):
-		return self._images.shape[1]
-
-	@property
-	def numSlices(self):
-		if self._images is not None:
-			return self._images.shape[0]
-		else:
-			return None
-
-	@property
-	def bitDepth(self):
-		dtype = self._images.dtype
-		if dtype == 'uint8':
-			return 8
-		else:
-			return 16
-
-	def loadStack(self):
-		with tifffile.TiffFile(path) as tif:
-			self._images = tif.asarray()
-		print('self.path', self.path)
-		print('self._images.shape:', self._images.shape)
-		print('self._images.dtype:', self._images.dtype)
-
-	def saveAnnotations(self):
-		self.slabList.save()
-
-	def setAnnotation(self, this, value):
-		if this == 'toggle bad edge':
-			self.slabList.toggleBadEdge(value)
-
-	#
-	# I really have no idea what the next two functions are doing
-	'''
-	def _display0(self, image, display_min, display_max): # copied from Bi Rico
-		# Here I set copy=True in order to ensure the original image is not
-		# modified. If you don't mind modifying the original image, you can
-		# set copy=False or skip this step.
-		image = np.array(image, copy=True)
-		image.clip(display_min, display_max, out=image)
-		image -= display_min
-		np.floor_divide(image, (display_max - display_min + 1) / 256,
-						out=image, casting='unsafe')
-		return image.astype(np.uint8)
-
-	def getImage_ContrastEnhanced(self, display_min, display_max, channel=1, sliceNum=None, useMaxProject=False) :
-		"""
-		sliceNum: pass NOne to use self.currentImage
-		"""
-		#lut = np.arange(2**16, dtype='uint16')
-		lut = np.arange(2**8, dtype='uint8')
-		lut = self._display0(lut, display_min, display_max)
-		if useMaxProject:
-			# need to specify channel !!!!!!
-			return np.take(lut, self.maxProjectImage)
-		else:
-			#return np.take(lut, self.getImage(channel=channel, sliceNum=sliceNum))
-			return np.take(lut, self._images[sliceNum,:,:])
-	'''
-
+from bSimpleStack import bSimpleStack
 
 ################################################################################
 class bAnnotationTable(QtWidgets.QWidget):
@@ -361,7 +155,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		#print('   row:', row)
 		yStat = self.myTableWidget.item(row,0).text() #
 		#print('   ', row, yStat)
-		self.mainWindow.signal('selectEdge', row, fromTable=True)
+		self.mainWindow.signal('selectEdgeFromTable', row, fromTable=True)
 
 ################################################################################
 #class bStackView(QtWidgets.QWidget):
@@ -370,12 +164,16 @@ class bStackView(QtWidgets.QGraphicsView):
 		super(bStackView, self).__init__(parent)
 
 		#self.path = path
-
+		self.options_defaults()
+		
 		self.mySimpleStack = simpleStack #bSimpleStack(path)
 		self.mainWindow = mainWindow
 
 		self.mySelectedEdge = None # edge index of selected edge
 
+		self.displayThisStack = 'ch1'
+		self.displaySlidingZ = False
+		
 		self.currentSlice = 0
 		self.minContrast = 0
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth # -1
@@ -388,7 +186,6 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.showTracing = True
 
 		self.imgplot = None
-		self._images = None
 
 		self.iLeft = 0
 		self.iTop = 0
@@ -421,16 +218,19 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.axes.axis('off') #turn off axis labels
 
 		# point list
-		markersize = 2**2
-		self.mySlabPlot = self.axes.scatter([], [], marker='o', color='y', s=markersize, picker=True)
+		markersize = self.options['Tracing']['tracingPenSize'] #2**2
+		markerColor = self.options['Tracing']['tracingColor'] #2**2
+		self.mySlabPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
 
 		# selection
-		markersize = 5**2
-		self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color='c', s=markersize)
+		markersize = self.options['Tracing']['tracingSelectionPenSize'] #2**2
+		markerColor = self.options['Tracing']['tracingSelectionColor'] #2**2
+		self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize)
 
 		# flash selection
-		markersize = 10**2
-		self.myEdgeSelectionFlash = self.axes.scatter([], [], marker='o', color='m', s=markersize)
+		markersize = self.options['Tracing']['tracingSelectionFlashPenSize'] #2**2
+		markerColor = self.options['Tracing']['tracingSelectionFlashColor'] #2**2
+		self.myEdgeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize)
 
 		#self.canvas.mpl_connect('key_press_event', self.onkey)
 		#self.canvas.mpl_connect('button_press_event', self.onclick)
@@ -466,7 +266,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
 
-	def selectEdge(self, edgeIdx):
+	def selectEdge(self, edgeIdx, snapz=False):
 		#print('=== bStackView.selectEdge():', edgeIdx)
 		if edgeIdx is None:
 			print('bStackView.selectEdge() -->> NONE')
@@ -481,10 +281,13 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			#print('selectEdge() theseIndices:', theseIndices)
 
-			z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
-			z = int(z)
-			self.setSlice(z)
-
+			# todo: add option to snap to a z
+			# removed this because it was confusing
+			if snapz:
+				z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
+				z = int(z)
+				self.setSlice(z)
+			
 			xMasked = self.mySimpleStack.slabList.y[theseIndices] # flipped
 			yMasked = self.mySimpleStack.slabList.x[theseIndices]
 			self.myEdgeSelectionPlot.set_offsets(np.c_[xMasked, yMasked])
@@ -494,6 +297,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
 
+	'''
 	def setSliceContrast(self, sliceNumber):
 		img = self.mySimpleStack._images[sliceNumber, :, :].copy()
 
@@ -524,7 +328,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		#print('setSliceContrast() AFTER min:', img.min(), 'max:', img.max(), 'mean:', img.mean(), 'dtype:', img.dtype, 'int(mult):', int(mult))
 
 		return img
-
+	'''
+	
 	def setSlice(self, index=None, recursion=True):
 		#print('bStackView.setSlice()', index)
 
@@ -539,9 +344,16 @@ class bStackView(QtWidgets.QGraphicsView):
 		showImage = True
 
 		if showImage:
-			image = self.setSliceContrast(index)
+			if self.displaySlidingZ:
+				upSlices = self.options['Stack']['upSlidingZSlices']
+				downSlices = self.options['Stack']['downSlidingZSlices']
+				image = self.mySimpleStack.getSlidingZ(index, self.displayThisStack, upSlices, downSlices, self.minContrast, self.maxContrast)
+			else:
+				image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
+
 			if self.imgplot is None:
-				self.imgplot = self.axes.imshow(image, cmap='Greens_r', extent=[self.iLeft, self.iRight, self.iBottom, self.iTop])  # l, r, b, t
+				cmap = self.options['Stack']['colorLut'] #2**2
+				self.imgplot = self.axes.imshow(image, cmap=cmap, extent=[self.iLeft, self.iRight, self.iBottom, self.iTop])  # l, r, b, t
 			else:
 				self.imgplot.set_data(image)
 		else:
@@ -550,8 +362,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		#
 		# update point annotations
 		if self.showTracing:
-			upperz = index - 5
-			lowerz = index + 5
+			upperz = index - self.options['Tracing']['showTracingAboveSlices']
+			lowerz = index + self.options['Tracing']['showTracingBelowSlices']
 			#try:
 			if 1:
 				self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
@@ -590,9 +402,37 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event.key() == QtCore.Qt.Key_T:
 			self.showTracing = not self.showTracing
 			self.setSlice() #refresh
+		
+		# choose which stack to display
+		elif event.key() == QtCore.Qt.Key_1:
+			self.displayThisStack = 'ch1'
+			self.setSlice(recursion=False) # just refresh
+		elif event.key() == QtCore.Qt.Key_2:
+			self.displayThisStack = 'ch2'
+			self.setSlice(recursion=False) # just refresh
+		elif event.key() == QtCore.Qt.Key_3:
+			self.displayThisStack = 'ch3'
+			self.setSlice(recursion=False) # just refresh
+		elif event.key() == QtCore.Qt.Key_9:
+			self.displayThisStack = 'mask'
+			self.setSlice(recursion=False) # just refresh
+		elif event.key() == QtCore.Qt.Key_0:
+			self.displayThisStack = 'skel'
+			self.setSlice(recursion=False) # just refresh
+		
+		elif event.key() == QtCore.Qt.Key_Z:
+			self._toggleSlidingZ()
+		
 		else:
 			event.setAccepted(False)
 
+	def _toggleSlidingZ(self, noRecursion=False):
+		self.displaySlidingZ = not self.displaySlidingZ
+		# todo: don't call this deep
+		if not noRecursion:
+			self.mainWindow.bStackFeebackWidget.setFeedback('sliding z', self.displaySlidingZ)
+		self.setSlice(recursion=False) # just refresh
+	
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -658,13 +498,41 @@ class bStackView(QtWidgets.QGraphicsView):
 		print('   edge:', edgeIdx, self.mySimpleStack.slabList.edgeList[edgeIdx])
 
 		if self.mainWindow is not None:
-			self.mainWindow.signal('selectEdge', edgeIdx)
+			self.mainWindow.signal('selectEdgeFromImage', edgeIdx)
+
+	def options_defaults(self):
+		self.options = OrderedDict()
+
+		"""
+		Possible values are: Accent, Accent_r, Blues, Blues_r, BrBG, BrBG_r, BuGn, BuGn_r, BuPu, BuPu_r, CMRmap, CMRmap_r, Dark2, Dark2_r, GnBu, GnBu_r, Greens, Greens_r, Greys, Greys_r, OrRd, OrRd_r, Oranges, Oranges_r, PRGn, PRGn_r, Paired, Paired_r, Pastel1, Pastel1_r, Pastel2, Pastel2_r, PiYG, PiYG_r, PuBu, PuBuGn, PuBuGn_r, PuBu_r, PuOr, PuOr_r, PuRd, PuRd_r, Purples, Purples_r, RdBu, RdBu_r, RdGy, RdGy_r, RdPu, RdPu_r, RdYlBu, RdYlBu_r, RdYlGn, RdYlGn_r, Reds, Reds_r, Set1, Set1_r, Set2, Set2_r, Set3, Set3_r, Spectral, Spectral_r, Wistia, Wistia_r, YlGn, YlGnBu, YlGnBu_r, YlGn_r, YlOrBr, YlOrBr_r, YlOrRd, YlOrRd_r, afmhot, afmhot_r, autumn, autumn_r, binary, binary_r, bone, bone_r, brg, brg_r, bwr, bwr_r, cividis, cividis_r, cool, cool_r, coolwarm, coolwarm_r, copper, copper_r, cubehelix, cubehelix_r, flag, flag_r, gist_earth, gist_earth_r, gist_gray, gist_gray_r, gist_heat, gist_heat_r, gist_ncar, gist_ncar_r, gist_rainbow, gist_rainbow_r, gist_stern, gist_stern_r, gist_yarg, gist_yarg_r, gnuplot, gnuplot2, gnuplot2_r, gnuplot_r, gray, gray_r, hot, hot_r, hsv, hsv_r, inferno, inferno_r, jet, jet_r, magma, magma_r, nipy_spectral, nipy_spectral_r, ocean, ocean_r, pink, pink_r, plasma, plasma_r, prism, prism_r, rainbow, rainbow_r, seismic, seismic_r, spring, spring_r, summer, summer_r, tab10, tab10_r, tab20, tab20_r, tab20b, tab20b_r, tab20c, tab20c_r, terrain, terrain_r, twilight, twilight_r, twilight_shifted, twilight_shifted_r, viridis, viridis_r, winter, winter_r
+		"""
+
+		self.options['Stack'] = OrderedDict()
+		self.options['Stack'] = OrderedDict({
+			'colorLut': 'gray',
+			'upSlidingZSlices': 2,
+			'downSlidingZSlices': 2,
+			})
+
+		self.options['Tracing'] = OrderedDict()
+		self.options['Tracing'] = OrderedDict({
+			'showTracingAboveSlices': 2,
+			'showTracingBelowSlices': 2,
+			'tracingPenSize': 1,
+			'tracingColor': 'y',
+			'tracingSelectionPenSize': 6,
+			'tracingSelectionColor': 'c',
+			'tracingSelectionFlashPenSize': 16,
+			'tracingSelectionFlashColor': 'm',
+			})
 
 ################################################################################
 class bStackWidget(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None, parent=None, path=''):
 		super(bStackWidget, self).__init__(parent)
 
+		#self.options_defaults()
+		
 		self.path = path
 
 		basename = os.path.basename(self.path)
@@ -686,8 +554,8 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.myContrastWidget = bContrastWidget(mainWindow=self)
 
-		self.bStackFeebackWidget = bStackFeebackWidget(self)
-		self.bStackFeebackWidget.set('num slices', self.mySimpleStack.numSlices)
+		self.bStackFeebackWidget = bStackFeebackWidget(mainWindow=self)
+		self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numSlices)
 
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
 
@@ -725,6 +593,8 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.updateDisplayedWidgets()
 
+		self.move(100,100)
+		
 	def sliceSliderValueChanged(self):
 		theSlice = self.mySliceSlider.value()
 		self.signal('set slice', theSlice)
@@ -751,11 +621,16 @@ class bStackWidget(QtWidgets.QWidget):
 	def getStack(self):
 		return self.mySimpleStack
 
-	def signal(self, signal, value=None, fromTable=False):
+	def signal(self, signal, value=None, fromTable=False, noRecursion=False):
 		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
-		if signal == 'selectEdge':
+		if signal == 'selectEdgeFromTable':
 			print('=== bStackWidget.signal() selectEdge')
-			self.selectEdge(value)
+			self.selectEdge(value, snapz=True)
+			if not fromTable:
+				self.annotationTable.selectRow(value)
+		if signal == 'selectEdgeFromImage':
+			print('=== bStackWidget.signal() selectEdge')
+			self.selectEdge(value, snapz=False)
 			if not fromTable:
 				self.annotationTable.selectRow(value)
 
@@ -767,16 +642,19 @@ class bStackWidget(QtWidgets.QWidget):
 			self.myStackView.setSlice(index=None) # will just refresh current slice
 
 		if signal == 'set slice':
-			self.bStackFeebackWidget.set('set slice', value)
+			self.bStackFeebackWidget.setFeedback('set slice', value)
 			self.myStackView.setSlice(value, recursion=False)
 			self.mySliceSlider.setValue(value)
 
+		if signal == 'toggle sliding z':
+			self.myStackView._toggleSlidingZ(noRecursion=noRecursion)
+			
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()
 
-	def selectEdge(self, edgeIdx):
+	def selectEdge(self, edgeIdx, snapz=False):
 		print('bStackWidget.selectEdge() edgeIdx:', edgeIdx)
-		self.myStackView.selectEdge(edgeIdx)
+		self.myStackView.selectEdge(edgeIdx, snapz=snapz)
 		#self.repaint() # this is updating the widget !!!!!!!!
 
 	def keyPressEvent(self, event):
@@ -808,19 +686,28 @@ class bStackWidget(QtWidgets.QWidget):
 		print('=============================================================')
 		print('bStackWidget help')
 		print('==============================================================')
+		print(' Navigation')
+		print('   mouse wheel: scroll through images')
+		print('   command + mouse wheel: zoom in/out (follows mouse position)')
+		print('   +/-: zoom in/out (follows mouse position)')
+		print('   click + drag: pan')
 		print(' Show/Hide interface')
 		print('   t: show/hide tracing')
 		print('   l: show/hide list of annotations')
 		print('   c: show/hide contrast bar')
 		print('   f: show/hide feedback bar')
 		print('   esc: remove edge selection (cyan)')
-		print(' Navigation')
-		print('   mouse wheel: scroll through images')
-		print('   command + mouse wheel: zoom in/out (follows mouse position)')
-		print('   +/-: zoom in/out (follows mouse position)')
-		print('   click + drag: pan')
+		print(' Stacks To Display')
+		print('   1: Channel 1 - Raw Data')
+		print('   2: Channel 2 - Raw Data')
+		print('   3: Channel 3 - Raw Data')
+		print('   9: Segmentation mask - DeepVess')
+		print('   0: Skeleton mask - DeepVess')
+		print(' Sliding Z-Projection')
+		print('   z: toggle sliding z-projection on/off, will apply to all "Stacks To Display"')
 		print(' ' )
 
+			
 	'''
 	def mousePressEvent(self, event):
 		print('=== bStackWidget.mousePressEvent()')
@@ -891,8 +778,8 @@ if __name__ == '__main__':
 	if len(sys.argv) == 2:
 		path = sys.argv[1]
 	else:
-		path = '/Users/cudmore/box/DeepVess/data/mytest.tif'
-		path = '/Users/cudmore/box/DeepVess/data/invivo/20190613__0028.tif'
+		path = '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif'
+		#path = '/Users/cudmore/box/DeepVess/data/invivo/20190613__0028.tif'
 
 	app = QtWidgets.QApplication(sys.argv)
 
