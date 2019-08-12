@@ -25,7 +25,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends import backend_qt5agg
 
-from bContrastWidget import bContrastWidget
+from bStackContrastWidget import bStackContrastWidget
 from bStackFeebackWidget import bStackFeebackWidget
 from bSimpleStack import bSimpleStack
 
@@ -47,7 +47,13 @@ class bAnnotationTable(QtWidgets.QWidget):
 		#
 		# table of annotations
 		self.myTableWidget = QtWidgets.QTableWidget()
-		self.myTableWidget.setRowCount(self.slabList.numEdges)
+		
+		if self.slabList is None:
+			numEdges = 0
+		else:
+			numEdges = self.slabList.numEdges
+		self.myTableWidget.setRowCount(numEdges)
+		
 		self.myTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 		self.myTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -72,34 +78,37 @@ class bAnnotationTable(QtWidgets.QWidget):
 		# The size cannot be changed by the user or programmatically.
 		#header.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
 
-		for idx, stat in enumerate(self.slabList.edgeList):
-			myString = str(stat['type'])
-			item = QtWidgets.QTableWidgetItem(myString)
-			self.myTableWidget.setItem(idx, 0, item)
+		if self.slabList is None:
+			pass
+		else:
+			for idx, stat in enumerate(self.slabList.edgeList):
+				myString = str(stat['type'])
+				item = QtWidgets.QTableWidgetItem(myString)
+				self.myTableWidget.setItem(idx, 0, item)
 
-			myString = str(stat['n'])
-			item = QtWidgets.QTableWidgetItem(myString)
-			self.myTableWidget.setItem(idx, 1, item)
+				myString = str(stat['n'])
+				item = QtWidgets.QTableWidgetItem(myString)
+				self.myTableWidget.setItem(idx, 1, item)
 
-			myString = str(stat['Length 3D'])
-			item = QtWidgets.QTableWidgetItem(myString)
-			self.myTableWidget.setItem(idx, 2, item)
+				myString = str(stat['Length 3D'])
+				item = QtWidgets.QTableWidgetItem(myString)
+				self.myTableWidget.setItem(idx, 2, item)
 
-			myString = str(stat['Length 2D'])
-			item = QtWidgets.QTableWidgetItem(myString)
-			self.myTableWidget.setItem(idx, 3, item)
+				myString = str(stat['Length 2D'])
+				item = QtWidgets.QTableWidgetItem(myString)
+				self.myTableWidget.setItem(idx, 3, item)
 
-			myString = str(stat['z'])
-			item = QtWidgets.QTableWidgetItem(myString)
-			self.myTableWidget.setItem(idx, 4, item)
+				myString = str(stat['z'])
+				item = QtWidgets.QTableWidgetItem(myString)
+				self.myTableWidget.setItem(idx, 4, item)
 
-			if stat['Good']:
-				myString = ''
-			else:
-				myString = 'False'
-			#myString = str(stat['Good'])
-			item = QtWidgets.QTableWidgetItem(myString)
-			self.myTableWidget.setItem(idx, 5, item)
+				if stat['Good']:
+					myString = ''
+				else:
+					myString = 'False'
+				#myString = str(stat['Good'])
+				item = QtWidgets.QTableWidgetItem(myString)
+				self.myTableWidget.setItem(idx, 5, item)
 
 		self.myQVBoxLayout.addWidget(self.myTableWidget)
 
@@ -362,18 +371,22 @@ class bStackView(QtWidgets.QGraphicsView):
 		#
 		# update point annotations
 		if self.showTracing:
-			upperz = index - self.options['Tracing']['showTracingAboveSlices']
-			lowerz = index + self.options['Tracing']['showTracingBelowSlices']
-			#try:
-			if 1:
-				self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
-				self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
-				self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
-				self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
-			#except:
-			#	print('ERROR: bStackWindow.setSlice')
+			if self.mySimpleStack.slabList is None:
+				# no tracing
+				pass
+			else:
+				upperz = index - self.options['Tracing']['showTracingAboveSlices']
+				lowerz = index + self.options['Tracing']['showTracingBelowSlices']
+				#try:
+				if 1:
+					self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
+					self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
+					self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
+					self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
+				#except:
+				#	print('ERROR: bStackWindow.setSlice')
 
-			self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
+				self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
 		else:
 			self.mySlabPlot.set_offsets(np.c_[[], []])
 
@@ -552,7 +565,7 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
 
-		self.myContrastWidget = bContrastWidget(mainWindow=self)
+		self.myContrastWidget = bStackContrastWidget(mainWindow=self)
 
 		self.bStackFeebackWidget = bStackFeebackWidget(mainWindow=self)
 		self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numSlices)
@@ -560,7 +573,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
 
 		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
-
+		
 		# a slider to set slice number
 		self.mySliceSlider = QtWidgets.QSlider(QtCore.Qt.Vertical)
 		self.mySliceSlider.setMaximum(self.mySimpleStack.numSlices)
@@ -594,6 +607,8 @@ class bStackWidget(QtWidgets.QWidget):
 		self.updateDisplayedWidgets()
 
 		self.move(100,100)
+
+		self.myStackView.setSlice(0)
 
 	def sliceSliderValueChanged(self):
 		theSlice = self.mySliceSlider.value()

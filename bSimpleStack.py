@@ -59,7 +59,6 @@ class bSlabList:
 
 		# each element in xxx is a comma seperated row
 
-
 	def load(self):
 		"""
 		Load _ann.txt file
@@ -140,7 +139,9 @@ class bSimpleStack:
 		self.loadStack()
 
 		self.slabList = bSlabList(self.path)
-
+		if self.slabList.x is None:
+			self.slabList = None
+			
 	@property
 	def voxelx(self):
 		return self._voxelx
@@ -182,17 +183,19 @@ class bSimpleStack:
 
 		# load mask
 		thisPath = self.maskPath
-		print('bSimpleStack.loadStack() loading path:', thisPath)
-		with tifffile.TiffFile(thisPath) as tif:
-			self._imagesMask = tif.asarray()
-		#self.imageStats(thisStack='mask')
+		if os.path.isfile(thisPath):
+			print('bSimpleStack.loadStack() loading path:', thisPath)
+			with tifffile.TiffFile(thisPath) as tif:
+				self._imagesMask = tif.asarray()
+			#self.imageStats(thisStack='mask')
 		
 		# load mask
 		thisPath = self.skelPath
-		print('bSimpleStack.loadStack() loading path:', thisPath)
-		with tifffile.TiffFile(thisPath) as tif:
-			self._imagesSkel = tif.asarray()
-		#self.imageStats(thisStack='skel')
+		if os.path.isfile(thisPath):
+			print('bSimpleStack.loadStack() loading path:', thisPath)
+			with tifffile.TiffFile(thisPath) as tif:
+				self._imagesSkel = tif.asarray()
+			#self.imageStats(thisStack='skel')
 		
 	def imageStats(self, thisStack='ch1', index=None):
 		"""
@@ -277,11 +280,13 @@ class bSimpleStack:
 		return img
 
 	def saveAnnotations(self):
-		self.slabList.save()
+		if self.slabList is not None:
+			self.slabList.save()
 
 	def setAnnotation(self, this, value):
 		if this == 'toggle bad edge':
-			self.slabList.toggleBadEdge(value)
+			if self.slabList is not None:
+				self.slabList.toggleBadEdge(value)
 
 	#
 	# I really have no idea what the next two functions are doing
