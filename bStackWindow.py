@@ -47,13 +47,13 @@ class bAnnotationTable(QtWidgets.QWidget):
 		#
 		# table of annotations
 		self.myTableWidget = QtWidgets.QTableWidget()
-		
+
 		if self.slabList is None:
 			numEdges = 0
 		else:
 			numEdges = self.slabList.numEdges
 		self.myTableWidget.setRowCount(numEdges)
-		
+
 		self.myTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 		self.myTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -573,7 +573,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
 
 		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
-		
+
 		# a slider to set slice number
 		self.mySliceSlider = QtWidgets.QSlider(QtCore.Qt.Vertical)
 		self.mySliceSlider.setMaximum(self.mySimpleStack.numSlices)
