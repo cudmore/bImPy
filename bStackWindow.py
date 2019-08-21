@@ -396,7 +396,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.mainWindow.signal('set slice', index)
 
 		self.canvas.draw()
-		self.repaint() # this is updating the widget !!!!!!!!
+		#self.repaint() # this is updating the widget !!!!!!!!
 
 	def zoom(self, zoom):
 		#print('=== myCanvasWidget.zoom()', zoom)
