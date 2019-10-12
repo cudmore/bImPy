@@ -13,11 +13,11 @@ class bStackBrowserWidget(QtWidgets.QWidget):
 		super(bStackBrowserWidget, self).__init__(parent)
 
 		self.myStackList = []
-		
+
 		self.setAcceptDrops(True)
 
 		self.buildUI()
-		
+
 	def showStackWindow(self, path):
 		alreadyOpen = False
 		for stack in self.myStackList:
@@ -33,42 +33,45 @@ class bStackBrowserWidget(QtWidgets.QWidget):
 			tmp = bStackWidget(path=path)
 			tmp.show()
 			self.myStackList.append(tmp)
-			
+
 	def appendStack(self, path):
 		fileName = os.path.basename(path)
 		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['', path, fileName, 'xxx', 'yyy', 'zzz'])
-	
+
 	def buildUI(self):
-		
+
 		self.setWindowTitle('Stack Browser')
-		
+
 		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
-		
+
 		# tree
 		self.myColumnNames = ['Folder', 'Path', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels']
-		
+
 		self.myTreeWidget = QtWidgets.QTreeWidget()
 		self.myTreeWidget.setHeaderLabels(self.myColumnNames)
-		
+
 		'''
 		cg = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['Drag and Drop'])
 		cg.setExpanded(True)
 		'''
-		
+
 		'''
 		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['', '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif', 'mytest.tif', '512', '512', '100'])
 		c1.setText(6, 'xxx')
 		'''
-		
+
 		self.myTreeWidget.itemDoubleClicked.connect(self.itemDoubleClicked)
-		
+
 		self.myVBoxLayout.addWidget(self.myTreeWidget)
-		
+
 		self.move(50,50)
 		self.resize(700, 300);
-		
-	def itemDoubleClicked(self):
-		path = self.myTreeWidget.selectedItems()[0].text(self._myCol('Path'))
+
+	def itemDoubleClicked(self, item, col):
+		print('item:', item)
+		print('col:', col)
+		#path = self.myTreeWidget.selectedItems()[0].text(self._myCol('Path'))
+		path = item.text(self._myCol('Path'))
 		#print('itemDoubleClicked', path)
 		self.showStackWindow(path)
 
@@ -83,7 +86,7 @@ class bStackBrowserWidget(QtWidgets.QWidget):
 		if theRet is None:
 			print('error:bStackBrowserWidget._myCol() did not find column name:', str)
 		return theRet
-			
+
 	#
 	# drag and drop
 	#
@@ -112,18 +115,18 @@ class bStackBrowserWidget(QtWidgets.QWidget):
 				self.appendStack(path)
 		else:
 			event.ignore()
-				
+
 if __name__ == '__main__':
 	import sys
-	
+
 	app = QtWidgets.QApplication(sys.argv)
 
 	path = '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif'
 
 	myBrowser = bStackBrowserWidget()
 	myBrowser.show()
-	
+
 	#tmp = myBrowser.loadStack(path)
 	#print('tmp:', tmp)
-	
+
 	sys.exit(app.exec_())
