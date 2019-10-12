@@ -4,7 +4,7 @@
 # 20190421
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-echo -e "Running bStack from $DIR"
+echo -e "Running bImPy from $DIR"
 cd "${DIR}"
 
 RED='\033[0;31m'
@@ -12,10 +12,9 @@ GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
 
-
-if [ ! -d "bStack_env/" ]; then
+if [ ! -d "bImPy_env/" ]; then
 	echo '==='
-	echo -e "=== ${RED}warning${NC}: virtual environment does not exist in $PWD/bStack_env"
+	echo -e "=== ${RED}warning${NC}: virtual environment does not exist in $PWD/bImPy_env"
 	echo "=== installing with './install'"
 	./install
   	#echo '==='
@@ -23,13 +22,12 @@ if [ ! -d "bStack_env/" ]; then
 fi
 
 
-
-if [ -f "bStack_env/bin/activate" ]; then
+if [ -f "bImPy_env/bin/activate" ]; then
 	echo '==='
-	echo "=== run: Activating Python 3 virtual environment with 'source bStack_env/bin/activate'"
-	source bStack_env/bin/activate
+	echo "=== run: Activating Python 3 virtual environment with 'source bImPy_env/bin/activate'"
+	source bImPy_env/bin/activate
 fi
 
-echo "=== run: running 'python bStack.py'"
+echo "=== run: running 'python bStackBrowser.py'"
 echo '==='
-python bStack.py
+python bimpy/bStackBrowser.py

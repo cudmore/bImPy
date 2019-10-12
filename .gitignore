@@ -1,5 +1,7 @@
+*.DS_Store
 .AppleDouble
 .DS_Store
+
 *.pyc
 __pycache__
 .pynb_checkpoints
