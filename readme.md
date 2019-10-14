@@ -1,8 +1,12 @@
 ## bImPy
 
-**bImPy**, pronounced bimpee, is a collection of tools to manipulate images in Python. A primary use is to convert folders of proprietary image files to Tiff while extracting acquisition parameters for each file.
+**bImPy** is a multi-dimensional image viewer and annotation tool built with Python. It started as a collection of tools to convert proprietary image files to Tiff and extracting acquisition parameters. But now it has become a graphical user interface for visualizing and editing annotations on top of imaging datasets.
 
-Right now (As of June 2018) this is primarily for Olympus OIR files.
+**bImPy** should be pronounced 'bimpee' but you can call it whatever you want.
+
+## Disclaimer
+
+We are developing bimpy in the open but the project is still in an early alpha stage, and there will be **breaking changes** with each release. Please follow along as we develop this exciting new software and feel free to try it out and contribute ideas and code. 
 
 This makes heavy use of [Python bio-formats][python-bio-formats] which in itself is excellent and is used by [Fiji][fiji]. Regretably, bio-formats requires [javabridge][javabridge]. If you run into problems it is probably due to your Java installation.
 

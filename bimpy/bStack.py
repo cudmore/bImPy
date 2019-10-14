@@ -29,9 +29,10 @@ class bLockFile:
 		os.remove(self.myLockFile)
 
 class bStack:
+	"""
+	Manages a stack or time-series of images
+	"""
 	def __init__(self, path=''):
-		"""
-		"""
 		self.path = path # path to file
 		self._fileName = os.path.basename(path)
 		
@@ -99,12 +100,13 @@ class bStack:
 		# Here I set copy=True in order to ensure the original image is not
 		# modified. If you don't mind modifying the original image, you can
 		# set copy=False or skip this step.
-		image = np.array(image, copy=True)
+		image = np.array(image, dtype=np.uint8, copy=True)
 		image.clip(display_min, display_max, out=image)
 		image -= display_min
 		np.floor_divide(image, (display_max - display_min + 1) / 256,
 						out=image, casting='unsafe')
-		return image.astype(np.uint8)
+		#return image.astype(np.uint8)
+		return image
 
 	def getImage_ContrastEnhanced(self, display_min, display_max, channel=1, sliceNum=None, useMaxProject=False) :
 		"""

@@ -131,6 +131,9 @@ class bSimpleStack:
 		self.maskPath = pointFilePath + '_mask.tif' # DeepVess outut matrix V
 		self.skelPath = pointFilePath + '_skel.tif' # DeepVess output matric C
 		
+		self._imagesMask = None
+		self._imagesSkel = None
+		
 		self._voxelx = 1
 		self._voxely = 1
 
