@@ -264,6 +264,10 @@ RuntimeError: Failed to start Java VM
 
 ## Change log
 
+## Add a Python console with pyqtconsole
+
+https://github.com/marcus-oscarsson/pyqtconsole
+
 20190614 
 
  - Fixed sort order of files.
