@@ -279,7 +279,7 @@ if __name__ == '__main__':
 	"""
 	debugging
 	"""
-
+    
 	import javabridge
 
 	try:
@@ -299,6 +299,8 @@ if __name__ == '__main__':
 		path = '/Volumes/t3/data/20190429/20190429_tst2/20190429_tst2_0006.oir'
 
 		path = 'E:\\cudmore\\data\\20190429\\20190429_tst2\\20190429_tst2_0002.oir'
+		
+		path = '/Users/cudmore/box/data/testoir/20190514_0001.oir'
 		
 		# good to test caiman alignment
 		#path = '/Users/cudmore/box/data/nathan/030119/030119_HCN4-GCaMP8_SAN_phen10uM.oir'
@@ -321,9 +323,11 @@ if __name__ == '__main__':
 			log4j.enableLogging()
 			log4j.setRootLevel("WARN")
 
-			#myStack.convert()
+			myStack.convert()
 
 	finally:
 		#print('__main__ finally')
 		javabridge.kill_vm()
 		pass
+
+	print('bstack main finished')

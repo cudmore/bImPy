@@ -249,6 +249,7 @@ class bStackHeader:
 		"""
 		#print('=== bStack.readOirHeader()')
 
+		print('bStackHeader.readOirHeader()')
 		def _qn(namespace, tag_name):
 			'''
 			xml helper. Return the qualified name for a given namespace and tag name
