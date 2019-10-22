@@ -45,12 +45,25 @@ outEdgeIndx = np.array(outEdgeList, dtype='float32')
 # plot
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+if 0:
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+
+	#Axes3D.scatter(xs, ys, zs=0, zdir='z', s=20, c=None, depthshade=True, *args, **kwargs)¶
+	ax.scatter(outPoints[:,0].tolist(), outPoints[:,1].tolist(), outPoints[:,2].tolist(),
+		c='k', marker='o', s=outDiameters.tolist())
+
+	fig.show()
+	plt.show()
+
+from scipy.spatial import ConvexHull
+hull = ConvexHull(outPoints)
+print('volume of convex hull is', hull.volume)
+# plot
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-
-#Axes3D.scatter(xs, ys, zs=0, zdir='z', s=20, c=None, depthshade=True, *args, **kwargs)¶
-ax.scatter(outPoints[:,0].tolist(), outPoints[:,1].tolist(), outPoints[:,2].tolist(),
-	c='k', marker='o', s=outDiameters.tolist())
-
+ax.scatter(outPoints[:,0], outPoints[:,1], outPoints[:,2], 'o')
+for simplex in hull.simplices:
+	ax.plot(outPoints[simplex, 0], outPoints[simplex, 1], outPoints[simplex, 2], 'k-')
 fig.show()
 plt.show()
