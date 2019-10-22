@@ -380,12 +380,22 @@ class bStackView(QtWidgets.QGraphicsView):
 				#try:
 				if 1:
 					self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
+					
+					'''
+					print(len(self.mySimpleStack.slabList.id))
+					print(len(self.mySimpleStack.slabList.x))
+					print(len(self.mySimpleStack.slabList.y))
+					print('type(self.zMasked):', type(self.zMasked), len(self.zMasked))
+					print('self.zMasked:', ~self.zMasked.mask)
+					'''
+					
 					self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
 					self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
 					self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
 				#except:
 				#	print('ERROR: bStackWindow.setSlice')
 
+				# update with new values
 				self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
 		else:
 			self.mySlabPlot.set_offsets(np.c_[[], []])
@@ -523,15 +533,15 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.options['Stack'] = OrderedDict()
 		self.options['Stack'] = OrderedDict({
 			'colorLut': 'gray',
-			'upSlidingZSlices': 2,
-			'downSlidingZSlices': 2,
+			'upSlidingZSlices': 5,
+			'downSlidingZSlices': 5,
 			})
 
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
-			'showTracingAboveSlices': 2,
-			'showTracingBelowSlices': 2,
-			'tracingPenSize': 1,
+			'showTracingAboveSlices': 5,
+			'showTracingBelowSlices': 5,
+			'tracingPenSize': 10,
 			'tracingColor': 'y',
 			'tracingSelectionPenSize': 6,
 			'tracingSelectionColor': 'c',

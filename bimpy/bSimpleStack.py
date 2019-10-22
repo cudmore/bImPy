@@ -5,6 +5,8 @@ import pandas as pd
 
 import tifffile
 
+from xml.dom import minidom # to load vesselucida xml file
+
 ################################################################################
 class bSlabList:
 	"""
@@ -12,26 +14,31 @@ class bSlabList:
 	"""
 	def __init__(self, tifPath):
 
+		self.tifPath = tifPath
+		
 		self.id = None # to count edges
-		self.x = None
-		self.y = None
-		self.z = None
+		self.x = []
+		self.y = []
+		self.z = []
 
+		self.d = []
+		self.edgeIdx = []
+		
 		self.edgeList = [] # this should be .annotationList
 
 		# todo: change this to _slabs.txt
-		pointFilePath, ext = os.path.splitext(tifPath)
-		pointFilePath += '_slabs.txt'
+		slabFilePath, ext = os.path.splitext(tifPath)
+		slabFilePath += '_slabs.txt'
 
-		if not os.path.isfile(pointFilePath):
-			print('bSlabList error, did not find', pointFilePath)
-			return
+		if not os.path.isfile(slabFilePath):
+			print('bSlabList error, did not find slabFilePath:', slabFilePath)
+			#return
 		else:
 			df = pd.read_csv(pointFilePath)
 
 			nSlabs = len(df.index)
 			#self.id = np.full(nSlabs, np.nan) #df.iloc[:,0].values # each point/slab will have an edge id
-			self.id = np.full(nSlabs, 0) #df.iloc[:,0].values # each point/slab will have an edge id
+			self.id = np.full(nSlabs, 0) #Return a new array of given shape and type, filled with fill_value.
 
 			self.x = df.iloc[:,0].values
 			self.y = df.iloc[:,1].values
@@ -39,6 +46,8 @@ class bSlabList:
 
 			print('tracing z max:', np.nanmax(self.z))
 
+		self.loadVesselucida_xml()
+		
 		self.analyze()
 
 	@property
@@ -49,6 +58,101 @@ class bSlabList:
 	def numEdges(self):
 		return len(self.edgeList)
 
+	def loadVesselucida_xml(self):
+		xmlFilePath, ext = os.path.splitext(self.tifPath)
+		xmlFilePath += '.xml'
+		if not os.path.isfile(xmlFilePath):
+			print('bSlabList.loadVesselucida_xml() error, did not find', xmlFilePath)
+			return
+
+		mydoc = minidom.parse(xmlFilePath)
+
+		vessels = mydoc.getElementsByTagName('vessel')
+		print('found', len(vessels), 'vessels')
+
+		'''
+		outPointList = [] #np.array((0,3))
+		diamList = []
+		outEdgeList = [] #np.array(0) # just keep track of each points edge index
+		'''
+		
+		masterEdgeIdx = 0
+		for i, vessel in enumerate(vessels):
+			print('vessel i:', i, 'name:', vessel.attributes['name'].value)
+
+			edges = vessel.getElementsByTagName('edges')
+			print('   found', len(edges), 'edges')
+			for j, edge in enumerate(edges):
+				edgeList = vessel.getElementsByTagName('edge')
+				print('      found', len(edgeList), 'edges')
+				# one edge (vessel segment between 2 branch points)
+				for k in range(len(edgeList)):
+					edge_id = edgeList[k].attributes['id'].value
+					points = edgeList[k].getElementsByTagName('point')
+					# this is my 'edge' list, the tubes between branch points ???
+					print('         for edge id', edge_id, 'found', len(points), 'points')
+					# list of points for one edge
+					for point in points:
+						x = float(point.attributes['x'].value)
+						y = float(point.attributes['y'].value)				
+						z = float(point.attributes['z'].value)
+						diam = float(point.attributes['d'].value)
+						
+						# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
+						x = x / 0.497
+						y = y / 0.497
+						
+						# the z step size (slices/um) in the output of olympus software is reporting 0.4 but it seems to be 0.8
+						#"Z Dimension"	"145, 2585.60 - 2528.00 [um], 0.400 [um/Slice]"
+						#z = z / 0.4 # z seems to be in fractional image slices, not scaled?
+						z = z / .8
+						
+						# why are xml y values negative? ... because, y is often flipped !!!!
+						# flip y
+						y = abs(y)
+						
+						# flip z
+						if 0:
+							z = 145-z
+							z -= 17 # -20 because some slices were removed from original ...
+						z += 17
+						#z += 12
+						
+						# flip x/y
+						if 1:
+							tmp = y
+							y = x
+							x=tmp
+						
+						#print(x,y,z)
+						
+						self.x.append(x)
+						self.y.append(y)
+						self.z.append(z)
+						self.d.append(diam)
+						self.edgeIdx.append(masterEdgeIdx)
+						
+					# add nan
+					self.x.append(np.nan)
+					self.y.append(np.nan)
+					self.z.append(np.nan)
+					self.d.append(np.nan)
+					self.edgeIdx.append(np.nan)
+					masterEdgeIdx += 1
+
+		nPoints = len(self.x)
+		self.id = np.full(nPoints, 0) #Return a new array of given shape and type, filled with fill_value.
+
+		# convert to numpy array
+		self.x = np.array(self.x, dtype='float32')
+		self.y = np.array(self.y, dtype='float32')
+		self.z = np.array(self.z, dtype='float32')
+		
+		# debug min/max of x/y/z
+		print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
+		print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
+		print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
+		
 	def save(self):
 		"""
 		Save _ann.txt file from self.annotationList
@@ -88,7 +192,7 @@ class bSlabList:
 		self.edgeList = []
 
 		edgeIdx = 0
-		edgeDict = {'type': 'edge', 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good': True}
+		edgeDict = {'type': 'edge', 'edgeIdx':0, 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good': True}
 		n = self.numSlabs
 		for pointIdx in range(n):
 			self.id[pointIdx] = edgeIdx
@@ -102,8 +206,9 @@ class bSlabList:
 				edgeDict['Length 3D'] = round(edgeDict['Length 3D'],2)
 				edgeDict['Length 2D'] = round(edgeDict['Length 2D'],2)
 				self.edgeList.append(edgeDict)
-				edgeDict = {'type':'edge', 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good':True} # reset
 				edgeIdx += 1
+
+				edgeDict = {'type':'edge', 'n':0, 'edgeIdx': edgeIdx, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good':True} # reset
 				continue
 
 			edgeDict['n'] = edgeDict['n'] + 1
