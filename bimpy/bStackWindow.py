@@ -193,6 +193,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.zMasked = None
 
 		self.showTracing = True
+		self.showNodes = True
+		self.showEdges = True
 
 		self.imgplot = None
 
@@ -226,17 +228,22 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.axes = self.figure.add_axes([0, 0, 1, 1]) #remove white border
 		self.axes.axis('off') #turn off axis labels
 
-		# point list
+		# slab/point list
 		markersize = self.options['Tracing']['tracingPenSize'] #2**2
 		markerColor = self.options['Tracing']['tracingColor'] #2**2
 		self.mySlabPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
 
-		# selection
+		# nodes
+		markersize = self.options['Tracing']['nodePenSize'] #2**2
+		markerColor = self.options['Tracing']['nodeColor'] #2**2
+		self.myNodePlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
+
+		# edge selection
 		markersize = self.options['Tracing']['tracingSelectionPenSize'] #2**2
 		markerColor = self.options['Tracing']['tracingSelectionColor'] #2**2
 		self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize)
 
-		# flash selection
+		# flash edge selection
 		markersize = self.options['Tracing']['tracingSelectionFlashPenSize'] #2**2
 		markerColor = self.options['Tracing']['tracingSelectionFlashColor'] #2**2
 		self.myEdgeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize)
@@ -379,25 +386,28 @@ class bStackView(QtWidgets.QGraphicsView):
 				lowerz = index + self.options['Tracing']['showTracingBelowSlices']
 				#try:
 				if 1:
-					self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
-					
-					'''
-					print(len(self.mySimpleStack.slabList.id))
-					print(len(self.mySimpleStack.slabList.x))
-					print(len(self.mySimpleStack.slabList.y))
-					print('type(self.zMasked):', type(self.zMasked), len(self.zMasked))
-					print('self.zMasked:', ~self.zMasked.mask)
-					'''
-					
-					self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
-					self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
-					self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
+					# nodes
+					if self.showNodes:
+						zNodeMasked = np.ma.masked_outside(self.mySimpleStack.slabList.nodez, upperz, lowerz)
+						#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
+						xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
+						yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
+						self.myNodePlot.set_offsets(np.c_[xNodeMasked, yNodeMasked])
+
+					# slabs
+					if self.showEdges:
+						self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
+
+						self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
+						self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
+						self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
+						# update with new values
+						self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
 				#except:
 				#	print('ERROR: bStackWindow.setSlice')
 
-				# update with new values
-				self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
 		else:
+			self.myNodePlot.set_offsets(np.c_[[], []])
 			self.mySlabPlot.set_offsets(np.c_[[], []])
 
 		self.currentSlice = index # update slice
@@ -424,6 +434,12 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.zoom('out')
 		elif event.key() == QtCore.Qt.Key_T:
 			self.showTracing = not self.showTracing
+			self.setSlice() #refresh
+		elif event.key() == QtCore.Qt.Key_N:
+			self.showNodes = not self.showNodes
+			self.setSlice() #refresh
+		elif event.key() == QtCore.Qt.Key_E:
+			self.showEdges = not self.showEdges
 			self.setSlice() #refresh
 
 		# choose which stack to display
@@ -539,6 +555,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
+			'nodePenSize': 80,
+			'nodeColor': 'r',
 			'showTracingAboveSlices': 5,
 			'showTracingBelowSlices': 5,
 			'tracingPenSize': 10,

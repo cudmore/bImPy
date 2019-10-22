@@ -15,12 +15,12 @@ class bSlabList:
 	def __init__(self, tifPath):
 
 		self.tifPath = tifPath
-		
+
 		self.nodex = []
 		self.nodey = []
 		self.nodez = []
 		self.noded = []
-		
+
 		self.id = None # to count edges
 		self.x = []
 		self.y = []
@@ -28,7 +28,7 @@ class bSlabList:
 
 		self.d = []
 		self.edgeIdx = []
-		
+
 		self.edgeList = [] # this should be .annotationList
 
 		# todo: change this to _slabs.txt
@@ -52,7 +52,7 @@ class bSlabList:
 			print('tracing z max:', np.nanmax(self.z))
 
 		self.loadVesselucida_xml()
-		
+
 		self.analyze()
 
 	@property
@@ -80,17 +80,20 @@ class bSlabList:
 		diamList = []
 		outEdgeList = [] #np.array(0) # just keep track of each points edge index
 		'''
-		
+
 		xUmPerPixel = 0.47
 		yUmPerPixel = 0.47
 		zUmPerSlice = 0.8 # Olympus .txt is telling us 0.4 ???
-		
+
+		masterNodeIdx = 0
 		masterEdgeIdx = 0
+		masterSlabIdx = 0
 		for i, vessel in enumerate(vessels):
 			print('vessel i:', i, 'name:', vessel.attributes['name'].value)
 
 			#
 			# nodes
+			startNodeIdx = masterNodeIdx
 			nodes = vessel.getElementsByTagName('nodes')
 			for j, node in enumerate(nodes):
 				nodeList = vessel.getElementsByTagName('node')
@@ -99,7 +102,7 @@ class bSlabList:
 					point = nodeList[k].getElementsByTagName('point') # node is only one 3d point
 					for point0 in point:
 						x = float(point0.attributes['x'].value)
-						y = float(point0.attributes['y'].value)				
+						y = float(point0.attributes['y'].value)
 						z = float(point0.attributes['z'].value)
 						diam = float(point0.attributes['d'].value)
 
@@ -120,6 +123,7 @@ class bSlabList:
 						self.nodey.append(y)
 						self.nodez.append(z)
 						self.noded.append(diam)
+					masterNodeIdx += 1
 
 			#
 			# edges
@@ -137,42 +141,42 @@ class bSlabList:
 					# list of points for one edge
 					for point in points:
 						x = float(point.attributes['x'].value)
-						y = float(point.attributes['y'].value)				
+						y = float(point.attributes['y'].value)
 						z = float(point.attributes['z'].value)
 						diam = float(point.attributes['d'].value)
-												
+
 						# why are xml y values negative? ... because, y is often flipped !!!!
 						# flip y
 						y = abs(y)
-						
+
 						# flip z
 						if 0:
 							z = 145-z
 							z -= 17 # -20 because some slices were removed from original ...
 						z += 17
 						#z += 12
-						
+
 						# flip x/y
 						if 1:
 							tmp = y
 							y = x
 							x = tmp
-						
+
 						# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
 						x = x / 0.497
 						y = y / 0.497
-						
+
 						# the z step size (slices/um) in the output of olympus software is reporting 0.4 but it seems to be 0.8
 						#"Z Dimension"	"145, 2585.60 - 2528.00 [um], 0.400 [um/Slice]"
 						#z = z / 0.4 # z seems to be in fractional image slices, not scaled?
 						z = z / .8
-						
+
 						self.x.append(x)
 						self.y.append(y)
 						self.z.append(z)
 						self.d.append(diam)
 						self.edgeIdx.append(masterEdgeIdx)
-						
+
 					# add nan
 					self.x.append(np.nan)
 					self.y.append(np.nan)
@@ -192,10 +196,10 @@ class bSlabList:
 				srcNode = edgeList.attributes['sourcenode'].value
 				dstNode = edgeList.attributes['targetnode'].value
 				print('   srcNode:', srcNode, 'dstNode:', dstNode)
-			
+
 		# end
 		# for i, vessel in enumerate(vessels):
-			
+
 		nPoints = len(self.x)
 		self.id = np.full(nPoints, 0) #Return a new array of given shape and type, filled with fill_value.
 
@@ -209,18 +213,18 @@ class bSlabList:
 		self.x = np.array(self.x, dtype='float32')
 		self.y = np.array(self.y, dtype='float32')
 		self.z = np.array(self.z, dtype='float32')
-		
+
 		# debug min/max of x/y/z
 		if 0:
 			print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
 			print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
 			print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
-		
+		print('loaded', masterNodeIdx, 'nodes and', masterEdgeIdx, 'edges')
 	def save(self):
 		"""
 		Save _ann.txt file from self.annotationList
 		"""
-		print('bSlabList.save()')
+		print('bSlabList.save() not implemented')
 
 		# headers are keys of xxxx
 
@@ -298,10 +302,10 @@ class bSimpleStack:
 		pointFilePath, ext = os.path.splitext(self.path)
 		self.maskPath = pointFilePath + '_mask.tif' # DeepVess outut matrix V
 		self.skelPath = pointFilePath + '_skel.tif' # DeepVess output matric C
-		
+
 		self._imagesMask = None
 		self._imagesSkel = None
-		
+
 		self._voxelx = 1
 		self._voxely = 1
 
@@ -312,7 +316,7 @@ class bSimpleStack:
 		self.slabList = bSlabList(self.path)
 		if self.slabList.x is None:
 			self.slabList = None
-			
+
 	@property
 	def voxelx(self):
 		return self._voxelx
@@ -359,7 +363,7 @@ class bSimpleStack:
 			with tifffile.TiffFile(thisPath) as tif:
 				self._imagesMask = tif.asarray()
 			#self.imageStats(thisStack='mask')
-		
+
 		# load mask
 		thisPath = self.skelPath
 		if os.path.isfile(thisPath):
@@ -367,19 +371,19 @@ class bSimpleStack:
 			with tifffile.TiffFile(thisPath) as tif:
 				self._imagesSkel = tif.asarray()
 			#self.imageStats(thisStack='skel')
-		
+
 	def imageStats(self, thisStack='ch1', index=None):
 		"""
 		thisStack: not implemented
 		"""
-		
+
 		if index == None:
 			# whole stack
 			print('   self._images.shape:', self._images.shape)
 			print('   self._images.dtype:', self._images.dtype)
 			print('   min:', np.min(self._images))
 			print('   max:', np.max(self._images))
-			
+
 	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
 
 		startSlice = sliceNumber - upSlices
@@ -388,7 +392,7 @@ class bSimpleStack:
 		stopSlice = sliceNumber + downSlices
 		if stopSlice > self.numSlices - 1:
 			stopSlice = self.numSlices - 1
-					
+
 		if thisStack == 'ch1':
 			img = self._images[startSlice:stopSlice, :, :].copy()
 		elif thisStack == 'mask':
@@ -399,18 +403,18 @@ class bSimpleStack:
 			print('error: getSlidingZ() got bad thisStack:', thisStack)
 
 		img = np.max(img, axis=0)
-		
+
 		return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
-		
+
 	def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
 		"""
 		thisStack in ['ch1', 'ch2', 'ch3', 'mask', 'skel']
-		
+
 		img: pass this in to contrast adjust an existing image, e.g. from slidinz z-projection
-		
+
 		autoContrast: probably not working
 		"""
-		
+
 		if img is None:
 			if thisStack == 'ch1':
 				img = self._images[sliceNumber, :, :].copy()
@@ -420,7 +424,7 @@ class bSimpleStack:
 				img = self._imagesSkel[sliceNumber, :, :].copy()
 			else:
 				print('error: setSliceContrast() got bad thisStack:', thisStack)
-			
+
 		#print('setSliceContrast() BEFORE min:', img.min(), 'max:', img.max(), 'mean:', img.mean(), 'dtype:', img.dtype)
 
 		maxInt = 2 ** self.bitDepth - 1
@@ -441,13 +445,13 @@ class bSimpleStack:
 			mult = maxInt / denominator
 		else:
 			mult = maxInt
-		
+
 		img[img < minContrast] = minContrast
 		img[img > maxContrast] = maxContrast
 		img -= minContrast
 
 		img = img * mult
-		
+
 		return img
 
 	def saveAnnotations(self):

@@ -2,6 +2,7 @@ import numpy as np
 from xml.dom import minidom
 
 path = '/Volumes/t3/Nathan/vesselucida/20191017_0001-all.xml'
+path = '/Users/cudmore/box/data/nathan/vesselucida/20191017_0001-all.xml'
 mydoc = minidom.parse(path)
 
 vessels = mydoc.getElementsByTagName('vessel')
