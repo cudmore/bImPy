@@ -16,6 +16,11 @@ class bSlabList:
 
 		self.tifPath = tifPath
 		
+		self.nodex = []
+		self.nodey = []
+		self.nodez = []
+		self.noded = []
+		
 		self.id = None # to count edges
 		self.x = []
 		self.y = []
@@ -76,10 +81,48 @@ class bSlabList:
 		outEdgeList = [] #np.array(0) # just keep track of each points edge index
 		'''
 		
+		xUmPerPixel = 0.47
+		yUmPerPixel = 0.47
+		zUmPerSlice = 0.8 # Olympus .txt is telling us 0.4 ???
+		
 		masterEdgeIdx = 0
 		for i, vessel in enumerate(vessels):
 			print('vessel i:', i, 'name:', vessel.attributes['name'].value)
 
+			#
+			# nodes
+			nodes = vessel.getElementsByTagName('nodes')
+			for j, node in enumerate(nodes):
+				nodeList = vessel.getElementsByTagName('node')
+				for k in range(len(nodeList)):
+					node_id = nodeList[k].attributes['id'].value
+					point = nodeList[k].getElementsByTagName('point') # node is only one 3d point
+					for point0 in point:
+						x = float(point0.attributes['x'].value)
+						y = float(point0.attributes['y'].value)				
+						z = float(point0.attributes['z'].value)
+						diam = float(point0.attributes['d'].value)
+
+						# flip y
+						y = abs(y)
+						z += 17
+						# flip x/y
+						if 1:
+							tmp = y
+							y = x
+							x = tmp
+						# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
+						x = x / 0.497
+						y = y / 0.497
+						z = z / .8
+
+						self.nodex.append(x)
+						self.nodey.append(y)
+						self.nodez.append(z)
+						self.noded.append(diam)
+
+			#
+			# edges
 			edges = vessel.getElementsByTagName('edges')
 			print('   found', len(edges), 'edges')
 			for j, edge in enumerate(edges):
@@ -88,7 +131,7 @@ class bSlabList:
 				# one edge (vessel segment between 2 branch points)
 				for k in range(len(edgeList)):
 					edge_id = edgeList[k].attributes['id'].value
-					points = edgeList[k].getElementsByTagName('point')
+					points = edgeList[k].getElementsByTagName('point') # edge is a list of 3d points
 					# this is my 'edge' list, the tubes between branch points ???
 					print('         for edge id', edge_id, 'found', len(points), 'points')
 					# list of points for one edge
@@ -97,16 +140,7 @@ class bSlabList:
 						y = float(point.attributes['y'].value)				
 						z = float(point.attributes['z'].value)
 						diam = float(point.attributes['d'].value)
-						
-						# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
-						x = x / 0.497
-						y = y / 0.497
-						
-						# the z step size (slices/um) in the output of olympus software is reporting 0.4 but it seems to be 0.8
-						#"Z Dimension"	"145, 2585.60 - 2528.00 [um], 0.400 [um/Slice]"
-						#z = z / 0.4 # z seems to be in fractional image slices, not scaled?
-						z = z / .8
-						
+												
 						# why are xml y values negative? ... because, y is often flipped !!!!
 						# flip y
 						y = abs(y)
@@ -122,9 +156,16 @@ class bSlabList:
 						if 1:
 							tmp = y
 							y = x
-							x=tmp
+							x = tmp
 						
-						#print(x,y,z)
+						# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
+						x = x / 0.497
+						y = y / 0.497
+						
+						# the z step size (slices/um) in the output of olympus software is reporting 0.4 but it seems to be 0.8
+						#"Z Dimension"	"145, 2585.60 - 2528.00 [um], 0.400 [um/Slice]"
+						#z = z / 0.4 # z seems to be in fractional image slices, not scaled?
+						z = z / .8
 						
 						self.x.append(x)
 						self.y.append(y)
@@ -140,18 +181,40 @@ class bSlabList:
 					self.edgeIdx.append(np.nan)
 					masterEdgeIdx += 1
 
+			#
+			# edgelists
+			edgeListList = vessel.getElementsByTagName('edgelist')
+			print('   found', len(edgeListList), 'edgelists')
+			for j, edgeList in enumerate(edgeListList):
+				#edgelist0 = edgeList.getElementsByTagName('edgelist')
+				#edgeList = vessel.getElementsByTagName('edge')
+				id = edgeList.attributes['id'].value # gives us the edge list index in self.x
+				srcNode = edgeList.attributes['sourcenode'].value
+				dstNode = edgeList.attributes['targetnode'].value
+				print('   srcNode:', srcNode, 'dstNode:', dstNode)
+			
+		# end
+		# for i, vessel in enumerate(vessels):
+			
 		nPoints = len(self.x)
 		self.id = np.full(nPoints, 0) #Return a new array of given shape and type, filled with fill_value.
 
+		#
 		# convert to numpy array
+		# nodes
+		self.nodex = np.array(self.nodex, dtype='float32')
+		self.nodey = np.array(self.nodey, dtype='float32')
+		self.nodez = np.array(self.nodez, dtype='float32')
+		# edges
 		self.x = np.array(self.x, dtype='float32')
 		self.y = np.array(self.y, dtype='float32')
 		self.z = np.array(self.z, dtype='float32')
 		
 		# debug min/max of x/y/z
-		print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
-		print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
-		print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
+		if 0:
+			print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
+			print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
+			print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
 		
 	def save(self):
 		"""
