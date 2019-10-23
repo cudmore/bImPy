@@ -16,11 +16,15 @@ class bSlabList:
 
 		self.tifPath = tifPath
 
+		# nodes
 		self.nodex = []
 		self.nodey = []
 		self.nodez = []
 		self.noded = []
 
+		self.nodeDictList = []
+
+		# slab/edges
 		self.id = None # to count edges
 		self.x = []
 		self.y = []
@@ -56,6 +60,10 @@ class bSlabList:
 		self.analyze()
 
 	@property
+	def numNodes(self):
+		return len(self.nodeDictList)
+
+	@property
 	def numSlabs(self):
 		return len(self.x)
 
@@ -63,7 +71,33 @@ class bSlabList:
 	def numEdges(self):
 		return len(self.edgeList)
 
+	def _massage_xyz(self, x, y, z):
+		xUmPerPixel = 0.49718
+		yUmPerPixel = 0.49718
+		zUmPerSlice = 0.8 # Olympus .txt is telling us 0.4 ???
+		zOffset = 17
+
+		# flip y
+		y = abs(y)
+		# offset z
+		z += zOffset
+		# flip x/y
+		if 1:
+			tmp = y
+			y = x
+			x = tmp
+		# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
+		x = x / xUmPerPixel
+		y = y / yUmPerPixel
+		z = z / zUmPerSlice
+
+		return x,y,z
+
 	def loadVesselucida_xml(self):
+		"""
+		Load a vesselucida xml file with nodes, edges, and edge connectivity
+		"""
+
 		xmlFilePath, ext = os.path.splitext(self.tifPath)
 		xmlFilePath += '.xml'
 		if not os.path.isfile(xmlFilePath):
@@ -74,16 +108,6 @@ class bSlabList:
 
 		vessels = mydoc.getElementsByTagName('vessel')
 		print('found', len(vessels), 'vessels')
-
-		'''
-		outPointList = [] #np.array((0,3))
-		diamList = []
-		outEdgeList = [] #np.array(0) # just keep track of each points edge index
-		'''
-
-		xUmPerPixel = 0.47
-		yUmPerPixel = 0.47
-		zUmPerSlice = 0.8 # Olympus .txt is telling us 0.4 ???
 
 		masterNodeIdx = 0
 		masterEdgeIdx = 0
@@ -106,27 +130,30 @@ class bSlabList:
 						z = float(point0.attributes['z'].value)
 						diam = float(point0.attributes['d'].value)
 
-						# flip y
-						y = abs(y)
-						z += 17
-						# flip x/y
-						if 1:
-							tmp = y
-							y = x
-							x = tmp
-						# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
-						x = x / 0.497
-						y = y / 0.497
-						z = z / .8
+						x,y,z = self._massage_xyz(x,y,z)
 
 						self.nodex.append(x)
 						self.nodey.append(y)
 						self.nodez.append(z)
 						self.noded.append(diam)
+
+						# todo: somehow assign edge list
+						# important so user can scroll through all nodes and
+						# check they have >1 edge !!!
+						nodeDict = {
+							'x': x,
+							'y': y,
+							'z': z,
+							'edgeList':[],
+							'nEdges':0,
+						}
+						self.nodeDictList.append(nodeDict)
+
 					masterNodeIdx += 1
 
 			#
 			# edges
+			startEdgeIdx = masterEdgeIdx
 			edges = vessel.getElementsByTagName('edges')
 			print('   found', len(edges), 'edges')
 			for j, edge in enumerate(edges):
@@ -145,31 +172,7 @@ class bSlabList:
 						z = float(point.attributes['z'].value)
 						diam = float(point.attributes['d'].value)
 
-						# why are xml y values negative? ... because, y is often flipped !!!!
-						# flip y
-						y = abs(y)
-
-						# flip z
-						if 0:
-							z = 145-z
-							z -= 17 # -20 because some slices were removed from original ...
-						z += 17
-						#z += 12
-
-						# flip x/y
-						if 1:
-							tmp = y
-							y = x
-							x = tmp
-
-						# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
-						x = x / 0.497
-						y = y / 0.497
-
-						# the z step size (slices/um) in the output of olympus software is reporting 0.4 but it seems to be 0.8
-						#"Z Dimension"	"145, 2585.60 - 2528.00 [um], 0.400 [um/Slice]"
-						#z = z / 0.4 # z seems to be in fractional image slices, not scaled?
-						z = z / .8
+						x,y,z = self._massage_xyz(x,y,z)
 
 						self.x.append(x)
 						self.y.append(y)
@@ -190,13 +193,17 @@ class bSlabList:
 			edgeListList = vessel.getElementsByTagName('edgelist')
 			print('   found', len(edgeListList), 'edgelists')
 			for j, edgeList in enumerate(edgeListList):
-				#edgelist0 = edgeList.getElementsByTagName('edgelist')
-				#edgeList = vessel.getElementsByTagName('edge')
+				# src/dst node are 0 based for given vessel
 				id = edgeList.attributes['id'].value # gives us the edge list index in self.x
-				srcNode = edgeList.attributes['sourcenode'].value
-				dstNode = edgeList.attributes['targetnode'].value
+				srcNode = int(edgeList.attributes['sourcenode'].value)
+				dstNode = int(edgeList.attributes['targetnode'].value)
 				print('   srcNode:', srcNode, 'dstNode:', dstNode)
-
+				if srcNode != -1:
+					self.nodeDictList[startNodeIdx+srcNode]['edgeList'].append(startEdgeIdx+j)
+					self.nodeDictList[startNodeIdx+srcNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+srcNode]['edgeList'])
+				if dstNode != -1:
+					self.nodeDictList[startNodeIdx+dstNode]['edgeList'].append(startEdgeIdx+j)
+					self.nodeDictList[startNodeIdx+dstNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+dstNode]['edgeList'])
 		# end
 		# for i, vessel in enumerate(vessels):
 
@@ -259,7 +266,16 @@ class bSlabList:
 		self.edgeList = []
 
 		edgeIdx = 0
-		edgeDict = {'type': 'edge', 'edgeIdx':0, 'n':0, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good': True}
+		edgeDict = {'type': 'edge',
+			'edgeIdx':0,
+			'n':0,
+			'Len 3D':0,
+			'Len 2D':0,
+			'Tort':None,
+			'z':None,
+			'preNode':-1,
+			'postNode':-1,
+			'Bad': True}
 		n = self.numSlabs
 		for pointIdx in range(n):
 			self.id[pointIdx] = edgeIdx
@@ -270,18 +286,27 @@ class bSlabList:
 
 			if np.isnan(z1):
 				# move on to a new edge/vessel
-				edgeDict['Length 3D'] = round(edgeDict['Length 3D'],2)
-				edgeDict['Length 2D'] = round(edgeDict['Length 2D'],2)
+				edgeDict['Len 3D'] = round(edgeDict['Len 3D'],2)
+				edgeDict['Len 2D'] = round(edgeDict['Len 2D'],2)
 				self.edgeList.append(edgeDict)
 				edgeIdx += 1
 
-				edgeDict = {'type':'edge', 'n':0, 'edgeIdx': edgeIdx, 'Length 3D':0, 'Length 2D':0, 'z':None, 'Good':True} # reset
+				edgeDict = {'type':'edge',
+					'n':0,
+					'edgeIdx': edgeIdx,
+					'Len 3D':0,
+					'Len 2D':0,
+					'Tort':None,
+					'z':None,
+					'preNode':-1,
+					'postNode':-1,
+					'Bad':True} # reset
 				continue
 
 			edgeDict['n'] = edgeDict['n'] + 1
 			if pointIdx > 0:
-				edgeDict['Length 3D'] = edgeDict['Length 3D'] + euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
-				edgeDict['Length 2D'] = edgeDict['Length 2D'] + euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
+				edgeDict['Len 3D'] = edgeDict['Len 3D'] + euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
+				edgeDict['Len 2D'] = edgeDict['Len 2D'] + euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
 			edgeDict['z'] = int(z1)
 			prev_x1 = x1
 			prev_y1 = y1

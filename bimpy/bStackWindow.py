@@ -44,74 +44,90 @@ class bAnnotationTable(QtWidgets.QWidget):
 		mySaveButton.clicked.connect(self.saveButton_Callback)
 		self.myQVBoxLayout.addWidget(mySaveButton)
 
-		#
-		# table of annotations
-		self.myTableWidget = QtWidgets.QTableWidget()
+		self.myQHBoxLayout = QtWidgets.QHBoxLayout(self) # to hold nodes and edges
+		self.myQVBoxLayout.addLayout(self.myQHBoxLayout)
 
+		#
+		# table of node annotation
+		self.myNodeTableWidget = QtWidgets.QTableWidget()
+		if self.slabList is None:
+			numNodes = 0
+		else:
+			numNodes = self.slabList.numNodes
+		self.myNodeTableWidget.setRowCount(numNodes)
+		self.myNodeTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+		self.myNodeTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+		self.myNodeTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+		self.myNodeTableWidget.cellClicked.connect(self.on_clicked_node)
+		nodeHeaderLabels = ['z', 'nEdges']
+		self.myNodeTableWidget.setColumnCount(len(nodeHeaderLabels))
+		self.myNodeTableWidget.setHorizontalHeaderLabels(nodeHeaderLabels)
+		header = self.myNodeTableWidget.horizontalHeader()
+		for idx, label in enumerate(nodeHeaderLabels):
+			header.setSectionResizeMode(idx, QtWidgets.QHeaderView.ResizeToContents)
+		if self.slabList is None:
+			pass
+		else:
+			for idx, stat in enumerate(self.slabList.nodeDictList):
+				for colIdx, header in enumerate(nodeHeaderLabels):
+					myString = str(stat[header])
+					'''
+					# special cases
+					if header == 'Bad':
+						myString = 'X' if myString=='True' else ''
+					'''
+					#assign
+					item = QtWidgets.QTableWidgetItem(myString)
+					self.myNodeTableWidget.setItem(idx, colIdx, item)
+
+		#
+		# table of edge annotations
+		self.myTableWidget = QtWidgets.QTableWidget()
 		if self.slabList is None:
 			numEdges = 0
 		else:
 			numEdges = self.slabList.numEdges
 		self.myTableWidget.setRowCount(numEdges)
-
 		self.myTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 		self.myTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 		# signals/slots
-		self.myTableWidget.cellClicked.connect(self.on_clicked)
+		self.myTableWidget.cellClicked.connect(self.on_clicked_edge)
 		# todo: this work to select edge when arrow keys are used but casuses bug in interface
 		# figure out how to get this to work
 		#self.myTableWidget.currentCellChanged.connect(self.on_clicked)
-
-		headerLabels = ['type', 'n', 'Length 3D', 'Length 2D', 'z', 'Good']
+		#headerLabels = ['type', 'n', 'Length 3D', 'Length 2D', 'z', 'preNode', 'postNode', 'Good']
+		headerLabels = ['n', 'Len 3D', 'Len 2D', 'z', 'preNode', 'postNode', 'Bad']
 		self.myTableWidget.setColumnCount(len(headerLabels))
 		self.myTableWidget.setHorizontalHeaderLabels(headerLabels)
-
 		header = self.myTableWidget.horizontalHeader()
-		header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-		header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-		header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
-		header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
-		header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)
-		header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
+		for idx, label in enumerate(headerLabels):
+			header.setSectionResizeMode(idx, QtWidgets.QHeaderView.ResizeToContents)
 		# QHeaderView will automatically resize the section to fill the available space.
 		# The size cannot be changed by the user or programmatically.
 		#header.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-
 		if self.slabList is None:
 			pass
 		else:
 			for idx, stat in enumerate(self.slabList.edgeList):
-				myString = str(stat['type'])
-				item = QtWidgets.QTableWidgetItem(myString)
-				self.myTableWidget.setItem(idx, 0, item)
+				for colIdx, header in enumerate(headerLabels):
+					myString = str(stat[header])
+					# special cases
+					if header == 'Bad':
+						myString = 'X' if myString=='True' else ''
+					if header == 'preNode':
+						myString = '' if myString=='-1' else myString
+					if header == 'postNode':
+						myString = '' if myString=='-1' else myString
+					#assign
+					item = QtWidgets.QTableWidgetItem(myString)
+					self.myTableWidget.setItem(idx, colIdx, item)
 
-				myString = str(stat['n'])
-				item = QtWidgets.QTableWidgetItem(myString)
-				self.myTableWidget.setItem(idx, 1, item)
 
-				myString = str(stat['Length 3D'])
-				item = QtWidgets.QTableWidgetItem(myString)
-				self.myTableWidget.setItem(idx, 2, item)
+		self.myQHBoxLayout.addWidget(self.myNodeTableWidget)
+		self.myQHBoxLayout.addWidget(self.myTableWidget)
 
-				myString = str(stat['Length 2D'])
-				item = QtWidgets.QTableWidgetItem(myString)
-				self.myTableWidget.setItem(idx, 3, item)
-
-				myString = str(stat['z'])
-				item = QtWidgets.QTableWidgetItem(myString)
-				self.myTableWidget.setItem(idx, 4, item)
-
-				if stat['Good']:
-					myString = ''
-				else:
-					myString = 'False'
-				#myString = str(stat['Good'])
-				item = QtWidgets.QTableWidgetItem(myString)
-				self.myTableWidget.setItem(idx, 5, item)
-
-		self.myQVBoxLayout.addWidget(self.myTableWidget)
-
+	# todo: this is broken
 	def saveButton_Callback(self):
 		"""
 		Save the current annotation list
@@ -156,8 +172,12 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.repaint()
 
 	@QtCore.pyqtSlot()
-	def on_clicked(self):
-		#print('bAnnotationTable.on_clicked')
+	def on_clicked_node(self):
+		print('bAnnotationTable.on_clicked_node')
+
+	@QtCore.pyqtSlot()
+	def on_clicked_edge(self):
+		#print('bAnnotationTable.on_clicked_edge')
 		row = self.myTableWidget.currentRow()
 		if row == -1 or row is None:
 			return
