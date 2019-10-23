@@ -68,6 +68,9 @@ class bAnnotationTable(QtWidgets.QWidget):
 		if self.slabList is None:
 			pass
 		else:
+			print('--- num nodes:', len(self.slabList.nodeDictList))
+			for tmpNode in self.slabList.nodeDictList:
+				print('tmpNode:', tmpNode)
 			for idx, stat in enumerate(self.slabList.nodeDictList):
 				for colIdx, header in enumerate(nodeHeaderLabels):
 					myString = str(stat[header])

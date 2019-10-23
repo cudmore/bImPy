@@ -122,10 +122,13 @@ if __name__ == '__main__':
 	app = QtWidgets.QApplication(sys.argv)
 
 	path = '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif'
+	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
 
 	myBrowser = bStackBrowserWidget()
 	myBrowser.show()
 
+	myBrowser.appendStack(path)
+	myBrowser.showStackWindow(path)
 	#tmp = myBrowser.loadStack(path)
 	#print('tmp:', tmp)
 

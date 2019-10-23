@@ -5,6 +5,7 @@ import pandas as pd
 
 import tifffile
 
+#from collections import OrderedDict
 from xml.dom import minidom # to load vesselucida xml file
 
 ################################################################################
@@ -119,6 +120,7 @@ class bSlabList:
 			# nodes
 			startNodeIdx = masterNodeIdx
 			nodes = vessel.getElementsByTagName('nodes')
+			print('   has', len(nodes), 'nodes')
 			for j, node in enumerate(nodes):
 				nodeList = vessel.getElementsByTagName('node')
 				for k in range(len(nodeList)):
@@ -197,13 +199,22 @@ class bSlabList:
 				id = edgeList.attributes['id'].value # gives us the edge list index in self.x
 				srcNode = int(edgeList.attributes['sourcenode'].value)
 				dstNode = int(edgeList.attributes['targetnode'].value)
-				print('   srcNode:', srcNode, 'dstNode:', dstNode)
+				#print('   srcNode:', srcNode, 'dstNode:', dstNode)
+
+				#startEdgeIdx
+
 				if srcNode != -1:
+					print('adding srcNode startNodeIdx:', startNodeIdx, 'srcNode:', srcNode, 'startEdgeIdx:', startEdgeIdx)
 					self.nodeDictList[startNodeIdx+srcNode]['edgeList'].append(startEdgeIdx+j)
 					self.nodeDictList[startNodeIdx+srcNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+srcNode]['edgeList'])
+					#print('   edgeList:', self.nodeDictList[startNodeIdx+srcNode]['edgeList'])
+					#print('   nEdges:', self.nodeDictList[startNodeIdx+srcNode]['nEdges'])
 				if dstNode != -1:
+					print('adding dstNode startNodeIdx:', startNodeIdx, 'dstNode:', dstNode, 'startEdgeIdx:', startEdgeIdx)
 					self.nodeDictList[startNodeIdx+dstNode]['edgeList'].append(startEdgeIdx+j)
 					self.nodeDictList[startNodeIdx+dstNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+dstNode]['edgeList'])
+					#print('   edgeList:', self.nodeDictList[startNodeIdx+dstNode]['edgeList'])
+					#print('   nEdges:', self.nodeDictList[startNodeIdx+dstNode]['nEdges'])
 		# end
 		# for i, vessel in enumerate(vessels):
 
@@ -321,7 +332,7 @@ class bSlabList:
 
 ################################################################################
 class bSimpleStack:
-	def __init__(self, path):
+	def __init__(self, path, loadImages=True):
 		self.path = path
 
 		pointFilePath, ext = os.path.splitext(self.path)
@@ -336,7 +347,9 @@ class bSimpleStack:
 
 		self._images = None
 		self._imagesMask = None
-		self.loadStack()
+
+		if loadImages:
+			self.loadStack()
 
 		self.slabList = bSlabList(self.path)
 		if self.slabList.x is None:
