@@ -203,6 +203,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.mySimpleStack = simpleStack #bSimpleStack(path)
 		self.mainWindow = mainWindow
 
+		self.mySelectedNode = None # node index of selected node
 		self.mySelectedEdge = None # edge index of selected edge
 
 		self.displayThisStack = 'ch1'
@@ -266,6 +267,16 @@ class bStackView(QtWidgets.QGraphicsView):
 		markerColor = self.options['Tracing']['nodeColor'] #2**2
 		self.myNodePlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
 
+		# node selection
+		markersize = self.options['Tracing']['nodeSelectionPenSize'] #2**2
+		markerColor = self.options['Tracing']['nodeSelectionColor'] #2**2
+		self.myNodeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize)
+
+		# flash node selection
+		markersize = self.options['Tracing']['nodeSelectionFlashPenSize'] #2**2
+		markerColor = self.options['Tracing']['nodeSelectionFlashColor'] #2**2
+		self.myNodeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize)
+
 		# edge selection
 		markersize = self.options['Tracing']['tracingSelectionPenSize'] #2**2
 		markerColor = self.options['Tracing']['tracingSelectionColor'] #2**2
@@ -293,7 +304,24 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.setScene(scene)
 
+	def flashNode(self, nodeIdx, on):
+		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
+		#print('flashEdge() edgeIdx:', edgeIdx, on)
+		if nodeIdx is None:
+			return
+		if on:
+			x, y, z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
+			self.myNodeSelectionFlash.set_offsets(np.c_[x, y])
+			#
+			QtCore.QTimer.singleShot(30, lambda:self.flashNode(nodeIdx, False))
+		else:
+			self.myNodeSelectionFlash.set_offsets(np.c_[[], []])
+		#
+		self.canvas.draw()
+		self.repaint() # this is updating the widget !!!!!!!!
+
 	def flashEdge(self, edgeIdx, on):
+		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
 		#print('flashEdge() edgeIdx:', edgeIdx, on)
 		if edgeIdx is None:
 			return
@@ -311,7 +339,23 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.repaint() # this is updating the widget !!!!!!!!
 
 	def selectNode(self, nodeIdx, snapz=False):
-		xyzNode = self.mySimpleStack.slabList.getNode(nodeIdx)
+		if nodeIdx is None:
+			self.mySelectionNode = None
+			self.myNodeSelectionPlot.set_offsets(np.c_[[], []])
+		else:
+			self.mySelectedNode = nodeIdx
+			x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
+
+			if snapz:
+				z = self.mySimpleStack.slabList.getNode_zSlice(nodeIdx)
+				self.setSlice(z)
+
+			self.myEdgeSelectionPlot.set_offsets(np.c_[x, y])
+
+			QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, True))
+
+		self.canvas.draw()
+		self.repaint() # this is updating the widget !!!!!!!!
 
 	def selectEdge(self, edgeIdx, snapz=False):
 		#print('=== bStackView.selectEdge():', edgeIdx)
@@ -606,13 +650,17 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.options['Tracing'] = OrderedDict({
 			'nodePenSize': 80,
 			'nodeColor': 'r',
+			'nodeSelectionPenSize': 120,
+			'nodeSelectionColor': 'c',
+			'nodeSelectionFlashPenSize': 200,
+			'nodeSelectionFlashColor': 'm',
 			'showTracingAboveSlices': 5,
 			'showTracingBelowSlices': 5,
 			'tracingPenSize': 10,
 			'tracingColor': 'y',
-			'tracingSelectionPenSize': 6,
+			'tracingSelectionPenSize': 10,
 			'tracingSelectionColor': 'c',
-			'tracingSelectionFlashPenSize': 16,
+			'tracingSelectionFlashPenSize': 80,
 			'tracingSelectionFlashColor': 'm',
 			})
 
@@ -722,7 +770,7 @@ class bStackWidget(QtWidgets.QWidget):
 			if not fromTable:
 				self.annotationTable.selectRow(value)
 			'''
-			self.myStackView.selectNode(value, snapz=snapz)
+			self.myStackView.selectNode(value, snapz=True)
 		if signal == 'selectEdgeFromTable':
 			print('=== bStackWidget.signal() selectEdgeFromTable')
 			self.selectEdge(value, snapz=True)
@@ -751,6 +799,11 @@ class bStackWidget(QtWidgets.QWidget):
 
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()
+
+	def selectNode(self, nodeIdx, snapz=False):
+		print('bStackWidget.selectNode() nodeIdx:', nodeIdx)
+		self.myStackView.selectNode(nodeIdx, snapz=snapz)
+		#self.repaint() # this is updating the widget !!!!!!!!
 
 	def selectEdge(self, edgeIdx, snapz=False):
 		print('bStackWidget.selectEdge() edgeIdx:', edgeIdx)

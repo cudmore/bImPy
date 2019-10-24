@@ -148,6 +148,7 @@ class bSlabList:
 							'x': x,
 							'y': y,
 							'z': z,
+							'zSlice': int(z), #todo remember this when I convert to um/pixel !!!
 							'edgeList':[],
 							'nEdges':0,
 						}
@@ -285,6 +286,21 @@ class bSlabList:
 		print('bSlabList.toggleBadEdge() edgeIdx:', edgeIdx)
 		self.edgeDictList[edgeIdx]['Good'] = not self.edgeDictList[edgeIdx]['Good']
 		print('   edge', edgeIdx, 'is now', self.edgeDictList[edgeIdx]['Good'])
+
+	def getNode_zSlice(self, nodeIdx):
+		"""
+		Return z image slice of a node units are slices
+		"""
+		return self.nodeDictList[nodeIdx]['zSlice']
+
+	def getNode_xyz(self, nodeIdx):
+		"""
+		Return (x,y,z) of a node units are um/pixel
+		"""
+		x = self.nodeDictList[nodeIdx]['x']
+		y = self.nodeDictList[nodeIdx]['y']
+		z = self.nodeDictList[nodeIdx]['z']
+		return (x,y,z)
 
 	def getEdge(self, edgeIdx):
 		"""
