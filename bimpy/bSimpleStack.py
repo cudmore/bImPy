@@ -1,4 +1,5 @@
 import os, math
+import statistics # to get median value from a list of numbers
 
 import numpy as np
 import pandas as pd
@@ -24,6 +25,7 @@ class bSlabList:
 		self.noded = []
 
 		self.nodeDictList = []
+		self.edgeDictList = [] # this should be .annotationList
 
 		# slab/edges
 		self.id = None # to count edges
@@ -31,10 +33,10 @@ class bSlabList:
 		self.y = []
 		self.z = []
 
+		'''
 		self.d = []
 		self.edgeIdx = []
-
-		self.edgeList = [] # this should be .annotationList
+		'''
 
 		# todo: change this to _slabs.txt
 		slabFilePath, ext = os.path.splitext(tifPath)
@@ -70,7 +72,7 @@ class bSlabList:
 
 	@property
 	def numEdges(self):
-		return len(self.edgeList)
+		return len(self.edgeDictList)
 
 	def _massage_xyz(self, x, y, z):
 		xUmPerPixel = 0.49718
@@ -168,6 +170,7 @@ class bSlabList:
 					# this is my 'edge' list, the tubes between branch points ???
 					print('         for edge id', edge_id, 'found', len(points), 'points')
 					# list of points for one edge
+					newZList = []
 					for point in points:
 						x = float(point.attributes['x'].value)
 						y = float(point.attributes['y'].value)
@@ -179,15 +182,36 @@ class bSlabList:
 						self.x.append(x)
 						self.y.append(y)
 						self.z.append(z)
+
+						newZList.append(z)
+						'''
 						self.d.append(diam)
 						self.edgeIdx.append(masterEdgeIdx)
+						'''
+
+					edgeDict = {
+						'type': 'edge',
+						'edgeIdx': masterEdgeIdx,
+						'n': len(newZList),
+						'Len 3D': None,
+						'Len 2D': None,
+						'Tort': None,
+						'z': round(statistics.median(newZList)),
+						'preNode': -1,
+						'postNode': -1,
+						'Bad': False
+						}
+
+					self.edgeDictList.append(edgeDict)
 
 					# add nan
 					self.x.append(np.nan)
 					self.y.append(np.nan)
 					self.z.append(np.nan)
+					'''
 					self.d.append(np.nan)
 					self.edgeIdx.append(np.nan)
+					'''
 					masterEdgeIdx += 1
 
 			#
@@ -203,14 +227,16 @@ class bSlabList:
 
 				#startEdgeIdx
 
+				self.edgeDictList[j]['preNode'] = srcNode
+				self.edgeDictList[j]['postNode'] = dstNode
 				if srcNode != -1:
-					print('adding srcNode startNodeIdx:', startNodeIdx, 'srcNode:', srcNode, 'startEdgeIdx:', startEdgeIdx)
+					#print('adding srcNode startNodeIdx:', startNodeIdx, 'srcNode:', srcNode, 'startEdgeIdx:', startEdgeIdx)
 					self.nodeDictList[startNodeIdx+srcNode]['edgeList'].append(startEdgeIdx+j)
 					self.nodeDictList[startNodeIdx+srcNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+srcNode]['edgeList'])
 					#print('   edgeList:', self.nodeDictList[startNodeIdx+srcNode]['edgeList'])
 					#print('   nEdges:', self.nodeDictList[startNodeIdx+srcNode]['nEdges'])
 				if dstNode != -1:
-					print('adding dstNode startNodeIdx:', startNodeIdx, 'dstNode:', dstNode, 'startEdgeIdx:', startEdgeIdx)
+					#print('adding dstNode startNodeIdx:', startNodeIdx, 'dstNode:', dstNode, 'startEdgeIdx:', startEdgeIdx)
 					self.nodeDictList[startNodeIdx+dstNode]['edgeList'].append(startEdgeIdx+j)
 					self.nodeDictList[startNodeIdx+dstNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+dstNode]['edgeList'])
 					#print('   edgeList:', self.nodeDictList[startNodeIdx+dstNode]['edgeList'])
@@ -257,8 +283,8 @@ class bSlabList:
 
 	def toggleBadEdge(self, edgeIdx):
 		print('bSlabList.toggleBadEdge() edgeIdx:', edgeIdx)
-		self.edgeList[edgeIdx]['Good'] = not self.edgeList[edgeIdx]['Good']
-		print('   edge', edgeIdx, 'is now', self.edgeList[edgeIdx]['Good'])
+		self.edgeDictList[edgeIdx]['Good'] = not self.edgeDictList[edgeIdx]['Good']
+		print('   edge', edgeIdx, 'is now', self.edgeDictList[edgeIdx]['Good'])
 
 	def getEdge(self, edgeIdx):
 		"""
@@ -268,27 +294,21 @@ class bSlabList:
 		return theseIndices
 
 	def analyze(self):
+		"""
+		Fill in derived values in self.edgeDictList
+		"""
 		def euclideanDistance(x1, y1, z1, x2, y2, z2):
 			if z1 is None and z2 is None:
 				return math.sqrt((x2-x1)**2 + (y2-y1)**2)
 			else:
 				return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
-		self.edgeList = []
-
 		edgeIdx = 0
-		edgeDict = {'type': 'edge',
-			'edgeIdx':0,
-			'n':0,
-			'Len 3D':0,
-			'Len 2D':0,
-			'Tort':None,
-			'z':None,
-			'preNode':-1,
-			'postNode':-1,
-			'Bad': True}
 		n = self.numSlabs
+		len2d = 0
+		len3d = 0
 		for pointIdx in range(n):
+			# todo get rid of this
 			self.id[pointIdx] = edgeIdx
 
 			x1 = self.x[pointIdx]
@@ -297,38 +317,19 @@ class bSlabList:
 
 			if np.isnan(z1):
 				# move on to a new edge/vessel
-				edgeDict['Len 3D'] = round(edgeDict['Len 3D'],2)
-				edgeDict['Len 2D'] = round(edgeDict['Len 2D'],2)
-				self.edgeList.append(edgeDict)
+				self.edgeDictList[edgeIdx]['Len 2D'] = round(len2d,2)
+				self.edgeDictList[edgeIdx]['Len 3D'] = round(len3d,2)
+				len2d = 0
+				len3d = 0
 				edgeIdx += 1
-
-				edgeDict = {'type':'edge',
-					'n':0,
-					'edgeIdx': edgeIdx,
-					'Len 3D':0,
-					'Len 2D':0,
-					'Tort':None,
-					'z':None,
-					'preNode':-1,
-					'postNode':-1,
-					'Bad':True} # reset
 				continue
 
-			edgeDict['n'] = edgeDict['n'] + 1
 			if pointIdx > 0:
-				edgeDict['Len 3D'] = edgeDict['Len 3D'] + euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
-				edgeDict['Len 2D'] = edgeDict['Len 2D'] + euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
-			edgeDict['z'] = int(z1)
+				len3d = len3d + euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
+				len2d = len2d + euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
 			prev_x1 = x1
 			prev_y1 = y1
 			prev_z1 = z1
-
-		#print(self.edgeList)
-
-		'''
-		for idx, id in enumerate(self.id):
-			print(self.id[idx], ',', self.x[idx], ',', self.y[idx], ',', self.z[idx])
-		'''
 
 ################################################################################
 class bSimpleStack:

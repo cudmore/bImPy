@@ -112,7 +112,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		if self.slabList is None:
 			pass
 		else:
-			for idx, stat in enumerate(self.slabList.edgeList):
+			for idx, stat in enumerate(self.slabList.edgeDictList):
 				for colIdx, header in enumerate(headerLabels):
 					myString = str(stat[header])
 					# special cases
@@ -139,7 +139,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.mainWindow.signal('save')
 
 	def refreshRow(self, idx):
-		stat = self.slabList.edgeList[idx]
+		stat = self.slabList.edgeDictList[idx]
 
 		myString = str(stat['type'])
 		item = QtWidgets.QTableWidgetItem(myString)
@@ -177,6 +177,8 @@ class bAnnotationTable(QtWidgets.QWidget):
 	@QtCore.pyqtSlot()
 	def on_clicked_node(self):
 		print('bAnnotationTable.on_clicked_node')
+		row = self.myNodeTableWidget.currentRow()
+		self.mainWindow.signal('selectNodeFromTable', row, fromTable=True)
 
 	@QtCore.pyqtSlot()
 	def on_clicked_edge(self):
@@ -245,6 +247,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 		self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
+		self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(30, 30, 30)))
+		self.setFrameShape(QtWidgets.QFrame.NoFrame)
+
 		# image
 		self.figure = Figure(figsize=(width, height), dpi=dpi)
 		self.canvas = backend_qt5agg.FigureCanvas(self.figure)
@@ -305,6 +310,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
 
+	def selectNode(self, nodeIdx, snapz=False):
+		xyzNode = self.mySimpleStack.slabList.getNode(nodeIdx)
+
 	def selectEdge(self, edgeIdx, snapz=False):
 		#print('=== bStackView.selectEdge():', edgeIdx)
 		if edgeIdx is None:
@@ -323,7 +331,11 @@ class bStackView(QtWidgets.QGraphicsView):
 			# todo: add option to snap to a z
 			# removed this because it was confusing
 			if snapz:
+				'''
 				z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
+				z = int(z)
+				'''
+				z = self.mySimpleStack.slabList.edgeDictList[edgeIdx]['z']
 				z = int(z)
 				self.setSlice(z)
 
@@ -441,13 +453,27 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.canvas.draw()
 		#self.repaint() # this is updating the widget !!!!!!!!
 
+	def zoomToPoint(self, x, y):
+		# todo convert this to use a % of the total image ?
+		zoomPixels = 2
+		'''
+		left = x - zoomPixels
+		top = y - zoomPixels # flip ?
+		right = x + zoomPixels
+		bottom = y + zoomPixels # flip?
+		self.setSceneRect(left, top, right, bottom)
+		'''
+		#self.setSceneRect(x, y, zoomPixels, zoomPixels)
+		self.update(100, 100, 10, 10)
+
 	def zoom(self, zoom):
-		#print('=== myCanvasWidget.zoom()', zoom)
+		#print('=== bStackView.zoom()', zoom)
 		if zoom == 'in':
 			scale = 1.2
 		else:
 			scale = 0.8
 		self.scale(scale,scale)
+		#self.zoomToPoint(100,100)
 
 	def keyPressEvent(self, event):
 		#print('=== bStackView.keyPressEvent() event.key():', event.key())
@@ -557,7 +583,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		#print('   firstInd:', firstInd, 'edgeIdx:', edgeIdx)
 
 		#self.selectEdge(edgeIdx)
-		print('   edge:', edgeIdx, self.mySimpleStack.slabList.edgeList[edgeIdx])
+		print('   edge:', edgeIdx, self.mySimpleStack.slabList.edgeDictList[edgeIdx])
 
 		if self.mainWindow is not None:
 			self.mainWindow.signal('selectEdgeFromImage', edgeIdx)
@@ -689,13 +715,21 @@ class bStackWidget(QtWidgets.QWidget):
 
 	def signal(self, signal, value=None, fromTable=False, noRecursion=False):
 		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
+		if signal == 'selectNodeFromTable':
+			print('=== bStackWidget.signal() selectNodeFromTable')
+			self.selectNode(value, snapz=True)
+			'''
+			if not fromTable:
+				self.annotationTable.selectRow(value)
+			'''
+			self.myStackView.selectNode(value, snapz=snapz)
 		if signal == 'selectEdgeFromTable':
-			print('=== bStackWidget.signal() selectEdge')
+			print('=== bStackWidget.signal() selectEdgeFromTable')
 			self.selectEdge(value, snapz=True)
 			if not fromTable:
 				self.annotationTable.selectRow(value)
 		if signal == 'selectEdgeFromImage':
-			print('=== bStackWidget.signal() selectEdge')
+			print('=== bStackWidget.signal() selectEdgeFromImage')
 			self.selectEdge(value, snapz=False)
 			if not fromTable:
 				self.annotationTable.selectRow(value)
