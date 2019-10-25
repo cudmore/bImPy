@@ -495,6 +495,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			}
 			self.maskedEdges.append(maskedEdgeDict)
 
+			#print('slice', i, '_preComputeAllMasks() len(x):', len(xMasked), 'len(y)', len(yMasked))
+
 	def setSlice(self, index=None, recursion=True):
 		#print('bStackView.setSlice()', index)
 
