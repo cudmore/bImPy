@@ -33,6 +33,19 @@ from bSimpleStack import bSimpleStack
 class bAnnotationTable(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None, parent=None, slabList=None):
 		super(bAnnotationTable, self).__init__(parent)
+
+		'''
+		self.setObjectName('bAnnotationTable')
+		self.setStyleSheet("""
+			#bAnnotationTable {
+				background-color: #222;
+			}
+			.QTableWidget {
+				background-color: #222;
+			}
+		""")
+		'''
+
 		self.mainWindow = mainWindow
 		self.slabList = slabList
 
@@ -59,7 +72,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.myNodeTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myNodeTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 		self.myNodeTableWidget.cellClicked.connect(self.on_clicked_node)
-		nodeHeaderLabels = ['z', 'nEdges']
+		nodeHeaderLabels = ['zSlice', 'nEdges']
 		self.myNodeTableWidget.setColumnCount(len(nodeHeaderLabels))
 		self.myNodeTableWidget.setHorizontalHeaderLabels(nodeHeaderLabels)
 		header = self.myNodeTableWidget.horizontalHeader()
@@ -197,6 +210,13 @@ class bStackView(QtWidgets.QGraphicsView):
 	def __init__(self, simpleStack, mainWindow=None, parent=None):
 		super(bStackView, self).__init__(parent)
 
+		self.setObjectName('bStackView')
+		self.setStyleSheet("""
+			#bStackView {
+				background-color: #222;
+			}
+		""")
+
 		#self.path = path
 		self.options_defaults()
 
@@ -213,10 +233,12 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.minContrast = 0
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth # -1
 
+		'''
 		self.idMasked = None
 		self.xMasked = None
 		self.yMasked = None
 		self.zMasked = None
+		'''
 
 		self.showTracing = True
 		self.showNodes = True
@@ -224,17 +246,20 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.imgplot = None
 
+		# coordinates of the image
 		self.iLeft = 0
 		self.iTop = 0
 		self.iRight = self.mySimpleStack.voxelx * self.mySimpleStack.pixelsPerLine # reversed
 		self.iBottom = self.mySimpleStack.voxely * self.mySimpleStack.linesPerFrame
 
 		dpi = 100
-		width = 12
-		height = 12
+		width = 24 #12
+		height = 24 #12
 
 		# for click and drag
 		self.clickPos = None
+
+		self._preComputeAllMasks()
 
 		#
 		scene = QtWidgets.QGraphicsScene(self)
@@ -248,7 +273,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 		self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
-		self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(30, 30, 30)))
+		#self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(30, 30, 30)))
 		self.setFrameShape(QtWidgets.QFrame.NoFrame)
 
 		# image
@@ -304,16 +329,16 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.setScene(scene)
 
-	def flashNode(self, nodeIdx, on):
+	def flashNode(self, nodeIdx, numberOfFlashes):
 		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
 		#print('flashEdge() edgeIdx:', edgeIdx, on)
 		if nodeIdx is None:
 			return
-		if on:
+		if numberOfFlashes>0:
 			x, y, z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
 			self.myNodeSelectionFlash.set_offsets(np.c_[x, y])
 			#
-			QtCore.QTimer.singleShot(30, lambda:self.flashNode(nodeIdx, False))
+			QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes-1))
 		else:
 			self.myNodeSelectionFlash.set_offsets(np.c_[[], []])
 		#
@@ -331,7 +356,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			yMasked = self.mySimpleStack.slabList.x[theseIndices]
 			self.myEdgeSelectionFlash.set_offsets(np.c_[xMasked, yMasked])
 			#
-			QtCore.QTimer.singleShot(30, lambda:self.flashEdge(edgeIdx, False))
+			QtCore.QTimer.singleShot(20, lambda:self.flashEdge(edgeIdx, False))
 		else:
 			self.myEdgeSelectionFlash.set_offsets(np.c_[[], []])
 		#
@@ -339,6 +364,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.repaint() # this is updating the widget !!!!!!!!
 
 	def selectNode(self, nodeIdx, snapz=False):
+		print('selectNode() nodeIdx:', nodeIdx)
 		if nodeIdx is None:
 			self.mySelectionNode = None
 			self.myNodeSelectionPlot.set_offsets(np.c_[[], []])
@@ -352,7 +378,10 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			self.myEdgeSelectionPlot.set_offsets(np.c_[x, y])
 
-			QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, True))
+			self.zoomToPoint(x, y)
+
+			numberOfFlashes = 1
+			QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes))
 
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
@@ -425,6 +454,47 @@ class bStackView(QtWidgets.QGraphicsView):
 		return img
 	'''
 
+	def _preComputeAllMasks(self):
+		"""
+		Precompute all masks once. When user scrolls through slices this is WAY faster
+		"""
+		self.maskedNodes = []
+		self.maskedEdges = []
+		for i in range(self.mySimpleStack.numSlices):
+			upperz = i - self.options['Tracing']['showTracingAboveSlices']
+			lowerz = i + self.options['Tracing']['showTracingBelowSlices']
+
+			#
+			# nodes
+			zNodeMasked = np.ma.masked_outside(self.mySimpleStack.slabList.nodez, upperz, lowerz)
+			#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
+			xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
+			yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
+
+			maskedNodeDict = {
+				'zNodeMasked': zNodeMasked,
+				'xNodeMasked': xNodeMasked,
+				'yNodeMasked': yNodeMasked,
+			}
+			self.maskedNodes.append(maskedNodeDict)
+
+			#
+			# edges
+			zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
+
+			#todo: this need to be combined list of all slabs AND nodes,
+			#when we click we can look up which was clicked
+			idMasked = self.mySimpleStack.slabList.id[~zMasked.mask]
+			xMasked = self.mySimpleStack.slabList.y[~zMasked.mask] # swapping
+			yMasked = self.mySimpleStack.slabList.x[~zMasked.mask]
+			maskedEdgeDict = {
+				'idMasked': idMasked,
+				'zMasked': zMasked,
+				'xMasked': xMasked,
+				'yMasked': yMasked,
+			}
+			self.maskedEdges.append(maskedEdgeDict)
+
 	def setSlice(self, index=None, recursion=True):
 		#print('bStackView.setSlice()', index)
 
@@ -447,6 +517,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
 
 			if self.imgplot is None:
+				print('xxx.setSlice() is none')
 				cmap = self.options['Stack']['colorLut'] #2**2
 				self.imgplot = self.axes.imshow(image, cmap=cmap, extent=[self.iLeft, self.iRight, self.iBottom, self.iTop])  # l, r, b, t
 			else:
@@ -467,21 +538,27 @@ class bStackView(QtWidgets.QGraphicsView):
 				if 1:
 					# nodes
 					if self.showNodes:
+						'''
 						zNodeMasked = np.ma.masked_outside(self.mySimpleStack.slabList.nodez, upperz, lowerz)
 						#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
 						xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
 						yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
 						self.myNodePlot.set_offsets(np.c_[xNodeMasked, yNodeMasked])
-
+						'''
+						self.myNodePlot.set_offsets(np.c_[self.maskedNodes[index]['xNodeMasked'], self.maskedNodes[index]['yNodeMasked']])
 					# slabs
 					if self.showEdges:
-						self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
+						'''self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
 
+						#todo: this need to be combined list of all slabs AND nodes,
+						#when we click we can look up which was clicked
 						self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
 						self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
 						self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
 						# update with new values
 						self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
+						'''
+						self.mySlabPlot.set_offsets(np.c_[self.maskedEdges[index]['xMasked'], self.maskedEdges[index]['yMasked']])
 				#except:
 				#	print('ERROR: bStackWindow.setSlice')
 
@@ -499,16 +576,33 @@ class bStackView(QtWidgets.QGraphicsView):
 
 	def zoomToPoint(self, x, y):
 		# todo convert this to use a % of the total image ?
-		zoomPixels = 2
+		print('zoomToPoint() x:', x, 'y:', y)
 		'''
+		zoomPixels = 20
 		left = x - zoomPixels
 		top = y - zoomPixels # flip ?
 		right = x + zoomPixels
 		bottom = y + zoomPixels # flip?
-		self.setSceneRect(left, top, right, bottom)
+		width = right - left
+		height = bottom - top
+		print('   ', left, top, right, bottom, 'width:', width, 'height:', height)
 		'''
-		#self.setSceneRect(x, y, zoomPixels, zoomPixels)
-		self.update(100, 100, 10, 10)
+
+		# this sort of works
+		#self.scale(2, 2)
+		'''
+		x = int(x)
+		y = int(y)
+		scenePnt = self.mapToScene(x, y)
+		print('   scenePnt:', scenePnt)
+		self.centerOn(scenePnt)
+		'''
+		self.centerOn(x, y)
+
+		'''
+		self.canvas.draw()
+		self.repaint() # this is updating the widget !!!!!!!!
+		'''
 
 	def zoom(self, zoom):
 		#print('=== bStackView.zoom()', zoom)
@@ -581,7 +675,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.setSlice(self.currentSlice)
 
 	def mousePressEvent(self, event):
-		#print('=== bStackView.mousePressEvent()', event.pos())
+		print('=== bStackView.mousePressEvent()', event.pos())
 		self.clickPos = event.pos()
 		super().mousePressEvent(event)
 		event.setAccepted(True)
@@ -618,7 +712,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		# find the first ind in bSlabList.id
 		firstInd = ind[0]
 		#edgeIdx = self.mySimpleStack.slabList.id[firstInd]
-		edgeIdx = self.idMasked[firstInd]
+		#edgeIdx = self.idMasked[firstInd]
+
+		edgeIdx = self.maskedEdges[self.currentSlice]['idMasked'][firstInd]
 		edgeIdx = int(edgeIdx)
 
 
@@ -676,7 +772,19 @@ class bStackWidget(QtWidgets.QWidget):
 		basename = os.path.basename(self.path)
 		self.setWindowTitle(basename)
 
-		#self.setAcceptDrops(True)
+		self.setObjectName('MainWidget')
+		self.setStyleSheet("""
+			#MainWidget {
+				background-color: #222;
+			}
+			.QLabel {
+				color: #bbb;
+			}
+			.QCheckBox {
+				color: #bbb;
+			}
+			}
+		""")
 
 		#
 		self.mySimpleStack = bSimpleStack(path) # backend stack
@@ -764,13 +872,15 @@ class bStackWidget(QtWidgets.QWidget):
 	def signal(self, signal, value=None, fromTable=False, noRecursion=False):
 		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
 		if signal == 'selectNodeFromTable':
-			print('=== bStackWidget.signal() selectNodeFromTable')
-			self.selectNode(value, snapz=True)
+			nodeIdx = value
+			print('=== bStackWidget.signal() selectNodeFromTable nodeIdx:', nodeIdx)
+			self.selectNode(nodeIdx, snapz=True)
 			'''
 			if not fromTable:
-				self.annotationTable.selectRow(value)
+				self.annotationTable.selectRow(nodeIdx)
 			'''
-			self.myStackView.selectNode(value, snapz=True)
+			#self.myStackView.selectNode(nodeIdx, snapz=True)
+
 		if signal == 'selectEdgeFromTable':
 			print('=== bStackWidget.signal() selectEdgeFromTable')
 			self.selectEdge(value, snapz=True)

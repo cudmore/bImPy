@@ -77,8 +77,8 @@ class bSlabList:
 	def _massage_xyz(self, x, y, z):
 		xUmPerPixel = 0.49718
 		yUmPerPixel = 0.49718
-		zUmPerSlice = 0.8 # Olympus .txt is telling us 0.4 ???
-		zOffset = 17
+		zUmPerSlice = 0.6 # Olympus .txt is telling us 0.4 ???
+		zOffset = 0
 
 		# flip y
 		y = abs(y)
@@ -470,6 +470,9 @@ class bSimpleStack:
 		autoContrast: probably not working
 		"""
 
+		#print('setSliceContrast()')
+
+		# we are making a copy so we can modify the contrast
 		if img is None:
 			if thisStack == 'ch1':
 				img = self._images[sliceNumber, :, :].copy()
@@ -482,6 +485,7 @@ class bSimpleStack:
 
 		#print('setSliceContrast() BEFORE min:', img.min(), 'max:', img.max(), 'mean:', img.mean(), 'dtype:', img.dtype)
 
+		# this works, removing it does not anything faster !!!
 		maxInt = 2 ** self.bitDepth - 1
 
 		if minContrast is None:
@@ -508,6 +512,10 @@ class bSimpleStack:
 		img = img * mult
 
 		return img
+
+		# if i remove all from above, this is not any faster?
+		#return self._images[sliceNumber, :, :]
+
 
 	def saveAnnotations(self):
 		if self.slabList is not None:
