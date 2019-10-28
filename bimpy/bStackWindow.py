@@ -81,9 +81,11 @@ class bAnnotationTable(QtWidgets.QWidget):
 		if self.slabList is None:
 			pass
 		else:
-			print('--- num nodes:', len(self.slabList.nodeDictList))
+			print('bAnnotationTable num nodes:', len(self.slabList.nodeDictList))
+			'''
 			for tmpNode in self.slabList.nodeDictList:
 				print('tmpNode:', tmpNode)
+			'''
 			for idx, stat in enumerate(self.slabList.nodeDictList):
 				for colIdx, header in enumerate(nodeHeaderLabels):
 					myString = str(stat[header])
@@ -329,6 +331,9 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.setScene(scene)
 
+		print('sceneRect:', self.sceneRect())
+		#self.setSceneRect(-100, -100, 640+100, 640+100)
+
 	def flashNode(self, nodeIdx, numberOfFlashes):
 		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
 		#print('flashEdge() edgeIdx:', edgeIdx, on)
@@ -534,32 +539,13 @@ class bStackView(QtWidgets.QGraphicsView):
 				# no tracing
 				pass
 			else:
-				upperz = index - self.options['Tracing']['showTracingAboveSlices']
-				lowerz = index + self.options['Tracing']['showTracingBelowSlices']
 				#try:
 				if 1:
 					# nodes
 					if self.showNodes:
-						'''
-						zNodeMasked = np.ma.masked_outside(self.mySimpleStack.slabList.nodez, upperz, lowerz)
-						#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
-						xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
-						yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
-						self.myNodePlot.set_offsets(np.c_[xNodeMasked, yNodeMasked])
-						'''
 						self.myNodePlot.set_offsets(np.c_[self.maskedNodes[index]['xNodeMasked'], self.maskedNodes[index]['yNodeMasked']])
 					# slabs
 					if self.showEdges:
-						'''self.zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
-
-						#todo: this need to be combined list of all slabs AND nodes,
-						#when we click we can look up which was clicked
-						self.idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
-						self.xMasked = self.mySimpleStack.slabList.y[~self.zMasked.mask] # swapping
-						self.yMasked = self.mySimpleStack.slabList.x[~self.zMasked.mask]
-						# update with new values
-						self.mySlabPlot.set_offsets(np.c_[self.xMasked, self.yMasked])
-						'''
 						self.mySlabPlot.set_offsets(np.c_[self.maskedEdges[index]['xMasked'], self.maskedEdges[index]['yMasked']])
 				#except:
 				#	print('ERROR: bStackWindow.setSlice')
@@ -571,10 +557,12 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.currentSlice = index # update slice
 
 		if self.mainWindow is not None and recursion:
-			self.mainWindow.signal('set slice', index)
+			self.mainWindow.signal('set slice', value=index, recursion=False)
 
-		self.canvas.draw()
+		#self.canvas.draw()
+		self.canvas.draw_idle()
 		#self.repaint() # this is updating the widget !!!!!!!!
+		#print(1)
 
 	def zoomToPoint(self, x, y):
 		# todo convert this to use a % of the total image ?
@@ -592,14 +580,12 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# this sort of works
 		#self.scale(2, 2)
-		'''
-		x = int(x)
-		y = int(y)
 		scenePnt = self.mapToScene(x, y)
+		scenePnt = self.mapFromScene(x, y)
 		print('   scenePnt:', scenePnt)
 		self.centerOn(scenePnt)
-		'''
-		self.centerOn(x, y)
+
+		#self.centerOn(x, y)
 
 		'''
 		self.canvas.draw()
@@ -654,27 +640,32 @@ class bStackView(QtWidgets.QGraphicsView):
 		else:
 			event.setAccepted(False)
 
-	def _toggleSlidingZ(self, noRecursion=False):
+	def _toggleSlidingZ(self, recursion=True):
 		self.displaySlidingZ = not self.displaySlidingZ
 		# todo: don't call this deep
-		if not noRecursion:
+		if recursion:
 			self.mainWindow.bStackFeebackWidget.setFeedback('sliding z', self.displaySlidingZ)
 		self.setSlice(recursion=False) # just refresh
 
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
+
+		#print('event.angleDelta().y():', event.angleDelta().y())
+
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		if modifiers == QtCore.Qt.ControlModifier:
 			if event.angleDelta().y() > 0:
 				self.zoom('in')
 			else:
 				self.zoom('out')
+			event.setAccepted(True)
 		else:
 			if event.angleDelta().y() > 0:
 				self.currentSlice -= 1
 			else:
 				self.currentSlice += 1
 			self.setSlice(self.currentSlice)
+			event.setAccepted(True)
 
 	def mousePressEvent(self, event):
 		print('=== bStackView.mousePressEvent()', event.pos())
@@ -871,7 +862,7 @@ class bStackWidget(QtWidgets.QWidget):
 	def getStack(self):
 		return self.mySimpleStack
 
-	def signal(self, signal, value=None, fromTable=False, noRecursion=False):
+	def signal(self, signal, value=None, fromTable=False, recursion=True):
 		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
 		if signal == 'selectNodeFromTable':
 			nodeIdx = value
@@ -903,11 +894,12 @@ class bStackWidget(QtWidgets.QWidget):
 
 		if signal == 'set slice':
 			self.bStackFeebackWidget.setFeedback('set slice', value)
-			self.myStackView.setSlice(value, recursion=False)
+			if recursion:
+				self.myStackView.setSlice(value, recursion=False)
 			self.mySliceSlider.setValue(value)
 
 		if signal == 'toggle sliding z':
-			self.myStackView._toggleSlidingZ(noRecursion=noRecursion)
+			self.myStackView._toggleSlidingZ(recursion=recursion)
 
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()

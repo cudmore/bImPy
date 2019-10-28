@@ -5,37 +5,37 @@ import os, sys, json
 from collections import OrderedDict
 
 from bStack import bStack
-from bStack import bStack
+#from bStack import bStack
 #from bVideoFile import bVideoFile
-		
+
 class bCanvas:
 	"""
 	"""
 	def __init__(self,filePath='', folderPath=''):
 		self._filePath = filePath
 		self._folderPath = folderPath
-				
+
 		self.optionsLoad()
-		
+
 		self._videoFileList = []
 		self._scopeFileList = [] # images off the scope
-		
+
 	@property
 	def videoFileList(self):
 		return self._videoFileList
-		
+
 	@property
 	def scopeFileList(self):
 		return self._scopeFileList
-		
+
 	@property
 	def enclosingFolder(self):
 		return os.path.basename(os.path.normpath(self._folderPath))
-		
+
 	@property
 	def videoFolderPath(self):
 		return os.path.join(self._folderPath, self.enclosingFolder + '_video')
-		
+
 	def importIgorCanvas(self):
 		"""
 		Import Igor Canvas .txt file to grab xMotor/xMotor for each video and scope file
@@ -44,28 +44,28 @@ class bCanvas:
 		canvasTextFile = os.path.join(self._folderPath, 'cX' + self.enclosingFolder + '_T.txt')
 		with open(canvasTextFile) as f:
 			lines = f.readlines()
-		for line in lines: 
-			#print(line) 
-			if line.startswith('StackName'): 
+		for line in lines:
+			#print(line)
+			if line.startswith('StackName'):
 				import_stackNameList = line.split(',')
-			if line.startswith('stackType'): 
+			if line.startswith('stackType'):
 				import_stackTypeList = line.split(',')
-			if line.startswith('numSlices'): 
+			if line.startswith('numSlices'):
 				import_numSlicesList = line.split(',')
 
-			if line.startswith('pixelsPerLine'): 
+			if line.startswith('pixelsPerLine'):
 				import_pixelsPerLine = line.split(',')
-			if line.startswith('linesPerFrame'): 
+			if line.startswith('linesPerFrame'):
 				import_linesPerFrame = line.split(',')
 
-			if line.startswith('vWidth'): 
+			if line.startswith('vWidth'):
 				import_vWidthList = line.split(',')
-			if line.startswith('vHeight'): 
+			if line.startswith('vHeight'):
 				import_vHeightList = line.split(',')
-			if line.startswith('motorx'): 
-				import_xMotorList = line.split(',') 
-			if line.startswith('motory'): 
-				import_yMotorList = line.split(',') 
+			if line.startswith('motorx'):
+				import_xMotorList = line.split(',')
+			if line.startswith('motory'):
+				import_yMotorList = line.split(',')
 		# put what we loaded into a dictionary with stack name as key(s)
 		self.import_stackDict = OrderedDict()
 		for idx, stack in enumerate(import_stackNameList):
@@ -88,7 +88,7 @@ class bCanvas:
 				self.import_stackDict[stack]['xMotor'] = float(import_xMotorList[idx])
 				self.import_stackDict[stack]['yMotor'] = float(import_yMotorList[idx])
 		#print(self.import_stackDict)
-		
+
 	def buildFromScratch(self, folderPath=''):
 		"""
 		Given a folder path, build canvas from scratch
@@ -98,11 +98,11 @@ class bCanvas:
 		if not os.path.isdir(self._folderPath):
 			# error
 			print('error: bCanvas.buildFromScratch() did not find folderPath:', self._folderPath)
-	
+
 		#
 		# video
 		self._videoFileList = []
-		
+
 		videoFolderPath = self.videoFolderPath
 		for videoFile in sorted(os.listdir(videoFolderPath)):
 			if videoFile.startswith('.'):
@@ -110,7 +110,7 @@ class bCanvas:
 			videoFilePath = os.path.join(videoFolderPath, videoFile)
 			if not os.path.isfile(videoFilePath):
 				continue
-			
+
 			print('bCanvas.buildFromScratch() videoFilePath:', videoFilePath)
 			#videoTif = self.openVideoFile(videoFilePath)
 			# 20190708, was this
@@ -123,13 +123,13 @@ class bCanvas:
 			# this is only for import from igor
 			# append to list
 			self._videoFileList.append(videoFile)
-			
+
 		#
 		# scope
 		self._scopeFileList = []
-		
+
 		possibleImageFiles = ['.tif', '.oir']
-		
+
 		for scopeFile in sorted(os.listdir(self._folderPath)):
 			if scopeFile.startswith('.'):
 				continue
@@ -137,7 +137,7 @@ class bCanvas:
 			baseScopeFileName, fileExtension = os.path.splitext(scopeFile)
 			if fileExtension not in possibleImageFiles:
 					continue
-					
+
 			scopeFilePath = os.path.join(self._folderPath, scopeFile)
 
 			if not os.path.isfile(scopeFilePath):
@@ -146,10 +146,10 @@ class bCanvas:
 			#print('bCanvas.buildFromScratch() scopeFilePath:', scopeFilePath)
 			tmpStack = bStack(scopeFilePath)
 			tmpStack.loadHeader()
-			
+
 			#print('tmpStack.header.prettyPrint():', tmpStack.header.prettyPrint())
 			#print('tmpStack.header.getMetaData():', tmpStack.header.getMetaData())
-			
+
 			#if scopeFile in fakeMotorPositons.keys():
 			baseScopeFileName = 'X' + baseScopeFileName
 			print('baseScopeFileName:', baseScopeFileName)
@@ -161,15 +161,15 @@ class bCanvas:
 				#tmpStack.header.header['yMotor'] = fakeMotorPositons[scopeFile]['yMotor']
 			else:
 				print ('   WARNING: scopeFile', baseScopeFileName, 'does not have an x/y motor position')
-				
+
 			self._scopeFileList.append(tmpStack)
-			
+
 	@property
 	def optionsFile(self):
 		"""
 		Return the options .json file name
 		"""
-		
+
 		if getattr(sys, 'frozen', False):
 			# we are running in a bundle (frozen)
 			bundle_dir = sys._MEIPASS
@@ -178,7 +178,7 @@ class bCanvas:
 			bundle_dir = os.path.dirname(os.path.abspath(__file__))
 		optionsFilePath = os.path.join(bundle_dir, 'bCanvas_Options.json')
 		return optionsFilePath
-		
+
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
 		self._optionsDict['version'] = 0.1
@@ -186,7 +186,7 @@ class bCanvas:
 		self._optionsDict['video'] = OrderedDict()
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
-		
+
 	def optionsLoad(self):
 		if not os.path.isfile(self.optionsFile):
 			self.optionsDefault()
@@ -204,24 +204,23 @@ if __name__ == '__main__':
 		from bJavaBridge import bJavaBridge
 		myJavaBridge = bJavaBridge()
 		myJavaBridge.start()
-	
+
 		folderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
+		folderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
 		bc = bCanvas(folderPath=folderPath)
 		#print(bc._optionsDict)
-	
+
 		bc.buildFromScratch()
-	
+
 		for videoFile in bc.videoFileList:
 			print(videoFile._header)
-		
+
 		'''
 		tmpPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2/20190429_tst2_0012.oir'
 		from bStackHeader import bStackHeader
 		tmpHeader = bStackHeader(tmpPath)
 		tmpHeader.prettyPrint()
 		'''
-		
+
 	finally:
 		myJavaBridge.stop()
-	
-		

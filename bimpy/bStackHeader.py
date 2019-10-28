@@ -65,7 +65,7 @@ class bStackHeader:
 				self.readOirHeader()
 		else:
 			print('warning: bStackHeader.__init__() di dnot load header')
-			
+
 	'''
 	def getHeaderFromDict(self, igorImportDict):
 		"""
@@ -86,7 +86,7 @@ class bStackHeader:
 			self.header = igorImportDict[baseFileName] # may fail
 		else:
 			print('bStackHeader.importVideoHeaderFromIgor() did not find imported header information for file:', self.path)
-		
+
 	@property
 	def stackType(self):
 		return self.header['stackType']
@@ -116,11 +116,12 @@ class bStackHeader:
 		"""
 		Load header from coverted header .txt file
 		"""
+		print('bStackHeader._loadHeaderFromConverted()')
 		with open(convertedStackHeaderPath, 'r') as file:
 			lines = file.readlines()
 		# remove whitespace characters like `\n` at the end of each line
-		lines = [x.strip() for x in lines] 
-		
+		lines = [x.strip() for x in lines]
+
 		# clear our existing header
 		self.initHeader()
 
@@ -128,7 +129,7 @@ class bStackHeader:
 		for line in lines:
 			lhs, rhs = line.split('=')
 			self.header[lhs] = rhs
-		
+
 		######
 		## FIX THIS
 		######
@@ -150,7 +151,7 @@ class bStackHeader:
 			yVoxel = float(self.header['yVoxel'])
 			umHeight = yPixels * yVoxel
 			self.header['umHeight'] = umHeight
-		
+
 	def prettyPrint(self):
 		print('   file:', os.path.split(self.path)[1],
 			'stackType:', self.stackType, ',',
@@ -247,7 +248,7 @@ class bStackHeader:
 		"""
 		Read header information from xml. This is not pretty.
 		"""
-		#print('=== bStack.readOirHeader()')
+		print('=== bStack.readOirHeader()')
 
 		print('bStackHeader.readOirHeader()')
 		def _qn(namespace, tag_name):
@@ -271,7 +272,7 @@ class bStackHeader:
 			print(pretty_xml.toprettyxml())
 			sys.exit()
 			'''
-			
+
 			# this does not work, always gives us time as late in the PM?
 			'''
 			dateTime = omeXml.image().AcquisitionDate
@@ -315,6 +316,9 @@ class bStackHeader:
 			self.header['xVoxel'] = omeXml.image().Pixels.PhysicalSizeX # um/pixel
 			self.header['yVoxel'] = omeXml.image().Pixels.PhysicalSizeY
 			self.header['zVoxel'] = omeXml.image().Pixels.PhysicalSizeZ
+
+			self.header['umWidth'] = self.header['xPixels'] * self.header['xVoxel']
+			self.header['umHeight'] = self.header['yPixels'] * self.header['yVoxel']
 
 			root = xml.etree.ElementTree.fromstring(str(omeXml))
 

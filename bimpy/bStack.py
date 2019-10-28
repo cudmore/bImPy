@@ -35,14 +35,14 @@ class bStack:
 	def __init__(self, path=''):
 		self.path = path # path to file
 		self._fileName = os.path.basename(path)
-		
+
 		self.currentSlice = 0
-		
+
 		self.fileNameWithoutExtension = ''
 		if os.path.isfile(path):
 			fileName = os.path.split(self.path)[1]
 			self.fileNameWithoutExtension, tmpExtension = fileName.split('.')
-		
+
 		self.header = None #StackHeader.StackHeader(self.path)
 
 	@property
@@ -64,7 +64,7 @@ class bStack:
 		else:
 			print('error: bStack.getHeaderVal() did not find key "' + key + '" in self.header.header. Available keys are:', self.header.header.keys())
 			return None
-			
+
 	def convert(self):
 		try:
 			myLock = bLockFile(self.path)
@@ -89,13 +89,13 @@ class bStack:
 			self.currentSlice = sliceNum
 		else:
 			print('warning bStack.setSlice()', sliceNum, 'but stack only has', self.header.numImages)
-	
+
 	def getImage(self, channel=1, sliceNum=None):
 		channelIdx = channel - 1
 		if sliceNum is None:
 			sliceNum = self.currentSlice
 		return self.stack[channelIdx,sliceNum,:,:]
-		
+
 	def _display0(self, image, display_min, display_max): # copied from Bi Rico
 		# Here I set copy=True in order to ensure the original image is not
 		# modified. If you don't mind modifying the original image, you can
@@ -130,7 +130,7 @@ class bStack:
 				self.header = bStackHeader.bStackHeader(self.path)
 			else:
 				print('bStack.loadHeader() did not find self.path:', self.path)
-				
+
 	def loadMax(self, channel=1, convertTo8Bit=False):
 		#print('bStack.loadMax() channel:', channel, 'self.path:', self.path)
 		fu = bFileUtil.bFileUtil()
@@ -139,7 +139,7 @@ class bStack:
 
 		# load the file
 		if os.path.isfile(maxFile):
-			with tifffile.TiffFile(maxFile) as tif:	
+			with tifffile.TiffFile(maxFile) as tif:
 				theArray = tif.asarray()
 			if convertTo8Bit:
 				theArray = skimage.img_as_ubyte(theArray, force_copy=False)
@@ -148,7 +148,7 @@ class bStack:
 			return theArray
 		else:
 			return None
-				
+
 	def loadStack(self):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
 		print('   bStack.loadStack()', self.path)
@@ -162,8 +162,8 @@ class bStack:
 		t = 0
 		channel_names = None
 
-		print('self.header:', self.header.header)
-		
+		print('   self.header:', self.header.header)
+
 		rows = self.linesPerFrame
 		cols = self.pixelsPerLine
 		slices = self.numImages
@@ -177,20 +177,30 @@ class bStack:
 			print('error: bStack.loadStack() -->> None slices')
 		if channels is None:
 			print('error: bStack.loadStack() -->> None channels')
-			
+
 		self.stack = np.zeros((channels, slices, rows, cols), dtype=np.int16)
 
-		#with bioformats.GetImageReader(self.path) as reader:
-		with bioformats.ImageReader(self.path) as reader:
-			for channelIdx in range(self.numChannels):
-				c = channelIdx
-				for imageIdx in range(self.numImages):
-					if self.header.stackType == 'ZStack':
-						z = imageIdx
-					elif self.header.stackType == 'TSeries':
-						t = imageIdx
-					image = reader.read(c=c, z=z, t=t, rescale=False) # returns numpy.ndarray
-					self.stack[channelIdx,imageIdx,:,:] = image
+		#todo: this will only work for one channel
+
+		# if it is a Tiff file use tifffile, otherwise, use bioformats
+		if self.path.endswith('.tif'):
+			print('bStack.loadStack() is using tifffile...')
+			with tifffile.TiffFile(self.path) as tif:
+				self.stack[0, :, :, :] = tif.asarray()
+
+		else:
+			print('bStack.loadStack() is using bioformats...')
+			#with bioformats.GetImageReader(self.path) as reader:
+			with bioformats.ImageReader(self.path) as reader:
+				for channelIdx in range(self.numChannels):
+					c = channelIdx
+					for imageIdx in range(self.numImages):
+						if self.header.stackType == 'ZStack':
+							z = imageIdx
+						elif self.header.stackType == 'TSeries':
+							t = imageIdx
+						image = reader.read(c=c, z=z, t=t, rescale=False) # returns numpy.ndarray
+						self.stack[channelIdx,imageIdx,:,:] = image
 
 	#
 	# Saving
@@ -279,7 +289,7 @@ if __name__ == '__main__':
 	"""
 	debugging
 	"""
-    
+
 	import javabridge
 
 	try:
@@ -299,19 +309,19 @@ if __name__ == '__main__':
 		path = '/Volumes/t3/data/20190429/20190429_tst2/20190429_tst2_0006.oir'
 
 		path = 'E:\\cudmore\\data\\20190429\\20190429_tst2\\20190429_tst2_0002.oir'
-		
+
 		path = '/Users/cudmore/box/data/testoir/20190514_0001.oir'
-		
+
 		# good to test caiman alignment
 		#path = '/Users/cudmore/box/data/nathan/030119/030119_HCN4-GCaMP8_SAN_phen10uM.oir'
 
 		#print('path:', path)
-		
-		
+
+
 		myStack = bStack(path)
 
 		myStack.loadMax()
-		
+
 		with javabridge.vm(
 				run_headless=True,
 				class_path=bioformats.JARS

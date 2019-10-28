@@ -17,7 +17,7 @@ class MainWindow(QtWidgets.QMainWindow):
 		super(MainWindow, self).__init__(parent)
 
 		tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
-		tmpCanvasFolderPath = '/Volumes/fourt0/Dropbox/data/20190429/20190429_tst2'
+		tmpCanvasFolderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
 		self.canvas = bCanvas(folderPath=tmpCanvasFolderPath)
 
 		# this is only for import from igor
@@ -287,6 +287,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			yMotor = scopeFile.header.header['yMotor']
 			umWidth = scopeFile.header.header['umWidth']
 			umHeight = scopeFile.header.header['umHeight']
+			print('umWidth:', umWidth, 'umHeight:', umHeight)
 
 			if xMotor == 'None':
 				xMotor = None
@@ -298,8 +299,15 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				continue
 
 			# todo: specify channel (1,2,3,4,...)
-			stackMax = scopeFile.loadMax(channel=1, convertTo8Bit=True)
-			imageStackHeight, imageStackWidth = stackMax.shape
+			stackMax = scopeFile.loadMax(channel=1, convertTo8Bit=True) # stackMax can be None
+			#imageStackHeight, imageStackWidth = stackMax.shape
+			imageStackWidth = scopeFile.pixelsPerLine
+			imageStackHeight = scopeFile.linesPerFrame
+			print('imageStackWidth:', imageStackWidth, 'imageStackHeight:', imageStackHeight)
+
+			if stackMax is None:
+				print('myQGraphicsView.__init__() is making zero max image for scopeFile:', scopeFile)
+				stackMax = np.zeros((imageStackWidth, imageStackHeight), dtype=np.uint8)
 
 			myQImage = QtGui.QImage(stackMax, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 
@@ -782,11 +790,16 @@ if __name__ == '__main__':
 		w.show()
 		#sys.exit(app.exec_())
 	except Exception as e:
+		print('bCanvasApp __main__ exception')
 		print(traceback.format_exc())
 		#logging.error(traceback.format_exc())
+		print('   2')
 		myJavaBridge.stop()
+		print('   3')
 		sys.exit(app.exec_())
+		print('   4')
 		raise
+		print('   5')
 	finally:
 		myJavaBridge.stop()
 		sys.exit(app.exec_())

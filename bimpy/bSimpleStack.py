@@ -110,19 +110,19 @@ class bSlabList:
 		mydoc = minidom.parse(xmlFilePath)
 
 		vessels = mydoc.getElementsByTagName('vessel')
-		print('found', len(vessels), 'vessels')
+		#print('found', len(vessels), 'vessels')
 
 		masterNodeIdx = 0
 		masterEdgeIdx = 0
 		masterSlabIdx = 0
 		for i, vessel in enumerate(vessels):
-			print('vessel i:', i, 'name:', vessel.attributes['name'].value)
+			#print('vessel i:', i, 'name:', vessel.attributes['name'].value)
 
 			#
 			# nodes
 			startNodeIdx = masterNodeIdx
 			nodes = vessel.getElementsByTagName('nodes')
-			print('   has', len(nodes), 'nodes')
+			#print('   has', len(nodes), 'nodes')
 			for j, node in enumerate(nodes):
 				nodeList = vessel.getElementsByTagName('node')
 				for k in range(len(nodeList)):
@@ -160,16 +160,16 @@ class bSlabList:
 			# edges
 			startEdgeIdx = masterEdgeIdx
 			edges = vessel.getElementsByTagName('edges')
-			print('   found', len(edges), 'edges')
+			#print('   found', len(edges), 'edges')
 			for j, edge in enumerate(edges):
 				edgeList = vessel.getElementsByTagName('edge')
-				print('      found', len(edgeList), 'edges')
+				#print('      found', len(edgeList), 'edges')
 				# one edge (vessel segment between 2 branch points)
 				for k in range(len(edgeList)):
 					edge_id = edgeList[k].attributes['id'].value
 					points = edgeList[k].getElementsByTagName('point') # edge is a list of 3d points
 					# this is my 'edge' list, the tubes between branch points ???
-					print('         for edge id', edge_id, 'found', len(points), 'points')
+					#print('         for edge id', edge_id, 'found', len(points), 'points')
 					# list of points for one edge
 					newZList = []
 					for point in points:
@@ -218,16 +218,13 @@ class bSlabList:
 			#
 			# edgelists
 			edgeListList = vessel.getElementsByTagName('edgelist')
-			print('   found', len(edgeListList), 'edgelists')
+			#print('   found', len(edgeListList), 'edgelists')
 			for j, edgeList in enumerate(edgeListList):
 				# src/dst node are 0 based for given vessel
 				id = edgeList.attributes['id'].value # gives us the edge list index in self.x
 				srcNode = int(edgeList.attributes['sourcenode'].value)
 				dstNode = int(edgeList.attributes['targetnode'].value)
 				#print('   srcNode:', srcNode, 'dstNode:', dstNode)
-
-				#startEdgeIdx
-
 				self.edgeDictList[j]['preNode'] = srcNode
 				self.edgeDictList[j]['postNode'] = dstNode
 				if srcNode != -1:
