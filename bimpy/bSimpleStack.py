@@ -33,6 +33,11 @@ class bSlabList:
 		self.y = []
 		self.z = []
 
+		# for nathan convex hull
+		self.orig_x = []
+		self.orig_y = []
+		self.orig_z = []
+
 		'''
 		self.d = []
 		self.edgeIdx = []
@@ -43,7 +48,7 @@ class bSlabList:
 		slabFilePath += '_slabs.txt'
 
 		if not os.path.isfile(slabFilePath):
-			print('bSlabList error, did not find slabFilePath:', slabFilePath)
+			print('bSlabList warning, did not find slabFilePath:', slabFilePath)
 			#return
 		else:
 			df = pd.read_csv(pointFilePath)
@@ -112,6 +117,13 @@ class bSlabList:
 		vessels = mydoc.getElementsByTagName('vessel')
 		#print('found', len(vessels), 'vessels')
 
+		self.x = []
+		self.y = []
+		self.z = []
+		self.orig_x = []
+		self.orig_y = []
+		self.orig_z = []
+
 		masterNodeIdx = 0
 		masterEdgeIdx = 0
 		masterSlabIdx = 0
@@ -171,12 +183,17 @@ class bSlabList:
 					# this is my 'edge' list, the tubes between branch points ???
 					#print('         for edge id', edge_id, 'found', len(points), 'points')
 					# list of points for one edge
+					thisSlabList = []
 					newZList = []
 					for point in points:
 						x = float(point.attributes['x'].value)
 						y = float(point.attributes['y'].value)
 						z = float(point.attributes['z'].value)
 						diam = float(point.attributes['d'].value)
+
+						self.orig_x.append(x)
+						self.orig_y.append(y)
+						self.orig_z.append(z)
 
 						x,y,z = self._massage_xyz(x,y,z)
 
@@ -189,6 +206,8 @@ class bSlabList:
 						self.d.append(diam)
 						self.edgeIdx.append(masterEdgeIdx)
 						'''
+						thisSlabList.append(masterSlabIdx)
+						masterSlabIdx += 1
 
 					edgeDict = {
 						'type': 'edge',
@@ -200,7 +219,8 @@ class bSlabList:
 						'z': round(statistics.median(newZList)),
 						'preNode': -1,
 						'postNode': -1,
-						'Bad': False
+						'Bad': False,
+						'slabList': thisSlabList, # list of slab indices on this edge
 						}
 
 					self.edgeDictList.append(edgeDict)
@@ -209,6 +229,7 @@ class bSlabList:
 					self.x.append(np.nan)
 					self.y.append(np.nan)
 					self.z.append(np.nan)
+					masterSlabIdx += 1
 					'''
 					self.d.append(np.nan)
 					self.edgeIdx.append(np.nan)
@@ -261,7 +282,7 @@ class bSlabList:
 			print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
 			print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
 			print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
-		print('loaded', masterNodeIdx, 'nodes and', masterEdgeIdx, 'edges')
+		print('loadVesselucida_xml() loaded', masterNodeIdx, 'nodes and', masterEdgeIdx, 'edges from xml file', xmlFilePath)
 	def save(self):
 		"""
 		Save _ann.txt file from self.annotationList
@@ -399,6 +420,18 @@ class bSimpleStack:
 			return 8
 		else:
 			return 16
+
+	def slabMatrix_original(self):
+		"""
+		return all original slabs as a 2d numpy matrix
+		for nathan convex hull
+		"""
+		x = self.slabList.orig_x
+		y = self.slabList.orig_y
+		z = self.slabList.orig_z
+		# put 1d arrays of (x,y,z) into 2d matrix
+		points = np.column_stack((x,y,z))
+		return points
 
 	def loadStack(self):
 		# load original image

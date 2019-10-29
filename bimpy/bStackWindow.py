@@ -245,6 +245,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.showTracing = True
 		self.showNodes = True
 		self.showEdges = True
+		self.showDeadEnds = True
 
 		self.imgplot = None
 
@@ -289,10 +290,15 @@ class bStackView(QtWidgets.QGraphicsView):
 		markerColor = self.options['Tracing']['tracingColor'] #2**2
 		self.mySlabPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
 
-		# nodes
+		# nodes (put this after slab/point list to be on top, order matter)
 		markersize = self.options['Tracing']['nodePenSize'] #2**2
 		markerColor = self.options['Tracing']['nodeColor'] #2**2
 		self.myNodePlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
+
+		# tracing/slabs that are dead end
+		markersize = self.options['Tracing']['deadEndPenSize'] #2**2
+		markerColor = self.options['Tracing']['deadEndColor'] #2**2
+		self.myDeadEndPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
 
 		# node selection
 		markersize = self.options['Tracing']['nodeSelectionPenSize'] #2**2
@@ -465,6 +471,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		"""
 		self.maskedNodes = []
 		self.maskedEdges = []
+		self.maskedDeadEnds = []
 		for i in range(self.mySimpleStack.numSlices):
 			upperz = i - self.options['Tracing']['showTracingAboveSlices']
 			lowerz = i + self.options['Tracing']['showTracingBelowSlices']
@@ -499,6 +506,38 @@ class bStackView(QtWidgets.QGraphicsView):
 				'yMasked': yMasked,
 			}
 			self.maskedEdges.append(maskedEdgeDict)
+
+			#
+			# slabs/edges dead ends
+			maskedDeadEndDict = {
+				'zMasked': [],
+				'xMasked': [],
+				'yMasked': [],
+			}
+			for edgeDict in self.mySimpleStack.slabList.edgeDictList:
+				if edgeDict['preNode'] == -1:
+					# include dead end
+					# get the z of the first slab
+					firstSlabIdx = edgeDict['slabList'][0]
+					tmpz = self.mySimpleStack.slabList.z[firstSlabIdx]
+					if tmpz > upperz and tmpz < lowerz:
+						tmpx = self.mySimpleStack.slabList.x[firstSlabIdx]
+						tmpy = self.mySimpleStack.slabList.y[firstSlabIdx]
+						maskedDeadEndDict['yMasked'].append(tmpx) # swapping
+						maskedDeadEndDict['xMasked'].append(tmpy)
+						maskedDeadEndDict['zMasked'].append(tmpz)
+				if edgeDict['postNode'] == -1:
+					# include dead end
+					# get the z of the last slab
+					lastSlabIdx = edgeDict['slabList'][-1]
+					tmpz = self.mySimpleStack.slabList.z[lastSlabIdx]
+					if tmpz > upperz and tmpz < lowerz:
+						tmpx = self.mySimpleStack.slabList.x[lastSlabIdx]
+						tmpy = self.mySimpleStack.slabList.y[lastSlabIdx]
+						maskedDeadEndDict['yMasked'].append(tmpx) # swapping
+						maskedDeadEndDict['xMasked'].append(tmpy)
+						maskedDeadEndDict['zMasked'].append(tmpz)
+			self.maskedDeadEnds.append(maskedDeadEndDict)
 
 			#print('slice', i, '_preComputeAllMasks() len(x):', len(xMasked), 'len(y)', len(yMasked))
 
@@ -547,6 +586,8 @@ class bStackView(QtWidgets.QGraphicsView):
 					# slabs
 					if self.showEdges:
 						self.mySlabPlot.set_offsets(np.c_[self.maskedEdges[index]['xMasked'], self.maskedEdges[index]['yMasked']])
+					if self.showDeadEnds:
+						self.myDeadEndPlot.set_offsets(np.c_[self.maskedDeadEnds[index]['xMasked'], self.maskedDeadEnds[index]['yMasked']])
 				#except:
 				#	print('ERROR: bStackWindow.setSlice')
 
@@ -616,6 +657,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event.key() == QtCore.Qt.Key_E:
 			self.showEdges = not self.showEdges
 			self.setSlice() #refresh
+		elif event.key() == QtCore.Qt.Key_D:
+			self.showDeadEnds = not self.showDeadEnds
+			self.setSlice() #refresh
 
 		# choose which stack to display
 		elif event.key() == QtCore.Qt.Key_1:
@@ -628,11 +672,13 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.displayThisStack = 'ch3'
 			self.setSlice(recursion=False) # just refresh
 		elif event.key() == QtCore.Qt.Key_9:
-			self.displayThisStack = 'mask'
-			self.setSlice(recursion=False) # just refresh
+			if self.mySimpleStack._imagesMask is not None:
+				self.displayThisStack = 'mask'
+				self.setSlice(recursion=False) # just refresh
 		elif event.key() == QtCore.Qt.Key_0:
-			self.displayThisStack = 'skel'
-			self.setSlice(recursion=False) # just refresh
+			if self.mySimpleStack._imagesSkel is not None:
+				self.displayThisStack = 'skel'
+				self.setSlice(recursion=False) # just refresh
 
 		elif event.key() == QtCore.Qt.Key_Z:
 			self._toggleSlidingZ()
@@ -751,6 +797,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			'tracingSelectionColor': 'c',
 			'tracingSelectionFlashPenSize': 80,
 			'tracingSelectionFlashColor': 'm',
+			'deadEndPenSize': 40,
+			'deadEndColor': 'b',
 			})
 
 ################################################################################
@@ -765,9 +813,9 @@ class bStackWidget(QtWidgets.QWidget):
 		basename = os.path.basename(self.path)
 		self.setWindowTitle(basename)
 
-		self.setObjectName('MainWidget')
+		self.setObjectName('bStackWidget0')
 		self.setStyleSheet("""
-			#MainWidget {
+			#bStackWidget0 {
 				background-color: #222;
 			}
 			.QLabel {
@@ -775,7 +823,6 @@ class bStackWidget(QtWidgets.QWidget):
 			}
 			.QCheckBox {
 				color: #bbb;
-			}
 			}
 		""")
 
