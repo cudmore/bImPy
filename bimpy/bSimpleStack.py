@@ -48,8 +48,9 @@ class bSlabList:
 		slabFilePath += '_slabs.txt'
 
 		if not os.path.isfile(slabFilePath):
-			print('bSlabList warning, did not find slabFilePath:', slabFilePath)
+			#print('bSlabList warning, did not find slabFilePath:', slabFilePath)
 			#return
+			pass
 		else:
 			df = pd.read_csv(pointFilePath)
 
@@ -112,6 +113,7 @@ class bSlabList:
 			print('bSlabList.loadVesselucida_xml() error, did not find', xmlFilePath)
 			return
 
+		print('loadVesselucida_xml() file', xmlFilePath)
 		mydoc = minidom.parse(xmlFilePath)
 
 		vessels = mydoc.getElementsByTagName('vessel')
@@ -234,6 +236,9 @@ class bSlabList:
 					self.d.append(np.nan)
 					self.edgeIdx.append(np.nan)
 					'''
+					self.orig_x.append(np.nan)
+					self.orig_y.append(np.nan)
+					self.orig_z.append(np.nan)
 					masterEdgeIdx += 1
 
 			#
@@ -282,7 +287,7 @@ class bSlabList:
 			print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
 			print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
 			print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
-		print('loadVesselucida_xml() loaded', masterNodeIdx, 'nodes and', masterEdgeIdx, 'edges from xml file', xmlFilePath)
+		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
 	def save(self):
 		"""
 		Save _ann.txt file from self.annotationList
@@ -341,6 +346,7 @@ class bSlabList:
 		n = self.numSlabs
 		len2d = 0
 		len3d = 0
+		len3d_nathan = 0
 		for pointIdx in range(n):
 			# todo get rid of this
 			self.id[pointIdx] = edgeIdx
@@ -349,21 +355,34 @@ class bSlabList:
 			y1 = self.y[pointIdx]
 			z1 = self.z[pointIdx]
 
+			#print('pointIdx:', pointIdx)
+			orig_x = self.orig_x[pointIdx]
+			orig_y = self.orig_y[pointIdx]
+			orig_z = self.orig_z[pointIdx]
+
 			if np.isnan(z1):
 				# move on to a new edge/vessel
 				self.edgeDictList[edgeIdx]['Len 2D'] = round(len2d,2)
 				self.edgeDictList[edgeIdx]['Len 3D'] = round(len3d,2)
+				self.edgeDictList[edgeIdx]['Len 3D Nathan'] = round(len3d_nathan,2)
 				len2d = 0
 				len3d = 0
+				len3d_nathan = 0
+				orig_x = 0
 				edgeIdx += 1
 				continue
 
 			if pointIdx > 0:
 				len3d = len3d + euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
 				len2d = len2d + euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
+				len3d_nathan = len3d_nathan + euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
 			prev_x1 = x1
 			prev_y1 = y1
 			prev_z1 = z1
+
+			prev_orig_x1 = orig_x
+			prev_orig_y1 = orig_y
+			prev_orig_z1 = orig_z
 
 ################################################################################
 class bSimpleStack:
