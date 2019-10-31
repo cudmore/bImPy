@@ -11,8 +11,8 @@ import skimage
 import tifffile
 import bioformats
 
-import bStackHeader
-import bFileUtil
+from bimpy import bStackHeader
+from bimpy import bFileUtil
 
 class bLockFile:
 	"""
@@ -44,6 +44,7 @@ class bStack:
 			self.fileNameWithoutExtension, tmpExtension = fileName.split('.')
 
 		self.header = None #StackHeader.StackHeader(self.path)
+		self.stack = None
 
 	@property
 	def numChannels(self):
@@ -154,15 +155,6 @@ class bStack:
 		print('   bStack.loadStack()', self.path)
 
 		self.loadHeader()
-		#if self.header is None:
-		#	self.header = StackHeader.StackHeader(self.path)
-
-		c = 0 # ???
-		z = 0
-		t = 0
-		channel_names = None
-
-		print('   self.header:', self.header.header)
 
 		rows = self.linesPerFrame
 		cols = self.pixelsPerLine
@@ -176,20 +168,31 @@ class bStack:
 		if slices is None:
 			print('error: bStack.loadStack() -->> None slices')
 		if channels is None:
+			channels = 1
 			print('error: bStack.loadStack() -->> None channels')
 
-		self.stack = np.zeros((channels, slices, rows, cols), dtype=np.int16)
+		#self.stack = np.zeros((channels, slices, rows, cols), dtype=np.int16)
 
 		#todo: this will only work for one channel
 
 		# if it is a Tiff file use tifffile, otherwise, use bioformats
 		if self.path.endswith('.tif'):
-			print('bStack.loadStack() is using tifffile...')
+			print('   bStack.loadStack() is using tifffile...')
 			with tifffile.TiffFile(self.path) as tif:
-				self.stack[0, :, :, :] = tif.asarray()
+				print('   tif.imagej_metadata:', tif.imagej_metadata)
+				thisChannel = 0
+				loaded_shape = tif.asarray().shape
+				loaded_dtype = tif.asarray().dtype
+				print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype)
+				newShape = (channels,) + loaded_shape
+				self.stack = np.zeros(newShape, dtype=loaded_dtype)
 
+				self.stack[thisChannel, :, :, :] = tif.asarray()
+
+				self.header.assignToShape(self.stack.shape)
+				print('      after load tiff, self.stack.shape:', self.stack.shape)
 		else:
-			print('bStack.loadStack() is using bioformats...')
+			print('   bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
 			#with bioformats.GetImageReader(self.path) as reader:
 			with bioformats.ImageReader(self.path) as reader:
 				for channelIdx in range(self.numChannels):
@@ -197,9 +200,22 @@ class bStack:
 					for imageIdx in range(self.numImages):
 						if self.header.stackType == 'ZStack':
 							z = imageIdx
+							t = 0
 						elif self.header.stackType == 'TSeries':
+							z = 0
 							t = imageIdx
-						image = reader.read(c=c, z=z, t=t, rescale=False) # returns numpy.ndarray
+						else:
+							print('      ****** Error: bStack.loadStack() did not get valid self.header.stackType:', self.header.stackType)
+						#print('imageIdx:', imageIdx)
+						image = reader.read(c=c, t=t, z=z, rescale=False) # returns numpy.ndarray
+						loaded_shape = image.shape # we are loading single image, this will be something like (512,512)
+						loaded_dtype = image.dtype
+						newShape = (channels,self.numImages) + loaded_shape
+						# resize
+						if imageIdx == 0:
+							print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype, 'newShape:', newShape)
+							self.stack = np.zeros(newShape, dtype=loaded_dtype)
+						# assign
 						self.stack[channelIdx,imageIdx,:,:] = image
 
 	#
@@ -224,18 +240,49 @@ class bStack:
 		"""
 
 		#
+		# save each channel using tifffile
+		for channelIdx in range(self.numChannels):
+			saveFilePath = self.convert_getSaveFile(channelNumber=channelIdx+1)
+			# self.stack is czxy
+			#tifffile.imwrite(saveFilePath, self.stack[channelIdx,:,:,:], imagej=True, resolution=resolution, metadata=metadata, ijmetadata=ijmetadata)
+			self._save(saveFilePath, self.stack[channelIdx,:,:,:])
+
+	def _save(self, fullFilePath, imageData, includeSpacing=True):
+		"""
+		Save a volume with xyz voxel size 2.6755 x 2.6755 x 3.9474 µm^3 to an ImageJ file:
+
+		>>> volume = numpy.random.randn(57*256*256).astype('float32')
+		>>> volume.shape = 1, 57, 1, 256, 256, 1  # dimensions in TZCYXS order
+		>>> imwrite('temp.tif', volume, imagej=True, resolution=(1./2.6755, 1./2.6755), metadata={'spacing': 3.947368, 'unit': 'um'})
+		"""
+
+		#print('imageData.dtype:', imageData.dtype)
+
 		# get metadata from StackHeader
 		ijmetadata = {}
 		ijmetadataStr = self.header.getMetaData()
 		ijmetadata['Info'] = ijmetadataStr
 
-		#
-		# save each channel using tifffile
-		for channelIdx in range(self.numChannels):
-			saveFilePath = self.convert_getSaveFile(channelNumber=channelIdx+1)
-			print('   bStack.saveStack() path:', saveFilePath)
-			# self.stack is czxy
-			tifffile.imwrite(saveFilePath, self.stack[channelIdx,:,:,:], ijmetadata=ijmetadata)
+		resolution = (1./self.header.xVoxel, 1./self.header.yVoxel)
+		metadata = {
+			'spacing': self.header.zVoxel if includeSpacing else 1,
+			'unit': 'um'
+		}
+		# my volumes are zxy, fiji wants TZCYXS
+		#volume.shape = 1, 57, 1, 256, 256, 1  # dimensions in TZCYXS order
+		if len(imageData.shape) == 2:
+			numSlices = 1
+			numx = imageData.shape[0]
+			numy = imageData.shape[1]
+		elif len(imageData.shape) == 3:
+			numSlices = imageData.shape[0]
+			numx = imageData.shape[1]
+			numy = imageData.shape[2]
+		else:
+			print('error, we can only save 2d or 3d images and stacks!')
+		tmpStack = imageData
+		tmpStack.shape = 1, numSlices, 1, numx, numy, 1
+		tifffile.imwrite(fullFilePath, tmpStack, imagej=True, resolution=resolution, metadata=metadata, ijmetadata=ijmetadata)
 
 	def saveMax(self):
 		savePath = self.convert_makeSavePath()
@@ -253,7 +300,8 @@ class bStack:
 			#
 
 			#tifffile.imwrite(maxFilePath, maxIntensityProjection, ijmetadata=ijmetadata)
-			tifffile.imwrite(maxFilePath, maxIntensityProjection)
+			#tifffile.imwrite(maxFilePath, maxIntensityProjection)
+			self._save(maxFilePath, maxIntensityProjection, includeSpacing=False)
 
 	#
 	# File name utilities
@@ -311,15 +359,18 @@ if __name__ == '__main__':
 		path = 'E:\\cudmore\\data\\20190429\\20190429_tst2\\20190429_tst2_0002.oir'
 
 		path = '/Users/cudmore/box/data/testoir/20190514_0001.oir'
-
+		path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
+		path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/20190514_0003.oir'
 		# good to test caiman alignment
 		#path = '/Users/cudmore/box/data/nathan/030119/030119_HCN4-GCaMP8_SAN_phen10uM.oir'
 
 		#print('path:', path)
 
 
+		print('--- bstack main is constructing stack')
 		myStack = bStack(path)
 
+		print('--- bstack main is loading max')
 		myStack.loadMax()
 
 		with javabridge.vm(
@@ -333,6 +384,7 @@ if __name__ == '__main__':
 			log4j.enableLogging()
 			log4j.setRootLevel("WARN")
 
+			print('--- bstack main is calling convert()')
 			myStack.convert()
 
 	finally:

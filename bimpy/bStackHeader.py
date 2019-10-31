@@ -38,7 +38,7 @@ yMotor=None
 zMotor=None
 """
 
-import os, sys
+import os, sys, json
 from collections import OrderedDict
 
 #import javabridge
@@ -47,7 +47,7 @@ import bioformats
 import xml
 import xml.dom.minidom # to pretty print
 
-from bFileUtil import bFileUtil
+from . import bFileUtil
 
 class bStackHeader:
 
@@ -57,7 +57,8 @@ class bStackHeader:
 
 		self.initHeader()
 
-		convertedStackHeaderPath = bFileUtil().getHeaderFileFromRaw(self.path)
+		fu = bFileUtil.bFileUtil()
+		convertedStackHeaderPath = fu.getHeaderFileFromRaw(self.path)
 		if convertedStackHeaderPath is not None:
 			# lead from converted stack header .txt file
 			self._loadHeaderFromConverted(convertedStackHeaderPath)
@@ -79,6 +80,7 @@ class bStackHeader:
 		else:
 			print('bStack.getHeaderFromDict() did not find imported header information for file:', self.path)
 	'''
+
 	def importVideoHeaderFromIgor(self, igorImportDict):
 		fullFileName = os.path.basename(self.path)
 		baseFileName, extension = os.path.splitext(fullFileName)
@@ -111,12 +113,21 @@ class bStackHeader:
 	@property
 	def yVoxel(self):
 		return self.header['yVoxel']
+	def zVoxel(self):
+		return self.header['zVoxel']
 
 	def _loadHeaderFromConverted(self, convertedStackHeaderPath):
-		"""
-		Load header from coverted header .txt file
-		"""
-		print('bStackHeader._loadHeaderFromConverted()')
+		"""Load header from coverted header .txt file"""
+
+		print('bStackHeader._loadHeaderFromConverted() convertedStackHeaderPath:', convertedStackHeaderPath)
+		# clear our existing header
+		self.initHeader()
+
+		with open(convertedStackHeaderPath, 'r') as f:
+			self.header = json.load(f)
+
+		'''
+		print('bStackHeader._loadHeaderFromConverted() is loading header information from .txt file:', convertedStackHeaderPath)
 		with open(convertedStackHeaderPath, 'r') as file:
 			lines = file.readlines()
 		# remove whitespace characters like `\n` at the end of each line
@@ -151,6 +162,7 @@ class bStackHeader:
 			yVoxel = float(self.header['yVoxel'])
 			umHeight = yPixels * yVoxel
 			self.header['umHeight'] = umHeight
+		'''
 
 	def prettyPrint(self):
 		print('   file:', os.path.split(self.path)[1],
@@ -162,9 +174,7 @@ class bStackHeader:
 			)
 
 	def getMetaData(self):
-		"""
-		Get all header items as text in a single line
-		"""
+		"""Get all header items as text in a single line"""
 		ijmetadataStr = ''
 		for k, v in self.header.items():
 			ijmetadataStr += k + '=' + str(v) + '\n'
@@ -172,20 +182,9 @@ class bStackHeader:
 
 	def saveHeader(self, headerSavePath):
 		""" Save the header as a .txt file to the path"""
-
-		# check that the path exists
-
-		#print('   StackHeader.saveHeader:', headerSavePath)
-		with open(headerSavePath, 'w') as f:
-			#f.write(str(self.header))
-			'''
-			for k,v in self.header.items():
-				f.write(k + '=' + str(v) + '\n')
-			headerData = self.header.getMetaData()
-			'''
-			# todo: add StackHeader.save(path)
-			for k, v in self.header.items():
-				f.write(k + '=' + str(v) + '\n')
+		# todo: check that the path exists
+		with open(headerSavePath, 'w') as fp:
+			json.dump(self.header, fp, indent=4)
 
 	def initHeader(self):
 
@@ -195,8 +194,8 @@ class bStackHeader:
 		self.header['date'] = ''
 		self.header['time'] = ''
 
-		self.header['fileVersion'] = '' # Of the Olympus software
-		self.header['programVersion'] = '' # Of the Olympus software
+		self.header['olympusFileVersion'] = '' # Of the Olympus software
+		self.header['olympusProgramVersion'] = '' # Of the Olympus software
 
 		self.header['laserWavelength'] = None #
 		self.header['laserPercent'] = None #
@@ -229,9 +228,9 @@ class bStackHeader:
 		self.header['numImages'] = None
 		self.header['numFrames'] = None
 		#
-		self.header['xVoxel'] = None # um/pixel
-		self.header['yVoxel'] = None
-		self.header['zVoxel'] = None
+		self.header['xVoxel'] = 1 # um/pixel
+		self.header['yVoxel'] = 1
+		self.header['zVoxel'] = 1
 
 		self.header['umWidth'] = None
 		self.header['umHeight'] = None
@@ -244,13 +243,21 @@ class bStackHeader:
 		self.header['yMotor'] = None
 		self.header['zMotor'] = None
 
+	def assignToShape(self, shape):
+		"""shape is (channels, slices, x, y)"""
+		self.header['numChannels'] = shape[0]
+		# never use header for these, always use image
+		# but i want to be able to unload raw image data and preserve stack information
+		# thus, i am going to use them
+		self.header['numImages'] = shape[1]
+		self.header['xPixels'] = shape[2]
+		self.header['yPixels'] = shape[3]
+
 	def readOirHeader(self):
 		"""
 		Read header information from xml. This is not pretty.
 		"""
-		print('=== bStack.readOirHeader()')
-
-		print('bStackHeader.readOirHeader()')
+		#print('bStackHeader.readOirHeader()')
 		def _qn(namespace, tag_name):
 			'''
 			xml helper. Return the qualified name for a given namespace and tag name
@@ -306,11 +313,13 @@ class bStackHeader:
 			self.header['numFrames'] = omeXml.image().Pixels.SizeT # number of images
 
 			if self.header['numImages'] > 1:
+				#print('--------- tmp setting -------- self.header["stackType"] = "ZStack"')
 				self.header['stackType'] = 'ZStack' #'ZStack'
 
 			# swap numFrames into numImages
 			if self.header['numImages'] == 1 and self.header['numFrames'] > 1:
 				self.header['numImages'] = self.header['numFrames']
+				#print('--------- tmp setting -------- self.header["stackType"] = "TSeries"')
 				self.header['stackType'] = 'TSeries'
 
 			self.header['xVoxel'] = omeXml.image().Pixels.PhysicalSizeX # um/pixel
@@ -342,10 +351,14 @@ class bStackHeader:
 									<ome:Value>Line</ome:Value>
 								</ome:OriginalMetadata>
 								"""
+								# removed 20191029, was not working
+								"""
 								if 'method sequentialType' in finalKey:
 									print(finalKey)
 									print('   ', finalValue)
+									print('--------- tmp setting -------- self.header["stackType"] = ', finalValue)
 									self.header['stackType'] = finalValue
+								"""
 
 								# 20190617, very specific for our scope
 								"""
@@ -365,9 +378,9 @@ class bStackHeader:
 									self.header['time'] = theTime
 
 								if 'fileInfomation version #1' in finalKey:
-									self.header['fileVersion'] = finalValue
+									self.header['olympusFileVersion'] = finalValue
 								if 'system systemVersion #1' in finalKey:
-									self.header['programVersion'] = finalValue
+									self.header['olympusProgramVersion'] = finalValue
 
 								if 'area zoom' in finalKey:
 									self.header['zoom'] = finalValue
@@ -421,5 +434,8 @@ class bStackHeader:
 				self.header['lineSpeed'] = lineSpeed3
 				self.header['frameSpeed'] = frameSpeed3
 
+		except Exception as e:
+			print('exception in bStackHEader.readOirHeader()', e)
+			raise
 		finally:
 			pass
