@@ -48,7 +48,7 @@ class bStack:
 		self.stack = None
 
 		# load vesselucida analysis from .xml file
-		self.slabList = bSlabList.bSlabList(self.path)
+		self.slabList = bSlabList(self.path)
 		if self.slabList.x is None:
 			self.slabList = None
 
@@ -256,6 +256,9 @@ class bStack:
 		if self.path.endswith('.tif'):
 			print('   bStack.loadStack() is using tifffile...')
 			with tifffile.TiffFile(self.path) as tif:
+				tag = tif.pages[0].tags['XResolution']
+				print('tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+
 				print('   tif.imagej_metadata:', tif.imagej_metadata)
 				print('   tif.tags:', tif.is_nih)
 				#print('   tif[0].image_description:', tif.image_description)
@@ -446,7 +449,7 @@ if __name__ == '__main__':
 		#path = '/Users/cudmore/box/data/nathan/030119/030119_HCN4-GCaMP8_SAN_phen10uM.oir'
 
 		path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
-		path = '/Users/cudmore/box/data/nathan/vesselucida/vesselucida_tif/20191017__0001_ch1.tif'
+		#path = '/Users/cudmore/box/data/nathan/vesselucida/vesselucida_tif/20191017__0001_ch1.tif'
 
 		print('--- bstack main is constructing stack')
 		myStack = bStack(path)
