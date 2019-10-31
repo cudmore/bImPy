@@ -65,7 +65,7 @@ class bStackHeader:
 		elif path.endswith('.oir'):
 				self.readOirHeader()
 		else:
-			print('warning: bStackHeader.__init__() di dnot load header')
+			print('warning: bStackHeader.__init__() did not load header')
 
 	'''
 	def getHeaderFromDict(self, igorImportDict):
@@ -113,8 +113,12 @@ class bStackHeader:
 	@property
 	def yVoxel(self):
 		return self.header['yVoxel']
+	@property
 	def zVoxel(self):
 		return self.header['zVoxel']
+	@property
+	def bitDepth(self):
+		return self.header['bitsPerPixel']
 
 	def _loadHeaderFromConverted(self, convertedStackHeaderPath):
 		"""Load header from coverted header .txt file"""
@@ -243,15 +247,19 @@ class bStackHeader:
 		self.header['yMotor'] = None
 		self.header['zMotor'] = None
 
-	def assignToShape(self, shape):
+	def assignToShape(self, stack):
 		"""shape is (channels, slices, x, y)"""
+		shape = stack.shape
 		self.header['numChannels'] = shape[0]
-		# never use header for these, always use image
-		# but i want to be able to unload raw image data and preserve stack information
-		# thus, i am going to use them
 		self.header['numImages'] = shape[1]
 		self.header['xPixels'] = shape[2]
 		self.header['yPixels'] = shape[3]
+		dtype = stack.dtype
+		if dtype == 'uint8':
+			bitDepth = 8
+		else:
+			bitDepth = 16
+		self.header['bitsPerPixel'] = bitDepth
 
 	def readOirHeader(self):
 		"""

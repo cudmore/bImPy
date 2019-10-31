@@ -25,9 +25,10 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends import backend_qt5agg
 
-from bStackContrastWidget import bStackContrastWidget
-from bStackFeebackWidget import bStackFeebackWidget
-from bSimpleStack import bSimpleStack
+from bimpy import bStackContrastWidget
+from bimpy import bStackFeebackWidget
+from bimpy import bStack
+#from bSimpleStack import bSimpleStack
 
 ################################################################################
 class bAnnotationTable(QtWidgets.QWidget):
@@ -233,7 +234,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.currentSlice = 0
 		self.minContrast = 0
-		self.maxContrast = 2 ** self.mySimpleStack.bitDepth # -1
+		self.maxContrast = 2 ** self.mySimpleStack.getHeaderVal('bitsPerPixel')
 
 		'''
 		self.idMasked = None
@@ -252,8 +253,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		# coordinates of the image
 		self.iLeft = 0
 		self.iTop = 0
-		self.iRight = self.mySimpleStack.voxelx * self.mySimpleStack.pixelsPerLine # reversed
-		self.iBottom = self.mySimpleStack.voxely * self.mySimpleStack.linesPerFrame
+		self.iRight = self.mySimpleStack.xVoxel * self.mySimpleStack.pixelsPerLine # reversed
+		self.iBottom = self.mySimpleStack.yVoxel * self.mySimpleStack.linesPerFrame
 
 		dpi = 100
 		width = 24 #12
@@ -472,7 +473,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.maskedNodes = []
 		self.maskedEdges = []
 		self.maskedDeadEnds = []
-		for i in range(self.mySimpleStack.numSlices):
+		for i in range(self.mySimpleStack.numImages):
 			upperz = i - self.options['Tracing']['showTracingAboveSlices']
 			lowerz = i + self.options['Tracing']['showTracingBelowSlices']
 
@@ -549,8 +550,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		if index < 0:
 			index = 0
-		if index > self.mySimpleStack.numSlices-1:
-			index = self.mySimpleStack.numSlices -1
+		if index > self.mySimpleStack.numImages-1:
+			index = self.mySimpleStack.numImages -1
 
 		showImage = True
 
@@ -560,6 +561,8 @@ class bStackView(QtWidgets.QGraphicsView):
 				downSlices = self.options['Stack']['downSlidingZSlices']
 				image = self.mySimpleStack.getSlidingZ(index, self.displayThisStack, upSlices, downSlices, self.minContrast, self.maxContrast)
 			else:
+				print('index:', index)
+				#image = self.mySimpleStack.getImage_ContrastEnhanced(self.minContrast, self.maxContrast, channel=1, sliceNum=index, useMaxProject=False)
 				image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
 
 			if self.imgplot is None:
@@ -827,7 +830,8 @@ class bStackWidget(QtWidgets.QWidget):
 		""")
 
 		#
-		self.mySimpleStack = bSimpleStack(path) # backend stack
+		#self.mySimpleStack = bSimpleStack(path) # backend stack
+		self.mySimpleStack = bStack(path) # backend stack
 		#
 
 		self.showLeftControlBar = True
@@ -841,7 +845,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myContrastWidget = bStackContrastWidget(mainWindow=self)
 
 		self.bStackFeebackWidget = bStackFeebackWidget(mainWindow=self)
-		self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numSlices)
+		self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numImages)
 
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
 
@@ -849,8 +853,8 @@ class bStackWidget(QtWidgets.QWidget):
 
 		# a slider to set slice number
 		self.mySliceSlider = QtWidgets.QSlider(QtCore.Qt.Vertical)
-		self.mySliceSlider.setMaximum(self.mySimpleStack.numSlices)
-		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numSlices
+		self.mySliceSlider.setMaximum(self.mySimpleStack.numImages)
+		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numImages
 		self.mySliceSlider.setMinimum(0)
 		self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
 

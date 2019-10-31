@@ -5,41 +5,41 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 class bStackContrastWidget(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None, parent=None):
 		super(bStackContrastWidget, self).__init__(parent)
-	
+
 		self.mainWindow = mainWindow
-		
-		self.bitDepth = mainWindow.getStack().bitDepth
+
+		self.bitDepth = mainWindow.getStack().getHeaderVal('bitsPerPixel')
 		print('self.bitDepth:', self.bitDepth)
-		
+
 		self.buildUI()
-		
+
 	def sliderValueChanged(self):
 		theMin = self.minContrastSlider.value()
 		theMax = self.maxContrastSlider.value()
-		
+
 		self.minSpinBox.setValue(theMin)
 		self.maxSpinBox.setValue(theMax)
-		
+
 		if self.mainWindow is not None:
 			self.mainWindow.signal('contrast change', {'minContrast':theMin, 'maxContrast':theMax})
-			
+
 	def spinBoxValueChanged(self):
 		theMin = self.minSpinBox.value()
 		theMax = self.maxSpinBox.value()
-		
+
 		self.minContrastSlider.setValue(theMin)
 		self.maxContrastSlider.setValue(theMax)
-		
+
 	def buildUI(self):
 		minVal = 0
 		maxVal = 2**self.bitDepth
-		
+
 		self.myQVBoxLayout = QtWidgets.QVBoxLayout(self)
-		
+
 		#
 		# upper/min
 		self.upperHBoxLayout = QtWidgets.QHBoxLayout(self)
-		
+
 		self.minLabel = QtWidgets.QLabel("Min")
 		self.minSpinBox = QtWidgets.QSpinBox()
 		self.minSpinBox.setMinimum(-1e6) # si user can specify whatever they want
@@ -54,12 +54,12 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.minContrastSlider.valueChanged.connect(self.sliderValueChanged)
 		# inverse checkbox
 		# color table
-		
+
 		self.upperHBoxLayout.addWidget(self.minLabel)
 		self.upperHBoxLayout.addWidget(self.minSpinBox)
 		self.upperHBoxLayout.addWidget(self.minContrastSlider)
 		self.myQVBoxLayout.addLayout(self.upperHBoxLayout)
-		
+
 		#
 		# lower/max
 		self.lowerHBoxLayout = QtWidgets.QHBoxLayout(self)
@@ -78,11 +78,11 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.maxContrastSlider.valueChanged.connect(self.sliderValueChanged)
 		# inverse checkbox
 		# color table
-		
+
 		self.lowerHBoxLayout.addWidget(self.maxLabel)
 		self.lowerHBoxLayout.addWidget(self.maxSpinBox)
 		self.lowerHBoxLayout.addWidget(self.maxContrastSlider)
-		
+
 		self.myQVBoxLayout.addLayout(self.lowerHBoxLayout)
 
 		#self.setLayout(self.myQVBoxLayout)

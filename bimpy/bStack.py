@@ -11,6 +11,7 @@ import skimage
 import tifffile
 import bioformats
 
+from bimpy import bSlabList
 from bimpy import bStackHeader
 from bimpy import bFileUtil
 
@@ -32,7 +33,7 @@ class bStack:
 	"""
 	Manages a stack or time-series of images
 	"""
-	def __init__(self, path=''):
+	def __init__(self, path='', loadImages=True):
 		self.path = path # path to file
 		self._fileName = os.path.basename(path)
 
@@ -46,6 +47,14 @@ class bStack:
 		self.header = None #StackHeader.StackHeader(self.path)
 		self.stack = None
 
+		# load vesselucida analysis from .xml file
+		self.slabList = bSlabList.bSlabList(self.path)
+		if self.slabList.x is None:
+			self.slabList = None
+
+		if loadImages:
+			self.loadStack()
+
 	@property
 	def numChannels(self):
 		return self.header.numChannels
@@ -58,6 +67,18 @@ class bStack:
 	@property
 	def linesPerFrame(self):
 		return self.header.linesPerFrame
+	@property
+	def xVoxel(self):
+		return self.header.xVoxel
+	@property
+	def yVoxel(self):
+		return self.header.yVoxel
+	@property
+	def zVoxel(self):
+		return self.header.zVoxel
+	@property
+	def bitDepth(self):
+		return self.header.bitDepth
 
 	def getHeaderVal(self, key):
 		if key in self.header.header.keys():
@@ -97,6 +118,61 @@ class bStack:
 			sliceNum = self.currentSlice
 		return self.stack[channelIdx,sliceNum,:,:]
 
+	def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
+		"""
+		thisStack in ['ch1', 'ch2', 'ch3', 'mask', 'skel']
+
+		img: pass this in to contrast adjust an existing image, e.g. from sliding z-projection
+
+		autoContrast: probably not working
+		"""
+
+		#print('setSliceContrast()')
+
+		# we are making a copy so we can modify the contrast
+		if img is None:
+			if thisStack == 'ch1':
+				img = self.stack[0, sliceNumber, :, :].copy()
+			elif thisStack == 'mask':
+				img = self._imagesMask[sliceNumber, :, :].copy()
+			elif thisStack == 'skel':
+				img = self._imagesSkel[sliceNumber, :, :].copy()
+			else:
+				print('error: setSliceContrast() got bad thisStack:', thisStack)
+
+		#print('setSliceContrast() BEFORE min:', img.min(), 'max:', img.max(), 'mean:', img.mean(), 'dtype:', img.dtype)
+
+		# this works, removing it does not anything faster !!!
+		maxInt = 2 ** self.bitDepth - 1
+
+		if minContrast is None:
+			minContrast = 0
+		if maxContrast is None:
+			maxContrast = 2 ** self.bitDepth - 1
+		if autoContrast:
+			minContrast = np.min(img)
+			maxContrast = np.max(img)
+
+		#print('   setSliceContrast() sliceNumber:', sliceNumber, 'maxInt:', maxInt, 'lowContrast:', lowContrast, 'highContrast:', highContrast)
+
+		#mult = maxInt / abs(highContrast - lowContrast)
+		denominator = abs(maxContrast - minContrast)
+		if denominator != 0:
+			mult = maxInt / denominator
+		else:
+			mult = maxInt
+
+		img[img < minContrast] = minContrast
+		img[img > maxContrast] = maxContrast
+		img -= minContrast
+
+		img = img * mult
+
+		return img
+
+		# if i remove all from above, this is not any faster?
+		#return self._images[sliceNumber, :, :]
+
 	def _display0(self, image, display_min, display_max): # copied from Bi Rico
 		# Here I set copy=True in order to ensure the original image is not
 		# modified. If you don't mind modifying the original image, you can
@@ -109,9 +185,10 @@ class bStack:
 		#return image.astype(np.uint8)
 		return image
 
+	#def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
 	def getImage_ContrastEnhanced(self, display_min, display_max, channel=1, sliceNum=None, useMaxProject=False) :
 		"""
-		sliceNum: pass NOne to use self.currentImage
+		sliceNum: pass None to use self.currentImage
 		"""
 		#lut = np.arange(2**16, dtype='uint16')
 		lut = np.arange(2**8, dtype='uint8')
@@ -180,6 +257,9 @@ class bStack:
 			print('   bStack.loadStack() is using tifffile...')
 			with tifffile.TiffFile(self.path) as tif:
 				print('   tif.imagej_metadata:', tif.imagej_metadata)
+				print('   tif.tags:', tif.is_nih)
+				#print('   tif[0].image_description:', tif.image_description)
+				print('   tif.nih_metadata:', tif.nih_metadata)
 				thisChannel = 0
 				loaded_shape = tif.asarray().shape
 				loaded_dtype = tif.asarray().dtype
@@ -189,7 +269,7 @@ class bStack:
 
 				self.stack[thisChannel, :, :, :] = tif.asarray()
 
-				self.header.assignToShape(self.stack.shape)
+				self.header.assignToShape(self.stack)
 				print('      after load tiff, self.stack.shape:', self.stack.shape)
 		else:
 			print('   bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
@@ -264,8 +344,9 @@ class bStack:
 		ijmetadata['Info'] = ijmetadataStr
 
 		resolution = (1./self.header.xVoxel, 1./self.header.yVoxel)
+		zVoxel = self.header.zVoxel
 		metadata = {
-			'spacing': self.header.zVoxel if includeSpacing else 1,
+			'spacing': zVoxel if includeSpacing else 1,
 			'unit': 'um'
 		}
 		# my volumes are zxy, fiji wants TZCYXS
@@ -364,8 +445,8 @@ if __name__ == '__main__':
 		# good to test caiman alignment
 		#path = '/Users/cudmore/box/data/nathan/030119/030119_HCN4-GCaMP8_SAN_phen10uM.oir'
 
-		#print('path:', path)
-
+		path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
+		path = '/Users/cudmore/box/data/nathan/vesselucida/vesselucida_tif/20191017__0001_ch1.tif'
 
 		print('--- bstack main is constructing stack')
 		myStack = bStack(path)
