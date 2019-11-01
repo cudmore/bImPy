@@ -2,12 +2,11 @@
 #Date: 20190628
 
 """
-Very simple video camera viewer. 
+Very simple video camera viewer.
 """
 
 import os, time
 import cv2
-
 
 #
 # start a video stream that runs continuously in its own thread
@@ -62,19 +61,19 @@ while True:
 	winHalfHeight = int(winHeight * 0.5)
 
 	(grabbed, frame) = vs.read()
-	
+
 	if frame is not None:
 		cv2.putText(frame,
-			myText, 
-			(winHalfWidth, winHalfHeight), 
-			font, 
+			myText,
+			(winHalfWidth, winHalfHeight),
+			font,
 			fontScale,
 			fontColor,
 			lineType)
 
 		if playing:
 			cv2.imshow('myWindow',frame)
-		
+
 	# save a snapshop at an interval
 	if playing:
 		nowSeconds = time.time()
@@ -82,7 +81,7 @@ while True:
 			cv2.imwrite(mySaveFilePath, frame)
 
 	keyPress = cv2.waitKey(20) & 0xFF
-	
+
 	# 'q' to exit
 	if keyPress == ord('q'):
 	  break
@@ -96,7 +95,7 @@ while True:
 		else:
 			myText='Paused'
 			#vs.playPause('pause')
-	
+
 	# '+' or '=' to increase
 	# '-' to decrease window size
 	if keyPress == ord('-'):
@@ -110,5 +109,5 @@ while True:
 
 	# keep this here
 	time.sleep(0.001)
-	
+
 cv2.destroyWindow('myWindow')

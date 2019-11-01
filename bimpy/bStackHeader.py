@@ -47,7 +47,8 @@ import bioformats
 import xml
 import xml.dom.minidom # to pretty print
 
-from . import bFileUtil
+import bimpy
+#from bimpy import bFileUtil
 
 class bStackHeader:
 
@@ -57,7 +58,7 @@ class bStackHeader:
 
 		self.initHeader()
 
-		fu = bFileUtil.bFileUtil()
+		fu = bimpy.bFileUtil()
 		convertedStackHeaderPath = fu.getHeaderFileFromRaw(self.path)
 		if convertedStackHeaderPath is not None:
 			# lead from converted stack header .txt file
@@ -277,6 +278,7 @@ class bStackHeader:
 
 			#print('=== StackHeader.readOirHeader() log errors will be here')
 			#
+			print('readOirHeader() self.path:', self.path)
 			metaData = bioformats.get_omexml_metadata(path=self.path)
 			omeXml = bioformats.OMEXML(metaData)
 

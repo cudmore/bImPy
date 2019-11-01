@@ -46,7 +46,7 @@ def convert(path):
 
 				filePath = os.path.join(path, file)
 
-				myStack = bStack.bStack(filePath)
+				myStack = bStack(filePath)
 				myStack.loadHeader()
 				myStack.header.prettyPrint() # print to command line
 				headerList.append(myStack.header.header) # used to generate one csv file for folder

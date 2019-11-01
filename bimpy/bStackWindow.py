@@ -347,10 +347,11 @@ class bStackView(QtWidgets.QGraphicsView):
 		if nodeIdx is None:
 			return
 		if numberOfFlashes>0:
-			x, y, z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
-			self.myNodeSelectionFlash.set_offsets(np.c_[x, y])
-			#
-			QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes-1))
+			if self.mySimpleStack.slabList is not None:
+				x, y, z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
+				self.myNodeSelectionFlash.set_offsets(np.c_[x, y])
+				#
+				QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes-1))
 		else:
 			self.myNodeSelectionFlash.set_offsets(np.c_[[], []])
 		#
@@ -363,12 +364,13 @@ class bStackView(QtWidgets.QGraphicsView):
 		if edgeIdx is None:
 			return
 		if on:
-			theseIndices = self.mySimpleStack.slabList.getEdge(edgeIdx)
-			xMasked = self.mySimpleStack.slabList.y[theseIndices]
-			yMasked = self.mySimpleStack.slabList.x[theseIndices]
-			self.myEdgeSelectionFlash.set_offsets(np.c_[xMasked, yMasked])
-			#
-			QtCore.QTimer.singleShot(20, lambda:self.flashEdge(edgeIdx, False))
+			if self.mySimpleStack.slabList is not None:
+				theseIndices = self.mySimpleStack.slabList.getEdge(edgeIdx)
+				xMasked = self.mySimpleStack.slabList.y[theseIndices]
+				yMasked = self.mySimpleStack.slabList.x[theseIndices]
+				self.myEdgeSelectionFlash.set_offsets(np.c_[xMasked, yMasked])
+				#
+				QtCore.QTimer.singleShot(20, lambda:self.flashEdge(edgeIdx, False))
 		else:
 			self.myEdgeSelectionFlash.set_offsets(np.c_[[], []])
 		#
@@ -381,19 +383,20 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.mySelectionNode = None
 			self.myNodeSelectionPlot.set_offsets(np.c_[[], []])
 		else:
-			self.mySelectedNode = nodeIdx
-			x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
+			if self.mySimpleStack.slabList is not None:
+				self.mySelectedNode = nodeIdx
+				x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
 
-			if snapz:
-				z = self.mySimpleStack.slabList.getNode_zSlice(nodeIdx)
-				self.setSlice(z)
+				if snapz:
+					z = self.mySimpleStack.slabList.getNode_zSlice(nodeIdx)
+					self.setSlice(z)
 
-			self.myEdgeSelectionPlot.set_offsets(np.c_[x, y])
+					self.myEdgeSelectionPlot.set_offsets(np.c_[x, y])
 
-			self.zoomToPoint(x, y)
+					self.zoomToPoint(x, y)
 
-			numberOfFlashes = 1
-			QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes))
+					numberOfFlashes = 1
+					QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes))
 
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
@@ -409,26 +412,27 @@ class bStackView(QtWidgets.QGraphicsView):
 		else:
 			self.mySelectedEdge = edgeIdx
 
-			theseIndices = self.mySimpleStack.slabList.getEdge(edgeIdx)
+			if self.mySimpleStack.slabList is not None:
+				theseIndices = self.mySimpleStack.slabList.getEdge(edgeIdx)
 
-			#print('selectEdge() theseIndices:', theseIndices)
+				#print('selectEdge() theseIndices:', theseIndices)
 
-			# todo: add option to snap to a z
-			# removed this because it was confusing
-			if snapz:
-				'''
-				z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
-				z = int(z)
-				'''
-				z = self.mySimpleStack.slabList.edgeDictList[edgeIdx]['z']
-				z = int(z)
-				self.setSlice(z)
+				# todo: add option to snap to a z
+				# removed this because it was confusing
+				if snapz:
+					'''
+					z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
+					z = int(z)
+					'''
+					z = self.mySimpleStack.slabList.edgeDictList[edgeIdx]['z']
+					z = int(z)
+					self.setSlice(z)
 
-			xMasked = self.mySimpleStack.slabList.y[theseIndices] # flipped
-			yMasked = self.mySimpleStack.slabList.x[theseIndices]
-			self.myEdgeSelectionPlot.set_offsets(np.c_[xMasked, yMasked])
+				xMasked = self.mySimpleStack.slabList.y[theseIndices] # flipped
+				yMasked = self.mySimpleStack.slabList.x[theseIndices]
+				self.myEdgeSelectionPlot.set_offsets(np.c_[xMasked, yMasked])
 
-			QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, True))
+				QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, True))
 
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
@@ -477,68 +481,69 @@ class bStackView(QtWidgets.QGraphicsView):
 			upperz = i - self.options['Tracing']['showTracingAboveSlices']
 			lowerz = i + self.options['Tracing']['showTracingBelowSlices']
 
-			#
-			# nodes
-			zNodeMasked = np.ma.masked_outside(self.mySimpleStack.slabList.nodez, upperz, lowerz)
-			#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
-			xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
-			yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
+			if self.mySimpleStack.slabList is not None:
+				#
+				# nodes
+				zNodeMasked = np.ma.masked_outside(self.mySimpleStack.slabList.nodez, upperz, lowerz)
+				#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
+				xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
+				yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
 
-			maskedNodeDict = {
-				'zNodeMasked': zNodeMasked,
-				'xNodeMasked': xNodeMasked,
-				'yNodeMasked': yNodeMasked,
-			}
-			self.maskedNodes.append(maskedNodeDict)
+				maskedNodeDict = {
+					'zNodeMasked': zNodeMasked,
+					'xNodeMasked': xNodeMasked,
+					'yNodeMasked': yNodeMasked,
+				}
+				self.maskedNodes.append(maskedNodeDict)
 
-			#
-			# edges
-			zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
+				#
+				# edges
+				zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
 
-			#todo: this need to be combined list of all slabs AND nodes,
-			#when we click we can look up which was clicked
-			idMasked = self.mySimpleStack.slabList.id[~zMasked.mask]
-			xMasked = self.mySimpleStack.slabList.y[~zMasked.mask] # swapping
-			yMasked = self.mySimpleStack.slabList.x[~zMasked.mask]
-			maskedEdgeDict = {
-				'idMasked': idMasked,
-				'zMasked': zMasked,
-				'xMasked': xMasked,
-				'yMasked': yMasked,
-			}
-			self.maskedEdges.append(maskedEdgeDict)
+				#todo: this need to be combined list of all slabs AND nodes,
+				#when we click we can look up which was clicked
+				idMasked = self.mySimpleStack.slabList.id[~zMasked.mask]
+				xMasked = self.mySimpleStack.slabList.y[~zMasked.mask] # swapping
+				yMasked = self.mySimpleStack.slabList.x[~zMasked.mask]
+				maskedEdgeDict = {
+					'idMasked': idMasked,
+					'zMasked': zMasked,
+					'xMasked': xMasked,
+					'yMasked': yMasked,
+				}
+				self.maskedEdges.append(maskedEdgeDict)
 
-			#
-			# slabs/edges dead ends
-			maskedDeadEndDict = {
-				'zMasked': [],
-				'xMasked': [],
-				'yMasked': [],
-			}
-			for edgeDict in self.mySimpleStack.slabList.edgeDictList:
-				if edgeDict['preNode'] == -1:
-					# include dead end
-					# get the z of the first slab
-					firstSlabIdx = edgeDict['slabList'][0]
-					tmpz = self.mySimpleStack.slabList.z[firstSlabIdx]
-					if tmpz > upperz and tmpz < lowerz:
-						tmpx = self.mySimpleStack.slabList.x[firstSlabIdx]
-						tmpy = self.mySimpleStack.slabList.y[firstSlabIdx]
-						maskedDeadEndDict['yMasked'].append(tmpx) # swapping
-						maskedDeadEndDict['xMasked'].append(tmpy)
-						maskedDeadEndDict['zMasked'].append(tmpz)
-				if edgeDict['postNode'] == -1:
-					# include dead end
-					# get the z of the last slab
-					lastSlabIdx = edgeDict['slabList'][-1]
-					tmpz = self.mySimpleStack.slabList.z[lastSlabIdx]
-					if tmpz > upperz and tmpz < lowerz:
-						tmpx = self.mySimpleStack.slabList.x[lastSlabIdx]
-						tmpy = self.mySimpleStack.slabList.y[lastSlabIdx]
-						maskedDeadEndDict['yMasked'].append(tmpx) # swapping
-						maskedDeadEndDict['xMasked'].append(tmpy)
-						maskedDeadEndDict['zMasked'].append(tmpz)
-			self.maskedDeadEnds.append(maskedDeadEndDict)
+				#
+				# slabs/edges dead ends
+				maskedDeadEndDict = {
+					'zMasked': [],
+					'xMasked': [],
+					'yMasked': [],
+				}
+				for edgeDict in self.mySimpleStack.slabList.edgeDictList:
+					if edgeDict['preNode'] == -1:
+						# include dead end
+						# get the z of the first slab
+						firstSlabIdx = edgeDict['slabList'][0]
+						tmpz = self.mySimpleStack.slabList.z[firstSlabIdx]
+						if tmpz > upperz and tmpz < lowerz:
+							tmpx = self.mySimpleStack.slabList.x[firstSlabIdx]
+							tmpy = self.mySimpleStack.slabList.y[firstSlabIdx]
+							maskedDeadEndDict['yMasked'].append(tmpx) # swapping
+							maskedDeadEndDict['xMasked'].append(tmpy)
+							maskedDeadEndDict['zMasked'].append(tmpz)
+					if edgeDict['postNode'] == -1:
+						# include dead end
+						# get the z of the last slab
+						lastSlabIdx = edgeDict['slabList'][-1]
+						tmpz = self.mySimpleStack.slabList.z[lastSlabIdx]
+						if tmpz > upperz and tmpz < lowerz:
+							tmpx = self.mySimpleStack.slabList.x[lastSlabIdx]
+							tmpy = self.mySimpleStack.slabList.y[lastSlabIdx]
+							maskedDeadEndDict['yMasked'].append(tmpx) # swapping
+							maskedDeadEndDict['xMasked'].append(tmpy)
+							maskedDeadEndDict['zMasked'].append(tmpz)
+				self.maskedDeadEnds.append(maskedDeadEndDict)
 
 			#print('slice', i, '_preComputeAllMasks() len(x):', len(xMasked), 'len(y)', len(yMasked))
 
@@ -561,8 +566,9 @@ class bStackView(QtWidgets.QGraphicsView):
 				downSlices = self.options['Stack']['downSlidingZSlices']
 				image = self.mySimpleStack.getSlidingZ(index, self.displayThisStack, upSlices, downSlices, self.minContrast, self.maxContrast)
 			else:
-				print('index:', index)
+				print('setSlice() index:', index)
 				#image = self.mySimpleStack.getImage_ContrastEnhanced(self.minContrast, self.maxContrast, channel=1, sliceNum=index, useMaxProject=False)
+				# works
 				image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
 
 			if self.imgplot is None:

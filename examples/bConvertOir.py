@@ -22,13 +22,14 @@ Usage
 
 import os, sys, time
 
+import javabridge
+
 import bioformats
 
 print('bioformats.JARS:', bioformats.JARS)
 
-import javabridge
-
-from bimpy import bStack
+#from bimpy import bStack
+import bimpy
 
 if __name__ == '__main__':
 
@@ -46,7 +47,7 @@ if __name__ == '__main__':
 		log4j.enableLogging()
 		log4j.setRootLevel("WARN")
 
-		myStack = bStack.bStack(path)
+		myStack = bimpy.bStack.bStack(path)
 
 		savePath = myStack.convert_getSaveFile(channelNumber=1)
 

@@ -6,11 +6,14 @@ from tkinter.filedialog import askdirectory
 import javabridge
 import bioformats
 
-from bimpy import bStack
+# we can't do this, we need to import the entire bimpy package !!!
+# this took me forever to figure out and in the end is simple ...
+#from bimpy import bStack
+import bimpy
 
 covertIfTifExists = False
 
-def convert(path):
+def bConvert(path):
 
 	#
 	# build a list of .oir files that do not already have converted .tif
@@ -22,8 +25,10 @@ def convert(path):
 
 			filePath = os.path.join(path, file)
 
-			myStack = bStack.bStack(filePath)
+			myStack = bimpy.bStack(filePath, loadImages=False)
 			savePath = myStack.convert_getSaveFile(channelNumber=1)
+
+			print('savePath:', savePath)
 
 			if covertIfTifExists or not os.path.isfile(savePath):
 				#print('   output does not exist')
@@ -51,7 +56,7 @@ def convert(path):
 
 			for idx, oirFile in enumerate(convertTheseOirFiles):
 				print(str(idx+1), 'of', len(convertTheseOirFiles), 'converting:', oirFile)
-				aStack = bStack.bStack(oirFile)
+				aStack = bimpy.bStack(oirFile)
 				aStack.convert()
 
 if __name__ == '__main__':
@@ -73,7 +78,7 @@ if __name__ == '__main__':
 			path = askdirectory(initialdir = "/",title = "Select a folder")
 
 	if os.path.isdir(path):
-		convert(path)
+		bConvert(path)
 		stopSeconds = time.time()
 		print('bConvertFolder finished in', round(stopSeconds-startSeconds), 'seconds.')
 	else:

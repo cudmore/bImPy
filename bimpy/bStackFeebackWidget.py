@@ -30,15 +30,15 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 	def slidingz_statechange(self):
 		#self.slidingz_checkbox.setTristate(False)
 		print('sender:', self.sender().property('bobID'))
-		self.mainWindow.signal('toggle sliding z', noRecursion=True)
+		self.mainWindow.signal('toggle sliding z', recursion=False)
 
 	def checkbox_statechange(self):
 		#self.slidingz_checkbox.setTristate(False)
 		print('bStackFeedbackWidget.checkbox_statechange() sender:', self.sender().property('bobID'))
-		#self.mainWindow.signal('toggle sliding z', noRecursion=True)
+		#self.mainWindow.signal('toggle sliding z', recursion=False)
 		bobID = self.sender().property('bobID')
 		if bobID == 'Sliding Z':
-			self.mainWindow.signal('toggle sliding z', noRecursion=True)
+			self.mainWindow.signal('toggle sliding z', recursion=False)
 
 	def buildUI(self):
 

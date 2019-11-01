@@ -11,9 +11,12 @@ import skimage
 import tifffile
 import bioformats
 
+import bimpy
+'''
 from bimpy import bSlabList
 from bimpy import bStackHeader
 from bimpy import bFileUtil
+'''
 
 class bLockFile:
 	"""
@@ -48,10 +51,11 @@ class bStack:
 		self.stack = None
 
 		# load vesselucida analysis from .xml file
-		self.slabList = bSlabList(self.path)
-		if self.slabList.x is None:
+		self.slabList = bimpy.bSlabList(self.path)
+		if len(self.slabList.x) == 0:
 			self.slabList = None
 
+		# load image data
 		if loadImages:
 			self.loadStack()
 
@@ -118,6 +122,28 @@ class bStack:
 			sliceNum = self.currentSlice
 		return self.stack[channelIdx,sliceNum,:,:]
 
+	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
+
+		startSlice = sliceNumber - upSlices
+		if startSlice < 0:
+			startSlice = 0
+		stopSlice = sliceNumber + downSlices
+		if stopSlice > self.numImages - 1:
+			stopSlice = self.numImages - 1
+
+		if thisStack == 'ch1':
+			img = self.stack[0, startSlice:stopSlice, :, :].copy()
+		elif thisStack == 'mask':
+			img = self._imagesMask[startSlice:stopSlice, :, :].copy()
+		elif thisStack == 'skel':
+			img = self._imagesSkel[startSlice:stopSlice, :, :].copy()
+		else:
+			print('error: getSlidingZ() got bad thisStack:', thisStack)
+
+		img = np.max(img, axis=0)
+
+		return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
+
 	def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
 		"""
 		thisStack in ['ch1', 'ch2', 'ch3', 'mask', 'skel']
@@ -148,7 +174,7 @@ class bStack:
 		if minContrast is None:
 			minContrast = 0
 		if maxContrast is None:
-			maxContrast = 2 ** self.bitDepth - 1
+			maxContrast = maxInt #2 ** self.bitDepth - 1
 		if autoContrast:
 			minContrast = np.min(img)
 			maxContrast = np.max(img)
@@ -180,8 +206,9 @@ class bStack:
 		image = np.array(image, dtype=np.uint8, copy=True)
 		image.clip(display_min, display_max, out=image)
 		image -= display_min
-		np.floor_divide(image, (display_max - display_min + 1) / 256,
-						out=image, casting='unsafe')
+		np.floor_divide(image, (display_max - display_min + 1) / (2**self.bitDepth), out=image, casting='unsafe')
+		#np.floor_divide(image, (display_max - display_min + 1) / 256,
+		#				out=image, casting='unsafe')
 		#return image.astype(np.uint8)
 		return image
 
@@ -191,7 +218,7 @@ class bStack:
 		sliceNum: pass None to use self.currentImage
 		"""
 		#lut = np.arange(2**16, dtype='uint16')
-		lut = np.arange(2**8, dtype='uint8')
+		lut = np.arange(2**self.bitDepth, dtype='uint8')
 		lut = self._display0(lut, display_min, display_max)
 		if useMaxProject:
 			# need to specify channel !!!!!!
@@ -205,13 +232,13 @@ class bStack:
 	def loadHeader(self):
 		if self.header is None:
 			if os.path.isfile(self.path):
-				self.header = bStackHeader.bStackHeader(self.path)
+				self.header = bimpy.bStackHeader(self.path)
 			else:
 				print('bStack.loadHeader() did not find self.path:', self.path)
 
 	def loadMax(self, channel=1, convertTo8Bit=False):
 		#print('bStack.loadMax() channel:', channel, 'self.path:', self.path)
-		fu = bFileUtil.bFileUtil()
+		fu = bimpy.bFileUtil()
 		maxFile = fu.getMaxFileFromRaw(self.path, theChannel=channel)
 		#print('bStack.loadMax() maxFile:', maxFile)
 
@@ -257,7 +284,14 @@ class bStack:
 			print('   bStack.loadStack() is using tifffile...')
 			with tifffile.TiffFile(self.path) as tif:
 				tag = tif.pages[0].tags['XResolution']
-				print('tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+				print('   tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+				xVoxel = tag.value[1] / tag.value[0]
+				print('   xVoxel from XResolutions:', xVoxel)
+
+				tag = tif.pages[0].tags['YResolution']
+				print('   tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+				yVoxel = tag.value[1] / tag.value[0]
+				print('   yVoxel from YResolutions:', yVoxel)
 
 				print('   tif.imagej_metadata:', tif.imagej_metadata)
 				print('   tif.tags:', tif.is_nih)
@@ -386,6 +420,10 @@ class bStack:
 			#tifffile.imwrite(maxFilePath, maxIntensityProjection, ijmetadata=ijmetadata)
 			#tifffile.imwrite(maxFilePath, maxIntensityProjection)
 			self._save(maxFilePath, maxIntensityProjection, includeSpacing=False)
+
+	def saveAnnotations(self):
+		if self.slabList is not None:
+			self.slabList.save()
 
 	#
 	# File name utilities
