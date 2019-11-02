@@ -254,6 +254,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			imageStackHeight, imageStackWidth = videoImage.shape
 
 			myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
+			#myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_RGB32)
 
 			pixmap = QtGui.QPixmap(myQImage)
 			pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
@@ -696,7 +697,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			# CHANGE TO GENERALIZE
 			#if item.myLayer == 'Video Layer':
 			#if item.myLayer == '2P Max Layer':
-			print('item.myLayer:', item.myLayer)
+			#print('item.myLayer:', item.myLayer)
 
 			# decide if we adjust this item
 			# noramlly we are using layers
@@ -788,7 +789,7 @@ if __name__ == '__main__':
 		w = MainWindow()
 		w.resize(640, 480)
 		w.show()
-		#sys.exit(app.exec_())
+		sys.exit(app.exec_())
 	except Exception as e:
 		print('bCanvasApp __main__ exception')
 		print(traceback.format_exc())
@@ -796,10 +797,13 @@ if __name__ == '__main__':
 		print('   2')
 		myJavaBridge.stop()
 		print('   3')
-		sys.exit(app.exec_())
+		#sys.exit(app.exec_())
 		print('   4')
-		raise
+		#raise
 		print('   5')
 	finally:
+		print('   6')
 		myJavaBridge.stop()
-		sys.exit(app.exec_())
+		print('   7')
+		#sys.exit(app.exec_())
+		print('   8')

@@ -119,7 +119,11 @@ class bStackHeader:
 		return self.header['zVoxel']
 	@property
 	def bitDepth(self):
-		return self.header['bitsPerPixel']
+		bitsPerPixel = self.header['bitsPerPixel']
+		if bitsPerPixel is None or bitsPerPixel=='':
+			print('   error: bStackHeader.bitDepth got bad bitsPerPixel:', bitsPerPixel, 'returning 8, path:', self.path)
+			bitsPerPixel = 8
+		return bitsPerPixel
 
 	def _loadHeaderFromConverted(self, convertedStackHeaderPath):
 		"""Load header from coverted header .txt file"""
@@ -251,10 +255,20 @@ class bStackHeader:
 	def assignToShape(self, stack):
 		"""shape is (channels, slices, x, y)"""
 		shape = stack.shape
-		self.header['numChannels'] = shape[0]
-		self.header['numImages'] = shape[1]
-		self.header['xPixels'] = shape[2]
-		self.header['yPixels'] = shape[3]
+		if len(shape)==3:
+			# single plane image
+			self.header['numChannels'] = shape[0]
+			self.header['numImages'] = 1
+			self.header['xPixels'] = shape[1]
+			self.header['yPixels'] = shape[2]
+		elif len(shape)==4:
+			# 3d image volume
+			self.header['numChannels'] = shape[0]
+			self.header['numImages'] = shape[1]
+			self.header['xPixels'] = shape[2]
+			self.header['yPixels'] = shape[3]
+		else:
+			print('   error: bStackHeader.assignToShape() got bad shape:', shape)
 		dtype = stack.dtype
 		if dtype == 'uint8':
 			bitDepth = 8

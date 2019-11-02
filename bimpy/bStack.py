@@ -120,7 +120,13 @@ class bStack:
 		channelIdx = channel - 1
 		if sliceNum is None:
 			sliceNum = self.currentSlice
-		return self.stack[channelIdx,sliceNum,:,:]
+		if len(self.stack.shape)==3:
+			# single plane image
+			return self.stack[channelIdx,:,:]
+		elif len(self.stack.shape)==4:
+			return self.stack[channelIdx,sliceNum,:,:]
+		else:
+			print('   error: bStack.getImage() got bad stack shape:', self.stack.shape)
 
 	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
 
@@ -222,6 +228,7 @@ class bStack:
 		lut = self._display0(lut, display_min, display_max)
 		if useMaxProject:
 			# need to specify channel !!!!!!
+			#print('self.maxProjectImage.shape:', self.maxProjectImage.shape, 'max:', np.max(self.maxProjectImage))
 			return np.take(lut, self.maxProjectImage)
 		else:
 			return np.take(lut, self.getImage(channel=channel, sliceNum=sliceNum))
@@ -244,14 +251,18 @@ class bStack:
 
 		# load the file
 		if os.path.isfile(maxFile):
+			print('loadMax() max file in:', maxFile)
 			with tifffile.TiffFile(maxFile) as tif:
 				theArray = tif.asarray()
 			if convertTo8Bit:
+				print('   convert to 8-bit')
 				theArray = skimage.img_as_ubyte(theArray, force_copy=False)
 			# need to specify channel !!!!!!
+			print('   theArray.shape', theArray.shape, np.max(theArray))
 			self.maxProjectImage = theArray
 			return theArray
 		else:
+			print('loadMax() ERROR max file in:', maxFile, 'path:', self.path)
 			return None
 
 	def loadStack(self):
@@ -284,13 +295,21 @@ class bStack:
 			print('   bStack.loadStack() is using tifffile...')
 			with tifffile.TiffFile(self.path) as tif:
 				tag = tif.pages[0].tags['XResolution']
-				print('   tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
-				xVoxel = tag.value[1] / tag.value[0]
+				print('   XResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+				if tag.value[0]>0 and tag.value[1]>0:
+					xVoxel = tag.value[1] / tag.value[0]
+				else:
+					print('   error, got zero tag value?')
+					xVoxel = 1
 				print('   xVoxel from XResolutions:', xVoxel)
 
 				tag = tif.pages[0].tags['YResolution']
-				print('   tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
-				yVoxel = tag.value[1] / tag.value[0]
+				print('   YResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+				if tag.value[0]>0 and tag.value[1]>0:
+					yVoxel = tag.value[1] / tag.value[0]
+				else:
+					print('   error, got zero tag value?')
+					yVoxel = 1
 				print('   yVoxel from YResolutions:', yVoxel)
 
 				print('   tif.imagej_metadata:', tif.imagej_metadata)
@@ -304,8 +323,14 @@ class bStack:
 				newShape = (channels,) + loaded_shape
 				self.stack = np.zeros(newShape, dtype=loaded_dtype)
 
-				self.stack[thisChannel, :, :, :] = tif.asarray()
-
+				if len(loaded_shape)==2:
+					# single plane image
+					self.stack[thisChannel, :, :] = tif.asarray()
+				elif len(loaded_shape)==3:
+					#3d stack
+					self.stack[thisChannel, :, :, :] = tif.asarray()
+				else:
+					print('   error: got bad shape:', loaded_shape)
 				self.header.assignToShape(self.stack)
 				print('      after load tiff, self.stack.shape:', self.stack.shape)
 		else:
@@ -323,17 +348,22 @@ class bStack:
 							t = imageIdx
 						else:
 							print('      ****** Error: bStack.loadStack() did not get valid self.header.stackType:', self.header.stackType)
+							z = 0
+							t = imageIdx
 						#print('imageIdx:', imageIdx)
 						image = reader.read(c=c, t=t, z=z, rescale=False) # returns numpy.ndarray
+						#image = reader.read(c=c, rescale=False) # returns numpy.ndarray
 						loaded_shape = image.shape # we are loading single image, this will be something like (512,512)
 						loaded_dtype = image.dtype
 						newShape = (channels,self.numImages) + loaded_shape
 						# resize
-						if imageIdx == 0:
+						#print('      oir loaded_shape:', loaded_shape, self.path)
+						if channelIdx==0 and imageIdx == 0:
 							print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype, 'newShape:', newShape)
 							self.stack = np.zeros(newShape, dtype=loaded_dtype)
 						# assign
 						self.stack[channelIdx,imageIdx,:,:] = image
+						self.header.assignToShape(self.stack)
 
 	#
 	# Saving

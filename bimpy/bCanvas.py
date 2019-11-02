@@ -53,6 +53,9 @@ class bCanvas:
 			if line.startswith('numSlices'):
 				import_numSlicesList = line.split(',')
 
+			if line.startswith('bitsPerPixel'):
+				import_bitsPerPixel = line.split(',')
+
 			if line.startswith('pixelsPerLine'):
 				import_pixelsPerLine = line.split(',')
 			if line.startswith('linesPerFrame'):
@@ -79,6 +82,9 @@ class bCanvas:
 				self.import_stackDict[stack]['stackType'] = import_stackTypeList[idx]
 				self.import_stackDict[stack]['numImages'] = int(import_numSlicesList[idx]) # just for video
 				self.import_stackDict[stack]['numChannels'] = 1 # just for video
+
+				if len(import_bitsPerPixel[idx]) > 0:
+					self.import_stackDict[stack]['bitsPerPixel'] = int(import_bitsPerPixel[idx])
 
 				self.import_stackDict[stack]['xPixels'] = int(import_pixelsPerLine[idx]) # just for video
 				self.import_stackDict[stack]['yPixels'] = int(import_linesPerFrame[idx]) # just for video
@@ -144,7 +150,7 @@ class bCanvas:
 				continue
 
 			#print('bCanvas.buildFromScratch() scopeFilePath:', scopeFilePath)
-			tmpStack = bStack(scopeFilePath)
+			tmpStack = bStack(scopeFilePath, loadImages=False)
 			tmpStack.loadHeader()
 
 			#print('tmpStack.header.prettyPrint():', tmpStack.header.prettyPrint())

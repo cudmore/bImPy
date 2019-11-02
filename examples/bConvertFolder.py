@@ -56,7 +56,7 @@ def bConvert(path):
 
 			for idx, oirFile in enumerate(convertTheseOirFiles):
 				print(str(idx+1), 'of', len(convertTheseOirFiles), 'converting:', oirFile)
-				aStack = bimpy.bStack(oirFile)
+				aStack = bimpy.bStack(oirFile, loadImages=False)
 				aStack.convert()
 
 if __name__ == '__main__':
