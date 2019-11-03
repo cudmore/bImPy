@@ -32,6 +32,12 @@
 # a number of cameras, NodeMapCallback serves as a good introduction to
 # programming with callbacks and events, and SaveToAvi exhibits video creation.
 
+"""
+This is a script to acquire video from a Point Gray Video camera.
+
+ToDo: Wrap this in a class, make sure it runs in its own thread, lots more ...
+"""
+
 import os, time
 import PySpin
 
@@ -57,7 +63,7 @@ def myCloseCallback(evt):
 	'''
 	cam.EndAcquisition()
 	cam.DeInit()
-	'''		
+	'''
 
 image_data = None
 imgplot = None
@@ -72,7 +78,7 @@ def myUpdate(i):
 	global image_data
 	imgplot.set_data(image_data)
 	return imgplot,
-	
+
 def acquire_images(cam, nodemap, nodemap_tldevice):
 	"""
 	This function acquires and saves 10 images from a device.
@@ -162,7 +168,7 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 			device_serial_number = node_device_serial_number.GetValue()
 			print('Device serial number retrieved as %s...' % device_serial_number)
 
-		
+
 		# make a figure
 		#20190702 was here
 		"""
@@ -176,11 +182,11 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 		thismanager = plt.get_current_fig_manager()
 		thismanager.window.wm_geometry("+20+20")
 		#plt.get_current_fig_manager().window.setGeometry(winX, winY, winWidth, winHeight)
-		
+
 		myFig.canvas.mpl_connect('close_event', myCloseCallback)
 		myAxes = myFig.add_subplot(1,1,1)
 		"""
-		
+
 		# 20190702 new
 		playing = True
 
@@ -219,7 +225,7 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 		"""
 		plt.pause(.1)
 		"""
-		
+
 		# Retrieve, convert, and save images
 		imgplot = None
 		#for i in range(NUM_IMAGES):
@@ -280,7 +286,7 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 					else:  # if serial number is empty
 						filename = 'Acquisition-%d.jpg' % i
 					'''
-					
+
 					#  Save image
 					#
 					#  *** NOTES ***
@@ -294,21 +300,21 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 					global image_data
 					image_data = image_result.GetNDArray() # get as numpy array
 					#print('image_data.shape:', image_data.shape)
-	
+
 					now = time.time()
 					if now > lastSaveSeconds + mySaveInterval:
 						# save the image
 						print('saving image at:', now)
 						image_converted.Save(myFilename)
 						lastSaveSeconds = now
-						
+
 					# 20190702 removed
 					"""
 					if imgplot is None:
 						print('plotting first image')
 						imgplot = myAxes.imshow(image_data, aspect='auto')
 						imgplot.set_cmap('gray')
-						plt.axis('off')						
+						plt.axis('off')
 						lastFrameSeconds = now
 					else:
 						'''
@@ -321,9 +327,9 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 							#myFig.canvas.draw_idle()
 							#plt.pause(0.0001)
 							lastFrameSeconds = now
-					
+
 					"""
-					
+
 					# 20190702 new
 					if not got_cv_width_height:
 						winWidth = width
@@ -331,14 +337,14 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 						winHalfWidth = int(width * 0.5)
 						winHalfHeight = int(height * 0.5)
 						got_cv_width_height = True
-						
+
 					#if frame is not None:
 					if True:
 						"""
 						cv2.putText(frame,
-							myText, 
-							(winHalfWidth, winHalfHeight), 
-							font, 
+							myText,
+							(winHalfWidth, winHalfHeight),
+							font,
 							fontScale,
 							fontColor,
 							lineType)
@@ -360,19 +366,19 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 						winHeight = int(winHeight * 1.2)
 						cv2.resizeWindow('myWindow', winWidth, winHeight)
 					# 20190702 end new
-					
+
 					if now - lastCameraFrameSeconds > 0:
 						print('fps:', 1 / (now - lastCameraFrameSeconds), 'width:', width, 'height:', height)
 					lastCameraFrameSeconds = now
-					
+
 					#time.sleep(0.01)
-					
+
 					#plt.pause(.05)
-					
+
 					#print('i:', i)
 					#plt.draw()
 					#plt.show()
-					
+
 
 					#  Release image
 					#
@@ -389,14 +395,14 @@ def acquire_images(cam, nodemap, nodemap_tldevice):
 			except KeyboardInterrupt as ex:
 				#cam.EndAcquisition()
 				return False
-				
+
 		#  End acquisition
 		#
 		#  *** NOTES ***
 		#  Ending acquisition appropriately helps ensure that devices clean up
 		#  properly and do not need to be power-cycled to maintain integrity.
 		cam.EndAcquisition()
-	
+
 	except PySpin.SpinnakerException as ex:
 		print('Error: %s' % ex)
 		return False
@@ -540,13 +546,13 @@ def main():
 	# cleaned up when going out of scope.
 	# The usage of del is preferred to assigning the variable to None.
 	del cam
-	
+
 	# Clear camera list before releasing system
 	cam_list.Clear()
-	
+
 	# Release system instance
 	system.ReleaseInstance()
-	
+
 	#input('Done! Press Enter to exit...')
 	print('Done!!!')
 	return result

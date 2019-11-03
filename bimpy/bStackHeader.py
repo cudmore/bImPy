@@ -4,38 +4,46 @@
 """
 Load converted headers with bStackHeader._loadHeaderFromConverted(scopeFIlePath)
 
-Converted header .txt file looks like this
+Converted header .txt file is in json format and looks like this
 
-path=e:\\cudmore\\data\\20190429\\20190429_tst2\\20190429_tst2_0001.oir
-date=2019-04-29
-time=13:29:47.578-07:00
-fileVersion=2.1.2.3
-programVersion=2.3.1.163
-laserWavelength=920.0
-pmt1_gain=1.0
-pmt1_offset=0.0
-pmt1_voltage=499.0
-pmt2_gain=None
-pmt2_offset=None
-pmt2_voltage=None
-scanner=Resonant
-zoom=1.0
-bitsPerPixel=10
-numChannels=2
-stackType=TSeries
-xPixels=512
-yPixels=512
-numImages=500
-numFrames=500
-xVoxel=0.994368911043582
-yVoxel=0.994368911043582
-zVoxel=1.0
-frameSpeed=1086.534
-lineSpeed=2.118
-pixelSpeed=0.002
-xMotor=None
-yMotor=None
-zMotor=None
+{
+    "path": "/Users/cudmore/box/data/testoir/20190514_0001.oir",
+    "date": "2019-05-14",
+    "time": "15:43:24.544-07:00",
+    "olympusFileVersion": "2.1.2.3",
+    "olympusProgramVersion": "2.3.1.163",
+    "laserWavelength": "920.0",
+    "laserPercent": "7.7",
+    "pmtGain1": "1.0",
+    "pmtOffset1": "0",
+    "pmtVoltage1": "557",
+    "pmtGain2": "1.0",
+    "pmtOffset2": "0",
+    "pmtVoltage2": "569",
+    "pmtGain3": "1.0",
+    "pmtOffset3": "0",
+    "pmtVoltage3": "557",
+    "scanner": "Galvano",
+    "zoom": "2.0",
+    "bitsPerPixel": 16,
+    "numChannels": 1,
+    "stackType": "TSeries",
+    "xPixels": 218,
+    "yPixels": 148,
+    "numImages": 200,
+    "numFrames": 200,
+    "xVoxel": 0.497184455521791,
+    "yVoxel": 0.497184455521791,
+    "zVoxel": 1.0,
+    "umWidth": 73.58329941722508,
+    "umHeight": 108.38621130375044,
+    "frameSpeed": "307.19",
+    "lineSpeed": "1.39",
+    "pixelSpeed": "0.002",
+    "xMotor": null,
+    "yMotor": null,
+    "zMotor": null
+}
 """
 
 import os, sys, json
@@ -50,9 +58,14 @@ import xml.dom.minidom # to pretty print
 import bimpy
 #from bimpy import bFileUtil
 
+import logging
+logger = logging.getLogger(__name__)
+
 class bStackHeader:
 
 	def __init__(self, path):
+
+		logger.info('constructor')
 
 		self.path = path
 

@@ -5,7 +5,7 @@
 Manage annotations for one stack
 """
 
-class bStackAnnotations
+class bStackAnnotations:
 
 	def __init__(self, stack):
 		self._stack = stack

@@ -1,26 +1,40 @@
 # Author: Robert Cudmore
 # Date: 20190704
 
-import bioformats
+import time
+
+import logging
+logger = logging.getLogger(__name__)
+
+import skimage # this is needed or else javabridge fails to import ???
 import javabridge
+import bioformats
 
 class bJavaBridge:
-	def __init(self):
+	"""
+	Encapsulates javabridge to be able to use bioformats
+	"""
+	def __init__(self):
 		self.isRunning = False
 	def start(self):
-		javabridge.start_vm(run_headless=True, class_path=bioformats.JARS)
-		self.isRunning = True
+		if self.isRunning:
+			print('javabridge already running')
+		else:
+			startTime = time.time()
+			javabridge.start_vm(run_headless=True, class_path=bioformats.JARS)
+			stopTime = time.time()
+			print('bJavaBridge.start() took', round(stopTime - startTime,2), 'seconds to start.')
+			self.isRunning = True
 	def stop(self):
-		javabridge.kill_vm()
-		self.isRunning = False
-		
+		if self.isRunning:
+			javabridge.kill_vm()
+			self.isRunning = False
+		else:
+			print('javabridge is not running')
+
 if __name__ == '__main__':
-	import time
 	jb = bJavaBridge()
-	
-	startTime = time.time()
+
 	jb.start()
-	stopTime = time.time()
-	print('took this seconds to start:', stopTime - startTime)
-	
+
 	jb.stop()

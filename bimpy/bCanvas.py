@@ -4,12 +4,11 @@
 import os, sys, json
 from collections import OrderedDict
 
-from bStack import bStack
-#from bStack import bStack
-#from bVideoFile import bVideoFile
+import bimpy
 
 class bCanvas:
 	"""
+	A visuospatial convas that brings together different light paths of a scope.
 	"""
 	def __init__(self,filePath='', folderPath=''):
 		self._filePath = filePath
@@ -121,7 +120,7 @@ class bCanvas:
 			#videoTif = self.openVideoFile(videoFilePath)
 			# 20190708, was this
 			#videoFile = bVideoFile(self, videoFilePath)
-			videoFile = bStack(videoFilePath)
+			videoFile = bimpy.bStack(videoFilePath)
 			videoFile.loadHeader() # at least makes default bStackHeader()
 			#videoFile.getHeaderFromDict(self.import_stackDict)
 			videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
@@ -150,7 +149,7 @@ class bCanvas:
 				continue
 
 			#print('bCanvas.buildFromScratch() scopeFilePath:', scopeFilePath)
-			tmpStack = bStack(scopeFilePath, loadImages=False)
+			tmpStack = bimpy.bStack(scopeFilePath, loadImages=False)
 			tmpStack.loadHeader()
 
 			#print('tmpStack.header.prettyPrint():', tmpStack.header.prettyPrint())

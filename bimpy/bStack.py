@@ -3,20 +3,21 @@
 
 import os, sys
 from collections import OrderedDict
-
 import numpy as np
-
 import skimage
-
 import tifffile
+import javabridge
 import bioformats
 
+import logging
+logLevel = 'DEBUG' #('ERROR, WARNING', 'INFO', 'DEBUG')
+filename = 'bimpy.log'
+logging.basicConfig(filename=filename,
+	filemode='w',
+	level=logLevel,
+	format='%(levelname)s - %(module)s.%(funcName)s() line %(lineno)d - %(message)s')
+
 import bimpy
-'''
-from bimpy import bSlabList
-from bimpy import bStackHeader
-from bimpy import bFileUtil
-'''
 
 class bLockFile:
 	"""
@@ -34,9 +35,10 @@ class bLockFile:
 
 class bStack:
 	"""
-	Manages a stack or time-series of images
+	Manages a 3D image stack or time-series movie of images
 	"""
 	def __init__(self, path='', loadImages=True):
+		logging.info('constructor')
 		self.path = path # path to file
 		self._fileName = os.path.basename(path)
 

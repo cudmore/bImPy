@@ -1,11 +1,14 @@
 import os, math
 import numpy as np
+import pandas as pd
 import statistics # to get median value from a list of numbers
 from xml.dom import minidom # to load vesselucida xml file
 
 class bSlabList:
 	"""
-	full list of all points in a vascular tracing
+	Full list of all points in a vascular tracing
+
+	This should work for both Vesselucida and output of DeepVess
 	"""
 	def __init__(self, tifPath):
 
@@ -45,7 +48,7 @@ class bSlabList:
 			#return
 			pass
 		else:
-			df = pd.read_csv(pointFilePath)
+			df = pd.read_csv(slabFilePath)
 
 			nSlabs = len(df.index)
 			#self.id = np.full(nSlabs, np.nan) #df.iloc[:,0].values # each point/slab will have an edge id
@@ -55,7 +58,13 @@ class bSlabList:
 			self.y = df.iloc[:,1].values
 			self.z = df.iloc[:,2].values
 
-			print('tracing z max:', np.nanmax(self.z))
+			self.orig_x = self.x
+			self.orig_y = self.y
+			self.orig_z = self.z
+
+			print('file:', slabFilePath)
+			print('   len(self.x)', len(self.x))
+			print('   tracing z max:', np.nanmax(self.z))
 
 		self.loadVesselucida_xml()
 
