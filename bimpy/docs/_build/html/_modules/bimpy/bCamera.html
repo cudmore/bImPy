@@ -1,0 +1,658 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>bimpy.bCamera &#8212; bImPy 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for bimpy.bCamera</h1><div class="highlight"><pre>
+<span></span><span class="c1"># coding=utf-8</span>
+<span class="c1"># =============================================================================</span>
+<span class="c1">#  Copyright © 2017 FLIR Integrated Imaging Solutions, Inc. All Rights Reserved.</span>
+<span class="c1">#</span>
+<span class="c1">#  This software is the confidential and proprietary information of FLIR</span>
+<span class="c1">#  Integrated Imaging Solutions, Inc. (&quot;Confidential Information&quot;). You</span>
+<span class="c1">#  shall not disclose such Confidential Information and shall use it only in</span>
+<span class="c1">#  accordance with the terms of the license agreement you entered into</span>
+<span class="c1">#  with FLIR Integrated Imaging Solutions, Inc. (FLIR).</span>
+<span class="c1">#</span>
+<span class="c1">#  FLIR MAKES NO REPRESENTATIONS OR WARRANTIES ABOUT THE SUITABILITY OF THE</span>
+<span class="c1">#  SOFTWARE, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE</span>
+<span class="c1">#  IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR</span>
+<span class="c1">#  PURPOSE, OR NON-INFRINGEMENT. FLIR SHALL NOT BE LIABLE FOR ANY DAMAGES</span>
+<span class="c1">#  SUFFERED BY LICENSEE AS A RESULT OF USING, MODIFYING OR DISTRIBUTING</span>
+<span class="c1">#  THIS SOFTWARE OR ITS DERIVATIVES.</span>
+<span class="c1"># =============================================================================</span>
+<span class="c1">#</span>
+<span class="c1"># Acquisition.py shows how to acquire images. It relies on</span>
+<span class="c1"># information provided in the Enumeration example. Also, check out the</span>
+<span class="c1"># ExceptionHandling and NodeMapInfo examples if you haven&#39;t already.</span>
+<span class="c1"># ExceptionHandling shows the handling of standard and Spinnaker exceptions</span>
+<span class="c1"># while NodeMapInfo explores retrieving information from various node types.</span>
+<span class="c1">#</span>
+<span class="c1"># This example touches on the preparation and cleanup of a camera just before</span>
+<span class="c1"># and just after the acquisition of images. Image retrieval and conversion,</span>
+<span class="c1"># grabbing image data, and saving images are all covered as well.</span>
+<span class="c1">#</span>
+<span class="c1"># Once comfortable with Acquisition, we suggest checking out</span>
+<span class="c1"># AcquisitionMultipleCamera, NodeMapCallback, or SaveToAvi.</span>
+<span class="c1"># AcquisitionMultipleCamera demonstrates simultaneously acquiring images from</span>
+<span class="c1"># a number of cameras, NodeMapCallback serves as a good introduction to</span>
+<span class="c1"># programming with callbacks and events, and SaveToAvi exhibits video creation.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This is a script to acquire video from a Point Gray Video camera.</span>
+
+<span class="sd">ToDo: Wrap this in a class, make sure it runs in its own thread, lots more ...</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">PySpin</span>
+
+<span class="c1"># abb</span>
+<span class="c1">#import matplotlib</span>
+<span class="c1">#matplotlib.use(&quot;Qt4agg&quot;) # or &quot;Qt5agg&quot; depending on you version of Qt</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">import matplotlib</span>
+<span class="sd">import matplotlib.pyplot as plt</span>
+<span class="sd">from matplotlib.animation import FuncAnimation</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">cv2</span>
+
+<span class="n">NUM_IMAGES</span> <span class="o">=</span> <span class="mi">100</span>  <span class="c1"># number of images to grab</span>
+
+
+<span class="n">myRunning</span> <span class="o">=</span> <span class="kc">True</span>
+<div class="viewcode-block" id="myCloseCallback"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCamera.myCloseCallback">[docs]</a><span class="k">def</span> <span class="nf">myCloseCallback</span><span class="p">(</span><span class="n">evt</span><span class="p">):</span>
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Closed Figure!&#39;</span><span class="p">)</span>
+	<span class="k">global</span> <span class="n">myRunning</span>
+	<span class="n">myRunning</span> <span class="o">=</span> <span class="kc">False</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	cam.EndAcquisition()</span>
+<span class="sd">	cam.DeInit()</span>
+<span class="sd">	&#39;&#39;&#39;</span></div>
+
+<span class="n">image_data</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">imgplot</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">line</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># what I get back from imShow</span>
+<div class="viewcode-block" id="myInit"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCamera.myInit">[docs]</a><span class="k">def</span> <span class="nf">myInit</span><span class="p">():</span>
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myInit:&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+	<span class="n">imgplot</span><span class="o">.</span><span class="n">set_data</span><span class="p">([],</span> <span class="p">[])</span>
+	<span class="k">return</span> <span class="n">imgplot</span><span class="p">,</span></div>
+
+<div class="viewcode-block" id="myUpdate"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCamera.myUpdate">[docs]</a><span class="k">def</span> <span class="nf">myUpdate</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myUpdate:&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+	<span class="k">global</span> <span class="n">image_data</span>
+	<span class="n">imgplot</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">image_data</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">imgplot</span><span class="p">,</span></div>
+
+<div class="viewcode-block" id="acquire_images"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCamera.acquire_images">[docs]</a><span class="k">def</span> <span class="nf">acquire_images</span><span class="p">(</span><span class="n">cam</span><span class="p">,</span> <span class="n">nodemap</span><span class="p">,</span> <span class="n">nodemap_tldevice</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	This function acquires and saves 10 images from a device.</span>
+
+<span class="sd">	:param cam: Camera to acquire images from.</span>
+<span class="sd">	:param nodemap: Device nodemap.</span>
+<span class="sd">	:param nodemap_tldevice: Transport layer device nodemap.</span>
+<span class="sd">	:type cam: CameraPtr</span>
+<span class="sd">	:type nodemap: INodeMap</span>
+<span class="sd">	:type nodemap_tldevice: INodeMap</span>
+<span class="sd">	:return: True if successful, False otherwise.</span>
+<span class="sd">	:rtype: bool</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;*** IMAGE ACQUISITION ***</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="kc">True</span>
+
+		<span class="c1"># Set acquisition mode to continuous</span>
+		<span class="c1">#</span>
+		<span class="c1">#  *** NOTES ***</span>
+		<span class="c1">#  Because the example acquires and saves 10 images, setting acquisition</span>
+		<span class="c1">#  mode to continuous lets the example finish. If set to single frame</span>
+		<span class="c1">#  or multiframe (at a lower number of images), the example would just</span>
+		<span class="c1">#  hang. This would happen because the example has been written to</span>
+		<span class="c1">#  acquire 10 images while the camera would have been programmed to</span>
+		<span class="c1">#  retrieve less than that.</span>
+		<span class="c1">#</span>
+		<span class="c1">#  Setting the value of an enumeration node is slightly more complicated</span>
+		<span class="c1">#  than other node types. Two nodes must be retrieved: first, the</span>
+		<span class="c1">#  enumeration node is retrieved from the nodemap; and second, the entry</span>
+		<span class="c1">#  node is retrieved from the enumeration node. The integer value of the</span>
+		<span class="c1">#  entry node is then set as the new value of the enumeration node.</span>
+		<span class="c1">#</span>
+		<span class="c1">#  Notice that both the enumeration and the entry nodes are checked for</span>
+		<span class="c1">#  availability and readability/writability. Enumeration nodes are</span>
+		<span class="c1">#  generally readable and writable whereas their entry nodes are only</span>
+		<span class="c1">#  ever readable.</span>
+		<span class="c1">#</span>
+		<span class="c1">#  Retrieve enumeration node from nodemap</span>
+
+		<span class="c1"># In order to access the node entries, they have to be casted to a pointer type (CEnumerationPtr here)</span>
+		<span class="n">node_acquisition_mode</span> <span class="o">=</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">CEnumerationPtr</span><span class="p">(</span><span class="n">nodemap</span><span class="o">.</span><span class="n">GetNode</span><span class="p">(</span><span class="s1">&#39;AcquisitionMode&#39;</span><span class="p">))</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsAvailable</span><span class="p">(</span><span class="n">node_acquisition_mode</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsWritable</span><span class="p">(</span><span class="n">node_acquisition_mode</span><span class="p">):</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to set acquisition mode to continuous (enum retrieval). Aborting...&#39;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="kc">False</span>
+
+		<span class="c1"># Retrieve entry node from enumeration node</span>
+		<span class="n">node_acquisition_mode_continuous</span> <span class="o">=</span> <span class="n">node_acquisition_mode</span><span class="o">.</span><span class="n">GetEntryByName</span><span class="p">(</span><span class="s1">&#39;Continuous&#39;</span><span class="p">)</span>
+		<span class="c1">#node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName(&#39;SingleFrame&#39;)</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsAvailable</span><span class="p">(</span><span class="n">node_acquisition_mode_continuous</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsReadable</span><span class="p">(</span><span class="n">node_acquisition_mode_continuous</span><span class="p">):</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to set acquisition mode to continuous (entry retrieval). Aborting...&#39;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="kc">False</span>
+
+		<span class="c1"># Retrieve integer value from entry node</span>
+		<span class="n">acquisition_mode_continuous</span> <span class="o">=</span> <span class="n">node_acquisition_mode_continuous</span><span class="o">.</span><span class="n">GetValue</span><span class="p">()</span>
+
+		<span class="c1"># Set integer value from entry node as new value of enumeration node</span>
+		<span class="n">node_acquisition_mode</span><span class="o">.</span><span class="n">SetIntValue</span><span class="p">(</span><span class="n">acquisition_mode_continuous</span><span class="p">)</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Acquisition mode set to continuous...&#39;</span><span class="p">)</span>
+
+		<span class="c1">#  Begin acquiring images</span>
+		<span class="c1">#</span>
+		<span class="c1">#  *** NOTES ***</span>
+		<span class="c1">#  What happens when the camera begins acquiring images depends on the</span>
+		<span class="c1">#  acquisition mode. Single frame captures only a single image, multi</span>
+		<span class="c1">#  frame catures a set number of images, and continuous captures a</span>
+		<span class="c1">#  continuous stream of images. Because the example calls for the</span>
+		<span class="c1">#  retrieval of 10 images, continuous mode has been set.</span>
+		<span class="c1">#</span>
+		<span class="c1">#  *** LATER ***</span>
+		<span class="c1">#  Image acquisition must be ended when no more images are needed.</span>
+		<span class="n">cam</span><span class="o">.</span><span class="n">BeginAcquisition</span><span class="p">()</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Acquiring images...&#39;</span><span class="p">)</span>
+
+		<span class="c1">#  Retrieve device serial number for filename</span>
+		<span class="c1">#</span>
+		<span class="c1">#  *** NOTES ***</span>
+		<span class="c1">#  The device serial number is retrieved in order to keep cameras from</span>
+		<span class="c1">#  overwriting one another. Grabbing image IDs could also accomplish</span>
+		<span class="c1">#  this.</span>
+		<span class="n">device_serial_number</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+		<span class="n">node_device_serial_number</span> <span class="o">=</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">CStringPtr</span><span class="p">(</span><span class="n">nodemap_tldevice</span><span class="o">.</span><span class="n">GetNode</span><span class="p">(</span><span class="s1">&#39;DeviceSerialNumber&#39;</span><span class="p">))</span>
+		<span class="k">if</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsAvailable</span><span class="p">(</span><span class="n">node_device_serial_number</span><span class="p">)</span> <span class="ow">and</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsReadable</span><span class="p">(</span><span class="n">node_device_serial_number</span><span class="p">):</span>
+			<span class="n">device_serial_number</span> <span class="o">=</span> <span class="n">node_device_serial_number</span><span class="o">.</span><span class="n">GetValue</span><span class="p">()</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Device serial number retrieved as </span><span class="si">%s</span><span class="s1">...&#39;</span> <span class="o">%</span> <span class="n">device_serial_number</span><span class="p">)</span>
+
+
+		<span class="c1"># make a figure</span>
+		<span class="c1">#20190702 was here</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		backend = matplotlib.get_backend()</span>
+<span class="sd">		print(&quot;backend:&quot;, backend)</span>
+<span class="sd">		myFig = plt.figure()</span>
+<span class="sd">		winX = 100</span>
+<span class="sd">		winY = 100</span>
+<span class="sd">		winWidth = 500</span>
+<span class="sd">		winHeight = 500</span>
+<span class="sd">		thismanager = plt.get_current_fig_manager()</span>
+<span class="sd">		thismanager.window.wm_geometry(&quot;+20+20&quot;)</span>
+<span class="sd">		#plt.get_current_fig_manager().window.setGeometry(winX, winY, winWidth, winHeight)</span>
+
+<span class="sd">		myFig.canvas.mpl_connect(&#39;close_event&#39;, myCloseCallback)</span>
+<span class="sd">		myAxes = myFig.add_subplot(1,1,1)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># 20190702 new</span>
+		<span class="n">playing</span> <span class="o">=</span> <span class="kc">True</span>
+
+		<span class="c1"># display &#39;paused&#39; when paused</span>
+		<span class="n">font</span>                   <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">FONT_HERSHEY_SIMPLEX</span>
+		<span class="c1">#bottomLeftCornerOfText = (20,20)</span>
+		<span class="n">fontScale</span>              <span class="o">=</span> <span class="mi">2</span>
+		<span class="n">fontColor</span>              <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">)</span>
+		<span class="n">lineType</span>               <span class="o">=</span> <span class="mi">3</span>
+
+		<span class="n">myText</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+		<span class="c1">#</span>
+		<span class="c1"># save a file at an interval</span>
+		<span class="n">myPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+		<span class="n">mySaveFilePath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">myPath</span><span class="p">,</span> <span class="s1">&#39;onfile.tif&#39;</span><span class="p">)</span>
+
+		<span class="n">saveIntervalSeconds</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">lastSaveTimeSeconds</span> <span class="o">=</span> <span class="mi">0</span>
+
+		<span class="c1"># an opencv window to display the video</span>
+		<span class="n">cv2</span><span class="o">.</span><span class="n">namedWindow</span><span class="p">(</span><span class="s1">&#39;myWindow&#39;</span><span class="p">,</span><span class="n">cv2</span><span class="o">.</span><span class="n">WINDOW_NORMAL</span><span class="p">)</span>
+		<span class="n">cv2</span><span class="o">.</span><span class="n">moveWindow</span><span class="p">(</span><span class="s1">&#39;myWindow&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+		<span class="n">cv2</span><span class="o">.</span><span class="n">resizeWindow</span><span class="p">(</span><span class="s1">&#39;myWindow&#39;</span><span class="p">,</span> <span class="mi">1024</span><span class="p">,</span> <span class="mi">768</span><span class="p">)</span>
+
+		<span class="n">got_cv_width_height</span> <span class="o">=</span> <span class="kc">False</span>
+		<span class="c1">#20190702 end new</span>
+
+		<span class="n">lastSaveSeconds</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">mySaveInterval</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1"># seconds</span>
+		<span class="n">myFilename</span> <span class="o">=</span> <span class="s1">&#39;c:</span><span class="se">\\</span><span class="s1">Users</span><span class="se">\\</span><span class="s1">cudmore</span><span class="se">\\</span><span class="s1">Desktop</span><span class="se">\\</span><span class="s1">bCamera</span><span class="se">\\</span><span class="s1">tmp.tif&#39;</span>
+		<span class="n">lastFrameSeconds</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">lastCameraFrameSeconds</span> <span class="o">=</span> <span class="mi">0</span>
+
+		<span class="c1">#20190702 was here</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		plt.pause(.1)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1"># Retrieve, convert, and save images</span>
+		<span class="n">imgplot</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="c1">#for i in range(NUM_IMAGES):</span>
+		<span class="k">global</span> <span class="n">myRunning</span>
+		<span class="k">while</span> <span class="n">myRunning</span><span class="p">:</span>
+			<span class="k">try</span><span class="p">:</span>
+
+				<span class="c1">#  Retrieve next received image</span>
+				<span class="c1">#</span>
+				<span class="c1">#  *** NOTES ***</span>
+				<span class="c1">#  Capturing an image houses images on the camera buffer. Trying</span>
+				<span class="c1">#  to capture an image that does not exist will hang the camera.</span>
+				<span class="c1">#</span>
+				<span class="c1">#  *** LATER ***</span>
+				<span class="c1">#  Once an image from the buffer is saved and/or no longer</span>
+				<span class="c1">#  needed, the image must be released in order to keep the</span>
+				<span class="c1">#  buffer from filling up.</span>
+				<span class="n">image_result</span> <span class="o">=</span> <span class="n">cam</span><span class="o">.</span><span class="n">GetNextImage</span><span class="p">()</span>
+
+				<span class="c1">#  Ensure image completion</span>
+				<span class="c1">#</span>
+				<span class="c1">#  *** NOTES ***</span>
+				<span class="c1">#  Images can easily be checked for completion. This should be</span>
+				<span class="c1">#  done whenever a complete image is expected or required.</span>
+				<span class="c1">#  Further, check image status for a little more insight into</span>
+				<span class="c1">#  why an image is incomplete.</span>
+				<span class="k">if</span> <span class="n">image_result</span><span class="o">.</span><span class="n">IsIncomplete</span><span class="p">():</span>
+					<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Image incomplete with image status </span><span class="si">%d</span><span class="s1"> ...&#39;</span> <span class="o">%</span> <span class="n">image_result</span><span class="o">.</span><span class="n">GetImageStatus</span><span class="p">())</span>
+
+				<span class="k">else</span><span class="p">:</span>
+
+					<span class="c1">#  Print image information; height and width recorded in pixels</span>
+					<span class="c1">#</span>
+					<span class="c1">#  *** NOTES ***</span>
+					<span class="c1">#  Images have quite a bit of available metadata including</span>
+					<span class="c1">#  things such as CRC, image status, and offset values, to</span>
+					<span class="c1">#  name a few.</span>
+					<span class="n">width</span> <span class="o">=</span> <span class="n">image_result</span><span class="o">.</span><span class="n">GetWidth</span><span class="p">()</span>
+					<span class="n">height</span> <span class="o">=</span> <span class="n">image_result</span><span class="o">.</span><span class="n">GetHeight</span><span class="p">()</span>
+					<span class="c1">#print(&#39;Grabbed Image %d, width = %d, height = %d&#39; % (i, width, height))</span>
+
+					<span class="c1">#  Convert image to mono 8</span>
+					<span class="c1">#</span>
+					<span class="c1">#  *** NOTES ***</span>
+					<span class="c1">#  Images can be converted between pixel formats by using</span>
+					<span class="c1">#  the appropriate enumeration value. Unlike the original</span>
+					<span class="c1">#  image, the converted one does not need to be released as</span>
+					<span class="c1">#  it does not affect the camera buffer.</span>
+					<span class="c1">#</span>
+					<span class="c1">#  When converting images, color processing algorithm is an</span>
+					<span class="c1">#  optional parameter.</span>
+					<span class="n">image_converted</span> <span class="o">=</span> <span class="n">image_result</span><span class="o">.</span><span class="n">Convert</span><span class="p">(</span><span class="n">PySpin</span><span class="o">.</span><span class="n">PixelFormat_Mono8</span><span class="p">,</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">HQ_LINEAR</span><span class="p">)</span>
+
+					<span class="c1"># Create a unique filename</span>
+					<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">					if device_serial_number:</span>
+<span class="sd">						filename = &#39;Acquisition-%s-%d.jpg&#39; % (device_serial_number, i)</span>
+<span class="sd">					else:  # if serial number is empty</span>
+<span class="sd">						filename = &#39;Acquisition-%d.jpg&#39; % i</span>
+<span class="sd">					&#39;&#39;&#39;</span>
+
+					<span class="c1">#  Save image</span>
+					<span class="c1">#</span>
+					<span class="c1">#  *** NOTES ***</span>
+					<span class="c1">#  The standard practice of the examples is to use device</span>
+					<span class="c1">#  serial numbers to keep images of one device from</span>
+					<span class="c1">#  overwriting those of another.</span>
+					<span class="c1">#image_converted.Save(filename)</span>
+					<span class="c1">#print(&#39;Image saved at %s&#39; % filename)</span>
+
+					<span class="c1"># abb</span>
+					<span class="k">global</span> <span class="n">image_data</span>
+					<span class="n">image_data</span> <span class="o">=</span> <span class="n">image_result</span><span class="o">.</span><span class="n">GetNDArray</span><span class="p">()</span> <span class="c1"># get as numpy array</span>
+					<span class="c1">#print(&#39;image_data.shape:&#39;, image_data.shape)</span>
+
+					<span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+					<span class="k">if</span> <span class="n">now</span> <span class="o">&gt;</span> <span class="n">lastSaveSeconds</span> <span class="o">+</span> <span class="n">mySaveInterval</span><span class="p">:</span>
+						<span class="c1"># save the image</span>
+						<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;saving image at:&#39;</span><span class="p">,</span> <span class="n">now</span><span class="p">)</span>
+						<span class="n">image_converted</span><span class="o">.</span><span class="n">Save</span><span class="p">(</span><span class="n">myFilename</span><span class="p">)</span>
+						<span class="n">lastSaveSeconds</span> <span class="o">=</span> <span class="n">now</span>
+
+					<span class="c1"># 20190702 removed</span>
+					<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">					if imgplot is None:</span>
+<span class="sd">						print(&#39;plotting first image&#39;)</span>
+<span class="sd">						imgplot = myAxes.imshow(image_data, aspect=&#39;auto&#39;)</span>
+<span class="sd">						imgplot.set_cmap(&#39;gray&#39;)</span>
+<span class="sd">						plt.axis(&#39;off&#39;)</span>
+<span class="sd">						lastFrameSeconds = now</span>
+<span class="sd">					else:</span>
+<span class="sd">						&#39;&#39;&#39;</span>
+<span class="sd">						myAnimation = FuncAnimation(myFig, myUpdate, init_func=myInit, interval=30, blit=True) # interval (ms)</span>
+<span class="sd">						&#39;&#39;&#39;</span>
+<span class="sd">						if 1 and now-lastFrameSeconds &gt; 0.1:</span>
+<span class="sd">							#print(&#39;update&#39;)</span>
+<span class="sd">							imgplot.set_data(image_data)</span>
+<span class="sd">							myFig.canvas.draw()</span>
+<span class="sd">							#myFig.canvas.draw_idle()</span>
+<span class="sd">							#plt.pause(0.0001)</span>
+<span class="sd">							lastFrameSeconds = now</span>
+
+<span class="sd">					&quot;&quot;&quot;</span>
+
+					<span class="c1"># 20190702 new</span>
+					<span class="k">if</span> <span class="ow">not</span> <span class="n">got_cv_width_height</span><span class="p">:</span>
+						<span class="n">winWidth</span> <span class="o">=</span> <span class="n">width</span>
+						<span class="n">winHeight</span> <span class="o">=</span> <span class="n">height</span>
+						<span class="n">winHalfWidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">width</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">)</span>
+						<span class="n">winHalfHeight</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">height</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">)</span>
+						<span class="n">got_cv_width_height</span> <span class="o">=</span> <span class="kc">True</span>
+
+					<span class="c1">#if frame is not None:</span>
+					<span class="k">if</span> <span class="kc">True</span><span class="p">:</span>
+						<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">						cv2.putText(frame,</span>
+<span class="sd">							myText,</span>
+<span class="sd">							(winHalfWidth, winHalfHeight),</span>
+<span class="sd">							font,</span>
+<span class="sd">							fontScale,</span>
+<span class="sd">							fontColor,</span>
+<span class="sd">							lineType)</span>
+<span class="sd">						&quot;&quot;&quot;</span>
+						<span class="k">if</span> <span class="n">playing</span><span class="p">:</span>
+							<span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s1">&#39;myWindow&#39;</span><span class="p">,</span><span class="n">image_data</span><span class="p">)</span>
+					<span class="n">keyPress</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span>
+					<span class="c1"># &#39;q&#39; to exit</span>
+					<span class="k">if</span> <span class="n">keyPress</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s1">&#39;q&#39;</span><span class="p">):</span>
+						<span class="k">break</span>
+					<span class="c1"># &#39;+&#39; or &#39;=&#39; to increase</span>
+					<span class="c1"># &#39;-&#39; to decrease window size</span>
+					<span class="k">if</span> <span class="n">keyPress</span> <span class="o">==</span> <span class="nb">ord</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">):</span>
+						<span class="n">winWidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">winWidth</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">)</span>
+						<span class="n">winHeight</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">winHeight</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">)</span>
+						<span class="n">cv2</span><span class="o">.</span><span class="n">resizeWindow</span><span class="p">(</span><span class="s1">&#39;myWindow&#39;</span><span class="p">,</span> <span class="n">winWidth</span><span class="p">,</span> <span class="n">winHeight</span><span class="p">)</span>
+					<span class="k">if</span> <span class="n">keyPress</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">ord</span><span class="p">(</span><span class="s1">&#39;+&#39;</span><span class="p">),</span> <span class="nb">ord</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)]:</span>
+						<span class="n">winWidth</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">winWidth</span> <span class="o">*</span> <span class="mf">1.2</span><span class="p">)</span>
+						<span class="n">winHeight</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">winHeight</span> <span class="o">*</span> <span class="mf">1.2</span><span class="p">)</span>
+						<span class="n">cv2</span><span class="o">.</span><span class="n">resizeWindow</span><span class="p">(</span><span class="s1">&#39;myWindow&#39;</span><span class="p">,</span> <span class="n">winWidth</span><span class="p">,</span> <span class="n">winHeight</span><span class="p">)</span>
+					<span class="c1"># 20190702 end new</span>
+
+					<span class="k">if</span> <span class="n">now</span> <span class="o">-</span> <span class="n">lastCameraFrameSeconds</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+						<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;fps:&#39;</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="n">lastCameraFrameSeconds</span><span class="p">),</span> <span class="s1">&#39;width:&#39;</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="s1">&#39;height:&#39;</span><span class="p">,</span> <span class="n">height</span><span class="p">)</span>
+					<span class="n">lastCameraFrameSeconds</span> <span class="o">=</span> <span class="n">now</span>
+
+					<span class="c1">#time.sleep(0.01)</span>
+
+					<span class="c1">#plt.pause(.05)</span>
+
+					<span class="c1">#print(&#39;i:&#39;, i)</span>
+					<span class="c1">#plt.draw()</span>
+					<span class="c1">#plt.show()</span>
+
+
+					<span class="c1">#  Release image</span>
+					<span class="c1">#</span>
+					<span class="c1">#  *** NOTES ***</span>
+					<span class="c1">#  Images retrieved directly from the camera (i.e. non-converted</span>
+					<span class="c1">#  images) need to be released in order to keep from filling the</span>
+					<span class="c1">#  buffer.</span>
+					<span class="n">image_result</span><span class="o">.</span><span class="n">Release</span><span class="p">()</span>
+					<span class="c1">#print(&#39;&#39;)</span>
+
+			<span class="k">except</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">SpinnakerException</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+				<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ex</span><span class="p">)</span>
+				<span class="c1">#return False</span>
+			<span class="k">except</span> <span class="ne">KeyboardInterrupt</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+				<span class="c1">#cam.EndAcquisition()</span>
+				<span class="k">return</span> <span class="kc">False</span>
+
+		<span class="c1">#  End acquisition</span>
+		<span class="c1">#</span>
+		<span class="c1">#  *** NOTES ***</span>
+		<span class="c1">#  Ending acquisition appropriately helps ensure that devices clean up</span>
+		<span class="c1">#  properly and do not need to be power-cycled to maintain integrity.</span>
+		<span class="n">cam</span><span class="o">.</span><span class="n">EndAcquisition</span><span class="p">()</span>
+
+	<span class="k">except</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">SpinnakerException</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ex</span><span class="p">)</span>
+		<span class="k">return</span> <span class="kc">False</span>
+
+	<span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="print_device_info"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCamera.print_device_info">[docs]</a><span class="k">def</span> <span class="nf">print_device_info</span><span class="p">(</span><span class="n">nodemap</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	This function prints the device information of the camera from the transport</span>
+<span class="sd">	layer; please see NodeMapInfo example for more in-depth comments on printing</span>
+<span class="sd">	device information from the nodemap.</span>
+
+<span class="sd">	:param nodemap: Transport layer device nodemap.</span>
+<span class="sd">	:type nodemap: INodeMap</span>
+<span class="sd">	:returns: True if successful, False otherwise.</span>
+<span class="sd">	:rtype: bool</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;*** DEVICE INFORMATION ***</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="kc">True</span>
+		<span class="n">node_device_information</span> <span class="o">=</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">CCategoryPtr</span><span class="p">(</span><span class="n">nodemap</span><span class="o">.</span><span class="n">GetNode</span><span class="p">(</span><span class="s1">&#39;DeviceInformation&#39;</span><span class="p">))</span>
+
+		<span class="k">if</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsAvailable</span><span class="p">(</span><span class="n">node_device_information</span><span class="p">)</span> <span class="ow">and</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsReadable</span><span class="p">(</span><span class="n">node_device_information</span><span class="p">):</span>
+			<span class="n">features</span> <span class="o">=</span> <span class="n">node_device_information</span><span class="o">.</span><span class="n">GetFeatures</span><span class="p">()</span>
+			<span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+				<span class="n">node_feature</span> <span class="o">=</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">CValuePtr</span><span class="p">(</span><span class="n">feature</span><span class="p">)</span>
+				<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">node_feature</span><span class="o">.</span><span class="n">GetName</span><span class="p">(),</span>
+								  <span class="n">node_feature</span><span class="o">.</span><span class="n">ToString</span><span class="p">()</span> <span class="k">if</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">IsReadable</span><span class="p">(</span><span class="n">node_feature</span><span class="p">)</span> <span class="k">else</span> <span class="s1">&#39;Node not readable&#39;</span><span class="p">))</span>
+
+		<span class="k">else</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Device control information not available.&#39;</span><span class="p">)</span>
+
+	<span class="k">except</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">SpinnakerException</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ex</span><span class="p">)</span>
+		<span class="k">return</span> <span class="kc">False</span>
+
+	<span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="run_single_camera"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCamera.run_single_camera">[docs]</a><span class="k">def</span> <span class="nf">run_single_camera</span><span class="p">(</span><span class="n">cam</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	This function acts as the body of the example; please see NodeMapInfo example</span>
+<span class="sd">	for more in-depth comments on setting up cameras.</span>
+
+<span class="sd">	:param cam: Camera to run on.</span>
+<span class="sd">	:type cam: CameraPtr</span>
+<span class="sd">	:return: True if successful, False otherwise.</span>
+<span class="sd">	:rtype: bool</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="kc">True</span>
+
+		<span class="c1"># Retrieve TL device nodemap and print device information</span>
+		<span class="n">nodemap_tldevice</span> <span class="o">=</span> <span class="n">cam</span><span class="o">.</span><span class="n">GetTLDeviceNodeMap</span><span class="p">()</span>
+
+		<span class="n">result</span> <span class="o">&amp;=</span> <span class="n">print_device_info</span><span class="p">(</span><span class="n">nodemap_tldevice</span><span class="p">)</span>
+
+		<span class="c1"># Initialize camera</span>
+		<span class="n">cam</span><span class="o">.</span><span class="n">Init</span><span class="p">()</span>
+
+		<span class="c1"># Retrieve GenICam nodemap</span>
+		<span class="n">nodemap</span> <span class="o">=</span> <span class="n">cam</span><span class="o">.</span><span class="n">GetNodeMap</span><span class="p">()</span>
+
+		<span class="c1"># Acquire images</span>
+		<span class="n">result</span> <span class="o">&amp;=</span> <span class="n">acquire_images</span><span class="p">(</span><span class="n">cam</span><span class="p">,</span> <span class="n">nodemap</span><span class="p">,</span> <span class="n">nodemap_tldevice</span><span class="p">)</span>
+
+		<span class="c1"># Deinitialize camera</span>
+		<span class="n">cam</span><span class="o">.</span><span class="n">DeInit</span><span class="p">()</span>
+
+	<span class="k">except</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">SpinnakerException</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">ex</span><span class="p">)</span>
+		<span class="n">result</span> <span class="o">=</span> <span class="kc">False</span>
+
+	<span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCamera.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Example entry point; please see Enumeration example for more in-depth</span>
+<span class="sd">	comments on preparing and cleaning up the system.</span>
+
+<span class="sd">	:return: True if successful, False otherwise.</span>
+<span class="sd">	:rtype: bool</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="c1"># Since this application saves images in the current folder</span>
+	<span class="c1"># we must ensure that we have permission to write to this folder.</span>
+	<span class="c1"># If we do not have permission, fail right away.</span>
+	<span class="k">try</span><span class="p">:</span>
+		<span class="n">test_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;test.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;w+&#39;</span><span class="p">)</span>
+	<span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to write to current directory. Please check permissions.&#39;</span><span class="p">)</span>
+		<span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Press Enter to exit...&#39;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="kc">False</span>
+
+	<span class="n">test_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+	<span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">test_file</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+	<span class="n">result</span> <span class="o">=</span> <span class="kc">True</span>
+
+	<span class="c1"># Retrieve singleton reference to system object</span>
+	<span class="n">system</span> <span class="o">=</span> <span class="n">PySpin</span><span class="o">.</span><span class="n">System</span><span class="o">.</span><span class="n">GetInstance</span><span class="p">()</span>
+
+	<span class="c1"># Get current library version</span>
+	<span class="n">version</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">GetLibraryVersion</span><span class="p">()</span>
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Library version: </span><span class="si">%d</span><span class="s1">.</span><span class="si">%d</span><span class="s1">.</span><span class="si">%d</span><span class="s1">.</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">version</span><span class="o">.</span><span class="n">major</span><span class="p">,</span> <span class="n">version</span><span class="o">.</span><span class="n">minor</span><span class="p">,</span> <span class="n">version</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">version</span><span class="o">.</span><span class="n">build</span><span class="p">))</span>
+
+	<span class="c1"># Retrieve list of cameras from the system</span>
+	<span class="n">cam_list</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">GetCameras</span><span class="p">()</span>
+
+	<span class="n">num_cameras</span> <span class="o">=</span> <span class="n">cam_list</span><span class="o">.</span><span class="n">GetSize</span><span class="p">()</span>
+
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Number of cameras detected: </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">num_cameras</span><span class="p">)</span>
+
+	<span class="c1"># Finish if there are no cameras</span>
+	<span class="k">if</span> <span class="n">num_cameras</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+
+		<span class="c1"># Clear camera list before releasing system</span>
+		<span class="n">cam_list</span><span class="o">.</span><span class="n">Clear</span><span class="p">()</span>
+
+		<span class="c1"># Release system instance</span>
+		<span class="n">system</span><span class="o">.</span><span class="n">ReleaseInstance</span><span class="p">()</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Not enough cameras!&#39;</span><span class="p">)</span>
+		<span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Done! Press Enter to exit...&#39;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="kc">False</span>
+
+	<span class="c1"># Run example on each camera</span>
+	<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cam</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cam_list</span><span class="p">):</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running example for camera </span><span class="si">%d</span><span class="s1">...&#39;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+
+		<span class="n">result</span> <span class="o">&amp;=</span> <span class="n">run_single_camera</span><span class="p">(</span><span class="n">cam</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Camera </span><span class="si">%d</span><span class="s1"> example complete... </span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+
+	<span class="c1"># Release reference to camera</span>
+	<span class="c1"># NOTE: Unlike the C++ examples, we cannot rely on pointer objects being automatically</span>
+	<span class="c1"># cleaned up when going out of scope.</span>
+	<span class="c1"># The usage of del is preferred to assigning the variable to None.</span>
+	<span class="k">del</span> <span class="n">cam</span>
+
+	<span class="c1"># Clear camera list before releasing system</span>
+	<span class="n">cam_list</span><span class="o">.</span><span class="n">Clear</span><span class="p">()</span>
+
+	<span class="c1"># Release system instance</span>
+	<span class="n">system</span><span class="o">.</span><span class="n">ReleaseInstance</span><span class="p">()</span>
+
+	<span class="c1">#input(&#39;Done! Press Enter to exit...&#39;)</span>
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Done!!!&#39;</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">result</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+	<span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">bImPy</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Robert H Cudmore.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

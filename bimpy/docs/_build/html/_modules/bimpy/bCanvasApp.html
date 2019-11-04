@@ -1,0 +1,906 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>bimpy.bCanvasApp &#8212; bImPy 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for bimpy.bCanvasApp</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Author: Robert Cudmore</span>
+<span class="c1"># Date: 20190630</span>
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+
+<span class="kn">import</span> <span class="nn">skimage</span>
+<span class="kn">import</span> <span class="nn">tifffile</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span> <span class="c1"># added for contrast enhance</span>
+
+<span class="kn">from</span> <span class="nn">PyQt5</span> <span class="k">import</span> <span class="n">QtCore</span><span class="p">,</span> <span class="n">QtWidgets</span><span class="p">,</span> <span class="n">QtGui</span>
+
+<span class="kn">import</span> <span class="nn">bimpy</span>
+
+<div class="viewcode-block" id="MainWindow"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.MainWindow">[docs]</a><span class="k">class</span> <span class="nc">MainWindow</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMainWindow</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">MainWindow</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+		<span class="n">tmpCanvasFolderPath</span> <span class="o">=</span> <span class="s1">&#39;/Users/cudmore/Dropbox/data/20190429/20190429_tst2&#39;</span>
+		<span class="n">tmpCanvasFolderPath</span> <span class="o">=</span> <span class="s1">&#39;/Users/cudmore/box/data/nathan/canvas/20190429_tst2&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">canvas</span> <span class="o">=</span> <span class="n">bimpy</span><span class="o">.</span><span class="n">bCanvas</span><span class="p">(</span><span class="n">folderPath</span><span class="o">=</span><span class="n">tmpCanvasFolderPath</span><span class="p">)</span>
+
+		<span class="c1"># this is only for import from igor</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">importIgorCanvas</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">buildFromScratch</span><span class="p">()</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">centralwidget</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">centralwidget</span><span class="o">.</span><span class="n">setObjectName</span><span class="p">(</span><span class="s2">&quot;centralwidget&quot;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">myQHBoxLayout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centralwidget</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;Canvas&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">left</span> <span class="o">=</span> <span class="mi">10</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">top</span> <span class="o">=</span> <span class="mi">10</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="mi">1024</span> <span class="c1">#640</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="mi">768</span> <span class="c1">#480</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">setMinimumSize</span><span class="p">(</span><span class="mi">320</span><span class="p">,</span> <span class="mi">240</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setGeometry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">top</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+
+		<span class="c1"># main view to hold images</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">myGraphicsView</span> <span class="o">=</span> <span class="n">myQGraphicsView</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="p">)</span> <span class="c1">#myQGraphicsView(self.centralwidget)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">myQHBoxLayout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">myGraphicsView</span><span class="p">)</span>
+
+		<span class="c1"># here I am linking the toolbar to the graphics view</span>
+		<span class="c1"># i can&#39;t figure out how to use QAction !!!!!!</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">toolbarWidget</span> <span class="o">=</span> <span class="n">myToolbarWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">myGraphicsView</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">addToolBar</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">LeftToolBarArea</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">toolbarWidget</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">setCentralWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centralwidget</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MainWindow.keyPressEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.MainWindow.keyPressEvent">[docs]</a>	<span class="k">def</span> <span class="nf">keyPressEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myApp.keyPressEvent() event:&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">myGraphicsView</span><span class="o">.</span><span class="n">keyPressEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div></div>
+
+<span class="n">globalSelectionSquare</span> <span class="o">=</span> <span class="p">{</span>
+	<span class="s1">&#39;pen&#39;</span><span class="p">:</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">SolidLine</span><span class="p">,</span> <span class="c1"># could be QtCore.Qt.DotLine</span>
+	<span class="s1">&#39;penColor&#39;</span><span class="p">:</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">yellow</span><span class="p">,</span>
+	<span class="s1">&#39;penWidth&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+<span class="p">}</span>
+
+<div class="viewcode-block" id="myQGraphicsPixmapItem"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsPixmapItem">[docs]</a><span class="k">class</span> <span class="nc">myQGraphicsPixmapItem</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsPixmapItem</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	To display images in canvas</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fileName</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">myLayer</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsPixmapItem</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_fileName</span> <span class="o">=</span> <span class="n">fileName</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_index</span> <span class="o">=</span> <span class="n">index</span> <span class="c1"># index into canvas list (list of either video or scope)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">myLayer</span> <span class="o">=</span> <span class="n">myLayer</span>
+
+<div class="viewcode-block" id="myQGraphicsPixmapItem.paint"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsPixmapItem.paint">[docs]</a>	<span class="k">def</span> <span class="nf">paint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">painter</span><span class="p">,</span> <span class="n">option</span><span class="p">,</span> <span class="n">widget</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">paint</span><span class="p">(</span><span class="n">painter</span><span class="p">,</span> <span class="n">option</span><span class="p">,</span> <span class="n">widget</span><span class="p">)</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		painter.setBrush(self.brush)</span>
+<span class="sd">		painter.setPen(self.pen)</span>
+<span class="sd">		painter.drawEllipse(self.rect)</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+
+		<span class="c1">#print(&#39;myQGraphicsPixmapItem.paint() isSelected&#39;, self.isSelected())</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isSelected</span><span class="p">():</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">drawFocusRect</span><span class="p">(</span><span class="n">painter</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myQGraphicsPixmapItem.drawFocusRect"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsPixmapItem.drawFocusRect">[docs]</a>	<span class="k">def</span> <span class="nf">drawFocusRect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">painter</span><span class="p">):</span>
+		<span class="c1">#print(&#39;myQGraphicsPixmapItem.drawFocusRect()&#39;)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focusbrush</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QBrush</span><span class="p">()</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		self.focuspen = QtGui.QPen(QtCore.Qt.SolidLine)</span>
+<span class="sd">		self.focuspen.setColor(QtCore.Qt.yellow)</span>
+<span class="sd">		self.focuspen.setWidthF(5)</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QPen</span><span class="p">(</span><span class="n">globalSelectionSquare</span><span class="p">[</span><span class="s1">&#39;pen&#39;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span><span class="o">.</span><span class="n">setColor</span><span class="p">(</span><span class="n">globalSelectionSquare</span><span class="p">[</span><span class="s1">&#39;penColor&#39;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span><span class="o">.</span><span class="n">setWidthF</span><span class="p">(</span><span class="n">globalSelectionSquare</span><span class="p">[</span><span class="s1">&#39;penWidth&#39;</span><span class="p">])</span>
+		<span class="c1">#</span>
+		<span class="n">painter</span><span class="o">.</span><span class="n">setBrush</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">focusbrush</span><span class="p">)</span>
+		<span class="n">painter</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span><span class="p">)</span>
+		<span class="c1">#painter.drawRect(self.focusrect)</span>
+		<span class="c1"># ???</span>
+		<span class="n">painter</span><span class="o">.</span><span class="n">drawRect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">boundingRect</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="myQGraphicsPixmapItem.mousePressEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsPixmapItem.mousePressEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mousePressEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#print(&#39;   myQGraphicsPixmapItem.mousePressEvent()&#39;)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mousePressEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+		<span class="c1">#self.setSelected(True)</span>
+		<span class="n">event</span><span class="o">.</span><span class="n">setAccepted</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span></div>
+<div class="viewcode-block" id="myQGraphicsPixmapItem.mouseMoveEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsPixmapItem.mouseMoveEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mouseMoveEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#print(&#39;   myQGraphicsPixmapItem.mouseMoveEvent()&#39;)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mouseMoveEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+		<span class="n">event</span><span class="o">.</span><span class="n">setAccepted</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span></div>
+<div class="viewcode-block" id="myQGraphicsPixmapItem.mouseReleaseEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsPixmapItem.mouseReleaseEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mouseReleaseEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#print(&#39;   myQGraphicsPixmapItem.mouseReleaseEvent()&#39;)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mouseReleaseEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+		<span class="c1">#self.setSelected(False)</span>
+		<span class="n">event</span><span class="o">.</span><span class="n">setAccepted</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myQGraphicsPixmapItem.bringForward"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsPixmapItem.bringForward">[docs]</a>	<span class="k">def</span> <span class="nf">bringForward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		move this item before its previous sibling</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myQGraphicsPixmapItem.myQGraphicsPixmapItem.bringForward()&#39;</span><span class="p">)</span>
+		<span class="n">myScene</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span>
+		<span class="n">previousItem</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+			<span class="k">if</span> <span class="n">item</span> <span class="o">==</span> <span class="bp">self</span><span class="p">:</span>
+				<span class="k">break</span>
+			<span class="n">previousItem</span> <span class="o">=</span> <span class="n">item</span>
+		<span class="k">if</span> <span class="n">previousItem</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   myQGraphicsPixmapItem.bringForward() is moving&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fileName</span><span class="p">,</span> <span class="s1">&#39;before&#39;</span><span class="p">,</span> <span class="n">previousItem</span><span class="o">.</span><span class="n">_fileName</span><span class="p">)</span>
+			<span class="c1"># this does not work !!!!</span>
+			<span class="c1">#self.stackBefore(previousItem)</span>
+			<span class="n">previous_zvalue</span> <span class="o">=</span> <span class="n">previousItem</span><span class="o">.</span><span class="n">zValue</span><span class="p">()</span>
+			<span class="n">this_zvalue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zValue</span><span class="p">()</span>
+			<span class="n">previousItem</span><span class="o">.</span><span class="n">setZValue</span><span class="p">(</span><span class="n">this_zvalue</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">setZValue</span><span class="p">(</span><span class="n">previous_zvalue</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   myQGraphicsPixmapItem.bringToFront() item is already front most&#39;</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="myQGraphicsRectItem"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsRectItem">[docs]</a><span class="k">class</span> <span class="nc">myQGraphicsRectItem</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsRectItem</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	To display rectangles in canvas.</span>
+<span class="sd">	Used for 2p images so we can show/hide max project and still see square</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fileName</span><span class="p">,</span> <span class="n">myLayer</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsRectItem</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">_fileName</span> <span class="o">=</span> <span class="n">fileName</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">myLayer</span> <span class="o">=</span> <span class="n">myLayer</span>
+
+<div class="viewcode-block" id="myQGraphicsRectItem.paint"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsRectItem.paint">[docs]</a>	<span class="k">def</span> <span class="nf">paint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">painter</span><span class="p">,</span> <span class="n">option</span><span class="p">,</span> <span class="n">widget</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">paint</span><span class="p">(</span><span class="n">painter</span><span class="p">,</span> <span class="n">option</span><span class="p">,</span> <span class="n">widget</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isSelected</span><span class="p">():</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">drawFocusRect</span><span class="p">(</span><span class="n">painter</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myQGraphicsRectItem.drawFocusRect"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsRectItem.drawFocusRect">[docs]</a>	<span class="k">def</span> <span class="nf">drawFocusRect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">painter</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focusbrush</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QBrush</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QPen</span><span class="p">(</span><span class="n">globalSelectionSquare</span><span class="p">[</span><span class="s1">&#39;pen&#39;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span><span class="o">.</span><span class="n">setColor</span><span class="p">(</span><span class="n">globalSelectionSquare</span><span class="p">[</span><span class="s1">&#39;penColor&#39;</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span><span class="o">.</span><span class="n">setWidthF</span><span class="p">(</span><span class="n">globalSelectionSquare</span><span class="p">[</span><span class="s1">&#39;penWidth&#39;</span><span class="p">])</span>
+		<span class="c1">#</span>
+		<span class="n">painter</span><span class="o">.</span><span class="n">setBrush</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">focusbrush</span><span class="p">)</span>
+		<span class="n">painter</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">focuspen</span><span class="p">)</span>
+		<span class="n">painter</span><span class="o">.</span><span class="n">drawRect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">boundingRect</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="myQGraphicsRectItem.mousePressEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsRectItem.mousePressEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mousePressEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#print(&#39;   myQGraphicsPixmapItem.mousePressEvent()&#39;)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mousePressEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+		<span class="c1">#self.setSelected(True)</span>
+		<span class="n">event</span><span class="o">.</span><span class="n">setAccepted</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span></div>
+<div class="viewcode-block" id="myQGraphicsRectItem.mouseMoveEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsRectItem.mouseMoveEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mouseMoveEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#print(&#39;   myQGraphicsPixmapItem.mouseMoveEvent()&#39;)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mouseMoveEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+		<span class="n">event</span><span class="o">.</span><span class="n">setAccepted</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span></div>
+<div class="viewcode-block" id="myQGraphicsRectItem.mouseReleaseEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsRectItem.mouseReleaseEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mouseReleaseEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#print(&#39;   myQGraphicsPixmapItem.mouseReleaseEvent()&#39;)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mouseReleaseEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+		<span class="c1">#self.setSelected(False)</span>
+		<span class="n">event</span><span class="o">.</span><span class="n">setAccepted</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myQGraphicsRectItem.bringForward"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsRectItem.bringForward">[docs]</a>	<span class="k">def</span> <span class="nf">bringForward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		move this item before its previous sibling</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myQGraphicsRectItem.bringForward()&#39;</span><span class="p">)</span>
+		<span class="n">myScene</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span>
+		<span class="n">previousItem</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+			<span class="k">if</span> <span class="n">item</span> <span class="o">==</span> <span class="bp">self</span><span class="p">:</span>
+				<span class="k">break</span>
+			<span class="n">previousItem</span> <span class="o">=</span> <span class="n">item</span>
+		<span class="k">if</span> <span class="n">previousItem</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   myQGraphicsRectItem.bringForward() is moving&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fileName</span><span class="p">,</span> <span class="s1">&#39;before&#39;</span><span class="p">,</span> <span class="n">previousItem</span><span class="o">.</span><span class="n">_fileName</span><span class="p">)</span>
+			<span class="c1"># this does not work !!!!</span>
+			<span class="c1">#self.stackBefore(previousItem)</span>
+			<span class="n">previous_zvalue</span> <span class="o">=</span> <span class="n">previousItem</span><span class="o">.</span><span class="n">zValue</span><span class="p">()</span>
+			<span class="n">this_zvalue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zValue</span><span class="p">()</span>
+			<span class="n">previousItem</span><span class="o">.</span><span class="n">setZValue</span><span class="p">(</span><span class="n">this_zvalue</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">setZValue</span><span class="p">(</span><span class="n">previous_zvalue</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   myQGraphicsRectItem.bringToFront() item is already front most&#39;</span><span class="p">)</span></div></div>
+
+<span class="c1">#</span>
+<span class="c1"># amazing post</span>
+<span class="c1">#</span>
+<span class="c1"># LOOK AT THIS 20190703</span>
+<span class="c1">#</span>
+<span class="c1"># https://stackoverflow.com/questions/35508711/how-to-enable-pan-and-zoom-in-a-qgraphicsview</span>
+
+<div class="viewcode-block" id="myQGraphicsView"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView">[docs]</a><span class="k">class</span> <span class="nc">myQGraphicsView</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsView</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Main canvas widget</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theCanvas</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsView</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">myCanvas</span> <span class="o">=</span> <span class="n">theCanvas</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">setBackgroundBrush</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">darkGray</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">myScene</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsScene</span><span class="p">()</span>
+
+		<span class="c1"># visually turn off scroll bars</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setVerticalScrollBarPolicy</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ScrollBarAlwaysOff</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setHorizontalScrollBarPolicy</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ScrollBarAlwaysOff</span><span class="p">)</span>
+
+		<span class="c1"># these work</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setTransformationAnchor</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsView</span><span class="o">.</span><span class="n">AnchorUnderMouse</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setResizeAnchor</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsView</span><span class="o">.</span><span class="n">AnchorUnderMouse</span><span class="p">)</span>
+
+		<span class="c1"># I want to set the initial videw of the scene to include all items ??????</span>
+		<span class="c1">#self.myScene.setSceneRect(QtCore.QRectF())</span>
+
+		<span class="c1"># add an object at really small x/y</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		rect_item = myQGraphicsRectItem(&#39;video&#39;, QtCore.QRectF(-20000, -20000, 100, 100))</span>
+<span class="sd">		self.myScene.addItem(rect_item)</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+		<span class="n">numItems</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># used to stack items with item.setZValue()</span>
+
+		<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">videoFile</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">theCanvas</span><span class="o">.</span><span class="n">videoFileList</span><span class="p">):</span>
+			<span class="n">path</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">path</span> <span class="c1"># todo: remove use of ._ ## fakeImages[image][&#39;path&#39;]</span>
+			<span class="n">fileName</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">_fileName</span>
+			<span class="c1">#videoFileHeader = videoFile.getHeader()</span>
+			<span class="n">xMotor</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;xMotor&#39;</span><span class="p">]</span>
+			<span class="n">yMotor</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;yMotor&#39;</span><span class="p">]</span>
+			<span class="n">umWidth</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;umWidth&#39;</span><span class="p">]</span>
+			<span class="n">umHeight</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;umHeight&#39;</span><span class="p">]</span>
+
+			<span class="c1">#videoImage = videoFile.getVideoImage() # ndarray</span>
+			<span class="n">videoImage</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">getImage</span><span class="p">()</span> <span class="c1"># ndarray</span>
+			<span class="n">imageStackHeight</span><span class="p">,</span> <span class="n">imageStackWidth</span> <span class="o">=</span> <span class="n">videoImage</span><span class="o">.</span><span class="n">shape</span>
+
+			<span class="n">myQImage</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QImage</span><span class="p">(</span><span class="n">videoImage</span><span class="p">,</span> <span class="n">imageStackWidth</span><span class="p">,</span> <span class="n">imageStackHeight</span><span class="p">,</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QImage</span><span class="o">.</span><span class="n">Format_Indexed8</span><span class="p">)</span>
+			<span class="c1">#myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_RGB32)</span>
+
+			<span class="n">pixmap</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QPixmap</span><span class="p">(</span><span class="n">myQImage</span><span class="p">)</span>
+			<span class="n">pixmap</span> <span class="o">=</span> <span class="n">pixmap</span><span class="o">.</span><span class="n">scaled</span><span class="p">(</span><span class="n">umWidth</span><span class="p">,</span> <span class="n">umHeight</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">KeepAspectRatio</span><span class="p">)</span>
+
+			<span class="c1"># insert</span>
+			<span class="n">pixMapItem</span> <span class="o">=</span> <span class="n">myQGraphicsPixmapItem</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="s1">&#39;Video Layer&#39;</span><span class="p">,</span> <span class="n">pixmap</span><span class="p">)</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setFlag</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsItem</span><span class="o">.</span><span class="n">ItemIsSelectable</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setPos</span><span class="p">(</span><span class="n">xMotor</span><span class="p">,</span><span class="n">yMotor</span><span class="p">)</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setZValue</span><span class="p">(</span><span class="n">numItems</span><span class="p">)</span>
+
+			<span class="c1"># add to scene</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span><span class="n">pixMapItem</span><span class="p">)</span>
+
+			<span class="n">numItems</span> <span class="o">+=</span> <span class="mi">1</span>
+
+		<span class="c1"># this is to load 2p file ... put back in</span>
+		<span class="c1">#for idx, image in enumerate(fakeTwoPImages.keys()):</span>
+		<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">scopeFile</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">theCanvas</span><span class="o">.</span><span class="n">scopeFileList</span><span class="p">):</span>
+			<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">			print(&#39;scopeFile.header.prettyPrint():&#39;, scopeFile.header.prettyPrint())</span>
+<span class="sd">			print(&#39;   xMotor:&#39;, scopeFile.header.header[&#39;xMotor&#39;])</span>
+<span class="sd">			print(&#39;   yMotor:&#39;, scopeFile.header.header[&#39;yMotor&#39;])</span>
+<span class="sd">			print(&#39;   umWidth:&#39;, scopeFile.header.header[&#39;umWidth&#39;])</span>
+<span class="sd">			print(&#39;   umHeight:&#39;, scopeFile.header.header[&#39;umHeight&#39;])</span>
+<span class="sd">			&#39;&#39;&#39;</span>
+
+			<span class="c1"># THESE ARE FUCKING STRINGS !!!!!!!!!!!!!!!!!!!!</span>
+			<span class="n">fileName</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">_fileName</span>
+			<span class="n">xMotor</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;xMotor&#39;</span><span class="p">]</span>
+			<span class="n">yMotor</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;yMotor&#39;</span><span class="p">]</span>
+			<span class="n">umWidth</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;umWidth&#39;</span><span class="p">]</span>
+			<span class="n">umHeight</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;umHeight&#39;</span><span class="p">]</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;umWidth:&#39;</span><span class="p">,</span> <span class="n">umWidth</span><span class="p">,</span> <span class="s1">&#39;umHeight:&#39;</span><span class="p">,</span> <span class="n">umHeight</span><span class="p">)</span>
+
+			<span class="k">if</span> <span class="n">xMotor</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+				<span class="n">xMotor</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="k">if</span> <span class="n">yMotor</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+				<span class="n">yMotor</span> <span class="o">=</span> <span class="kc">None</span>
+
+			<span class="k">if</span> <span class="n">xMotor</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">yMotor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;bCanvasApp.myQGraphicsView() not inserting scopeFile --&gt;&gt; xMotor or yMotor is None ???&#39;</span><span class="p">)</span>
+				<span class="k">continue</span>
+
+			<span class="c1"># todo: specify channel (1,2,3,4,...)</span>
+			<span class="n">stackMax</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">loadMax</span><span class="p">(</span><span class="n">channel</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">convertTo8Bit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1"># stackMax can be None</span>
+			<span class="c1">#imageStackHeight, imageStackWidth = stackMax.shape</span>
+			<span class="n">imageStackWidth</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">pixelsPerLine</span>
+			<span class="n">imageStackHeight</span> <span class="o">=</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">linesPerFrame</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;imageStackWidth:&#39;</span><span class="p">,</span> <span class="n">imageStackWidth</span><span class="p">,</span> <span class="s1">&#39;imageStackHeight:&#39;</span><span class="p">,</span> <span class="n">imageStackHeight</span><span class="p">)</span>
+
+			<span class="k">if</span> <span class="n">stackMax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myQGraphicsView.__init__() is making zero max image for scopeFile:&#39;</span><span class="p">,</span> <span class="n">scopeFile</span><span class="p">)</span>
+				<span class="n">stackMax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">imageStackWidth</span><span class="p">,</span> <span class="n">imageStackHeight</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+			<span class="n">myQImage</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QImage</span><span class="p">(</span><span class="n">stackMax</span><span class="p">,</span> <span class="n">imageStackWidth</span><span class="p">,</span> <span class="n">imageStackHeight</span><span class="p">,</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QImage</span><span class="o">.</span><span class="n">Format_Indexed8</span><span class="p">)</span>
+
+			<span class="n">pixmap</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QPixmap</span><span class="p">(</span><span class="n">myQImage</span><span class="p">)</span>
+			<span class="n">pixmap</span> <span class="o">=</span> <span class="n">pixmap</span><span class="o">.</span><span class="n">scaled</span><span class="p">(</span><span class="n">umWidth</span><span class="p">,</span> <span class="n">umHeight</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">KeepAspectRatio</span><span class="p">)</span>
+
+			<span class="c1"># insert</span>
+			<span class="n">pixMapItem</span> <span class="o">=</span> <span class="n">myQGraphicsPixmapItem</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="s1">&#39;2P Max Layer&#39;</span><span class="p">,</span> <span class="n">pixmap</span><span class="p">)</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setFlag</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsItem</span><span class="o">.</span><span class="n">ItemIsSelectable</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">idx</span><span class="p">))</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setPos</span><span class="p">(</span><span class="n">xMotor</span><span class="p">,</span><span class="n">yMotor</span><span class="p">)</span>
+			<span class="n">pixMapItem</span><span class="o">.</span><span class="n">setZValue</span><span class="p">(</span><span class="n">numItems</span><span class="p">)</span>
+
+			<span class="c1"># add to scene</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span><span class="n">pixMapItem</span><span class="p">)</span>
+
+			<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">			# a rectangle</span>
+<span class="sd">			myPen = QtGui.QPen(QtCore.Qt.cyan)</span>
+<span class="sd">			myPen.setWidth(10)</span>
+<span class="sd">			rect_item = myQGraphicsRectItem(&#39;2P Squares Layer&#39;, QtCore.QRectF(xMotor, yMotor, width, height))</span>
+<span class="sd">			rect_item.setPen(myPen) #QBrush</span>
+<span class="sd">			rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)</span>
+<span class="sd">			self.myScene.addItem(rect_item)</span>
+<span class="sd">			&#39;&#39;&#39;</span>
+
+			<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">			path = fakeTwoPImages[image][&#39;path&#39;]</span>
+<span class="sd">			xMotor = fakeTwoPImages[image][&#39;xMotor&#39;]</span>
+<span class="sd">			yMotor = fakeTwoPImages[image][&#39;yMotor&#39;]</span>
+<span class="sd">			width = fakeTwoPImages[image][&#39;width&#39;]</span>
+<span class="sd">			height = fakeTwoPImages[image][&#39;height&#39;]</span>
+<span class="sd">			# load the image (need to somehow load max of stack ???</span>
+<span class="sd">			pixmap = QtGui.QPixmap(path)</span>
+<span class="sd">			pixmap.fill()</span>
+<span class="sd">			#pixmapWidth = pixmap.width()</span>
+<span class="sd">			#pixmapHeight = pixmap.height()</span>
+<span class="sd">			# scale image</span>
+<span class="sd">			#newWidth = 200 #pixmapWidth</span>
+<span class="sd">			#newHeight = 200 #pixmapHeight</span>
+<span class="sd">			pixmap = pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio)</span>
+<span class="sd">			# insert</span>
+<span class="sd">			#pixMapItem = QtWidgets.QGraphicsPixmapItem(pixmap)</span>
+<span class="sd">			pixMapItem = myQGraphicsPixmapItem(&#39;2P Max Layer&#39;, pixmap)</span>
+<span class="sd">			pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)</span>
+<span class="sd">			pixMapItem.setToolTip(&#39;2p_&#39; + str(idx))</span>
+<span class="sd">			pixMapItem.setPos(xMotor,yMotor)</span>
+<span class="sd">			#pixMapItem.setOpacity(0) # this works but we loose mouse click selection and bounding selection rect</span>
+<span class="sd">			pixMapItem.setVisible(True) # this works</span>
+<span class="sd">			self.myScene.addItem(pixMapItem)</span>
+<span class="sd">			&#39;&#39;&#39;</span>
+
+			<span class="c1"># 20190705 removed scope rectangles</span>
+			<span class="k">if</span> <span class="n">xMotor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">yMotor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="n">myPen</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QPen</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">cyan</span><span class="p">)</span>
+				<span class="n">myPen</span><span class="o">.</span><span class="n">setWidth</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+				<span class="n">rect_item</span> <span class="o">=</span> <span class="n">myQGraphicsRectItem</span><span class="p">(</span><span class="n">fileName</span><span class="p">,</span><span class="s1">&#39;2P Squares Layer&#39;</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QRectF</span><span class="p">(</span><span class="n">xMotor</span><span class="p">,</span> <span class="n">yMotor</span><span class="p">,</span> <span class="n">umWidth</span><span class="p">,</span> <span class="n">umHeight</span><span class="p">))</span>
+				<span class="n">rect_item</span><span class="o">.</span><span class="n">setPen</span><span class="p">(</span><span class="n">myPen</span><span class="p">)</span> <span class="c1">#QBrush</span>
+				<span class="n">rect_item</span><span class="o">.</span><span class="n">setFlag</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsItem</span><span class="o">.</span><span class="n">ItemIsSelectable</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span><span class="n">rect_item</span><span class="p">)</span>
+
+			<span class="n">numItems</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+		<span class="c1"># add an object at really big x/y</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		rect_item = myQGraphicsRectItem(&#39;video&#39;, QtCore.QRectF(20000, 20000, 100, 100))</span>
+<span class="sd">		self.myScene.addItem(rect_item)</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">setDragMode</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGraphicsView</span><span class="o">.</span><span class="n">ScrollHandDrag</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">setScene</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="p">)</span>
+
+<div class="viewcode-block" id="myQGraphicsView.setSelectedItem"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.setSelectedItem">[docs]</a>	<span class="k">def</span> <span class="nf">setSelectedItem</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fileName</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Select the item at itemIndex.</span>
+<span class="sd">		This is usually coming from toolbar file list selection</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">selectThisItem</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+			<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">_fileName</span> <span class="o">==</span> <span class="n">fileName</span><span class="p">:</span>
+				<span class="n">selectThisItem</span> <span class="o">=</span> <span class="n">item</span>
+		<span class="k">if</span> <span class="n">selectThisItem</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myQGraphicsView.setSelectedItem:&#39;</span><span class="p">,</span> <span class="n">selectThisItem</span><span class="p">,</span> <span class="n">selectThisItem</span><span class="o">.</span><span class="n">_fileName</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">setFocusItem</span><span class="p">(</span><span class="n">selectThisItem</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myQGraphicsView.hideShowLayer"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.hideShowLayer">[docs]</a>	<span class="k">def</span> <span class="nf">hideShowLayer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thisLayer</span><span class="p">,</span> <span class="n">isVisible</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myQGraphicsView.hideShowLayer()&#39;</span><span class="p">,</span> <span class="n">thisLayer</span><span class="p">,</span> <span class="n">isVisible</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+			<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">myLayer</span> <span class="o">==</span> <span class="n">thisLayer</span><span class="p">:</span>
+				<span class="n">item</span><span class="o">.</span><span class="n">setVisible</span><span class="p">(</span><span class="n">isVisible</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myQGraphicsView.mousePressEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.mousePressEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mousePressEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== myQGraphicsView.mousePressEvent()&#39;</span><span class="p">)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mousePressEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div>
+		<span class="c1">#event.setAccepted(False)</span>
+<div class="viewcode-block" id="myQGraphicsView.mouseMoveEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.mouseMoveEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mouseMoveEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#print(&#39;=== myQGraphicsView.mouseMoveEvent()&#39;)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mouseMoveEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div>
+		<span class="c1">#event.setAccepted(False)</span>
+<div class="viewcode-block" id="myQGraphicsView.mouseReleaseEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.mouseReleaseEvent">[docs]</a>	<span class="k">def</span> <span class="nf">mouseReleaseEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== myQGraphicsView.mouseReleaseEvent()&#39;</span><span class="p">)</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">mouseReleaseEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span></div>
+		<span class="c1">#event.setAccepted(False)</span>
+
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	def mousePressEvent(self, event):</span>
+<span class="sd">		print(&#39;=== myQGraphicsView.mousePressEvent()&#39;)</span>
+<span class="sd">		print(&#39;   &#39;, event.pos())</span>
+<span class="sd">		xyPos = event.pos()</span>
+<span class="sd">		item = self.itemAt(xyPos)</span>
+<span class="sd">		print(&#39;   mouse selected item:&#39;, item)</span>
+
+<span class="sd">		#super(QtWidgets.QGraphicsView, self).mousePressEvent(event)</span>
+<span class="sd">		super().mousePressEvent(event)</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+
+	<span class="c1"># I want to drag the scene around when click+drag on an image ?????</span>
+	<span class="c1"># see:</span>
+	<span class="c1"># https://stackoverflow.com/questions/55007339/allow-qgraphicsview-to-move-outside-scene</span>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	def mouseMoveEvent(self, event):</span>
+<span class="sd">		print(&#39;=== myQGraphicsView.mouseMoveEvent()&#39;)</span>
+<span class="sd">		print(&#39;   &#39;, event.pos())</span>
+<span class="sd">		super().mouseMoveEvent(event)</span>
+
+<span class="sd">		#self.scene.mouseMoveEvent(event) # this is an error because scene is wrong class???</span>
+
+<span class="sd">		# C++ code</span>
+<span class="sd">		# scene()-&gt;update(mapToScene(rect()).boundingRect());</span>
+<span class="sd">		#</span>
+<span class="sd">		# this almost works !!!!</span>
+<span class="sd">		print(&#39;   self.rect():&#39;, self.rect())</span>
+<span class="sd">		self.scene().update(self.mapToScene(self.rect()).boundingRect());</span>
+
+<span class="sd">		#self.scene().mouseMoveEvent(event) # this is an error because scene is wrong class???</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="myQGraphicsView.keyPressEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.keyPressEvent">[docs]</a>	<span class="k">def</span> <span class="nf">keyPressEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== myCanvasWidget.keyPressEvent() event.key():&#39;</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="p">())</span>
+		<span class="c1"># QtCore.Qt.Key_Tab</span>
+
+		<span class="c1"># pan</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		if event.key() == QtCore.Qt.Key_Left:</span>
+<span class="sd">			self.pan(&#39;left&#39;)</span>
+<span class="sd">		if event.key() == QtCore.Qt.Key_Right:</span>
+<span class="sd">			self.pan(&#39;right&#39;)</span>
+<span class="sd">		if event.key() == QtCore.Qt.Key_Up:</span>
+<span class="sd">			self.pan(&#39;up&#39;)</span>
+<span class="sd">		if event.key() == QtCore.Qt.Key_Down:</span>
+<span class="sd">			self.pan(&#39;down&#39;)</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+		<span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">keyPressEvent</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+		<span class="c1"># zoom</span>
+		<span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Key_Plus</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Key_Equal</span><span class="p">]:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">zoom</span><span class="p">(</span><span class="s1">&#39;in&#39;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="p">()</span> <span class="o">==</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Key_Minus</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">zoom</span><span class="p">(</span><span class="s1">&#39;out&#39;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="p">()</span> <span class="o">==</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Key_F</span><span class="p">:</span>
+			<span class="c1">#print(&#39;f for bring to front&#39;)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">changeOrder</span><span class="p">(</span><span class="s1">&#39;bring to front&#39;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span><span class="p">()</span> <span class="o">==</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Key_B</span><span class="p">:</span>
+			<span class="c1">#print(&#39;b for send to back&#39;)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">changeOrder</span><span class="p">(</span><span class="s1">&#39;send to back&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="myQGraphicsView.changeOrder"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.changeOrder">[docs]</a>	<span class="k">def</span> <span class="nf">changeOrder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">this</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		this can be:</span>
+<span class="sd">			&#39;bring to front&#39;: Will bring the selected item BEFORE its previous item</span>
+<span class="sd">			&#39;send to back&#39;: Will put the selected item AFTER its next item</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;changeOrder()&#39;</span><span class="p">,</span> <span class="n">this</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">this</span> <span class="o">==</span> <span class="s1">&#39;bring to front&#39;</span><span class="p">:</span>
+			<span class="n">selectedItems</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">selectedItems</span><span class="p">()</span>
+			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">selectedItems</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="n">selectedItem</span> <span class="o">=</span> <span class="n">selectedItems</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+				<span class="n">selectedItem</span><span class="o">.</span><span class="n">bringForward</span><span class="p">()</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myQGraphicsView.changeOrder() did not find a selected item???&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myQGraphicsView.wheelEvent"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.wheelEvent">[docs]</a>	<span class="k">def</span> <span class="nf">wheelEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+		<span class="c1">#if self.hasPhoto():</span>
+		<span class="k">if</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">angleDelta</span><span class="p">()</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">zoom</span><span class="p">(</span><span class="s1">&#39;in&#39;</span><span class="p">)</span>
+				<span class="c1">#factor = 1.25</span>
+				<span class="c1">#self._zoom += 1</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">zoom</span><span class="p">(</span><span class="s1">&#39;out&#39;</span><span class="p">)</span>
+				<span class="c1">#factor = 0.8</span>
+				<span class="c1">#self._zoom -= 1</span>
+			<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">			if self._zoom &gt; 0:</span>
+<span class="sd">				self.scale(factor, factor)</span>
+<span class="sd">			elif self._zoom == 0:</span>
+<span class="sd">				self.fitInView()</span>
+<span class="sd">			else:</span>
+<span class="sd">				self._zoom = 0</span>
+<span class="sd">			&#39;&#39;&#39;</span></div>
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	def pan(self, direction):</span>
+<span class="sd">		stepSize = 100</span>
+<span class="sd">		xOffset = 0</span>
+<span class="sd">		yOffset = 0</span>
+<span class="sd">		if direction == &#39;left&#39;:</span>
+<span class="sd">			xOffset = stepSize</span>
+<span class="sd">		if direction == &#39;right&#39;:</span>
+<span class="sd">			xOffset = -stepSize</span>
+<span class="sd">		if direction == &#39;up&#39;:</span>
+<span class="sd">			yOffset = stepSize</span>
+<span class="sd">		if direction == &#39;down&#39;:</span>
+<span class="sd">			yOffset = -stepSize</span>
+
+<span class="sd">		print(&#39;pan() x:&#39;, xOffset, &#39;y:&#39;, yOffset)</span>
+<span class="sd">		#self.translate(xOffset,yOffset)</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="myQGraphicsView.zoom"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myQGraphicsView.zoom">[docs]</a>	<span class="k">def</span> <span class="nf">zoom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zoom</span><span class="p">):</span>
+		<span class="c1">#print(&#39;=== myCanvasWidget.zoom()&#39;, zoom)</span>
+		<span class="k">if</span> <span class="n">zoom</span> <span class="o">==</span> <span class="s1">&#39;in&#39;</span><span class="p">:</span>
+			<span class="n">scale</span> <span class="o">=</span> <span class="mf">1.2</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">scale</span> <span class="o">=</span> <span class="mf">0.8</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span><span class="n">scale</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="myToolbarWidget"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myToolbarWidget">[docs]</a><span class="k">class</span> <span class="nc">myToolbarWidget</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QToolBar</span><span class="p">):</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">myQGraphicsView</span><span class="p">,</span> <span class="n">theCanvas</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myToolbarWidget.__init__&#39;</span><span class="p">)</span>
+		<span class="nb">super</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QToolBar</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">parent</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span> <span class="o">=</span> <span class="n">myQGraphicsView</span>
+
+		<span class="c1"># a button</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		buttonName = &#39;Load Canvas&#39;</span>
+<span class="sd">		button = QtWidgets.QPushButton(buttonName)</span>
+<span class="sd">		button.setToolTip(&#39;Load a canvas from disk&#39;)</span>
+<span class="sd">		#button.move(100,70)</span>
+<span class="sd">		button.clicked.connect(partial(self.on_button_click,buttonName))</span>
+<span class="sd">		self.addWidget(button)</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+		<span class="n">buttonName</span> <span class="o">=</span> <span class="s1">&#39;Save Canvas&#39;</span>
+		<span class="n">button</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="n">buttonName</span><span class="p">)</span>
+		<span class="n">button</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s1">&#39;Load a canvas from disk&#39;</span><span class="p">)</span>
+		<span class="n">button</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_button_click</span><span class="p">,</span><span class="n">buttonName</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">button</span><span class="p">)</span>
+
+		<span class="n">checkBoxName</span> <span class="o">=</span> <span class="s1">&#39;Video Layer&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">showVideoCheckBox</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QCheckBox</span><span class="p">(</span><span class="n">checkBoxName</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">showVideoCheckBox</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s1">&#39;Load a canvas from disk&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">showVideoCheckBox</span><span class="o">.</span><span class="n">setCheckState</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">showVideoCheckBox</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_checkbox_click</span><span class="p">,</span> <span class="n">checkBoxName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">showVideoCheckBox</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">showVideoCheckBox</span><span class="p">)</span>
+
+		<span class="n">checkBoxName</span> <span class="o">=</span> <span class="s1">&#39;2P Max Layer&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pMaxCheckBox</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QCheckBox</span><span class="p">(</span><span class="n">checkBoxName</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pMaxCheckBox</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s1">&#39;Load a canvas from disk&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pMaxCheckBox</span><span class="o">.</span><span class="n">setCheckState</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pMaxCheckBox</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_checkbox_click</span><span class="p">,</span> <span class="n">checkBoxName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">show2pMaxCheckBox</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">show2pMaxCheckBox</span><span class="p">)</span>
+
+		<span class="n">checkBoxName</span> <span class="o">=</span> <span class="s1">&#39;2P Squares Layer&#39;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pSquaresCheckBox</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QCheckBox</span><span class="p">(</span><span class="n">checkBoxName</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pSquaresCheckBox</span><span class="o">.</span><span class="n">setToolTip</span><span class="p">(</span><span class="s1">&#39;Load a canvas from disk&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pSquaresCheckBox</span><span class="o">.</span><span class="n">setCheckState</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="c1"># Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">show2pSquaresCheckBox</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_checkbox_click</span><span class="p">,</span> <span class="n">checkBoxName</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">show2pSquaresCheckBox</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">show2pSquaresCheckBox</span><span class="p">)</span>
+
+		<span class="c1">#</span>
+		<span class="c1"># radio buttons to select type of contrast (selected, video layer, scope layer)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">contrastGroupBox</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QGroupBox</span><span class="p">(</span><span class="s1">&#39;Image Contrast&#39;</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">selectedContrast</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QRadioButton</span><span class="p">(</span><span class="s1">&#39;Selected&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">videoLayerContrast</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QRadioButton</span><span class="p">(</span><span class="s1">&#39;Video Layer&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">scopeLayerContrast</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QRadioButton</span><span class="p">(</span><span class="s1">&#39;Scope Layer&#39;</span><span class="p">)</span>
+
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		self.selectedContrast.toggled.connect(self.on_toggle_image_contrast)</span>
+<span class="sd">		self.videoLayerContrast.toggled.connect(self.on_toggle_image_contrast)</span>
+<span class="sd">		self.scopeLayerContrast.toggled.connect(self.on_toggle_image_contrast)</span>
+<span class="sd">		&#39;&#39;&#39;</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">selectedContrast</span><span class="o">.</span><span class="n">setChecked</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+		<span class="n">contrastVBox</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">()</span>
+		<span class="n">contrastVBox</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selectedContrast</span><span class="p">)</span>
+		<span class="n">contrastVBox</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">videoLayerContrast</span><span class="p">)</span>
+		<span class="n">contrastVBox</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scopeLayerContrast</span><span class="p">)</span>
+
+		<span class="c1">#</span>
+		<span class="c1"># contrast sliders</span>
+		<span class="c1"># min</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QSlider</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Horizontal</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span><span class="o">.</span><span class="n">setMinimum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span><span class="o">.</span><span class="n">setMaximum</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span><span class="o">.</span><span class="n">valueChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_contrast_slider</span><span class="p">,</span> <span class="s1">&#39;minSlider&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span><span class="p">))</span>
+		<span class="c1">#self.addWidget(self.minSlider)</span>
+		<span class="n">contrastVBox</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span><span class="p">)</span>
+		<span class="c1"># max</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QSlider</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Horizontal</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span><span class="o">.</span><span class="n">setMinimum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span><span class="o">.</span><span class="n">setMaximum</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span><span class="o">.</span><span class="n">valueChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_contrast_slider</span><span class="p">,</span> <span class="s1">&#39;maxSlider&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span><span class="p">))</span>
+		<span class="c1">#self.addWidget(self.maxSlider)</span>
+		<span class="n">contrastVBox</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">contrastGroupBox</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">contrastVBox</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">contrastGroupBox</span><span class="p">)</span>
+
+		<span class="c1">#</span>
+		<span class="c1"># file list</span>
+		<span class="c1">#self.fileList = QtWidgets.QListWidget()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fileList</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QTreeWidget</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fileList</span><span class="o">.</span><span class="n">itemSelectionChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fileSelected</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fileList</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">fileList</span><span class="o">.</span><span class="n">setHeaderLabels</span><span class="p">([</span><span class="s1">&#39;File&#39;</span><span class="p">])</span>
+
+		<span class="n">itemList</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">videoFile</span> <span class="ow">in</span> <span class="n">theCanvas</span><span class="o">.</span><span class="n">videoFileList</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="n">videoFile</span><span class="o">.</span><span class="n">_fileName</span><span class="p">)</span>
+			<span class="c1">#self.fileList.addItem(videoFile._fileName)</span>
+			<span class="n">item</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QTreeWidgetItem</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fileList</span><span class="p">)</span>
+			<span class="n">item</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">_fileName</span><span class="p">)</span>
+			<span class="n">item</span><span class="o">.</span><span class="n">setFlags</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">flags</span><span class="p">()</span> <span class="o">|</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsUserCheckable</span><span class="p">)</span>
+			<span class="n">item</span><span class="o">.</span><span class="n">setCheckState</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Checked</span><span class="p">)</span>
+			<span class="n">itemList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">scopeFile</span> <span class="ow">in</span> <span class="n">theCanvas</span><span class="o">.</span><span class="n">scopeFileList</span><span class="p">:</span>
+			<span class="nb">print</span><span class="p">(</span><span class="n">scopeFile</span><span class="o">.</span><span class="n">_fileName</span><span class="p">)</span>
+			<span class="c1">#self.fileList.addItem(scopeFile._fileName)</span>
+			<span class="n">item</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QTreeWidgetItem</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fileList</span><span class="p">)</span>
+			<span class="n">item</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">scopeFile</span><span class="o">.</span><span class="n">_fileName</span><span class="p">)</span>
+			<span class="n">item</span><span class="o">.</span><span class="n">setFlags</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">flags</span><span class="p">()</span> <span class="o">|</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsUserCheckable</span><span class="p">)</span>
+			<span class="n">item</span><span class="o">.</span><span class="n">setCheckState</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Checked</span><span class="p">)</span>
+			<span class="n">itemList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fileList</span><span class="o">.</span><span class="n">insertTopLevelItems</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">itemList</span><span class="p">)</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;myToolbarWidget.__init__() done&#39;</span><span class="p">)</span>
+
+	<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">	def on_toggle_image_contrast(self):</span>
+<span class="sd">		print(&#39;=== on_toggle_image_contrast()&#39;)</span>
+<span class="sd">	&#39;&#39;&#39;</span>
+<div class="viewcode-block" id="myToolbarWidget.getSelectedContrast"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myToolbarWidget.getSelectedContrast">[docs]</a>	<span class="k">def</span> <span class="nf">getSelectedContrast</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectedContrast</span><span class="o">.</span><span class="n">isChecked</span><span class="p">():</span>
+			<span class="k">return</span> <span class="s1">&#39;selected&#39;</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">videoLayerContrast</span><span class="o">.</span><span class="n">isChecked</span><span class="p">():</span>
+			<span class="k">return</span> <span class="s1">&#39;Video Layer&#39;</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">scopeLayerContrast</span><span class="o">.</span><span class="n">isChecked</span><span class="p">():</span>
+			<span class="k">return</span> <span class="s1">&#39;2P Max Layer&#39;</span></div>
+
+<div class="viewcode-block" id="myToolbarWidget.on_contrast_slider"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myToolbarWidget.on_contrast_slider">[docs]</a>	<span class="k">def</span> <span class="nf">on_contrast_slider</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+
+		<span class="n">theMin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minSlider</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+		<span class="n">theMax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maxSlider</span><span class="o">.</span><span class="n">value</span><span class="p">()</span>
+
+		<span class="n">adjustThisLayer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getSelectedContrast</span><span class="p">()</span> <span class="c1"># todo: work out the strings I am using !!!!!!!!!!!!!</span>
+
+		<span class="n">selectedItem</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="n">selectedItems</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">selectedItems</span><span class="p">()</span> <span class="c1"># can be none</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">selectedItems</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="c1"># the first selected item</span>
+			<span class="n">selectedItem</span> <span class="o">=</span> <span class="n">selectedItems</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+		<span class="n">useMaxProject</span> <span class="o">=</span> <span class="kc">False</span>
+		<span class="c1">#todo: work out these string s!!!!!!!! (VIdeo LAyer, 2P Max Layer)</span>
+		<span class="k">if</span> <span class="n">adjustThisLayer</span> <span class="o">==</span> <span class="s1">&#39;Video Layer&#39;</span><span class="p">:</span>
+			<span class="n">useMaxProject</span> <span class="o">=</span> <span class="kc">False</span>
+		<span class="k">elif</span> <span class="n">adjustThisLayer</span> <span class="o">==</span> <span class="s1">&#39;2P Max Layer&#39;</span><span class="p">:</span>
+			<span class="c1"># todo: change this in future</span>
+			<span class="n">useMaxProject</span> <span class="o">=</span> <span class="kc">True</span>
+		<span class="c1">#elif adjustThisLayer == &#39;selected&#39;:</span>
+		<span class="c1">#	selectedItems = self.myQGraphicsView.myScene.selectedItems()</span>
+		<span class="c1">#	print(&#39;NOT IMPLEMENTED&#39;)</span>
+
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== on_contrast_slider&#39;</span><span class="p">,</span> <span class="s1">&#39;adjustThisLayer:&#39;</span><span class="p">,</span> <span class="n">adjustThisLayer</span><span class="p">,</span> <span class="s1">&#39;useMaxProject:&#39;</span><span class="p">,</span> <span class="n">useMaxProject</span><span class="p">)</span>
+
+		<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span>  <span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span><span class="o">.</span><span class="n">myScene</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+
+			<span class="c1"># CHANGE TO GENERALIZE</span>
+			<span class="c1">#if item.myLayer == &#39;Video Layer&#39;:</span>
+			<span class="c1">#if item.myLayer == &#39;2P Max Layer&#39;:</span>
+			<span class="c1">#print(&#39;item.myLayer:&#39;, item.myLayer)</span>
+
+			<span class="c1"># decide if we adjust this item</span>
+			<span class="c1"># noramlly we are using layers</span>
+			<span class="c1"># there is a special case where we are adjusting the selected it !!!!!!!!!!!!!!!!!!!!</span>
+			<span class="c1">#adjustThisItem =</span>
+			<span class="k">if</span> <span class="n">adjustThisLayer</span> <span class="o">==</span> <span class="s1">&#39;selected&#39;</span><span class="p">:</span>
+				<span class="n">adjustThisItem</span> <span class="o">=</span> <span class="n">item</span> <span class="o">==</span> <span class="n">selectedItem</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">adjustThisItem</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">myLayer</span> <span class="o">==</span><span class="n">adjustThisLayer</span>
+
+			<span class="c1">#if item.myLayer == adjustThisLayer:</span>
+			<span class="k">if</span> <span class="n">adjustThisItem</span><span class="p">:</span>
+				<span class="c1"># CHANGE TO GENERALIZE</span>
+				<span class="c1"># todo: canvas should have one list of stacks (not separate video and scope lists)</span>
+				<span class="c1">#if adjustThisLayer == &#39;Video Layer&#39;:</span>
+				<span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">myLayer</span> <span class="o">==</span> <span class="s1">&#39;Video Layer&#39;</span><span class="p">:</span>
+					<span class="n">videoFile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span><span class="o">.</span><span class="n">myCanvas</span><span class="o">.</span><span class="n">videoFileList</span><span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">_index</span><span class="p">]</span>
+				<span class="c1">#elif adjustThisLayer == &#39;2P Max Layer&#39;:</span>
+				<span class="k">elif</span> <span class="n">item</span><span class="o">.</span><span class="n">myLayer</span> <span class="o">==</span> <span class="s1">&#39;2P Max Layer&#39;</span><span class="p">:</span>
+					<span class="n">videoFile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span><span class="o">.</span><span class="n">myCanvas</span><span class="o">.</span><span class="n">scopeFileList</span><span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">_index</span><span class="p">]</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;bCanvasApp.on_contrast_slider() ERRRRRRRORRORORORRORORRORORORORORRORORO&#39;</span><span class="p">)</span>
+					<span class="k">continue</span>
+
+				<span class="n">umWidth</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">getHeaderVal</span><span class="p">(</span><span class="s1">&#39;umWidth&#39;</span><span class="p">)</span>
+				<span class="n">umHeight</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">getHeaderVal</span><span class="p">(</span><span class="s1">&#39;umHeight&#39;</span><span class="p">)</span>
+				<span class="c1">#print(&#39;umWidth:&#39;, umWidth)</span>
+
+
+				<span class="c1"># get an contrast enhanced ndarray</span>
+				<span class="c1"># CHANGE TO GENERALIZE</span>
+				<span class="c1">#videoImage = videoFile.getImage_ContrastEnhanced(theMin, theMax) # return the original as an nd_array</span>
+
+				<span class="c1"># each scope stack needs to know if it is diplaying a real stack OR just a max project</span>
+				<span class="c1"># where do I put this ???????</span>
+				<span class="n">videoImage</span> <span class="o">=</span> <span class="n">videoFile</span><span class="o">.</span><span class="n">getImage_ContrastEnhanced</span><span class="p">(</span><span class="n">theMin</span><span class="p">,</span> <span class="n">theMax</span><span class="p">,</span> <span class="n">useMaxProject</span><span class="o">=</span><span class="n">useMaxProject</span><span class="p">)</span> <span class="c1"># return the original as an nd_array</span>
+
+				<span class="n">imageStackHeight</span><span class="p">,</span> <span class="n">imageStackWidth</span> <span class="o">=</span> <span class="n">videoImage</span><span class="o">.</span><span class="n">shape</span>
+
+				<span class="c1">#print(&#39;mean:&#39;, np.mean(videoImage))</span>
+
+				<span class="n">myQImage</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QImage</span><span class="p">(</span><span class="n">videoImage</span><span class="p">,</span> <span class="n">imageStackWidth</span><span class="p">,</span> <span class="n">imageStackHeight</span><span class="p">,</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QImage</span><span class="o">.</span><span class="n">Format_Indexed8</span><span class="p">)</span>
+				<span class="n">pixmap</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QPixmap</span><span class="p">(</span><span class="n">myQImage</span><span class="p">)</span>
+				<span class="n">pixmap</span> <span class="o">=</span> <span class="n">pixmap</span><span class="o">.</span><span class="n">scaled</span><span class="p">(</span><span class="n">umWidth</span><span class="p">,</span> <span class="n">umHeight</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">KeepAspectRatio</span><span class="p">)</span>
+
+				<span class="n">item</span><span class="o">.</span><span class="n">setPixmap</span><span class="p">(</span><span class="n">pixmap</span><span class="p">)</span></div>
+		<span class="c1">#firstItem.setPixmap(pixmap)</span>
+
+<div class="viewcode-block" id="myToolbarWidget.fileSelected"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myToolbarWidget.fileSelected">[docs]</a>	<span class="k">def</span> <span class="nf">fileSelected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;fileSelected() FIX&#39;</span><span class="p">)</span>
+		<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">		theItems = self.fileList.selectedItems()</span>
+<span class="sd">		if len(theItems) &gt; 0:</span>
+<span class="sd">			theItem = theItems[0]</span>
+<span class="sd">			selectedRow = self.fileList.currentRow()</span>
+<span class="sd">			print(&#39;fileSelected()&#39;, theItem.text(), &#39;row:&#39;, selectedRow)</span>
+<span class="sd">			self.myQGraphicsView.setSelectedItem(theItem.text())</span>
+<span class="sd">		&#39;&#39;&#39;</span></div>
+
+<div class="viewcode-block" id="myToolbarWidget.on_button_click"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myToolbarWidget.on_button_click">[docs]</a>	<span class="nd">@QtCore</span><span class="o">.</span><span class="n">pyqtSlot</span><span class="p">()</span>
+	<span class="k">def</span> <span class="nf">on_button_click</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== myToolbarWidget.on_button_click() name:&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="myToolbarWidget.on_checkbox_click"><a class="viewcode-back" href="../../bimpy.html#bimpy.bCanvasApp.myToolbarWidget.on_checkbox_click">[docs]</a>	<span class="nd">@QtCore</span><span class="o">.</span><span class="n">pyqtSlot</span><span class="p">()</span>
+	<span class="k">def</span> <span class="nf">on_checkbox_click</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">checkBoxObject</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;=== myToolbarWidget.on_checkbox_click() name:&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s1">&#39;checkBoxObject:&#39;</span><span class="p">,</span> <span class="n">checkBoxObject</span><span class="p">)</span>
+		<span class="n">checkState</span> <span class="o">=</span> <span class="n">checkBoxObject</span><span class="o">.</span><span class="n">checkState</span><span class="p">()</span>
+
+		<span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;Video Layer&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span><span class="o">.</span><span class="n">hideShowLayer</span><span class="p">(</span><span class="s1">&#39;Video Layer&#39;</span><span class="p">,</span> <span class="n">checkState</span><span class="o">==</span><span class="mi">2</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;2P Max Layer&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span><span class="o">.</span><span class="n">hideShowLayer</span><span class="p">(</span><span class="s1">&#39;2P Max Layer&#39;</span><span class="p">,</span> <span class="n">checkState</span><span class="o">==</span><span class="mi">2</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;2P Squares Layer&#39;</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">myQGraphicsView</span><span class="o">.</span><span class="n">hideShowLayer</span><span class="p">(</span><span class="s1">&#39;2P Squares Layer&#39;</span><span class="p">,</span> <span class="n">checkState</span><span class="o">==</span><span class="mi">2</span><span class="p">)</span></div></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+	<span class="kn">import</span> <span class="nn">sys</span>
+	<span class="kn">import</span> <span class="nn">bJavaBridge</span>
+
+	<span class="kn">import</span> <span class="nn">logging</span>
+	<span class="kn">import</span> <span class="nn">traceback</span>
+
+	<span class="k">try</span><span class="p">:</span>
+		<span class="kn">from</span> <span class="nn">bJavaBridge</span> <span class="k">import</span> <span class="n">bJavaBridge</span>
+		<span class="n">myJavaBridge</span> <span class="o">=</span> <span class="n">bJavaBridge</span><span class="p">()</span>
+		<span class="n">myJavaBridge</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+		<span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
+		<span class="n">w</span> <span class="o">=</span> <span class="n">MainWindow</span><span class="p">()</span>
+		<span class="n">w</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">640</span><span class="p">,</span> <span class="mi">480</span><span class="p">)</span>
+		<span class="n">w</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+		<span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">exec_</span><span class="p">())</span>
+	<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;bCanvasApp __main__ exception&#39;</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+		<span class="c1">#logging.error(traceback.format_exc())</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   2&#39;</span><span class="p">)</span>
+		<span class="n">myJavaBridge</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   3&#39;</span><span class="p">)</span>
+		<span class="c1">#sys.exit(app.exec_())</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   4&#39;</span><span class="p">)</span>
+		<span class="c1">#raise</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   5&#39;</span><span class="p">)</span>
+	<span class="k">finally</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   6&#39;</span><span class="p">)</span>
+		<span class="n">myJavaBridge</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   7&#39;</span><span class="p">)</span>
+		<span class="c1">#sys.exit(app.exec_())</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   8&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">bImPy</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Robert H Cudmore.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
