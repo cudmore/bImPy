@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 
 class bStackHeader:
 
-	def __init__(self, path):
+	def __init__(self, path=''):
 
 		logger.info('constructor')
 
@@ -96,10 +96,12 @@ class bStackHeader:
 	'''
 
 	def importVideoHeaderFromIgor(self, igorImportDict):
+		print('importVideoHeaderFromIgor()')
 		fullFileName = os.path.basename(self.path)
 		baseFileName, extension = os.path.splitext(fullFileName)
 		if baseFileName in igorImportDict.keys():
-			self.header = igorImportDict[baseFileName] # may fail
+			self.header = igorImportDict[baseFileName].header # may fail
+			print('   self.header:', self.header)
 		else:
 			print('bStackHeader.importVideoHeaderFromIgor() did not find imported header information for file:', self.path)
 
@@ -133,10 +135,16 @@ class bStackHeader:
 	@property
 	def bitDepth(self):
 		bitsPerPixel = self.header['bitsPerPixel']
+		if type(bitsPerPixel) == str:
+			print('   error: bStackHeader.bitDepth found str bits perpixel:', self.header['bitsPerPixel'])
+			bitsPerPixel = int(bitsPerPixel)
 		if bitsPerPixel is None or bitsPerPixel=='':
 			print('   error: bStackHeader.bitDepth got bad bitsPerPixel:', bitsPerPixel, 'returning 8, path:', self.path)
 			bitsPerPixel = 8
+		#print('type(bitsPerPixel):', type(bitsPerPixel), bitsPerPixel, self.path)
 		return bitsPerPixel
+		#print('bStackHeader.bitDepth NEVER WORKS, RETURNING 8')
+		#return 8
 
 	def _loadHeaderFromConverted(self, convertedStackHeaderPath):
 		"""Load header from coverted header .txt file"""
@@ -216,8 +224,23 @@ class bStackHeader:
 		self.header['date'] = ''
 		self.header['time'] = ''
 
-		self.header['olympusFileVersion'] = '' # Of the Olympus software
-		self.header['olympusProgramVersion'] = '' # Of the Olympus software
+		self.header['stackType'] = None
+		self.header['numChannels'] = None
+		self.header['bitsPerPixel'] = None
+
+		self.header['xPixels'] = None
+		self.header['yPixels'] = None
+		self.header['numImages'] = None
+		self.header['numFrames'] = None
+		#
+		self.header['xVoxel'] = 1 # um/pixel
+		self.header['yVoxel'] = 1
+		self.header['zVoxel'] = 1
+
+		self.header['umWidth'] = None
+		self.header['umHeight'] = None
+
+		self.header['zoom'] = None # optical zoom of objective
 
 		self.header['laserWavelength'] = None #
 		self.header['laserPercent'] = None #
@@ -237,26 +260,6 @@ class bStackHeader:
 
 		self.header['scanner'] = None
 
-		self.header['zoom'] = None # optical zoom of objective
-
-		self.header['bitsPerPixel'] = None
-
-		self.header['numChannels'] = None
-
-		self.header['stackType'] = None
-
-		self.header['xPixels'] = None
-		self.header['yPixels'] = None
-		self.header['numImages'] = None
-		self.header['numFrames'] = None
-		#
-		self.header['xVoxel'] = 1 # um/pixel
-		self.header['yVoxel'] = 1
-		self.header['zVoxel'] = 1
-
-		self.header['umWidth'] = None
-		self.header['umHeight'] = None
-
 		self.header['frameSpeed'] = None #
 		self.header['lineSpeed'] = None # time of each line scan (ms)
 		self.header['pixelSpeed'] = None #
@@ -264,6 +267,9 @@ class bStackHeader:
 		self.header['xMotor'] = None
 		self.header['yMotor'] = None
 		self.header['zMotor'] = None
+
+		self.header['olympusFileVersion'] = '' # Of the Olympus software
+		self.header['olympusProgramVersion'] = '' # Of the Olympus software
 
 	def assignToShape(self, stack):
 		"""shape is (channels, slices, x, y)"""
@@ -282,12 +288,17 @@ class bStackHeader:
 			self.header['yPixels'] = shape[3]
 		else:
 			print('   error: bStackHeader.assignToShape() got bad shape:', shape)
-		dtype = stack.dtype
-		if dtype == 'uint8':
-			bitDepth = 8
+		#print('self.header:', self.header)
+		bitsPerPixel = self.header['bitsPerPixel']
+		if bitsPerPixel is not None:
+			print('assignToShape() self.header["bitsPerPixel"] is already', self.header['bitsPerPixel'], type(self.header['bitsPerPixel']))
 		else:
-			bitDepth = 16
-		self.header['bitsPerPixel'] = bitDepth
+			dtype = stack.dtype
+			if dtype == 'uint8':
+				bitDepth = 8
+			else:
+				bitDepth = 16
+			self.header['bitsPerPixel'] = bitDepth
 
 	def readOirHeader(self):
 		"""
@@ -424,7 +435,7 @@ class bStackHeader:
 								if 'configuration scannerType' in finalKey:
 									self.header['scanner'] = finalValue # in ('Resonant', 'Galvano')
 								if 'imageDefinition bitCounts' in finalKey:
-									self.header['bitsPerPixel'] = finalValue
+									self.header['bitsPerPixel'] = int(finalValue)
 
 								# channel 1
 								if 'pmt gain #1' in finalKey:

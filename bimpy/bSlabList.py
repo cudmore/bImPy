@@ -34,12 +34,8 @@ class bSlabList:
 		self.orig_y = []
 		self.orig_z = []
 
-		'''
-		self.d = []
-		self.edgeIdx = []
-		'''
-
 		# todo: change this to _slabs.txt
+		'''
 		slabFilePath, ext = os.path.splitext(tifPath)
 		slabFilePath += '_slabs.txt'
 
@@ -65,7 +61,9 @@ class bSlabList:
 			print('file:', slabFilePath)
 			print('   len(self.x)', len(self.x))
 			print('   tracing z max:', np.nanmax(self.z))
+		'''
 
+		self.loadDeepVess()
 		self.loadVesselucida_xml()
 
 		self.analyze()
@@ -104,6 +102,68 @@ class bSlabList:
 
 		return x,y,z
 
+	def loadDeepVess(self):
+		# todo: change this to _slabs.txt
+		slabFilePath, ext = os.path.splitext(self.tifPath)
+		slabFilePath += '_slabs.txt'
+
+		if not os.path.isfile(slabFilePath):
+			print('bSlabList warning, did not find DeepVess slabFilePath:', slabFilePath)
+			pass
+		else:
+			df = pd.read_csv(slabFilePath)
+
+			nSlabs = len(df.index)
+			#self.id = np.full(nSlabs, np.nan) #df.iloc[:,0].values # each point/slab will have an edge id
+			self.id = np.full(nSlabs, 0) #Return a new array of given shape and type, filled with fill_value.
+
+			self.x = df.iloc[:,0].values
+			self.y = df.iloc[:,1].values
+			self.z = df.iloc[:,2].values
+
+			self.orig_x = self.x
+			self.orig_y = self.y
+			self.orig_z = self.z
+
+			print('bSlabList.loadDeepVess() slabFilePath:', slabFilePath)
+			print('   len(self.x)', len(self.x))
+			print('   tracing z max:', np.nanmax(self.z))
+
+			# parse the points/slabs and create a list of self.edgeDictList
+			newZList = []
+			thisSlabList = []
+			for idx, pnt in enumerate(self.x):
+				#print('idx:', idx, 'pnt:', pnt, type(pnt))
+				#newZList = []
+				#thisSlabList = []
+
+				masterEdgeIdx = 0
+
+				if np.isnan(pnt):
+					# we just reached the end of an edge/vessel
+					#print('   point', idx, 'is nan')
+
+					edgeDict = {
+						'type': 'edge',
+						'edgeIdx': masterEdgeIdx,
+						'n': len(newZList),
+						'Len 3D': None,
+						'Len 2D': None,
+						'Tort': None,
+						'z': round(statistics.median(newZList)),
+						'preNode': -1,
+						'postNode': -1,
+						'Bad': False,
+						'slabList': thisSlabList, # list of slab indices on this edge
+						}
+
+					self.edgeDictList.append(edgeDict)
+					masterEdgeIdx += 1
+					newZList = []
+				else:
+					newZList.append(self.z[idx])
+					thisSlabList.append(idx)
+
 	def loadVesselucida_xml(self):
 		"""
 		Load a vesselucida xml file with nodes, edges, and edge connectivity
@@ -112,7 +172,7 @@ class bSlabList:
 		xmlFilePath, ext = os.path.splitext(self.tifPath)
 		xmlFilePath += '.xml'
 		if not os.path.isfile(xmlFilePath):
-			print('bSlabList.loadVesselucida_xml() error, did not find', xmlFilePath)
+			print('bSlabList.loadVesselucida_xml() warning, did not find', xmlFilePath)
 			return
 
 		print('loadVesselucida_xml() file', xmlFilePath)
@@ -388,4 +448,5 @@ class bSlabList:
 
 if __name__ == '__main__':
 	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
+	path = '/Users/cudmore/Sites/bImpy-Data/deepvess/mytest.tif'
 	sl = bSlabList(path)

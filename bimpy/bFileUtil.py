@@ -24,7 +24,6 @@ class bFileUtil:
 		convertedFolder = os.path.join(folderPath, enclosingFolder + '_tif')
 		#print('getConvertedFolder() convertedFolder:', convertedFolder)
 
-
 		return convertedFolder
 
 	def getMaxConvertedFolder(self, rawFilePath):

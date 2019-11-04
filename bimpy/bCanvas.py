@@ -10,7 +10,7 @@ class bCanvas:
 	"""
 	A visuospatial convas that brings together different light paths of a scope.
 	"""
-	def __init__(self,filePath='', folderPath=''):
+	def __init__(self, filePath='', folderPath=''):
 		self._filePath = filePath
 		self._folderPath = folderPath
 
@@ -54,7 +54,7 @@ class bCanvas:
 
 			if line.startswith('bitsPerPixel'):
 				import_bitsPerPixel = line.split(',')
-
+				print('=== import_bitsPerPixel:', import_bitsPerPixel)
 			if line.startswith('pixelsPerLine'):
 				import_pixelsPerLine = line.split(',')
 			if line.startswith('linesPerFrame'):
@@ -76,22 +76,24 @@ class bCanvas:
 				stack = stack.replace('_ch1', '')
 				stack = stack.replace('_ch2', '')
 				#print('stack: "' + stack + '"')
-				self.import_stackDict[stack] = OrderedDict()
+				self.import_stackDict[stack] = bimpy.bStackHeader() #OrderedDict()
 				print(import_xMotorList[idx])
-				self.import_stackDict[stack]['stackType'] = import_stackTypeList[idx]
-				self.import_stackDict[stack]['numImages'] = int(import_numSlicesList[idx]) # just for video
-				self.import_stackDict[stack]['numChannels'] = 1 # just for video
+				self.import_stackDict[stack].header['stackType'] = import_stackTypeList[idx]
+				self.import_stackDict[stack].header['numImages'] = int(import_numSlicesList[idx]) # just for video
+				self.import_stackDict[stack].header['numChannels'] = 1 # just for video
 
 				if len(import_bitsPerPixel[idx]) > 0:
-					self.import_stackDict[stack]['bitsPerPixel'] = int(import_bitsPerPixel[idx])
+					print('*** assigning bitsperpixel idx:', idx, 'value:', int(import_bitsPerPixel[idx]), 'stack:', stack)
+					self.import_stackDict[stack].header['bitsPerPixel'] = int(import_bitsPerPixel[idx])
+				else:
+					print('*** NOT assigning bitsperpixel', idx, import_bitsPerPixel[idx], type(import_bitsPerPixel[idx]))
+				self.import_stackDict[stack].header['xPixels'] = int(import_pixelsPerLine[idx]) # just for video
+				self.import_stackDict[stack].header['yPixels'] = int(import_linesPerFrame[idx]) # just for video
 
-				self.import_stackDict[stack]['xPixels'] = int(import_pixelsPerLine[idx]) # just for video
-				self.import_stackDict[stack]['yPixels'] = int(import_linesPerFrame[idx]) # just for video
-
-				self.import_stackDict[stack]['umWidth'] = float(import_vWidthList[idx]) # just for video
-				self.import_stackDict[stack]['umHeight'] = float(import_vHeightList[idx]) # just for video
-				self.import_stackDict[stack]['xMotor'] = float(import_xMotorList[idx])
-				self.import_stackDict[stack]['yMotor'] = float(import_yMotorList[idx])
+				self.import_stackDict[stack].header['umWidth'] = float(import_vWidthList[idx]) # just for video
+				self.import_stackDict[stack].header['umHeight'] = float(import_vHeightList[idx]) # just for video
+				self.import_stackDict[stack].header['xMotor'] = float(import_xMotorList[idx])
+				self.import_stackDict[stack].header['yMotor'] = float(import_yMotorList[idx])
 		#print(self.import_stackDict)
 
 	def buildFromScratch(self, folderPath=''):
@@ -160,8 +162,8 @@ class bCanvas:
 			print('baseScopeFileName:', baseScopeFileName)
 			if baseScopeFileName in self.import_stackDict.keys():
 				print('   **************** bCanvas.buildFromScratch() is adding motor position to header [[[FAKE DATA]]]')
-				tmpStack.header.header['xMotor'] = self.import_stackDict[baseScopeFileName]['xMotor']
-				tmpStack.header.header['yMotor'] = self.import_stackDict[baseScopeFileName]['yMotor']
+				tmpStack.header.header['xMotor'] = self.import_stackDict[baseScopeFileName].header['xMotor']
+				tmpStack.header.header['yMotor'] = self.import_stackDict[baseScopeFileName].header['yMotor']
 				#tmpStack.header.header['xMotor'] = fakeMotorPositons[scopeFile]['xMotor']
 				#tmpStack.header.header['yMotor'] = fakeMotorPositons[scopeFile]['yMotor']
 			else:

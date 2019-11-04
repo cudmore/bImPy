@@ -49,7 +49,7 @@ class bStack:
 			fileName = os.path.split(self.path)[1]
 			self.fileNameWithoutExtension, tmpExtension = fileName.split('.')
 
-		self.header = None #StackHeader.StackHeader(self.path)
+		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
 		self.stack = None
 
 		# load vesselucida analysis from .xml file
@@ -101,6 +101,7 @@ class bStack:
 			self.header.prettyPrint()
 
 			self.loadStack()
+			self.loadMax()
 
 			self.saveHeader()
 			self.saveStack()
@@ -257,7 +258,7 @@ class bStack:
 			with tifffile.TiffFile(maxFile) as tif:
 				theArray = tif.asarray()
 			if convertTo8Bit:
-				print('   convert to 8-bit')
+				print('   convert to 8-bit self.header.bitDepth', self.header.bitDepth)
 				theArray = skimage.img_as_ubyte(theArray, force_copy=False)
 			# need to specify channel !!!!!!
 			print('   theArray.shape', theArray.shape, np.max(theArray))
@@ -365,7 +366,7 @@ class bStack:
 							self.stack = np.zeros(newShape, dtype=loaded_dtype)
 						# assign
 						self.stack[channelIdx,imageIdx,:,:] = image
-						self.header.assignToShape(self.stack)
+			self.header.assignToShape(self.stack)
 
 	#
 	# Saving
