@@ -56,6 +56,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.myStackList = [] # a list of open bStack
 
+	def mousePressEvent(self, event):
+		print('=== bCanvasApp.mousePressEvent()')
+		super().mousePressEvent(event)
+		#event.setAccepted(False)
+
 	def keyPressEvent(self, event):
 		print('myApp.keyPressEvent() event:', event)
 		self.myGraphicsView.keyPressEvent(event)
@@ -98,6 +103,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			self.myStackList.append(tmp)
 
 
+globalSquare = {
+	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
+	'penColor': QtCore.Qt.blue,
+	'penWidth': 4,
+}
 globalSelectionSquare = {
 	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
 	'penColor': QtCore.Qt.yellow,
@@ -114,6 +124,15 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		self._index = index # index into canvas list (list of either video or scope)
 		self.myLayer = myLayer
 
+	# was trying to not have ot use opacity 0.01
+	'''
+	def shape(self):
+		print('myQGraphicsPixmapItem.shape()')
+		self.setOpacity(0.1)
+		super().shape()
+		self.setOpacity(0.0)
+	'''
+
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)
 		"""
@@ -122,12 +141,32 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		painter.drawEllipse(self.rect)
 		"""
 
+		#print('myQGraphicsPixmapItem.paint self.shapeMode():', self._fileName, self.shapeMode())
+
+		self.drawMyRect(painter)
 		#print('myQGraphicsPixmapItem.paint() isSelected', self.isSelected())
 		if self.isSelected():
 			self.drawFocusRect(painter)
 
+	def drawMyRect(self, painter):
+		#print('myQGraphicsPixmapItem.drawFocusRect() self.boundingRect():', self.boundingRect())
+		self.focusbrush = QtGui.QBrush()
+
+		self.focuspen = QtGui.QPen(globalSquare['pen'])
+		self.focuspen.setColor(globalSquare['penColor'])
+		self.focuspen.setWidthF(globalSquare['penWidth'])
+		#
+		painter.setBrush(self.focusbrush)
+		painter.setPen(self.focuspen)
+
+		painter.setOpacity(1.0)
+
+		#painter.drawRect(self.focusrect)
+		# ???
+		painter.drawRect(self.boundingRect())
+
 	def drawFocusRect(self, painter):
-		#print('myQGraphicsPixmapItem.drawFocusRect()')
+		#print('myQGraphicsPixmapItem.drawFocusRect() self.boundingRect():', self.boundingRect())
 		self.focusbrush = QtGui.QBrush()
 		'''
 		self.focuspen = QtGui.QPen(QtCore.Qt.SolidLine)
@@ -140,6 +179,9 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		#
 		painter.setBrush(self.focusbrush)
 		painter.setPen(self.focuspen)
+
+		painter.setOpacity(1.0)
+
 		#painter.drawRect(self.focusrect)
 		# ???
 		painter.drawRect(self.boundingRect())
@@ -162,11 +204,13 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 	def bringForward(self):
 		"""
 		move this item before its previous sibling
+
+		todo: don't ever move video in front of 2p!
 		"""
 		print('myQGraphicsPixmapItem.myQGraphicsPixmapItem.bringForward()')
 		myScene = self.scene()
 		previousItem = None
-		for item in self.scene().items():
+		for item in self.scene().items(QtCore.Qt.DescendingOrder):
 			if item == self:
 				break
 			previousItem = item
@@ -181,67 +225,29 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		else:
 			print('   myQGraphicsPixmapItem.bringToFront() item is already front most')
 
-class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
-	"""
-	To display rectangles in canvas.
-	Used for 2p images so we can show/hide max project and still see square
-	"""
-	def __init__(self, fileName, myLayer, parent=None):
-		super(QtWidgets.QGraphicsRectItem, self).__init__(parent)
-		self._fileName = fileName
-		self.myLayer = myLayer
-
-	def paint(self, painter, option, widget=None):
-		super().paint(painter, option, widget)
-		if self.isSelected():
-			self.drawFocusRect(painter)
-
-	def drawFocusRect(self, painter):
-		self.focusbrush = QtGui.QBrush()
-		self.focuspen = QtGui.QPen(globalSelectionSquare['pen'])
-		self.focuspen.setColor(globalSelectionSquare['penColor'])
-		self.focuspen.setWidthF(globalSelectionSquare['penWidth'])
-		#
-		painter.setBrush(self.focusbrush)
-		painter.setPen(self.focuspen)
-		painter.drawRect(self.boundingRect())
-
-	def mousePressEvent(self, event):
-		print('   myQGraphicsPixmapItem.mousePressEvent()')
-		super().mousePressEvent(event)
-		#self.setSelected(True)
-		event.setAccepted(False)
-	def mouseMoveEvent(self, event):
-		print('   myQGraphicsPixmapItem.mouseMoveEvent()')
-		super().mouseMoveEvent(event)
-		event.setAccepted(False)
-	def mouseReleaseEvent(self, event):
-		#print('   myQGraphicsPixmapItem.mouseReleaseEvent()')
-		super().mouseReleaseEvent(event)
-		#self.setSelected(False)
-		event.setAccepted(False)
-
-	def bringForward(self):
+	def sendBackward(self):
 		"""
-		move this item before its previous sibling
+		move this item after its next sibling
+
+		todo: don't every move 2p behind video
 		"""
-		print('myQGraphicsRectItem.bringForward()')
+		print('myQGraphicsPixmapItem.myQGraphicsPixmapItem.sendBackward()')
 		myScene = self.scene()
-		previousItem = None
-		for item in self.scene().items():
+		nextItem = None
+		for item in self.scene().items(QtCore.Qt.AscendingOrder):
 			if item == self:
 				break
-			previousItem = item
-		if previousItem is not None:
-			print('   myQGraphicsRectItem.bringForward() is moving', self._fileName, 'before', previousItem._fileName)
+			nextItem = item
+		if nextItem is not None:
+			print('   myQGraphicsPixmapItem.sendBackward() is moving', self._fileName, 'after', nextItem._fileName)
 			# this does not work !!!!
 			#self.stackBefore(previousItem)
-			previous_zvalue = previousItem.zValue()
+			next_zvalue = nextItem.zValue()
 			this_zvalue = self.zValue()
-			previousItem.setZValue(this_zvalue)
-			self.setZValue(previous_zvalue)
+			nextItem.setZValue(this_zvalue)
+			self.setZValue(next_zvalue)
 		else:
-			print('   myQGraphicsRectItem.bringToFront() item is already front most')
+			print('   myQGraphicsPixmapItem.bringToFront() item is already front most')
 
 #
 # amazing post
@@ -364,9 +370,15 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixMapItem.setToolTip(str(idx))
 			pixMapItem.setPos(xMotor,yMotor)
 			pixMapItem.setZValue(numItems)
+			# this also effects bounding rect
+			#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
+
+			pixMapItem.setShapeMode(QtWidgets.QGraphicsPixmapItem.BoundingRectShape)
+			print('pixMapItem.shapeMode():', pixMapItem.shapeMode())
 
 			# add to scene
 			self.myScene.addItem(pixMapItem)
+			numItems += 1
 
 			'''
 			# a rectangle
@@ -404,16 +416,20 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			self.myScene.addItem(pixMapItem)
 			'''
 
-			# 20190705 removed scope rectangles
+			# 20191104 removed scope rectangles, try and just hide image but still show selection rectangle?
+			'''
 			if xMotor is not None and yMotor is not None:
 				myPen = QtGui.QPen(QtCore.Qt.cyan)
 				myPen.setWidth(10)
 				rect_item = myQGraphicsRectItem(fileName,'2P Squares Layer', QtCore.QRectF(xMotor, yMotor, umWidth, umHeight))
 				rect_item.setPen(myPen) #QBrush
-				rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
+				rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True) # we don't want to select rects?
+				rect_item.setZValue(numItems)
 				self.myScene.addItem(rect_item)
+				numItems += 1
+			'''
 
-			numItems += 1
+			#numItems += 1
 
 
 		# add an object at really big x/y
@@ -430,11 +446,19 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		Select the item at itemIndex.
 		This is usually coming from toolbar file list selection
 		"""
-		print('   myQGraphicsView.setSelectedItem()')
+		print('   myQGraphicsView.setSelectedItem() fileName:', fileName)
 		selectThisItem = None
 		for item in self.myScene.items():
+			# I don't want to select rect when showing both 2p max and rect
+			#print(item._fileName, isinstance(item, QtWidgets.QGraphicsPixmapItem)) # only select images, not rects
+			#print('   item.flags():', item.flags())
+
+			# if '2p max layer off' then we DO want to select 2p square
+			# put the logic here rather than turning isSelectible(True/False)
+
+			isSelectable = item.flags() & QtWidgets.QGraphicsItem.ItemIsSelectable
 			item.setSelected(False) # as we iterate, make sure we turn off all selection
-			if item._fileName == fileName:
+			if isSelectable and item._fileName == fileName:
 				selectThisItem = item
 		if selectThisItem is not None:
 			print('   myQGraphicsView.setSelectedItem:', selectThisItem, selectThisItem._fileName)
@@ -442,10 +466,18 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		selectThisItem.setSelected(True)
 
 	def hideShowLayer(self, thisLayer, isVisible):
+		"""
+		if hide/show thisLayer is '2p max layer' then set opacity of '2p max layer'
+		"""
 		print('myQGraphicsView.hideShowLayer()', thisLayer, isVisible)
 		for item in self.myScene.items():
 			if item.myLayer == thisLayer:
-				item.setVisible(isVisible)
+				# was this
+				#item.setVisible(isVisible)
+				# works with 0.1
+				item.setOpacity(1.0 if isVisible else 0.01)
+				# not with 0
+				#item.setOpacity(1.0 if isVisible else 0.1)
 
 	def mouseDoubleClickEvent(self, event):
 		"""
@@ -550,13 +582,24 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		this can be:
 			'bring to front': Will bring the selected item BEFORE its previous item
 			'send to back': Will put the selected item AFTER its next item
+
+			This does not bring entirely to front or entirely to back???
 		"""
-		print('changeOrder()', this)
+		print('myQGraphicsView.changeOrder()', this)
 		if this == 'bring to front':
 			selectedItems = self.myScene.selectedItems()
 			if len(selectedItems) > 0:
+				print('   bring item to front:', selectedItems)
 				selectedItem = selectedItems[0]
 				selectedItem.bringForward()
+			else:
+				print('myQGraphicsView.changeOrder() did not find a selected item???')
+		elif this == 'send to back':
+			selectedItems = self.myScene.selectedItems()
+			if len(selectedItems) > 0:
+				print('   send item to back:', selectedItems)
+				selectedItem = selectedItems[0]
+				selectedItem.sendBackward()
 			else:
 				print('myQGraphicsView.changeOrder() did not find a selected item???')
 
@@ -604,6 +647,70 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		else:
 			scale = 0.8
 		self.scale(scale,scale)
+
+'''
+class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
+	"""
+	To display rectangles in canvas.
+	Used for 2p images so we can show/hide max project and still see square
+	"""
+	def __init__(self, fileName, myLayer, parent=None):
+		super(QtWidgets.QGraphicsRectItem, self).__init__(parent)
+		self._fileName = fileName
+		self.myLayer = myLayer
+
+	def paint(self, painter, option, widget=None):
+		super().paint(painter, option, widget)
+		if self.isSelected():
+			self.drawFocusRect(painter)
+
+	def drawFocusRect(self, painter):
+		self.focusbrush = QtGui.QBrush()
+		self.focuspen = QtGui.QPen(globalSelectionSquare['pen'])
+		self.focuspen.setColor(globalSelectionSquare['penColor'])
+		self.focuspen.setWidthF(globalSelectionSquare['penWidth'])
+		#
+		painter.setBrush(self.focusbrush)
+		painter.setPen(self.focuspen)
+		painter.drawRect(self.boundingRect())
+
+	def mousePressEvent(self, event):
+		print('   myQGraphicsPixmapItem.mousePressEvent()')
+		super().mousePressEvent(event)
+		#self.setSelected(True)
+		event.setAccepted(False)
+	def mouseMoveEvent(self, event):
+		print('   myQGraphicsPixmapItem.mouseMoveEvent()')
+		super().mouseMoveEvent(event)
+		event.setAccepted(False)
+	def mouseReleaseEvent(self, event):
+		#print('   myQGraphicsPixmapItem.mouseReleaseEvent()')
+		super().mouseReleaseEvent(event)
+		#self.setSelected(False)
+		event.setAccepted(False)
+
+	def bringForward(self):
+		"""
+		move this item before its previous sibling
+		"""
+		print('myQGraphicsRectItem.bringForward()')
+		myScene = self.scene()
+		previousItem = None
+		for item in self.scene().items():
+			if item == self:
+				break
+			previousItem = item
+		if previousItem is not None:
+			print('   myQGraphicsRectItem.bringForward() is moving', self._fileName, 'before', previousItem._fileName)
+			# this does not work !!!!
+			#self.stackBefore(previousItem)
+			previous_zvalue = previousItem.zValue()
+			this_zvalue = self.zValue()
+			previousItem.setZValue(this_zvalue)
+			self.setZValue(previous_zvalue)
+		else:
+			print('   myQGraphicsRectItem.bringToFront() item is already front most')
+'''
 
 class myToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, myQGraphicsView, theCanvas, parent=None):
@@ -696,10 +803,10 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		# file list
 		#self.fileList = QtWidgets.QListWidget()
 		self.fileList = QtWidgets.QTreeWidget()
-		self.fileList.itemSelectionChanged.connect(self.fileSelected)
+		self.fileList.itemSelectionChanged.connect(self.fileSelected_callback)
 		self.addWidget(self.fileList)
 
-		self.fileList.setHeaderLabels(['File'])
+		self.fileList.setHeaderLabels(['File',]) # 'Show'])
 
 		itemList = []
 		for videoFile in theCanvas.videoFileList:
@@ -709,6 +816,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			item.setText(0, videoFile._fileName)
 			item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
 			item.setCheckState(0, QtCore.Qt.Checked)
+
 			itemList.append(item)
 		for scopeFile in theCanvas.scopeFileList:
 			print('scopeFile:', scopeFile._fileName)
@@ -718,7 +826,23 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
 			item.setCheckState(0, QtCore.Qt.Checked)
 			itemList.append(item)
+
+		# add all file list items to tree
 		self.fileList.insertTopLevelItems(0, itemList)
+
+		# try and make checkboxes
+		# 20191105, get this working!!!
+		'''
+		for item in itemList:
+			checkBoxName = 'File Check Box'
+			tmpCheckbox = QtWidgets.QCheckBox(checkBoxName)
+			tmpCheckbox.setToolTip('show/Hide Image')
+			tmpCheckbox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
+			tmpCheckbox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, 'tmptmptmp'))
+			#
+			column = 2
+			self.fileList.setItemWidget(item, column, tmpCheckbox)
+		'''
 
 		print('myToolbarWidget.__init__() done')
 
@@ -814,18 +938,18 @@ class myToolbarWidget(QtWidgets.QToolBar):
 				item.setPixmap(pixmap)
 		#firstItem.setPixmap(pixmap)
 
-	def fileSelected(self):
+	def fileSelected_callback(self):
 		"""
 		Respond to user click in the file list
 		"""
-		print('=== myToolbarWidget.fileSelected()')
+		print('=== myToolbarWidget.fileSelected_callback()')
 		theItems = self.fileList.selectedItems()
 		if len(theItems) > 0:
 			theItem = theItems[0]
 			#selectedRow = self.fileList.currentRow() # self.fileList is a QTreeWidget
 			column = 0
 			filename = theItem.text(column)
-			#print('   fileSelected()', filename)
+			#print('   fileSelected_callback()', filename)
 			# visually select image in canvas with yellow square
 			self.myQGraphicsView.setSelectedItem(filename)
 
@@ -839,6 +963,9 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			item = items[0]
 			print('   item:', item)
 			self.fileList.setCurrentItem(item)
+
+	def mousePressEvent(self, event):
+		print('mousePressEvent')
 
 	@QtCore.pyqtSlot()
 	def on_button_click(self, name):

@@ -136,7 +136,7 @@ class bStackHeader:
 	def bitDepth(self):
 		bitsPerPixel = self.header['bitsPerPixel']
 		if type(bitsPerPixel) == str:
-			print('   error: bStackHeader.bitDepth found str bits perpixel:', self.header['bitsPerPixel'])
+			print('   error: bStackHeader.bitDepth found str bits perpixel:', self.header['bitsPerPixel'], self.path)
 			bitsPerPixel = int(bitsPerPixel)
 		if bitsPerPixel is None or bitsPerPixel=='':
 			print('   error: bStackHeader.bitDepth got bad bitsPerPixel:', bitsPerPixel, 'returning 8, path:', self.path)

@@ -742,7 +742,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		print('=== bStackView.mousePressEvent()', event.pos())
 		self.clickPos = event.pos()
 		super().mousePressEvent(event)
-		event.setAccepted(True)
+		# 20191104, was this
+		#event.setAccepted(True)
 
 	def mouseMoveEvent(self, event):
 		#print('=== bStackView.mouseMoveEvent()')
@@ -752,7 +753,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			dy = self.clickPos.y() - newPos.y()
 			self.translate(dx, dy)
 		super().mouseMoveEvent(event)
-		event.setAccepted(True)
+		# 20191104, was this
+		#event.setAccepted(True)
 
 	def mouseReleaseEvent(self, event):
 		#print('=== bStackView.mouseReleaseEvent()')
