@@ -166,8 +166,12 @@ class bStack:
 
 		# we are making a copy so we can modify the contrast
 		if img is None:
+			#print(thisStack, self.stack.shape)
 			if thisStack == 'ch1':
-				img = self.stack[0, sliceNumber, :, :].copy()
+				if len(self.stack.shape)==3:
+					img = self.stack[0, :, :].copy()
+				else:
+					img = self.stack[0, sliceNumber, :, :].copy()
 			elif thisStack == 'mask':
 				img = self._imagesMask[sliceNumber, :, :].copy()
 			elif thisStack == 'skel':

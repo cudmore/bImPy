@@ -74,13 +74,17 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 	# This is from bStackBrowser
 	#def showStackWindow(self, path):
-	def openStack(self, filename, channel=1):
+	def openStack(self, filename, layer, channel=1):
 		"""
 		open a stack from the canvas
 		"""
 		print('=== bCanvasApp.openStack() filename:', filename)
 
 		canvasPath = self.canvas._folderPath
+
+		if layer == 'Video Layer':
+			#canvasPath = os.path.join(canvasPath, 'video')
+			canvasPath = self.canvas.videoFolderPath
 
 		print('   canvasPath:', canvasPath)
 
@@ -117,12 +121,17 @@ globalSelectionSquare = {
 class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 	"""
 	To display images in canvas
+
+	Each item is added to a scene (QGraphicsScene)
 	"""
+	#def __init__(self, fileName, index, myLayer, myQGraphicsView, parent=None):
 	def __init__(self, fileName, index, myLayer, parent=None):
 		super(QtWidgets.QGraphicsPixmapItem, self).__init__(parent)
+		#self.myQGraphicsView = myQGraphicsView
 		self._fileName = fileName
 		self._index = index # index into canvas list (list of either video or scope)
 		self.myLayer = myLayer
+		self._isVisible = True
 
 	# was trying to not have ot use opacity 0.01
 	'''
@@ -189,12 +198,17 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 	def mousePressEvent(self, event):
 		print('   myQGraphicsPixmapItem.mousePressEvent()')
 		super().mousePressEvent(event)
+		# this is necc. to create yellow selection around image but DOES NOT ALLOW DRAGGING ON MOUSE MOVE?
 		#self.setSelected(True)
-		#event.setAccepted(False)
+
 	def mouseMoveEvent(self, event):
-		print('   myQGraphicsPixmapItem.mouseMoveEvent()')
+		#print('   myQGraphicsPixmapItem.mouseMoveEvent()')
 		super().mouseMoveEvent(event)
 		#event.setAccepted(False)
+		# i want to somehow tell the view (or maybe the scene) to move?
+		#if self.isSelected():
+		#	print(self.parent)
+
 	def mouseReleaseEvent(self, event):
 		#print('   myQGraphicsPixmapItem.mouseReleaseEvent()')
 		super().mouseReleaseEvent(event)
@@ -309,7 +323,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
 
 			# insert
-			pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', pixmap)
+			#pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', self, parent=pixmap)
+			pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', parent=pixmap)
 			pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 			pixMapItem.setToolTip(str(idx))
 			pixMapItem.setPos(xMotor,yMotor)
@@ -365,7 +380,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
 
 			# insert
-			pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', pixmap)
+			#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
+			pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', parent=pixmap)
 			pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 			pixMapItem.setToolTip(str(idx))
 			pixMapItem.setPos(xMotor,yMotor)
@@ -465,6 +481,25 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.myScene.setFocusItem(selectThisItem)
 		selectThisItem.setSelected(True)
 
+	def hideShowItem(self, fileName, doShow):
+		"""
+		Hide/Show individual items
+
+		todo: if a layer is off then do not hide/show, better yet,
+		when layer is off, disable checkboxes in myToolbarWidget
+		"""
+		for item in self.myScene.items():
+			if item._fileName == fileName:
+				# todo: need to ask the self.myCanvas if the layer is on !!!
+
+				if item.myLayer=='Video Layer':
+					item.setOpacity(1.0 if doShow else 0)
+				else:
+					item.setOpacity(1.0 if doShow else 0.01)
+				# keep track of this for each item so we can keep checked items in myToolbarWidget in sync
+				#when user presses checkboxes to toggle layers on/off
+				item._isVisible = doShow
+
 	def hideShowLayer(self, thisLayer, isVisible):
 		"""
 		if hide/show thisLayer is '2p max layer' then set opacity of '2p max layer'
@@ -472,10 +507,15 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		print('myQGraphicsView.hideShowLayer()', thisLayer, isVisible)
 		for item in self.myScene.items():
 			if item.myLayer == thisLayer:
-				# was this
-				#item.setVisible(isVisible)
-				# works with 0.1
-				item.setOpacity(1.0 if isVisible else 0.01)
+				# don't show items in this layer that are not visible
+				# not visible are files that are checked off in myToolbarWidget
+				if isVisible and not item._isVisible:
+					continue
+				if thisLayer=='Video Layer':
+					# turn off both image and outline
+					item.setOpacity(1.0 if isVisible else 0)
+				else:
+					item.setOpacity(1.0 if isVisible else 0.01)
 				# not with 0
 				#item.setOpacity(1.0 if isVisible else 0.1)
 
@@ -488,16 +528,20 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		if len(selectedItems) > 0:
 			selectedItem = selectedItems[0]
 			fileName = selectedItem._fileName
-			self.myParentApp.openStack(fileName)
+			layer = selectedItem.myLayer
+			self.myParentApp.openStack(fileName, layer)
 
 	def mousePressEvent(self, event):
 		print('=== myQGraphicsView.mousePressEvent()')
 		super().mousePressEvent(event)
 		#event.setAccepted(False)
+
 	def mouseMoveEvent(self, event):
 		#print('=== myQGraphicsView.mouseMoveEvent()')
+		# this is critical, allows dragging view/scene around
 		super().mouseMoveEvent(event)
-		#event.setAccepted(False)
+		event.setAccepted(True)
+
 	def mouseReleaseEvent(self, event):
 		print('=== myQGraphicsView.mouseReleaseEvent() event:', event)
 		super().mouseReleaseEvent(event)
@@ -548,7 +592,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	'''
 
 	def keyPressEvent(self, event):
-		print('=== myCanvasWidget.keyPressEvent() event.key():', event.key())
+		print('=== myQGraphicsView.keyPressEvent() event.key():', event.key())
 		# QtCore.Qt.Key_Tab
 
 		# pan
@@ -641,7 +685,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	'''
 
 	def zoom(self, zoom):
-		#print('=== myCanvasWidget.zoom()', zoom)
+		#print('=== myGraphicsView.zoom()', zoom)
 		if zoom == 'in':
 			scale = 1.2
 		else:
@@ -804,6 +848,8 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#self.fileList = QtWidgets.QListWidget()
 		self.fileList = QtWidgets.QTreeWidget()
 		self.fileList.itemSelectionChanged.connect(self.fileSelected_callback)
+		self.fileList.itemChanged.connect(self.fileSelected_changed)
+
 		self.addWidget(self.fileList)
 
 		self.fileList.setHeaderLabels(['File',]) # 'Show'])
@@ -829,6 +875,8 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 		# add all file list items to tree
 		self.fileList.insertTopLevelItems(0, itemList)
+
+		# itemChanged
 
 		# try and make checkboxes
 		# 20191105, get this working!!!
@@ -897,6 +945,11 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			#adjustThisItem =
 			if adjustThisLayer == 'selected':
 				adjustThisItem = item == selectedItem
+				if item.myLayer == 'Video Layer':
+					useMaxProject = False
+				elif item.myLayer == '2P Max Layer':
+					# todo: change this in future
+					useMaxProject = True
 			else:
 				adjustThisItem = item.myLayer ==adjustThisLayer
 
@@ -938,9 +991,21 @@ class myToolbarWidget(QtWidgets.QToolBar):
 				item.setPixmap(pixmap)
 		#firstItem.setPixmap(pixmap)
 
+	def fileSelected_changed(self, item, col):
+		"""
+		called when user clicks on check box
+		"""
+		print('=== fileSelected_changed() item:', item, 'col:', col, 'is now checked:', item.checkState(0))
+		column = 0
+		filename = item.text(column)
+		isNowChecked = item.checkState(column) # 0:not checked, 2:is checked
+		doShow = True if isNowChecked==2 else False
+		print('   telling self.myQGraphicsView.hideShowItem() filename:', filename, 'doShow:', doShow)
+		self.myQGraphicsView.hideShowItem(filename, doShow)
+
 	def fileSelected_callback(self):
 		"""
-		Respond to user click in the file list
+		Respond to user click in the file list (selects a file)
 		"""
 		print('=== myToolbarWidget.fileSelected_callback()')
 		theItems = self.fileList.selectedItems()
@@ -966,6 +1031,12 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 	def mousePressEvent(self, event):
 		print('mousePressEvent')
+
+	'''
+	def keyPressEvent(self, event):
+		print('myToolbarWidget.keyPressEvent() event:', event)
+		print('   enable bring to front and send to back')
+	'''
 
 	@QtCore.pyqtSlot()
 	def on_button_click(self, name):
