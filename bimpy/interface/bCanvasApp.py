@@ -764,17 +764,26 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		self.myQGraphicsView = parent
 
 	def keyPressEvent(self, event):
-		print('myTreeWidget.keyPressEvent() event:', event)
+		print('myTreeWidget.keyPressEvent() event.text():', event.text())
 		#self.myGraphicsView.keyPressEvent(event)
 
 		# todo: fix this, this assumes selected file in list is same as selected file in graphics view !
 		if event.key() == QtCore.Qt.Key_F:
 			#print('f for bring to front')
 			self.myQGraphicsView.changeOrder('bring to front')
-		if event.key() == QtCore.Qt.Key_B:
+		elif event.key() == QtCore.Qt.Key_B:
 			#print('b for send to back')
 			self.myQGraphicsView.changeOrder('send to back')
-
+		elif event.key() == QtCore.Qt.Key_Left:
+			print('todo: left arrow reselect')
+		elif event.key() == QtCore.Qt.Key_Right:
+			print('todo: right arrow reselect')
+		elif event.key() == QtCore.Qt.Key_Up:
+			print('todo: up arrow, previous annotations')
+		elif event.key() == QtCore.Qt.Key_Down:
+			print('todo: down arrow, next selection')
+		else:
+			print('  key not handled:text:', event.text(), 'modifyers:', event.modifiers())
 
 class myScopeToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, theCanvas, parent=None):
