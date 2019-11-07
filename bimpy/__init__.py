@@ -4,6 +4,8 @@ from .bFileUtil import bFileUtil
 from .bStackHeader import bStackHeader # this is not working?
 from .bCanvas import bCanvas
 from .bJavaBridge import bJavaBridge
+from .bWatchFolder import bWatchFolder
+from .bPrior import bPrior
 
 '''
 from .interface.bStackContrastWidget import bStackContrastWidget
