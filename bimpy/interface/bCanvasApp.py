@@ -756,6 +756,15 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 			print('   myQGraphicsRectItem.bringToFront() item is already front most')
 '''
 
+class myTreeWidget(QtWidgets.QTreeWidget):
+	def __init__(self, parent=None):
+		super(myTreeWidget, self).__init__(parent)
+
+	def keyPressEvent(self, event):
+		print('myTreeWidget.keyPressEvent() event:', event)
+		#self.myGraphicsView.keyPressEvent(event)
+
+
 class myToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, myQGraphicsView, theCanvas, parent=None):
 		print('myToolbarWidget.__init__')
@@ -846,7 +855,9 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#
 		# file list
 		#self.fileList = QtWidgets.QListWidget()
-		self.fileList = QtWidgets.QTreeWidget()
+
+		#self.fileList = QtWidgets.QTreeWidget()
+		self.fileList = myTreeWidget()
 		self.fileList.itemSelectionChanged.connect(self.fileSelected_callback)
 		self.fileList.itemChanged.connect(self.fileSelected_changed)
 
@@ -898,6 +909,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 	def on_toggle_image_contrast(self):
 		print('=== on_toggle_image_contrast()')
 	'''
+
 	def getSelectedContrast(self):
 		if self.selectedContrast.isChecked():
 			return 'selected'
@@ -1030,7 +1042,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			self.fileList.setCurrentItem(item)
 
 	def mousePressEvent(self, event):
-		print('mousePressEvent')
+		print('myToolbarWidget.mousePressEvent()')
 
 	'''
 	def keyPressEvent(self, event):
