@@ -1,3 +1,11 @@
+## pyserial
+
+Sometimes 'pip install pyserial' is not enough? Need to use
+
+```
+python3 -m pip install pyserial
+```
+
 ## Using Sphinx to generate API documentation
 
 ```

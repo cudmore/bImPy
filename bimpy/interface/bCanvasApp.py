@@ -48,8 +48,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		# here I am linking the toolbar to the graphics view
 		# i can't figure out how to use QAction !!!!!!
-		self.toolbarWidget = myToolbarWidget(self.myGraphicsView, self.canvas)
+		self.motorToolbarWidget = myScopeToolbarWidget(self.canvas)
+		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
 
+		self.toolbarWidget = myToolbarWidget(self.myGraphicsView, self.canvas)
 		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.toolbarWidget)
 
 		self.setCentralWidget(self.centralwidget)
@@ -759,14 +761,163 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 class myTreeWidget(QtWidgets.QTreeWidget):
 	def __init__(self, parent=None):
 		super(myTreeWidget, self).__init__(parent)
+		self.myQGraphicsView = parent
 
 	def keyPressEvent(self, event):
 		print('myTreeWidget.keyPressEvent() event:', event)
 		#self.myGraphicsView.keyPressEvent(event)
 
+		# todo: fix this, this assumes selected file in list is same as selected file in graphics view !
+		if event.key() == QtCore.Qt.Key_F:
+			#print('f for bring to front')
+			self.myQGraphicsView.changeOrder('bring to front')
+		if event.key() == QtCore.Qt.Key_B:
+			#print('b for send to back')
+			self.myQGraphicsView.changeOrder('send to back')
+
+
+class myScopeToolbarWidget(QtWidgets.QToolBar):
+	def __init__(self, theCanvas, parent=None):
+		print('myScopeToolbarWidget.__init__')
+		super(QtWidgets.QToolBar, self).__init__(parent)
+		self.theCanvas = theCanvas
+
+		myGroupBox = QtWidgets.QGroupBox()
+		myGroupBox.setTitle('Scope Controller')
+		myGroupBox.setFlat(True)
+
+		# main v box
+		vBoxLayout = QtWidgets.QVBoxLayout()
+
+		#
+		# arrows for left/right, front/back
+		grid = QtWidgets.QGridLayout()
+
+		buttonName = 'move stage left'
+		icon  = QtGui.QIcon('icons/left-arrow.png')
+		leftButton = QtWidgets.QPushButton()
+		leftButton.setIcon(icon)
+		leftButton.setToolTip('Move stage left')
+		leftButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		buttonName = 'move stage right'
+		icon  = QtGui.QIcon('icons/right-arrow.png')
+		rightButton = QtWidgets.QPushButton()
+		rightButton.setIcon(icon)
+		rightButton.setToolTip('Move stage right')
+		rightButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		buttonName = 'move stage back'
+		icon  = QtGui.QIcon('icons/up-arrow.png')
+		backButton = QtWidgets.QPushButton()
+		backButton.setIcon(icon)
+		backButton.setToolTip('Move stage back')
+		backButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		buttonName = 'move stage front'
+		icon  = QtGui.QIcon('icons/down-arrow.png')
+		frontButton = QtWidgets.QPushButton()
+		frontButton.setIcon(icon)
+		frontButton.setToolTip('Move stage back')
+		frontButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		grid.addWidget(leftButton, 1, 0) # row, col
+		grid.addWidget(rightButton, 1, 2) # row, col
+		grid.addWidget(backButton, 0, 1) # row, col
+		grid.addWidget(frontButton, 2, 1) # row, col
+
+		vBoxLayout.addLayout(grid)
+
+		# x/y step size
+		grid2 = QtWidgets.QGridLayout()
+
+		xStepLabel = QtWidgets.QLabel("X Step")
+		self.xStepSpinBox = QtWidgets.QSpinBox()
+		self.xStepSpinBox.setMinimum(0) # si user can specify whatever they want
+		self.xStepSpinBox.setMaximum(10000)
+		self.xStepSpinBox.setValue(1000)
+		self.xStepSpinBox.valueChanged.connect(self.stepValueChanged)
+
+		yStepLabel = QtWidgets.QLabel("Y Step")
+		self.yStepSpinBox = QtWidgets.QSpinBox()
+		self.yStepSpinBox.setMinimum(0) # si user can specify whatever they want
+		self.yStepSpinBox.setMaximum(10000)
+		self.yStepSpinBox.setValue(500)
+		self.yStepSpinBox.valueChanged.connect(self.stepValueChanged)
+
+		grid2.addWidget(xStepLabel, 0, 0) # row, col
+		grid2.addWidget(self.xStepSpinBox, 0, 1) # row, col
+		grid2.addWidget(yStepLabel, 1, 0) # row, col
+		grid2.addWidget(self.yStepSpinBox, 1, 1) # row, col
+
+		vBoxLayout.addLayout(grid2)
+
+		#
+		# show video window and grab video
+		video_hBoxLayout = QtWidgets.QHBoxLayout()
+
+		buttonName = 'Live Video'
+		icon  = QtGui.QIcon('icons/video.png')
+		liveVideoButton = QtWidgets.QPushButton()
+		liveVideoButton.setToolTip('Show Live Video Window')
+		liveVideoButton.setIcon(icon)
+		liveVideoButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		buttonName = 'Grab'
+		grabVideoButton = QtWidgets.QPushButton(buttonName)
+		grabVideoButton.setToolTip('Grab an image from video')
+		grabVideoButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		video_hBoxLayout.addWidget(liveVideoButton)
+		video_hBoxLayout.addWidget(grabVideoButton)
+
+		vBoxLayout.addLayout(video_hBoxLayout)
+
+		#
+		# import new files from scope
+		scope_hBoxLayout = QtWidgets.QHBoxLayout()
+
+		buttonName = 'Import From Scope'
+		importScopeFilesButton = QtWidgets.QPushButton(buttonName)
+		importScopeFilesButton.setToolTip('Import new files from scope')
+		importScopeFilesButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		buttonName = 'Canvas Folder'
+		icon  = QtGui.QIcon('icons/folder.png')
+		showCanvasFolderButton = QtWidgets.QPushButton()
+		showCanvasFolderButton.setToolTip('Show canvas folder')
+		showCanvasFolderButton.setIcon(icon)
+		showCanvasFolderButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		scope_hBoxLayout.addWidget(importScopeFilesButton)
+		scope_hBoxLayout.addWidget(showCanvasFolderButton)
+
+		vBoxLayout.addLayout(scope_hBoxLayout)
+
+		#
+		# finalize
+
+		#
+		# add
+		myGroupBox.setLayout(vBoxLayout)
+
+		# finish
+		self.addWidget(myGroupBox)
+
+	def stepValueChanged(self):
+		xStep = self.xStepSpinBox.value()
+		yStep = self.yStepSpinBox.value()
+		print('myScopeToolbarWidget.stepValueChanged() xStep:', xStep, 'yStep:', yStep)
+
+	@QtCore.pyqtSlot()
+	def on_button_click(self, name):
+		print('=== myScopeToolbarWidget.on_button_click() name:', name)
 
 class myToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, myQGraphicsView, theCanvas, parent=None):
+		"""
+		todo: remove theCanvas, not used
+		"""
 		print('myToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
 
@@ -857,7 +1008,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#self.fileList = QtWidgets.QListWidget()
 
 		#self.fileList = QtWidgets.QTreeWidget()
-		self.fileList = myTreeWidget()
+		self.fileList = myTreeWidget(self.myQGraphicsView)
 		self.fileList.itemSelectionChanged.connect(self.fileSelected_callback)
 		self.fileList.itemChanged.connect(self.fileSelected_changed)
 

@@ -9,7 +9,10 @@ class bPrior:
 		self.port = 'COM5'
 		self.timeout = 1 # seconddef
 		self.encoding = 'utf-8'
+
 		self.isReal = isReal
+		self.fake_x = 11111
+		self.fake_y = 12333
 
 		self.ser = None
 
@@ -57,15 +60,20 @@ class bPrior:
 
 	def priorReadPos(self):
 		try:
-			# open port
-			self.open()
+			if self.isReal:
+				# open port
+				self.open()
 
-			self.writeLine('p') # write 'p' to ask for position
-			resp = self.readLine() # read response
+				self.writeLine('p') # write 'p' to ask for position
+				resp = self.readLine() # read response
 
-			xPos, yPos, zPos = resp.split(',')
+				xPos, yPos, zPos = resp.split(',')
 
-			self.close()
+				self.close()
+			else:
+				xPos = self.fake_x
+				yPos = self.fake_y
+
 		except Exception as e:
 			print('exception in priorReadPos():', e)
 			raise
@@ -102,13 +110,25 @@ class bPrior:
 			# send 'direction,distance', to move back 100 um, send 'B,100'
 			umDistanceStr = str(umDistance)
 			outStr = directionStr + ',' + umDistanceStr
-			self.writeLine(outStr)
+
+			if self.isReal:
+				self.writeLine(outStr)
+			else:
+				if direction == 'left':
+					self.fake_x -= int(umDistanceStr)
+				elif direction == 'right':
+					self.fake_x += int(umDistanceStr)
+				elif direction == 'front':
+					self.fake_y -= int(umDistanceStr)
+				elif direction == 'back':
+					self.fake_y += int(umDistanceStr)
 
 			# wait for response of 'R'
-			resp = self.readLine()
-			while len(resp)>0:
-				#print('resp:', resp)
+			if self.isReal:
 				resp = self.readLine()
+				while len(resp)>0:
+					#print('resp:', resp)
+					resp = self.readLine()
 
 			stopTime = time.time()
 			elapsedTime = stopTime - startTime
@@ -121,7 +141,9 @@ class bPrior:
 			self.close()
 
 if __name__ == '__main__':
-	prior = bPrior()
+	isReal = False
+
+	prior = bPrior(isReal=isReal)
 
 	# test read position
 	if 0:
@@ -130,4 +152,6 @@ if __name__ == '__main__':
 
 	# test move
 	if 1:
+		print('start posiiton:', prior.priorReadPos())
 		prior.priorMove('left', 100000)
+		print('end posiiton:', prior.priorReadPos())
