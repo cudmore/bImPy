@@ -4,6 +4,10 @@
 
 **bImPy** should be pronounced 'bimpee' but you can call it whatever you want.
 
+## Examples
+
+Example Canvas interface. We know this is a super awful ugly example.
+
 ## Disclaimer
 
 We are developing bImPy in the open but the project is still in an early alpha stage, and there will be **breaking changes** with each release. Please follow along as we develop this exciting new software and feel free to try it out and contribute ideas and code.
@@ -13,8 +17,6 @@ This makes heavy use of [Python bio-formats][python-bio-formats] which in itself
 [python-bio-formats]: https://pythonhosted.org/python-bioformats/
 [javabridge]: https://pythonhosted.org/javabridge/
 [fiji]: http://fiji.sc
-
-## Examples
 
 ## Known bugs
 

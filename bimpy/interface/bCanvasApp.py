@@ -35,10 +35,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.title = 'Canvas'
 		self.left = 10
 		self.top = 10
-		self.width = 1024 #640
-		self.height = 768 #480
+		self.width = 3000 #1024 #640
+		self.height = 3000 #768 #480
 
 		self.setMinimumSize(320, 240)
+		self.setMinimumSize(1024, 1024)
 		self.setWindowTitle(self.title)
 		self.setGeometry(self.left, self.top, self.width, self.height)
 
@@ -73,6 +74,12 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		"""
 		print('bCanvasApp.selectInFileList() filename:', filename)
 		self.toolbarWidget.setSelectedItem(filename)
+
+	def toggleVisibleCheck(self, filename, doShow):
+		"""
+		toggle checkbox in list on/off
+		"""
+		self.toolbarWidget.setCheckedState(filename, doShow)
 
 	# This is from bStackBrowser
 	#def showStackWindow(self, path):
@@ -354,7 +361,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			yMotor = scopeFile.header.header['yMotor']
 			umWidth = scopeFile.header.header['umWidth']
 			umHeight = scopeFile.header.header['umHeight']
-			print('umWidth:', umWidth, 'umHeight:', umHeight)
+			#print('umWidth:', umWidth, 'umHeight:', umHeight)
 
 			if xMotor == 'None':
 				xMotor = None
@@ -370,7 +377,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			#imageStackHeight, imageStackWidth = stackMax.shape
 			imageStackWidth = scopeFile.pixelsPerLine
 			imageStackHeight = scopeFile.linesPerFrame
-			print('imageStackWidth:', imageStackWidth, 'imageStackHeight:', imageStackHeight)
+			#print('imageStackWidth:', imageStackWidth, 'imageStackHeight:', imageStackHeight)
 
 			if stackMax is None:
 				print('myQGraphicsView.__init__() is making zero max image for scopeFile:', scopeFile)
@@ -378,8 +385,15 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 			myQImage = QtGui.QImage(stackMax, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 
+			#
+			# try and set color
+			colors=[]
+			for i in range(256): colors.append(QtGui.qRgb(i/4,i,i/2))
+			myQImage.setColorTable(colors)
+
 			pixmap = QtGui.QPixmap(myQImage)
 			pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
+
 
 			# insert
 			#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
@@ -550,7 +564,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		print('   tell the parent self.myParentApp (bCanvasApp) to select this file in its file list')
 		selectedItems = self.myScene.selectedItems()
-		print('   selectedItems:', selectedItems)#event.setAccepted(False)
+		#print('   selectedItems:', selectedItems)#event.setAccepted(False)
 		if len(selectedItems) > 0:
 			selectedItem = selectedItems[0]
 			'''
@@ -594,7 +608,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	'''
 
 	def keyPressEvent(self, event):
-		print('=== myQGraphicsView.keyPressEvent() event.key():', event.key())
+		print('\n=== myQGraphicsView.keyPressEvent()', event.text())
 		# QtCore.Qt.Key_Tab
 
 		# pan
@@ -621,7 +635,25 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		if event.key() == QtCore.Qt.Key_B:
 			#print('b for send to back')
 			self.changeOrder('send to back')
-
+		if event.key() == QtCore.Qt.Key_H:
+			selectedItem = self.getSelectedItem()
+			if selectedItem is not None:
+				filename = selectedItem._fileName
+				doShow = False # if we get here, the item is visible, thus, doShow is always False
+				self.hideShowItem(filename, doShow)
+				# tell the toolbar widget to turn off checkbow
+				#todo: this is a prime example of figuring out signal/slot
+				self.myParentApp.toggleVisibleCheck(filename, doShow)
+				#setCheckedState(fileName, doSHow)
+	def getSelectedItem(self):
+		"""
+		Get the currently selected item, return None if no selection
+		"""
+		selectedItems = self.myScene.selectedItems()
+		if len(selectedItems) > 0:
+			return selectedItems[0]
+		else:
+			return None
 
 	def changeOrder(self, this):
 		"""
@@ -1102,7 +1134,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#	selectedItems = self.myQGraphicsView.myScene.selectedItems()
 		#	print('NOT IMPLEMENTED')
 
-		print('=== on_contrast_slider', 'adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject)
+		print('=== on_contrast_slider', 'adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject, 'theMin:', theMin, 'theMax:', theMax)
 
 		for item in  self.myQGraphicsView.myScene.items():
 
@@ -1123,7 +1155,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 					# todo: change this in future
 					useMaxProject = True
 			else:
-				adjustThisItem = item.myLayer ==adjustThisLayer
+				adjustThisItem = item.myLayer == adjustThisLayer
 
 			#if item.myLayer == adjustThisLayer:
 			if adjustThisItem:
@@ -1157,6 +1189,14 @@ class myToolbarWidget(QtWidgets.QToolBar):
 				#print('mean:', np.mean(videoImage))
 
 				myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
+
+				#
+				# try and set color
+				if adjustThisLayer == '2P Max Layer':
+					colors=[]
+					for i in range(256): colors.append(QtGui.qRgb(i/4,i,i/2))
+					myQImage.setColorTable(colors)
+
 				pixmap = QtGui.QPixmap(myQImage)
 				pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
 
@@ -1195,11 +1235,32 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		Respond to user clicking on the image and select the file in the list.
 		"""
 		print('myToolbarWidget.setSelectedItem() filename:', filename)
+		# todo: use self._findItemByFilename()
 		items = self.fileList.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
 		if len(items)>0:
 			item = items[0]
-			print('   item:', item)
+			#print('   item:', item)
 			self.fileList.setCurrentItem(item)
+
+	def setCheckedState(self, filename, doShow):
+		"""
+		set the visible checkbox
+		"""
+		print('myToolbarWidget.setCheckedState() filename:', filename, 'doShow:', doShow)
+		item = self._findItemByFilename(filename)
+		if item is not None:
+			column = 0
+			item.setCheckState(column, doShow)
+
+	def _findItemByFilename(self, filename):
+		"""
+		Given a filename, return the item. Return None if not found.
+		"""
+		items = self.fileList.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
+		if len(items)>0:
+			return items[0]
+		else:
+			return None
 
 	def mousePressEvent(self, event):
 		print('myToolbarWidget.mousePressEvent()')

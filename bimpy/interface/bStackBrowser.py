@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif'
 	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
-	path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
+	#path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
 
 	myBrowser = bStackBrowser()
 	myBrowser.show()
