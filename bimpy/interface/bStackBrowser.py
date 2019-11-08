@@ -5,6 +5,8 @@ from collections import OrderedDict
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 
+import napari
+
 from bimpy.interface import bStackWidget
 
 import logging
@@ -42,6 +44,11 @@ class bStackBrowser(QtWidgets.QWidget):
 			tmp = bStackWidget(path=path)
 			tmp.show()
 			self.myStackList.append(tmp)
+
+			#tmp.mySimpleStack
+			#viewer = napari.view_image(data.astronaut(), rgb=True)
+			print('\nOPENING NAPARI !!!!!!!!!!!!!\n')
+			viewer = napari.view_image(tmp.mySimpleStack.stack, rgb=False)
 
 	def appendStack(self, path):
 		fileName = os.path.basename(path)
@@ -141,5 +148,13 @@ if __name__ == '__main__':
 	myBrowser.showStackWindow(path)
 	#tmp = myBrowser.loadStack(path)
 	#print('tmp:', tmp)
+
+	'''
+	from skimage import data
+	import napari
+
+	#with napari.gui_qt():
+	viewer = napari.view_image(data.astronaut(), rgb=True)
+	'''
 
 	sys.exit(app.exec_())
