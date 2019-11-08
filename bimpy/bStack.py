@@ -36,6 +36,8 @@ class bLockFile:
 class bStack:
 	"""
 	Manages a 3D image stack or time-series movie of images
+
+	Image data is in self.stack
 	"""
 	def __init__(self, path='', loadImages=True):
 		logging.info('constructor')
