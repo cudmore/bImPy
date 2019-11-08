@@ -6,11 +6,11 @@
 
 ## Examples
 
-Example stack window with a vascular tracing. Pretty awful.
+Example stack window with a vascular tracing. This is a bad example, please stay with us.
 
 <IMG SRC="https://github.com/cudmore/bImPy/blob/master/docs/img/vascular-tracing-example.png">
 
-Example Canvas interface. We know this is a super awful ugly example.
+Example Canvas interface. This is another bad example, keep in tune as it will get better.
 
 <IMG SRC="https://github.com/cudmore/bImPy/blob/master/docs/img/canvas-example.png">
 
