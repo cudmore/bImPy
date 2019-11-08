@@ -30,4 +30,4 @@ Coming soon.
 
 ## More info
 
-Please email RObert Cudmore if you are interested.
+Please email Robert Cudmore if you are interested.
