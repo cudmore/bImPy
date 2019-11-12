@@ -5,9 +5,11 @@ import os, sys
 from collections import OrderedDict
 import numpy as np
 import skimage
+
+#import javabridge
+#import bioformats
+
 import tifffile
-import javabridge
-import bioformats
 
 import logging
 logLevel = 'DEBUG' #('ERROR, WARNING', 'INFO', 'DEBUG')
@@ -62,6 +64,8 @@ class bStack:
 		# load image data
 		if loadImages:
 			self.loadStack()
+
+		self.analysis = bimpy.bAnalysis(self)
 
 	@property
 	def numChannels(self):

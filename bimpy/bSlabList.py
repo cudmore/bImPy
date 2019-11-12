@@ -344,12 +344,41 @@ class bSlabList:
 		self.y = np.array(self.y, dtype='float32')
 		self.z = np.array(self.z, dtype='float32')
 
+		#
+		# create dead ends
+		self.deadEndx = []
+		self.deadEndy = []
+		self.deadEndz = []
+		for edgeDict in self.edgeDictList:
+			if edgeDict['preNode'] == -1:
+				firstSlabIdx = edgeDict['slabList'][0]
+				tmpx = self.x[firstSlabIdx]
+				tmpy = self.y[firstSlabIdx]
+				tmpz = self.z[firstSlabIdx]
+				self.deadEndx.append(tmpx)
+				self.deadEndy.append(tmpy)
+				self.deadEndz.append(tmpz)
+			if edgeDict['postNode'] == -1:
+				lastSlabIdx = edgeDict['slabList'][-1]
+				tmpx = self.x[lastSlabIdx]
+				tmpy = self.y[lastSlabIdx]
+				tmpz = self.z[lastSlabIdx]
+				self.deadEndx.append(tmpx)
+				self.deadEndy.append(tmpy)
+				self.deadEndz.append(tmpz)
+
+		# convert list of dead ends to nump array
+		self.deadEndx = np.array(self.deadEndx, dtype='float32')
+		self.deadEndy = np.array(self.deadEndy, dtype='float32')
+		self.deadEndz = np.array(self.deadEndz, dtype='float32')
+
 		# debug min/max of x/y/z
 		if 0:
 			print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
 			print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
 			print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
+
 	def save(self):
 		"""
 		Save _ann.txt file from self.annotationList

@@ -7,3 +7,4 @@ PyQtChart
 scikit-image
 javabridge
 python-bioformats
+napari
