@@ -10,14 +10,14 @@ class bAnalysis:
 	def __init__(self, stack):
 		self.stack = stack
 
-	def lineProfile(self, slice, src, dst, linewidth=1):
+	def lineProfile(self, slice, src, dst, linewidth=3):
 		""" one slice """
 		#print('lineProfile() slice:', slice)
 		channel = 0
 		intensityProfile = profile.profile_line(self.stack.stack[channel,slice,:,:], src, dst, linewidth=linewidth)
 		return intensityProfile
 
-	def stackLineProfile(self, src, dst, linewidth=1):
+	def stackLineProfile(self, src, dst, linewidth=3):
 		""" entire stack """
 		print('stackLineProfile()')
 		print('   src:', src)
@@ -26,16 +26,15 @@ class bAnalysis:
 		numSlices = self.stack.stack.shape[1] # will only work for [color,slice,x,y]
 		print('   stackLineProfile() numSlices:', numSlices)
 		intensityProfileList = []
-		for slice in range(numSlices-1): # why do i need -1 ???
+		for idx, slice in enumerate(range(numSlices-1)): # why do i need -1 ???
+			if idx % 300 == 0:
+				# print every 100 slices
+				print('   idx:', idx, 'of', numSlices)
 			intensityProfile = self.lineProfile(slice, src, dst, linewidth=linewidth)
-			#print(type(intensityProfile))
-			#intensityProfile = np.transpose(intensityProfile)
-			#print('   intensityProfile.shape:', intensityProfile.shape)
 			intensityProfileList.append(intensityProfile)
-		print('   1) intensityProfile.shape:', intensityProfile.shape)
-		#intensityProfileList = np.ndarray(intensityProfileList)
+		#print('   1) intensityProfile.shape:', intensityProfile.shape)
 		intensityProfileList = np.array(intensityProfileList)
-		print('   2) intensityProfile.shape:', intensityProfile.shape)
+		#print('   2) intensityProfile.shape:', intensityProfile.shape)
 		return intensityProfileList
 
 if __name__ == '__main__':

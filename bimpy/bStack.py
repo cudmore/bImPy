@@ -289,15 +289,17 @@ class bStack:
 		slices = self.numImages
 		channels = self.numChannels
 
+		'''
 		if rows is None:
 			print('error: bStack.loadStack() -->> None rows')
 		if cols is None:
 			print('error: bStack.loadStack() -->> None cols')
 		if slices is None:
 			print('error: bStack.loadStack() -->> None slices')
+		'''
 		if channels is None:
 			channels = 1
-			print('error: bStack.loadStack() -->> None channels')
+			print('error: bStack.loadStack() -->> None channels -->> set channels = 1')
 
 		#self.stack = np.zeros((channels, slices, rows, cols), dtype=np.int16)
 
@@ -325,8 +327,9 @@ class bStack:
 					yVoxel = 1
 				print('   yVoxel from YResolutions:', yVoxel)
 
-				print('   tif.imagej_metadata:', tif.imagej_metadata)
-				print('   tif.tags:', tif.is_nih)
+				#print('   tif.imagej_metadata:', tif.imagej_metadata)
+				#print('   tif.tags:', tif.is_nih)
+
 				#print('   tif[0].image_description:', tif.image_description)
 				print('   tif.nih_metadata:', tif.nih_metadata)
 				thisChannel = 0
