@@ -1,14 +1,32 @@
 
+import math
 import numpy as np
 
 from skimage.measure import profile
 #import skimage.measure
 #import skimage
 #from skimage import measure
+from scipy.optimize import curve_fit
 
 class bAnalysis:
 	def __init__(self, stack):
 		self.stack = stack
+
+	def fitGaussian(self, x, y):
+		print('fitGaussian()')
+		print('   x:', x)
+		print('   y:', y)
+		n = len(x)                          #the number of data
+		mean = sum(x*y)/n                   #note this correction
+		sigma = sum(y*(x-mean)**2)/n        #note this correction
+
+		def gaus(x,a,x0,sigma):
+			return a * math.exp(-(x-x0)**2 / (2 * sigma**2))
+
+		popt,pcov = curve_fit(gaus,x,y,p0=[max(y),mean,sigma])
+		# plot with
+		# plt.plot(x,gaus(x,*popt),'ro:',label='fit')
+		return gaus(x, *popt)
 
 	def lineProfile(self, slice, src, dst, linewidth=3):
 		""" one slice """

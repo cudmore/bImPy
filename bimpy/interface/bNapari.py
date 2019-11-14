@@ -42,6 +42,13 @@ class bNapari:
 		self.lambda_pos = [None] * pgNum
 		# line intensity for one slice
 		self.pgPlots[0] = self.pgWin.addPlot(title="Line Intensity Profile", row=0, col=0)
+
+		# fit
+		x = [1]
+		y = [1]
+		self.fitPlot = self.pgPlots[0].plot(x, y,
+                pen=pg.mkPen('r', width=3), name='fit')
+		#fitPlot = self.pgWin.addPlot(title="Line Intensity Profile", row=0, col=0)
 		# line intensity for entire stack (updated with xxx)
 		self.pgPlots[1] = self.pgWin.addViewBox(row=1, col=0)
 
@@ -206,7 +213,7 @@ class bNapari:
 			# using new slice, update the intensity of a line
 			self.updateLines()
 
-	def plot_pg(self, oneProfile): #, ind_lambda):
+	def plot_pg(self, oneProfile, fit=None): #, ind_lambda):
 		"""
 		Update the pyqt graph (top one) with a new line profile
 
@@ -216,6 +223,9 @@ class bNapari:
 		if (oneProfile is not None):
 			# todo: fix this
 			self.curve_stokes[0].setData(oneProfile)
+		if (fit is not None):
+			# todo: fix this
+			self.fitPlot.setData(oneProfile)
 
 	def plot_pg_slice(self, sliceNum):
 		"""
@@ -250,8 +260,10 @@ class bNapari:
 		(src, dst) = self._getSelectedLine()
 		if src is not None:
 			lineProfile = self.myStack.analysis.lineProfile(self.sliceNum, src, dst, linewidth=1)
+			x = [a for a in range(len(lineProfile))]
+			fit = self.myStack.analysis.fitGaussian(x, lineProfile)
 			#print('lineProfile:', lineProfile)
-			self.plot_pg(lineProfile)
+			self.plot_pg(lineProfile, fit)
 
 	def lineShapeChange_callback(self, layer, event):
 		"""
@@ -273,7 +285,11 @@ if __name__ == '__main__':
 	#from PyQt5 import QtGui, QtCore, QtWidgets
 	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
 	# this file s too big, 1.2 GB, keep slices 4166, 9416
-	path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
+	#path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
+
+	# octa
+	#path = '/Users/cudmore/box/data/OCTa/vesselucida/PV_Crop_Reslice.tif'
+
 	app = QtWidgets.QApplication(sys.argv)
 	mn = bNapari(path)
 	sys.exit(app.exec_())
