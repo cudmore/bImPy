@@ -225,7 +225,7 @@ class bNapari:
 			self.curve_stokes[0].setData(oneProfile)
 		if (fit is not None):
 			# todo: fix this
-			self.fitPlot.setData(oneProfile)
+			self.fitPlot.setData(fit)
 
 	def plot_pg_slice(self, sliceNum):
 		"""
@@ -260,10 +260,12 @@ class bNapari:
 		(src, dst) = self._getSelectedLine()
 		if src is not None:
 			lineProfile = self.myStack.analysis.lineProfile(self.sliceNum, src, dst, linewidth=1)
-			x = [a for a in range(len(lineProfile))]
-			fit = self.myStack.analysis.fitGaussian(x, lineProfile)
 			#print('lineProfile:', lineProfile)
-			self.plot_pg(lineProfile, fit)
+			x = [a for a in range(len(lineProfile))]
+			yFit, fwhm = self.myStack.analysis.fitGaussian(x, lineProfile)
+			print('updateLines() fwhm:', fwhm)
+			#print('updateLine yFit:', yFit)
+			self.plot_pg(lineProfile, yFit)
 
 	def lineShapeChange_callback(self, layer, event):
 		"""
