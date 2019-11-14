@@ -5,6 +5,7 @@ import numpy as np
 from skimage.measure import profile
 from scipy.optimize import curve_fit
 from scipy import asarray
+import scipy.signal
 
 class bAnalysis:
 	def __init__(self, stack):
@@ -29,6 +30,7 @@ class bAnalysis:
 
 		# see: https://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak
 		def FWHM(X,Y):
+			Y = scipy.signal.medfilt(Y, 3)
 			half_max = max(Y) / 2.
 			#find when function crosses line half_max (when sign of diff flips)
 			#take the 'derivative' of signum(half_max - Y[])
@@ -38,21 +40,29 @@ class bAnalysis:
 			left_idx = np.where(d > 0)[0]
 			right_idx = np.where(d < 0)[-1]
 			#abb, take the first
-			if len(left_idx)>0:
-				left_idx = left_idx[0]
-			if len(right_idx)>0:
-				right_idx = right_idx[0]
+			if left_idx is not None and len(left_idx)==0:
+				left_idx = None
+			if right_idx is not None and len(right_idx)==0:
+				right_idx = None
+			if left_idx is not None and len(left_idx)>0:
+				left_idx = left_idx[-1]
+			if right_idx is not None and len(right_idx)>0:
+				right_idx = right_idx[-1]
 			print('fitGaussian() ... FWHM() ... left_idx:', left_idx, 'right_idx:', right_idx)
-			return X[right_idx] - X[left_idx] #return the difference (full width)
+			return X[right_idx] - X[left_idx], left_idx, right_idx #return the difference (full width)
 
 		try:
 			popt,pcov = curve_fit(myGaussian,x,y)
 			yFit = myGaussian(x,*popt)
-			myFWHM = FWHM(x,y)
-			return yFit, myFWHM
+			myFWHM, left_idx, right_idx = FWHM(x,y)
+			return yFit, myFWHM, left_idx, right_idx
+		except RuntimeError as e:
+			print('... fitGaussian() error: ', e)
+			return None, None, None, None
 		except:
 			print('... fitGaussian() error: exception in bAnalysis.fitGaussian() !!!')
-			return None, None
+			raise
+			#return None, None, None, None
 
 	def lineProfile(self, slice, src, dst, linewidth=3):
 		""" one slice """

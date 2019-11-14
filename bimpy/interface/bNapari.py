@@ -48,6 +48,8 @@ class bNapari:
 		y = [1]
 		self.fitPlot = self.pgPlots[0].plot(x, y,
                 pen=pg.mkPen('r', width=3), name='fit')
+		self.fitPlot2 = self.pgPlots[0].plot(x, y,
+                pen=pg.mkPen('b', symbol='.', symbolSize=10, width=5), name='fitPoints')
 		#fitPlot = self.pgWin.addPlot(title="Line Intensity Profile", row=0, col=0)
 		# line intensity for entire stack (updated with xxx)
 		self.pgPlots[1] = self.pgWin.addViewBox(row=1, col=0)
@@ -213,7 +215,7 @@ class bNapari:
 			# using new slice, update the intensity of a line
 			self.updateLines()
 
-	def plot_pg(self, oneProfile, fit=None): #, ind_lambda):
+	def plot_pg(self, oneProfile, fit=None, left_idx=None, right_idx=None): #, ind_lambda):
 		"""
 		Update the pyqt graph (top one) with a new line profile
 
@@ -221,11 +223,21 @@ class bNapari:
 			oneProfile: ndarray of line intensity
 		"""
 		if (oneProfile is not None):
-			# todo: fix this
+			#
 			self.curve_stokes[0].setData(oneProfile)
 		if (fit is not None):
-			# todo: fix this
+			#
 			self.fitPlot.setData(fit)
+		if (oneProfile is not None and left_idx is not None and right_idx is not None):
+			#if len(left_idx)>0 and len(right_idx)>0:
+			if 1:
+				left_y = oneProfile[left_idx]
+				#right_y = oneProfile[right_idx]
+				right_y = left_y
+				xPnt = [left_idx, right_idx]
+				yPnt = [left_y, right_y]
+				print('plot_pg() xPnt:', xPnt, 'yPnt:', yPnt)
+				self.fitPlot2.setData(xPnt, yPnt)
 
 	def plot_pg_slice(self, sliceNum):
 		"""
@@ -262,10 +274,10 @@ class bNapari:
 			lineProfile = self.myStack.analysis.lineProfile(self.sliceNum, src, dst, linewidth=1)
 			#print('lineProfile:', lineProfile)
 			x = [a for a in range(len(lineProfile))]
-			yFit, fwhm = self.myStack.analysis.fitGaussian(x, lineProfile)
-			print('updateLines() fwhm:', fwhm)
+			yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.fitGaussian(x, lineProfile)
+			print('updateLines() fwhm:', fwhm, leftIdx, rightIdx)
 			#print('updateLine yFit:', yFit)
-			self.plot_pg(lineProfile, yFit)
+			self.plot_pg(lineProfile, yFit, leftIdx, rightIdx)
 
 	def lineShapeChange_callback(self, layer, event):
 		"""
@@ -285,9 +297,10 @@ class bNapari:
 
 if __name__ == '__main__':
 	#from PyQt5 import QtGui, QtCore, QtWidgets
-	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
-	# this file s too big, 1.2 GB, keep slices 4166, 9416
-	#path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
+	# stack of vessel staining
+	#path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
+	# video of sa node artery, this file s too big, 1.2 GB, keep slices 4166, 9416
+	path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
 
 	# octa
 	#path = '/Users/cudmore/box/data/OCTa/vesselucida/PV_Crop_Reslice.tif'
