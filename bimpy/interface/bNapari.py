@@ -178,8 +178,9 @@ class bNapari:
 		self.shapeLayer.mode = 'direct' #'select'
 
 		@self.shapeLayer.mouse_move_callbacks.append
-		def shape_mouse_move_callback(viewer, event):
-			self.myMouseMove_Shape(viewer, event)
+		def shape_mouse_move_callback(layer, event):
+			#print('shape_mouse_move_callback() event.type:', event.type)
+			self.myMouseMove_Shape(layer, event)
 
 		# this decorator cannot point to member function directly because it needs yield
 		# put inline function with yield right after decorator
