@@ -15,17 +15,24 @@ import bimpy
 from bimpy.interface import bStackWidget
 
 class bCanvasApp(QtWidgets.QMainWindow):
-	def __init__(self, parent=None):
+	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
+		"""
+		loadIgorCanvas: path to folder of converted Igor canvas
+		path: path to text file of a saved Python canvas
+		"""
 		super(bCanvasApp, self).__init__(parent)
 
-		tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
-		tmpCanvasFolderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
-		self.canvas = bimpy.bCanvas(folderPath=tmpCanvasFolderPath)
+		if loadIgorCanvas is not None:
+			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
+			#tmpCanvasFolderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
+			self.canvas = bimpy.bCanvas(folderPath=loadIgorCanvas)
 
-		# this is only for import from igor
-		self.canvas.importIgorCanvas()
+			# this is only for import from igor
+			self.canvas.importIgorCanvas()
 
-		self.canvas.buildFromScratch()
+			self.canvas.buildFromScratch()
+		else:
+			self.canvas = bimpy.bCanvas(filePath=path)
 
 		self.centralwidget = QtWidgets.QWidget(parent)
 		self.centralwidget.setObjectName("centralwidget")
@@ -115,6 +122,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			tmp.show()
 			self.myStackList.append(tmp)
 
+	def save(self):
+		self.canvas.save()
+
+	def load(self):
+		self.canvas.load()
 
 globalSquare = {
 	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
@@ -1300,9 +1312,17 @@ if __name__ == '__main__':
 		myJavaBridge.start()
 
 		app = QtWidgets.QApplication(sys.argv)
-		w = bCanvasApp()
+		loadIgorCanvas = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
+		w = bCanvasApp(loadIgorCanvas=loadIgorCanvas)
 		w.resize(640, 480)
 		w.show()
+
+		w.save()
+
+		# make a new canvas and load what we just saved
+		savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
+		w2 = bCanvasApp(path=savedCanvasPath)
+
 		sys.exit(app.exec_())
 	except Exception as e:
 		print('bCanvasApp __main__ exception')

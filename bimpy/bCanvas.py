@@ -10,14 +10,21 @@ class bCanvas:
 	"""
 	A visuospatial convas that brings together different light paths of a scope.
 	"""
-	def __init__(self, filePath='', folderPath=''):
-		self._filePath = filePath
-		self._folderPath = folderPath
+	def __init__(self, filePath=None, folderPath=''):
+		"""
+		filePath: path to .txt file to load a canvas
+		folderPath: to load a converted Igor canvas
+		"""
+		self._filePath = filePath # todo: not used
+		self._folderPath = folderPath # for Igor canvas
 
 		self.optionsLoad()
 
 		self._videoFileList = []
 		self._scopeFileList = [] # images off the scope
+
+		if filePath is not None:
+			self.load()
 
 	@property
 	def videoFileList(self):
@@ -29,6 +36,7 @@ class bCanvas:
 
 	@property
 	def enclosingFolder(self):
+		""" Name of the enclosing folder"""
 		return os.path.basename(os.path.normpath(self._folderPath))
 
 	@property
@@ -171,6 +179,90 @@ class bCanvas:
 
 			self._scopeFileList.append(tmpStack)
 
+	def _saveFile(self, stack):
+		"""
+		Generate a dict to save both (video/scope) files to json
+
+		stack: pointer to stack
+		"""
+		header = stack.header
+		fileDict = OrderedDict()
+		# todo: make sure path get filled in in header !!!
+		fileName = stack.fileName
+		fileDict['filename'] = fileName
+
+		fileDict['stackType'] = header.stackType
+		fileDict['umWidth'] = header.umWidth
+		fileDict['umHeight'] = header.umHeight
+		fileDict['xMotor'] = header.xMotor
+		fileDict['yMotor'] = header.yMotor
+		fileDict['bitDepth'] = header.bitDepth # not necc?
+
+		# canvas specific
+		# is it visible in the canvas? Checkbox next to filname in canvas.
+		fileDict['canvasIsVisible'] = True
+		# contrast setting in canvas
+		fileDict['canvasMinContrast'] = 0
+		fileDict['canvasMaxContrast'] = 256
+
+		return fileDict
+
+	def save(self):
+		"""
+		Save the canvas to a text file
+
+		todo: really need to define the minimal information required to reload a stack
+		- each file (video and scanning) has a header we can quickly load?
+		"""
+
+		saveDict = OrderedDict() # the dictionary we will save
+
+		# make a canvas options header
+		saveDict['canvasOptions'] = OrderedDict()
+		saveDict['canvasOptions']['windowWidth'] = 640
+		saveDict['canvasOptions']['windowWidth'] = 480
+
+		# video files
+		saveDict['videoFiles'] = OrderedDict()
+		for file in self.videoFileList:
+			fileName = file.fileName
+			thisDict = self._saveFile(file)
+			saveDict['videoFiles'][fileName] = thisDict
+
+		# scope files
+		saveDict['scopeFiles'] = OrderedDict()
+		for file in self.scopeFileList:
+			fileName = file.fileName
+			thisDict = self._saveFile(file)
+			saveDict['scopeFiles'][fileName] = thisDict
+
+		print('saveDict:', json.dumps(saveDict, indent=4))
+
+		# write the dictionary to a file
+		saveFilePath = os.path.join(self._folderPath, self.enclosingFolder + '_canvas.txt')
+		with open(saveFilePath, 'w') as outfile:
+			json.dump(saveDict, outfile)
+
+	def load(self):
+		"""
+		Load a saved Python canvas
+
+		todo: there should be some fields in saved json that are global to the canvas
+		for example, window position
+		"""
+		#loadFilePath = os.path.join(self._folderPath, self.enclosingFolder + '_canvas.txt')
+
+		with open(self._filePath) as f:
+			data = json.load(f)
+		print(' ')
+		print ('bCanvas.load() loaded:')
+		print('data:', json.dumps(data, indent=4))
+		# iterate through keys in data and take action
+		# e.g. ('canvasOptions', 'videofiles', 'scopefiles')
+		#if stackType == 'bMovie':
+		#	loadPath = os.path.join(self.videoFolderPath
+		pass
+
 	@property
 	def optionsFile(self):
 		"""
@@ -221,6 +313,8 @@ if __name__ == '__main__':
 
 		for videoFile in bc.videoFileList:
 			print(videoFile._header)
+
+		bc.save()
 
 		'''
 		tmpPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2/20190429_tst2_0012.oir'

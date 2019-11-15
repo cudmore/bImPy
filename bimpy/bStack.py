@@ -68,6 +68,9 @@ class bStack:
 		self.analysis = bimpy.bAnalysis(self)
 
 	@property
+	def fileName(self):
+		return self._fileName
+	@property
 	def numChannels(self):
 		return self.header.numChannels
 	@property

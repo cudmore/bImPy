@@ -106,6 +106,9 @@ class bStackHeader:
 			print('bStackHeader.importVideoHeaderFromIgor() did not find imported header information for file:', self.path)
 
 	@property
+	def fileName(self):
+		return os.path.basename(self.header['path'])
+	@property
 	def stackType(self):
 		return self.header['stackType']
 	@property
@@ -132,6 +135,18 @@ class bStackHeader:
 	@property
 	def zVoxel(self):
 		return self.header['zVoxel']
+	@property
+	def umWidth(self):
+		return self.header['umWidth']
+	@property
+	def umHeight(self):
+		return self.header['umHeight']
+	@property
+	def xMotor(self):
+		return self.header['xMotor']
+	@property
+	def yMotor(self):
+		return self.header['yMotor']
 	@property
 	def bitDepth(self):
 		bitsPerPixel = self.header['bitsPerPixel']
