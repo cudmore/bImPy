@@ -259,9 +259,19 @@ class bCanvas:
 		print('data:', json.dumps(data, indent=4))
 		# iterate through keys in data and take action
 		# e.g. ('canvasOptions', 'videofiles', 'scopefiles')
-		#if stackType == 'bMovie':
-		#	loadPath = os.path.join(self.videoFolderPath
-		pass
+		for key, item in data.items():
+			#print(key,item)
+			if key == 'canvasOptions':
+				print(item)
+			elif key=='videoFiles':
+				for file in item:
+					print(file)
+				#if stackType == 'bMovie':
+				#	loadPath = os.path.join(self.videoFolderPath
+			elif key =='scopeFiles':
+				for file in item:
+					pass
+					#print(file)
 
 	@property
 	def optionsFile(self):
