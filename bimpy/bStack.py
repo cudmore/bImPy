@@ -6,8 +6,8 @@ from collections import OrderedDict
 import numpy as np
 import skimage
 
-#import javabridge
-#import bioformats
+import javabridge
+import bioformats
 
 import tifffile
 

@@ -16,7 +16,10 @@ class bCanvas:
 		folderPath: to load a converted Igor canvas
 		"""
 		self._filePath = filePath # todo: not used
-		self._folderPath = folderPath # for Igor canvas
+		if len(folderPath)>0:
+			self._folderPath = folderPath # for Igor canvas
+		else:
+			self._folderPath, tmpFilename = os.path.split(filePath)
 
 		self.optionsLoad()
 
@@ -91,10 +94,10 @@ class bCanvas:
 				self.import_stackDict[stack].header['numChannels'] = 1 # just for video
 
 				if len(import_bitsPerPixel[idx]) > 0:
-					print('*** assigning bitsperpixel idx:', idx, 'value:', int(import_bitsPerPixel[idx]), 'stack:', stack)
-					self.import_stackDict[stack].header['bitsPerPixel'] = int(import_bitsPerPixel[idx])
+					print('*** assigning bitDepth idx:', idx, 'value:', int(import_bitsPerPixel[idx]), 'stack:', stack)
+					self.import_stackDict[stack].header['bitDepth'] = int(import_bitsPerPixel[idx])
 				else:
-					print('*** NOT assigning bitsperpixel', idx, import_bitsPerPixel[idx], type(import_bitsPerPixel[idx]))
+					print('*** NOT assigning bitDepth', idx, import_bitsPerPixel[idx], type(import_bitsPerPixel[idx]))
 				self.import_stackDict[stack].header['xPixels'] = int(import_pixelsPerLine[idx]) # just for video
 				self.import_stackDict[stack].header['yPixels'] = int(import_linesPerFrame[idx]) # just for video
 
@@ -192,6 +195,9 @@ class bCanvas:
 		fileDict['filename'] = fileName
 
 		fileDict['stackType'] = header.stackType
+		fileDict['pixelsPerLine'] = header.pixelsPerLine
+		fileDict['linesPerFrame'] = header.linesPerFrame
+		fileDict['numImages'] = header.numImages
 		fileDict['umWidth'] = header.umWidth
 		fileDict['umHeight'] = header.umHeight
 		fileDict['xMotor'] = header.xMotor
@@ -236,12 +242,12 @@ class bCanvas:
 			thisDict = self._saveFile(file)
 			saveDict['scopeFiles'][fileName] = thisDict
 
-		print('saveDict:', json.dumps(saveDict, indent=4))
+		#print('saveDict:', json.dumps(saveDict, indent=4))
 
 		# write the dictionary to a file
 		saveFilePath = os.path.join(self._folderPath, self.enclosingFolder + '_canvas.txt')
 		with open(saveFilePath, 'w') as outfile:
-			json.dump(saveDict, outfile)
+			json.dump(saveDict, outfile, indent=4)
 
 	def load(self):
 		"""
@@ -264,14 +270,40 @@ class bCanvas:
 			if key == 'canvasOptions':
 				print(item)
 			elif key=='videoFiles':
-				for file in item:
-					print(file)
-				#if stackType == 'bMovie':
-				#	loadPath = os.path.join(self.videoFolderPath
+				for fileName, fileDict in item.items():
+					videoFilePath = os.path.join(self.videoFolderPath, fileName)
+					print('videoFilePath:', videoFilePath)
+					videoStack = bimpy.bStack(videoFilePath, loadImages=True)
+					#videoStack.loadHeader() # at least makes default bStackHeader()
+					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
+
+					for headerStr,headerValue in fileDict.items():
+						if headerStr in videoStack.header.header.keys():
+							videoStack.header.header[headerStr] = headerValue
+						else:
+							print('warning: did not find key "' + headerStr + '" in file', fileName)
+					#videoStack.loadStack() # load the actual video image
+
+					# append to list
+					self._videoFileList.append(videoStack)
+
 			elif key =='scopeFiles':
-				for file in item:
-					pass
-					#print(file)
+				for fileName, fileDict in item.items():
+					scopeFilePath = os.path.join(self._folderPath, fileName)
+					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
+					#scopeStack.loadHeader() # at least makes default bStackHeader()
+					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
+
+					for headerStr,headerValue in fileDict.items():
+						if headerStr in scopeStack.header.header.keys():
+							scopeStack.header.header[headerStr] = headerValue
+						else:
+							print('warning: did not find key "' + headerStr + '" in file', fileName)
+					# don't load actual stacks (until user tells us too)
+					#scopeStack.loadStack() # load the actual video image
+
+					# append to list
+					self._scopeFileList.append(scopeStack)
 
 	@property
 	def optionsFile(self):

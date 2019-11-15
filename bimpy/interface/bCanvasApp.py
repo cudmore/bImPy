@@ -20,6 +20,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		loadIgorCanvas: path to folder of converted Igor canvas
 		path: path to text file of a saved Python canvas
 		"""
+		print('bCanvasApp.__init__')
 		super(bCanvasApp, self).__init__(parent)
 
 		if loadIgorCanvas is not None:
@@ -881,6 +882,32 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 
 		vBoxLayout.addLayout(grid)
 
+		#
+		# read position and report x/y position
+		gridReadPosition = QtWidgets.QGridLayout()
+
+		buttonName = 'read stage position'
+		#icon  = QtGui.QIcon('icons/down-arrow.png')
+		readPositionButton = QtWidgets.QPushButton('Read Position')
+		#readPositionButton.setIcon(icon)
+		readPositionButton.setToolTip('Read Stage Position')
+		readPositionButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		# we will need to set these from code
+		xStagePositionLabel_ = QtWidgets.QLabel("X (um)")
+		self.xStagePositionLabel = QtWidgets.QLabel("None")
+		yStagePositionLabel_ = QtWidgets.QLabel("None")
+		self.yStagePositionLabel = QtWidgets.QLabel("Y (um)")
+
+		gridReadPosition.addWidget(readPositionButton, 0, 0) # row, col
+		gridReadPosition.addWidget(xStagePositionLabel_, 0, 1) # row, col
+		gridReadPosition.addWidget(self.xStagePositionLabel, 0, 2) # row, col
+		gridReadPosition.addWidget(yStagePositionLabel_, 0, 3) # row, col
+		gridReadPosition.addWidget(self.yStagePositionLabel, 0, 4) # row, col
+
+		vBoxLayout.addLayout(gridReadPosition)
+
+		#
 		# x/y step size
 		grid2 = QtWidgets.QGridLayout()
 
@@ -1312,16 +1339,21 @@ if __name__ == '__main__':
 		myJavaBridge.start()
 
 		app = QtWidgets.QApplication(sys.argv)
+
+		'''
 		loadIgorCanvas = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
 		w = bCanvasApp(loadIgorCanvas=loadIgorCanvas)
 		w.resize(640, 480)
 		w.show()
 
 		w.save()
-
+		'''
+		
 		# make a new canvas and load what we just saved
 		savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		w2 = bCanvasApp(path=savedCanvasPath)
+		w2.resize(1024, 768)
+		w2.show()
 
 		sys.exit(app.exec_())
 	except Exception as e:

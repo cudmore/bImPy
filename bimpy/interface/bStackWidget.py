@@ -239,7 +239,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.currentSlice = 0
 		self.minContrast = 0
-		#self.maxContrast = 2 ** self.mySimpleStack.getHeaderVal('bitsPerPixel')
+		#self.maxContrast = 2 ** self.mySimpleStack.getHeaderVal('bitDepth')
 		print('   bStackView.__init__ got stack bot depth of:', self.mySimpleStack.bitDepth, 'type:', type(self.mySimpleStack.bitDepth))
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth
 

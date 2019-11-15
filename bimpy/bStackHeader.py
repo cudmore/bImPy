@@ -25,7 +25,7 @@ Converted header .txt file is in json format and looks like this
     "pmtVoltage3": "557",
     "scanner": "Galvano",
     "zoom": "2.0",
-    "bitsPerPixel": 16,
+    "bitDepth": 16,
     "numChannels": 1,
     "stackType": "TSeries",
     "xPixels": 218,
@@ -149,15 +149,19 @@ class bStackHeader:
 		return self.header['yMotor']
 	@property
 	def bitDepth(self):
-		bitsPerPixel = self.header['bitsPerPixel']
-		if type(bitsPerPixel) == str:
-			print('   error: bStackHeader.bitDepth found str bits perpixel:', self.header['bitsPerPixel'], self.path)
-			bitsPerPixel = int(bitsPerPixel)
-		if bitsPerPixel is None or bitsPerPixel=='':
-			print('   error: bStackHeader.bitDepth got bad bitsPerPixel:', bitsPerPixel, 'returning 8, path:', self.path)
-			bitsPerPixel = 8
-		#print('type(bitsPerPixel):', type(bitsPerPixel), bitsPerPixel, self.path)
-		return bitsPerPixel
+		# get rid of this 'if', I am switching everything to use 'bitDepth'
+		if 'bitDepth' in self.header:
+			bitDepth = self.header['bitDepth']
+		elif 'bitsPerPixel' in self.header:
+			bitDepth = self.header['bitsPerPixel']
+		if type(bitDepth) == str:
+			print('   error: bStackHeader.bitDepth found str bits perpixel:', self.header['bitDepth'], self.path)
+			bitDepth = int(bitDepth)
+		if bitDepth is None or bitDepth=='':
+			print('   error: bStackHeader.bitDepth got bad bitDepth:', bitDepth, 'returning 8, path:', self.path)
+			bitDepth = 8
+		#print('type(bitDepth):', type(bitDepth), bitDepth, self.path)
+		return bitDepth
 		#print('bStackHeader.bitDepth NEVER WORKS, RETURNING 8')
 		#return 8
 
@@ -236,12 +240,13 @@ class bStackHeader:
 		self.header = OrderedDict()
 
 		self.header['path'] = self.path # full path to the file
+		self.header['filename'] = '' #added 20191115
 		self.header['date'] = ''
 		self.header['time'] = ''
 
 		self.header['stackType'] = None
 		self.header['numChannels'] = None
-		self.header['bitsPerPixel'] = None
+		self.header['bitDepth'] = None
 
 		self.header['xPixels'] = None
 		self.header['yPixels'] = None
@@ -304,16 +309,18 @@ class bStackHeader:
 		else:
 			print('   error: bStackHeader.assignToShape() got bad shape:', shape)
 		#print('self.header:', self.header)
-		bitsPerPixel = self.header['bitsPerPixel']
-		if bitsPerPixel is not None:
-			print('assignToShape() self.header["bitsPerPixel"] is already', self.header['bitsPerPixel'], type(self.header['bitsPerPixel']))
+		#bitDepth = self.header['bitDepth']
+		bitDepth = self.bitDepth
+		#if bitDepth is not None:
+		if type(self.bitDepth) is not 'NoneType':
+			print('assignToShape() self.header["bitDepth"] is already', self.bitDepth, type(self.bitDepth))
 		else:
 			dtype = stack.dtype
 			if dtype == 'uint8':
 				bitDepth = 8
 			else:
 				bitDepth = 16
-			self.header['bitsPerPixel'] = bitDepth
+			self.header['bitDepth'] = bitDepth
 
 	def readOirHeader(self):
 		"""
@@ -450,7 +457,7 @@ class bStackHeader:
 								if 'configuration scannerType' in finalKey:
 									self.header['scanner'] = finalValue # in ('Resonant', 'Galvano')
 								if 'imageDefinition bitCounts' in finalKey:
-									self.header['bitsPerPixel'] = int(finalValue)
+									self.header['bitDepth'] = int(finalValue)
 
 								# channel 1
 								if 'pmt gain #1' in finalKey:

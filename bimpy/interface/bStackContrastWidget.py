@@ -8,7 +8,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.mainWindow = mainWindow
 
-		self.bitDepth = mainWindow.getStack().getHeaderVal('bitsPerPixel')
+		self.bitDepth = mainWindow.getStack().getHeaderVal('bitDepth')
 		if type(self.bitDepth) == str:
 			print('\n\nFIX THIS FUCKING bit Depth BUG !!!!!!!!!! GOD FUCKING DAMMIT')
 			self.bitDepth = int(self.bitDepth)
@@ -36,6 +36,9 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 	def buildUI(self):
 		minVal = 0
+		if self.bitDepth is None:
+			print('FIX THIS FUCKING ERROR IN BITDEPTH WTF self.bitDepth:', self.bitDepth)
+			self.bitDepth = 8
 		maxVal = 2**self.bitDepth
 
 		self.myQVBoxLayout = QtWidgets.QVBoxLayout(self)
