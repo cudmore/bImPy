@@ -67,6 +67,23 @@ class bStack:
 
 		self.analysis = bimpy.bAnalysis(self)
 
+	def print(self):
+		""" print basic properties of a stack """
+		print('   === bStack.print() fileName', self.fileName)
+		print('      numChannels:', self.numChannels,
+			'numImages:', self.numImages,
+			'pixelsPerLine:', self.pixelsPerLine,
+			'linesPerFrame:', self.linesPerFrame,
+			'shape:', self.stack.shape,
+			)
+		print('      xVoxel', self.xVoxel,
+			'yVoxel:', self.yVoxel,
+			'zVoxel:', self.zVoxel,
+			)
+		print('      bitDepth', self.bitDepth,
+			'pixel type:', self.stack.dtype,
+			)
+
 	@property
 	def fileName(self):
 		return self._fileName

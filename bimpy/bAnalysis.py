@@ -1,11 +1,14 @@
 
-import math
+import time, math
 import numpy as np
 
 from skimage.measure import profile
 from scipy.optimize import curve_fit
 from scipy import asarray
 import scipy.signal
+
+#from multiprocessing import Pool
+import multiprocessing
 
 class bAnalysis:
 	def __init__(self, stack):
@@ -73,23 +76,52 @@ class bAnalysis:
 
 	def stackLineProfile(self, src, dst, linewidth=3):
 		""" entire stack """
-		print('stackLineProfile()')
-		print('   src:', src)
-		print('   dst:', dst)
-		print('   ', self.stack.stack.shape)
-		numSlices = self.stack.stack.shape[1] # will only work for [color,slice,x,y]
-		print('   stackLineProfile() numSlices:', numSlices)
-		intensityProfileList = []
-		for idx, slice in enumerate(range(numSlices-1)): # why do i need -1 ???
-			if idx % 300 == 0:
-				# print every 100 slices
-				print('   idx:', idx, 'of', numSlices)
-			intensityProfile = self.lineProfile(slice, src, dst, linewidth=linewidth)
-			intensityProfileList.append(intensityProfile)
-		#print('   1) intensityProfile.shape:', intensityProfile.shape)
+		print('stackLineProfile() src:', src, 'dst:', dst)
+		self.stack.print()
+
+		numSlices = self.stack.numImages # will only work for [color,slice,x,y]
+		print('   line length:', self.euclideanDistance(src, dst))
+
+		# not sure what is going on here
+		# a 3d stack of cd31 staining takes 3x longer when using multiprocessing?
+		if numSlices < 500:
+			intensityProfileList = []
+			startTime = time.time()
+			for idx, slice in enumerate(range(numSlices-1)): # why do i need -1 ???
+				if idx % 300 == 0:
+					# print every 100 slices
+					print('   idx:', idx, 'of', numSlices)
+				intensityProfile = self.lineProfile(slice, src, dst, linewidth=linewidth)
+				intensityProfileList.append(intensityProfile)
+			stopTime = time.time()
+			print('1) single-thread line profile for', numSlices, 'slices took', round(stopTime-startTime,3))
+		else:
+			# threaded
+			intensityProfileList = []
+			print('   multiprocessing.cpu_count():', multiprocessing.cpu_count())
+			numCPU = multiprocessing.cpu_count()
+			# create a list of parameters to function self.lineProfile as a tuple (slice, src, dst, linewidth)
+			poolParams = [(i, src, dst, linewidth) for i in range(numSlices-1)]
+			startTime = time.time()
+			with multiprocessing.Pool(processes=numCPU-1) as p:
+				#starmap() allows passing a paremeter list, map() does not
+				intensityProfileList = p.starmap(self.lineProfile, poolParams)
+			stopTime = time.time()
+			print('2 multi-thread line-profile for', numSlices, 'slices took', round(stopTime-startTime,3))
+
 		intensityProfileList = np.array(intensityProfileList)
-		#print('   2) intensityProfile.shape:', intensityProfile.shape)
 		return intensityProfileList
+
+	def euclideanDistance(self, pnt1, pnt2):
+		"""
+		given 2d/3d points, return the straight line (euclidean) distance btween them
+
+		remeber, this is not accurate for 3d points as our Z is huge in scanning microscopy!!!
+		"""
+		if len(pnt1) == 2:
+			return math.sqrt((pnt1[0]-pnt2[0])**2 + (pnt1[1]-pnt2[1])**2)
+		elif len(pnt1) == 3:
+			return math.sqrt((pnt1[0]-pnt2[0])**2 + (pnt1[1]-pnt2[1])**2 + + (pnt1[2]-pnt2[2])**2)
 
 if __name__ == '__main__':
 	import bimpy

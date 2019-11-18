@@ -1,7 +1,7 @@
 # Author: Robert Cudmore
 # Date: 20190630
 
-import os
+import os, sys, subprocess
 from functools import partial
 from collections import OrderedDict
 
@@ -14,6 +14,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 import bimpy
 from bimpy.interface import bStackWidget
 
+
 class bCanvasApp(QtWidgets.QMainWindow):
 	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
 		"""
@@ -22,6 +23,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		"""
 		print('bCanvasApp.__init__')
 		super(bCanvasApp, self).__init__(parent)
+
+		self.myMenu = bimpy.interface.bMenu(self)
+
+		# on sutter this is x/y/x !!!
+		self.xyzMotor = bimpy.bPrior(isReal=False)
 
 		if loadIgorCanvas is not None:
 			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
@@ -57,7 +63,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		# here I am linking the toolbar to the graphics view
 		# i can't figure out how to use QAction !!!!!!
-		self.motorToolbarWidget = myScopeToolbarWidget(self.canvas)
+		self.motorToolbarWidget = myScopeToolbarWidget(self.canvas, parent=self)
 		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
 
 		self.toolbarWidget = myToolbarWidget(self.myGraphicsView, self.canvas)
@@ -66,6 +72,50 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.setCentralWidget(self.centralwidget)
 
 		self.myStackList = [] # a list of open bStack
+
+	def userEvent(self, event):
+		print('=== bCanvasApp.userEvent():', event)
+		if event == 'move stage right':
+			# todo: read current x/y move distance
+			thePos = self.xyzMotor.priorMove('right', 500) # the pos is (x,y)
+			self.userEvent('read motor position')
+		elif event == 'move stage left':
+			# todo: read current x/y move distance
+			thePos = self.xyzMotor.priorMove('left', 500) # the pos is (x,y)
+			self.userEvent('read motor position')
+		elif event == 'move stage front':
+			# todo: read current x/y move distance
+			thePos = self.xyzMotor.priorMove('front', 500) # the pos is (x,y)
+			self.userEvent('read motor position')
+		elif event == 'move stage back':
+			# todo: read current x/y move distance
+			thePos = self.xyzMotor.priorMove('back', 500) # the pos is (x,y)
+			self.userEvent('read motor position')
+		elif event == 'read motor position':
+			# update the interface
+			x,y = self.xyzMotor.priorReadPos()
+			self.motorToolbarWidget.xStagePositionLabel.setText(str(x))
+			self.motorToolbarWidget.yStagePositionLabel.setText(str(y))
+
+			# set red crosshair
+			print('   crosshair rect pos was:', self.myGraphicsView.myCrosshair.pos())
+			self.myGraphicsView.myCrosshair.setMotorPosition(int(x), int(y))
+			#self.myGraphicsView.myCrosshair.setPos(int(x),int(y))
+			print('   and is now:', self.myGraphicsView.myCrosshair.pos())
+
+		elif event == 'Canvas Folder':
+			print('open folder on hdd')
+			path = self.canvas._folderPath
+			if sys.platform.startswith('darwin'):
+				subprocess.Popen(["open", path])
+			elif sys.platform.startswith('Windows'):
+				os.startfile(path)
+			else:
+				subprocess.Popen(["xdg-open", path])
+
+		else:
+			print('bCanvasApp.userEvent() not understood:', event)
+
 
 	def mousePressEvent(self, event):
 		print('=== bCanvasApp.mousePressEvent()')
@@ -232,7 +282,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		#	print(self.parent)
 
 	def mouseReleaseEvent(self, event):
-		#print('   myQGraphicsPixmapItem.mouseReleaseEvent()')
+		print('   myQGraphicsPixmapItem.mouseReleaseEvent()', 'motor position:', self.pos())
 		super().mouseReleaseEvent(event)
 		#self.setSelected(False)
 		#event.setAccepted(False)
@@ -477,6 +527,12 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			#numItems += 1
 
 
+		# a cross hair and rectangle (size of zoom)
+		# todo: add popup to select 2p zoom (Video, 1, 2, 3, 4)
+		self.myCrosshair = myQGraphicsRectItem()
+		self.myCrosshair.setZValue(numItems)
+		self.myScene.addItem(self.myCrosshair)
+
 		# add an object at really big x/y
 		'''
 		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(20000, 20000, 100, 100))
@@ -506,7 +562,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			if isSelectable and item._fileName == fileName:
 				selectThisItem = item
 		if selectThisItem is not None:
-			print('   myQGraphicsView.setSelectedItem:', selectThisItem, selectThisItem._fileName)
+			print('   myQGraphicsView.setSelectedItem:', selectThisItem, selectThisItem._fileName, selectThisItem.pos())
 		self.myScene.setFocusItem(selectThisItem)
 		selectThisItem.setSelected(True)
 
@@ -658,6 +714,9 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				#todo: this is a prime example of figuring out signal/slot
 				self.myParentApp.toggleVisibleCheck(filename, doShow)
 				#setCheckedState(fileName, doSHow)
+		if event.key() == QtCore.Qt.Key_C:
+			print('todo: set scene centered on crosshair, if no crosshair, center on all images')
+
 	def getSelectedItem(self):
 		"""
 		Get the currently selected item, return None if no selection
@@ -738,6 +797,95 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		else:
 			scale = 0.8
 		self.scale(scale,scale)
+
+class myCrosshair(QtWidgets.QGraphicsTextItem):
+	def __init__(self, parent=None):
+		super(myCrosshair, self).__init__(parent)
+		self.fontSize = 50
+		self._fileName = ''
+		self.myLayer = 'crosshair'
+		theFont = QtGui.QFont("Times", self.fontSize, QtGui.QFont.Bold)
+		self.setFont(theFont)
+		self.setPlainText('+')
+		self.setDefaultTextColor(QtCore.Qt.red)
+		self.document().setDocumentMargin(0)
+
+	def setMotorPosition(self, x, y):
+		# offset so it is centered
+		x = x
+		y = y - self.fontSize/2
+
+		self.setPos(x,y)
+
+class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
+	"""
+	To display rectangles in canvas.
+	Used for 2p images so we can show/hide max project and still see square
+	"""
+	def __init__(self, parent=None):
+		#-9815.6, -20083.0
+		#self.fake_x = -4811.0 #-9811.7 #185
+		#self.fake_y = -10079.0 #-20079.0 #-83
+		self.penSize = 15
+
+		self.xPos = -4811.0
+		self.yPos = -10079.0
+		self.width = 500.0
+		self.height = 500.0
+
+		myRect = QtCore.QRectF(self.xPos, self.yPos, self.width, self.height)
+		# I really do not understand use of parent ???
+		super(QtWidgets.QGraphicsRectItem, self).__init__(myRect)
+		self._fileName = ''
+		self.myLayer = 'crosshair'
+
+		#self.myCrosshair = QtWidgets.QGraphicsTextItem(self)
+		#self.myCrosshair.setPlainText('x')
+		self.myCrosshair = myCrosshair(self)
+		self.myCrosshair.setMotorPosition(self.xPos, self.yPos)
+		#self.myCrosshair.setPos(self.xPos, self.yPos)
+
+		print('self.boundingRect():', self.boundingRect())
+
+	def setMotorPosition(self, xMotor, yMotor):
+		"""
+		update the crosshair to a new position
+		"""
+		print('myQGraphicsRectItem.setMotorPosition() xMotor:', xMotor, 'yMotor:', yMotor)
+		self.xPos = xMotor - self.width/2
+		self.yPos = yMotor - self.height/2
+
+		self.setPos(self.xPos, self.yPos)
+		self.setRect(self.xPos, self.yPos, self.width, self.height)
+
+		self.myCrosshair.setMotorPosition(xMotor, yMotor)
+		#self.myCrosshair.setPos(xMotor, yMotor)
+
+		print('   self.pos():', self.pos())
+		print('   self.rect():', self.rect())
+
+	def paint(self, painter, option, widget=None):
+		super().paint(painter, option, widget)
+		self.drawCrosshairRect(painter)
+
+	def drawCrosshairRect(self, painter):
+		print('myQGraphicsRectItem.drawFocusRect()')
+		self.focusbrush = QtGui.QBrush()
+
+		self.focuspen = QtGui.QPen(QtCore.Qt.DashLine) # SolidLine, DashLine
+		self.focuspen.setColor(QtCore.Qt.red)
+		self.focuspen.setWidthF(self.penSize)
+		#
+		painter.setBrush(self.focusbrush)
+		painter.setPen(self.focuspen)
+
+		#painter.setOpacity(1.0)
+
+		print('drawCrosshairRect() is now self.boundingRect():', self.boundingRect())
+		print('drawCrosshairRect() is now self.rect():', self.rect())
+		print('drawCrosshairRect() is now self.pos():', self.pos())
+		#painter.drawRect(self.boundingRect())
+		painter.drawRect(self.rect())
 
 '''
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
@@ -835,6 +983,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		print('myScopeToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
 		self.theCanvas = theCanvas
+		self.myParentApp = parent
 
 		myGroupBox = QtWidgets.QGroupBox()
 		myGroupBox.setTitle('Scope Controller')
@@ -886,11 +1035,11 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		# read position and report x/y position
 		gridReadPosition = QtWidgets.QGridLayout()
 
-		buttonName = 'read stage position'
+		buttonName = 'read motor position'
 		#icon  = QtGui.QIcon('icons/down-arrow.png')
 		readPositionButton = QtWidgets.QPushButton('Read Position')
 		#readPositionButton.setIcon(icon)
-		readPositionButton.setToolTip('Read Stage Position')
+		readPositionButton.setToolTip('Read Motor Position')
 		readPositionButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		# we will need to set these from code
@@ -992,6 +1141,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 	@QtCore.pyqtSlot()
 	def on_button_click(self, name):
 		print('=== myScopeToolbarWidget.on_button_click() name:', name)
+		self.myParentApp.userEvent(name)
 
 class myToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, myQGraphicsView, theCanvas, parent=None):
@@ -1348,7 +1498,7 @@ if __name__ == '__main__':
 
 		w.save()
 		'''
-		
+
 		# make a new canvas and load what we just saved
 		savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		w2 = bCanvasApp(path=savedCanvasPath)

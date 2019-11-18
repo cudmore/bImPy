@@ -1,3 +1,11 @@
+## Using multiprocessing to process measurements on many image slices
+
+line intensity profile
+
+2624 images
+serial took 32 seconds
+parallel (at home) with 7 processes took 15 seconds
+
 ## pyserial
 
 Sometimes 'pip install pyserial' is not enough? Need to use

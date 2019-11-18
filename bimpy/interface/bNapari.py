@@ -8,6 +8,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 
 import bimpy
+from bimpy.interface import bShapeAnalysisWidget
 import napari
 
 class bNapari:
@@ -29,39 +30,9 @@ class bNapari:
 
 		self.myStack = bimpy.bStack(path)
 
-		print('   self.myStack.stack.shape:', self.myStack.stack.shape)
+		#print('   self.myStack.stack.shape:', self.myStack.stack.shape)
 
 		self.sliceNum = 0
-
-		#
-		# pyqt graph plots
-		pgNum = 2
-		self.pgWin = pg.GraphicsWindow(title="Stokes profiles") # creates a window
-		self.pgPlots = [None] * pgNum
-		self.curve_stokes = [None] * pgNum
-		self.lambda_pos = [None] * pgNum
-		# line intensity for one slice
-		self.pgPlots[0] = self.pgWin.addPlot(title="Line Intensity Profile", row=0, col=0)
-
-		# fit
-		x = [1]
-		y = [1]
-		self.fitPlot = self.pgPlots[0].plot(x, y,
-                pen=pg.mkPen('r', width=3), name='fit')
-		self.fitPlot2 = self.pgPlots[0].plot(x, y,
-                pen=pg.mkPen('b', symbol='.', symbolSize=10, width=5), name='fitPoints')
-		#fitPlot = self.pgWin.addPlot(title="Line Intensity Profile", row=0, col=0)
-		# line intensity for entire stack (updated with xxx)
-		self.pgPlots[1] = self.pgWin.addViewBox(row=1, col=0)
-
-		self.img = pg.ImageItem()
-		self.pgPlots[1].addItem(self.img)
-
-		self.lambda_pos[1] = pg.InfiniteLine(pos=0, angle=90)
-		self.pgPlots[1].addItem(self.lambda_pos[1])
-
-		self.curve_stokes[0] = self.pgPlots[0].plot()
-		self.curve_stokes[0].setShadowPen(pg.mkPen((255,255,255), width=2, cosmetic=True))
 
 		#
 		# napari
@@ -71,13 +42,19 @@ class bNapari:
 
 		self.viewer = napari.Viewer(title=title)
 
+		#
+		#
+		# replace all the above with this !!!
+		self.bShapeAnalysisWidget = bShapeAnalysisWidget(self.viewer, self.myStack)
+		#
+		#
+
 		@self.viewer.bind_key('u')
 		def updateStackLineProfile(viewer):
 			(src, dst) = self._getSelectedLine()
 			if src is not None:
-				self.lineProfileImage = self.myStack.analysis.stackLineProfile(src, dst)
-				print('   got line profile')
-				self.img.setImage(self.lineProfileImage)
+				# plugin
+				self.bShapeAnalysisWidget.updateStackLineProfile(src, dst)
 
 		#self.myNapari = napari.view_image(
 		self.myNapari = self.viewer.add_image(
@@ -212,41 +189,21 @@ class bNapari:
 		#print('my_update_slider() event:', event)
 		if (event.axis == 0):
 			self.sliceNum = self.viewer.dims.indices[0]
+			'''
 			self.plot_pg_slice(self.sliceNum)
 			# using new slice, update the intensity of a line
 			self.updateLines()
+			'''
 
-	def plot_pg(self, oneProfile, fit=None, left_idx=None, right_idx=None): #, ind_lambda):
-		"""
-		Update the pyqt graph (top one) with a new line profile
-
-		Parameters:
-			oneProfile: ndarray of line intensity
-		"""
-		if (oneProfile is not None):
 			#
-			self.curve_stokes[0].setData(oneProfile)
-		if (fit is not None):
-			#
-			self.fitPlot.setData(fit)
-		if (oneProfile is not None and left_idx is not None and right_idx is not None):
-			#if len(left_idx)>0 and len(right_idx)>0:
-			if 1:
-				left_y = oneProfile[left_idx]
-				#right_y = oneProfile[right_idx]
-				right_y = left_y
-				xPnt = [left_idx, right_idx]
-				yPnt = [left_y, right_y]
-				print('plot_pg() xPnt:', xPnt, 'yPnt:', yPnt)
-				self.fitPlot2.setData(xPnt, yPnt)
+			# plugin
+			self.bShapeAnalysisWidget.updateVerticalSliceLine(self.sliceNum)
+			#self.bShapeAnalysisWidget.updateVerticalSliceLine(self.sliceNum)
 
-	def plot_pg_slice(self, sliceNum):
-		"""
-		Set vertical line on pg plots to slice number
-
-		Slice is indicated by a vertical bar
-		"""
-		self.lambda_pos[1].setValue(sliceNum)
+			# todo: this does not feal right ... fix this !!!
+			(src, dst) = self._getSelectedLine()
+			if src is not None:
+				self.bShapeAnalysisWidget.updateLines(self.sliceNum, src, dst)
 
 	def _getSelectedLine(self):
 		"""
@@ -272,13 +229,8 @@ class bNapari:
 		#for data in self.shapeLayer.data:
 		(src, dst) = self._getSelectedLine()
 		if src is not None:
-			lineProfile = self.myStack.analysis.lineProfile(self.sliceNum, src, dst, linewidth=1)
-			#print('lineProfile:', lineProfile)
-			x = [a for a in range(len(lineProfile))]
-			yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.fitGaussian(x, lineProfile)
-			print('updateLines() fwhm:', fwhm, leftIdx, rightIdx)
-			#print('updateLine yFit:', yFit)
-			self.plot_pg(lineProfile, yFit, leftIdx, rightIdx)
+			# plugin
+			self.bShapeAnalysisWidget.updateLines(self.sliceNum, src, dst)
 
 	def lineShapeChange_callback(self, layer, event):
 		"""

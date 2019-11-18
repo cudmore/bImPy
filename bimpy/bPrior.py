@@ -11,8 +11,8 @@ class bPrior:
 		self.encoding = 'utf-8'
 
 		self.isReal = isReal
-		self.fake_x = 11111
-		self.fake_y = 12333
+		self.fake_x = -4811.0 #-9811.7 #185
+		self.fake_y = -10079.0 #-20079.0 #-83
 
 		self.ser = None
 
@@ -80,6 +80,7 @@ class bPrior:
 		finally:
 			self.close()
 
+		print('priorReadPos() returning:', xPos, yPos)
 		return xPos, yPos
 
 	def priorMove(self, direction, umDistance):
@@ -119,9 +120,9 @@ class bPrior:
 				elif direction == 'right':
 					self.fake_x += int(umDistanceStr)
 				elif direction == 'front':
-					self.fake_y -= int(umDistanceStr)
-				elif direction == 'back':
 					self.fake_y += int(umDistanceStr)
+				elif direction == 'back':
+					self.fake_y -= int(umDistanceStr)
 
 			# wait for response of 'R'
 			if self.isReal:
@@ -133,12 +134,21 @@ class bPrior:
 			stopTime = time.time()
 			elapsedTime = stopTime - startTime
 			print('priorMove() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
+			if self.isReal:
+				#todo: print current motor coordinates
+				pass
+			else:
+				print('  fake_x:', self.fake_x, 'fake_y:', self.fake_y)
 
 		except Exception as e:
 			print('exception in priorMove():', e)
 			raise
 		finally:
 			self.close()
+
+		# not sure if timing with real motor will report correct position???
+		theRet = self.priorReadPos()
+		return theRet
 
 if __name__ == '__main__':
 	isReal = False
