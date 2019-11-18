@@ -1,7 +1,7 @@
 # Author: Robert Cudmore
 # Date: 20190630
 
-import os, sys, subprocess
+import os, sys, json, subprocess
 from functools import partial
 from collections import OrderedDict
 
@@ -23,6 +23,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		"""
 		print('bCanvasApp.__init__')
 		super(bCanvasApp, self).__init__(parent)
+
+		self.optionsLoad()
 
 		self.myMenu = bimpy.interface.bMenu(self)
 
@@ -113,6 +115,56 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			else:
 				subprocess.Popen(["xdg-open", path])
 
+		elif event == 'Grab Image':
+			print('bCanvasApp.userEvent() event:', event)
+			# load .tif file that is being repeatdely saved by bCamera
+			# grab (videoWidth, videoHeight) fropm options
+			codeFolder = self.getCodeFolder()
+			oneImage = self.options['video']['oneimage']
+			oneImagePath = os.path.join(codeFolder, oneImage)
+			if os.path.isfile(oneImagePath):
+				print('found it', oneImagePath)
+			else:
+				print('eror: did not find file:', oneImagePath)
+			#
+			umWidth = self.options['video']['umWidth']
+			umHeight = self.options['video']['umHeight']
+			# load image as a new stack
+			newVideoStack = bimpy.bStack(oneImagePath, loadImages=True)
+			# tweek header
+			# todo: this is not complete
+			xMotor,yMotor = self.xyzMotor.priorReadPos()
+			#newVideoStack.header.header['bitDepth'] = 8
+			#newVideoStack.header.header['bitDepth'] = 8
+			newVideoStack.header.header['umWidth'] = umWidth
+			newVideoStack.header.header['umHeight'] = umHeight
+			newVideoStack.header.header['xMotor'] = xMotor # flipped
+			newVideoStack.header.header['yMotor'] = yMotor
+
+			print('   newVideoStack:', newVideoStack.print())
+
+			# save as (in canvas video folder)
+			numVideoFiles = len(self.canvas.videoFileList)
+			saveVideoFile = 'v' + self.canvas.enclosingFolder + '_' + str(numVideoFiles) + '.tif'
+			saveVideoPath = os.path.join(self.canvas.videoFolderPath, saveVideoFile)
+			newVideoStack.saveVideoAs(saveVideoPath)
+
+			# append to canvas
+			#self.canvas.videoFileList.append(newVideoStack)
+			self.canvas.appendVideo(newVideoStack)
+
+			# append to graphics view
+			self.myGraphicsView.appendVideo(newVideoStack)
+
+			# append to toolbar widget (list of files)
+			self.toolbarWidget.appendVideo(newVideoStack)
+
+			# save canvas
+			self.canvas.save()
+
+		elif event =='Import From Scope':
+			self.canvas.findNewScopeFiles()
+
 		else:
 			print('bCanvasApp.userEvent() not understood:', event)
 
@@ -178,6 +230,56 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 	def load(self):
 		self.canvas.load()
+
+	def getCodeFolder(self):
+		""" get full path to the folder where this file of code live """
+		if getattr(sys, 'frozen', False):
+			# we are running in a bundle (frozen)
+			bundle_dir = sys._MEIPASS
+		else:
+			# we are running in a normal Python environment
+			bundle_dir = os.path.dirname(os.path.abspath(__file__))
+		return bundle_dir
+
+	@property
+	def options(self):
+		return self._optionsDict
+
+	@property
+	def optionsFile(self):
+		"""
+		Return the options .json file name
+		"""
+
+		if getattr(sys, 'frozen', False):
+			# we are running in a bundle (frozen)
+			bundle_dir = sys._MEIPASS
+		else:
+			# we are running in a normal Python environment
+			bundle_dir = os.path.dirname(os.path.abspath(__file__))
+		optionsFilePath = os.path.join(bundle_dir, 'bCanvasApp_Options.json')
+		return optionsFilePath
+
+	def optionsDefault(self):
+		self._optionsDict = OrderedDict()
+		self._optionsDict['version'] = 0.1
+
+		self._optionsDict['video'] = OrderedDict()
+		self._optionsDict['video']['oneimage'] = 'oneimage.tif'
+		self._optionsDict['video']['umWidth'] = 693
+		self._optionsDict['video']['umHeight'] = 433
+
+	def optionsLoad(self):
+		if not os.path.isfile(self.optionsFile):
+			self.optionsDefault()
+			self.optionsSave()
+		else:
+			with open(self.optionsFile) as f:
+				self._optionsDict = json.load(f)
+
+	def optionsSave(self):
+		with open(self.optionsFile, 'w') as outfile:
+			json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
 
 globalSquare = {
 	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
@@ -541,6 +643,40 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 		self.setScene(self.myScene)
+
+	def appendVideo(self, newVideoStack):
+		path = newVideoStack.path
+		fileName = newVideoStack._fileName
+		#videoFileHeader = videoFile.getHeader()
+		xMotor = newVideoStack.header.header['xMotor']
+		yMotor = newVideoStack.header.header['yMotor']
+		umWidth = newVideoStack.header.header['umWidth']
+		umHeight = newVideoStack.header.header['umHeight']
+
+		#videoImage = videoFile.getVideoImage() # ndarray
+		videoImage = newVideoStack.getImage() # ndarray
+		imageStackHeight, imageStackWidth = videoImage.shape
+
+		myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
+		#myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_RGB32)
+
+		pixmap = QtGui.QPixmap(myQImage)
+		pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
+
+		# insert
+		#pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', self, parent=pixmap)
+		newIdx = 999 # do i use this???
+		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, 'Video Layer', parent=pixmap)
+		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
+		pixMapItem.setToolTip(str(newIdx))
+		pixMapItem.setPos(xMotor,yMotor)
+		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
+		tmpNumItems = 100
+		#pixMapItem.setZValue(tmpNumItems) # do i use this???
+
+		# add to scene
+		self.myScene.addItem(pixMapItem)
+
 
 	def setSelectedItem(self, fileName):
 		"""
@@ -997,28 +1133,32 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		grid = QtWidgets.QGridLayout()
 
 		buttonName = 'move stage left'
-		icon  = QtGui.QIcon('icons/left-arrow.png')
+		iconPath = os.path.join(os.path.join(self.myParentApp.getCodeFolder(), 'icons/left-arrow.png'))
+		icon  = QtGui.QIcon(iconPath)
 		leftButton = QtWidgets.QPushButton()
 		leftButton.setIcon(icon)
 		leftButton.setToolTip('Move stage left')
 		leftButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		buttonName = 'move stage right'
-		icon  = QtGui.QIcon('icons/right-arrow.png')
+		iconPath = os.path.join(os.path.join(self.myParentApp.getCodeFolder(), 'icons/right-arrow.png'))
+		icon  = QtGui.QIcon(iconPath)
 		rightButton = QtWidgets.QPushButton()
 		rightButton.setIcon(icon)
 		rightButton.setToolTip('Move stage right')
 		rightButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		buttonName = 'move stage back'
-		icon  = QtGui.QIcon('icons/up-arrow.png')
+		iconPath = os.path.join(os.path.join(self.myParentApp.getCodeFolder(), 'icons/up-arrow.png'))
+		icon  = QtGui.QIcon(iconPath)
 		backButton = QtWidgets.QPushButton()
 		backButton.setIcon(icon)
 		backButton.setToolTip('Move stage back')
 		backButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		buttonName = 'move stage front'
-		icon  = QtGui.QIcon('icons/down-arrow.png')
+		iconPath = os.path.join(os.path.join(self.myParentApp.getCodeFolder(), 'icons/down-arrow.png'))
+		icon  = QtGui.QIcon(iconPath)
 		frontButton = QtWidgets.QPushButton()
 		frontButton.setIcon(icon)
 		frontButton.setToolTip('Move stage back')
@@ -1086,13 +1226,14 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		video_hBoxLayout = QtWidgets.QHBoxLayout()
 
 		buttonName = 'Live Video'
-		icon  = QtGui.QIcon('icons/video.png')
+		iconPath = os.path.join(os.path.join(self.myParentApp.getCodeFolder(), 'icons/video.png'))
+		icon  = QtGui.QIcon(iconPath)
 		liveVideoButton = QtWidgets.QPushButton()
 		liveVideoButton.setToolTip('Show Live Video Window')
 		liveVideoButton.setIcon(icon)
 		liveVideoButton.clicked.connect(partial(self.on_button_click,buttonName))
 
-		buttonName = 'Grab'
+		buttonName = 'Grab Image'
 		grabVideoButton = QtWidgets.QPushButton(buttonName)
 		grabVideoButton.setToolTip('Grab an image from video')
 		grabVideoButton.clicked.connect(partial(self.on_button_click,buttonName))
@@ -1112,7 +1253,8 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		importScopeFilesButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		buttonName = 'Canvas Folder'
-		icon  = QtGui.QIcon('icons/folder.png')
+		iconPath = os.path.join(os.path.join(self.myParentApp.getCodeFolder(), 'icons/folder.png'))
+		icon  = QtGui.QIcon(iconPath)
 		showCanvasFolderButton = QtWidgets.QPushButton()
 		showCanvasFolderButton.setToolTip('Show canvas folder')
 		showCanvasFolderButton.setIcon(icon)
@@ -1290,6 +1432,9 @@ class myToolbarWidget(QtWidgets.QToolBar):
 	def on_toggle_image_contrast(self):
 		print('=== on_toggle_image_contrast()')
 	'''
+
+	def appendVideo(self, newVideoStack):
+		print('todo: !!!!!!!!! implement myToolbarWidget.appendVideo()')
 
 	def getSelectedContrast(self):
 		if self.selectedContrast.isChecked():
@@ -1502,6 +1647,7 @@ if __name__ == '__main__':
 		# make a new canvas and load what we just saved
 		savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		w2 = bCanvasApp(path=savedCanvasPath)
+		print('w2.optionsFile:', w2.optionsFile)
 		w2.resize(1024, 768)
 		w2.show()
 

@@ -10,10 +10,14 @@ import threading, queue
 
 class bWatchFolder(threading.Thread):
 	def __init__(self, path=None, inQueue=None, outQueue=None, errorQueue=None):
+		"""
+		path: full path to the folder to watch
+		"""
 		if path is not None and not os.path.isdir(path):
 			print('error: bWatchFolder() got a bad path:',path)
 			return
 		self.path = path
+
 		self.fileListSet = set()
 		if path is not None:
 			self.fileListSet = set(os.listdir(path))
@@ -32,7 +36,7 @@ class bWatchFolder(threading.Thread):
 		if path is None or os.path.isdir(path):
 			self.path = path
 		else:
-			print('erro bWatchFolder.setFolder() got bad path:', path)
+			print('error bWatchFolder.setFolder() got bad path:', path)
 
 	def stop(self):
 		"""

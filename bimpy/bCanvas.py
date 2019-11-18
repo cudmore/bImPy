@@ -29,6 +29,30 @@ class bCanvas:
 		if filePath is not None:
 			self.load()
 
+	def appendVideo(self, newVideoStack):
+		self._videoFileList.append(newVideoStack)
+
+	def findNewScopeFiles(self):
+		"""
+		look through files in our hard-drive folder and look for new files.
+		A new file is one that is not already in self.scopeFileList
+		"""
+		listDir = os.listdir(self._folderPath)
+		thisFileExtension = '.oir'
+		for potentialNewFile in listDir:
+			if not potentialNewFile.endswith(thisFileExtension):
+				continue
+			print('considering file:', potentialNewFile)# check if file is in self.scopeFileList
+			isInList = False
+			for loadedScopeFile in self.scopeFileList:
+				if loadedScopeFile._fileName == potentialNewFile:
+					isInList = True
+					break
+			if not isInList:
+				# found a file that is not in scopeFileList
+				# we need to find it in bLogFilePosition
+				print('   New file:', potentialNewFile, 'find it in bLogFilePosition')
+
 	@property
 	def videoFileList(self):
 		return self._videoFileList
@@ -324,9 +348,12 @@ class bCanvas:
 		self._optionsDict = OrderedDict()
 		self._optionsDict['version'] = 0.1
 
+		# put this in bCanvasApp
+		'''
 		self._optionsDict['video'] = OrderedDict()
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
+		'''
 
 	def optionsLoad(self):
 		if not os.path.isfile(self.optionsFile):

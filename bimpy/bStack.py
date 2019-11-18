@@ -44,14 +44,19 @@ class bStack:
 	def __init__(self, path='', loadImages=True):
 		logging.info('constructor')
 		self.path = path # path to file
-		self._fileName = os.path.basename(path)
+
+		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
+		#self._fileName = os.path.basename(path)
 
 		self.currentSlice = 0
 
+		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
+		'''
 		self.fileNameWithoutExtension = ''
 		if os.path.isfile(path):
 			fileName = os.path.split(self.path)[1]
 			self.fileNameWithoutExtension, tmpExtension = fileName.split('.')
+		'''
 
 		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
 		self.stack = None
@@ -67,9 +72,22 @@ class bStack:
 
 		self.analysis = bimpy.bAnalysis(self)
 
+	@property
+	def _fileName(self):
+		return os.path.basename(self.path)
+
+	@property
+	def fileNameWithoutExtension(self):
+		if os.path.isfile(self.path):
+			fileName = os.path.split(self.path)[1]
+			theRet, tmpExtension = fileName.split('.')
+			return theRet
+		else:
+			return 'NOT FOUND ???'
+
 	def print(self):
 		""" print basic properties of a stack """
-		print('   === bStack.print() fileName', self.fileName)
+		print('   === bStack.print() fileName:', self.fileName)
 		print('      numChannels:', self.numChannels,
 			'numImages:', self.numImages,
 			'pixelsPerLine:', self.pixelsPerLine,
@@ -80,8 +98,11 @@ class bStack:
 			'yVoxel:', self.yVoxel,
 			'zVoxel:', self.zVoxel,
 			)
-		print('      bitDepth', self.bitDepth,
+		print('      bitDepth:', self.bitDepth,
 			'pixel type:', self.stack.dtype,
+			)
+		print('      xMotor:', self.header.xMotor,
+			'yMotor:', self.header.yMotor,
 			)
 
 	@property
@@ -159,23 +180,27 @@ class bStack:
 
 	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
 
-		startSlice = sliceNumber - upSlices
-		if startSlice < 0:
-			startSlice = 0
-		stopSlice = sliceNumber + downSlices
-		if stopSlice > self.numImages - 1:
-			stopSlice = self.numImages - 1
+		if self.numImages>1:
+			startSlice = sliceNumber - upSlices
+			if startSlice < 0:
+				startSlice = 0
+			stopSlice = sliceNumber + downSlices
+			if stopSlice > self.numImages - 1:
+				stopSlice = self.numImages - 1
 
-		if thisStack == 'ch1':
-			img = self.stack[0, startSlice:stopSlice, :, :].copy()
-		elif thisStack == 'mask':
-			img = self._imagesMask[startSlice:stopSlice, :, :].copy()
-		elif thisStack == 'skel':
-			img = self._imagesSkel[startSlice:stopSlice, :, :].copy()
+			if thisStack == 'ch1':
+				img = self.stack[0, startSlice:stopSlice, :, :].copy()
+			elif thisStack == 'mask':
+				img = self._imagesMask[startSlice:stopSlice, :, :].copy()
+			elif thisStack == 'skel':
+				img = self._imagesSkel[startSlice:stopSlice, :, :].copy()
+			else:
+				print('error: getSlidingZ() got bad thisStack:', thisStack)
+
+			img = np.max(img, axis=0)
 		else:
-			print('error: getSlidingZ() got bad thisStack:', thisStack)
-
-		img = np.max(img, axis=0)
+			# single image stack
+			img = self.stack[0,:,:].copy()
 
 		return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
 
@@ -330,20 +355,20 @@ class bStack:
 			print('   bStack.loadStack() is using tifffile...')
 			with tifffile.TiffFile(self.path) as tif:
 				tag = tif.pages[0].tags['XResolution']
-				print('   XResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+				#print('   XResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
 				if tag.value[0]>0 and tag.value[1]>0:
 					xVoxel = tag.value[1] / tag.value[0]
 				else:
-					print('   error, got zero tag value?')
+					#print('   error, got zero tag value?')
 					xVoxel = 1
 				print('   xVoxel from XResolutions:', xVoxel)
 
 				tag = tif.pages[0].tags['YResolution']
-				print('   YResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+				#print('   YResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
 				if tag.value[0]>0 and tag.value[1]>0:
 					yVoxel = tag.value[1] / tag.value[0]
 				else:
-					print('   error, got zero tag value?')
+					#print('   error, got zero tag value?')
 					yVoxel = 1
 				print('   yVoxel from YResolutions:', yVoxel)
 
@@ -351,7 +376,7 @@ class bStack:
 				#print('   tif.tags:', tif.is_nih)
 
 				#print('   tif[0].image_description:', tif.image_description)
-				print('   tif.nih_metadata:', tif.nih_metadata)
+				#print('   tif.nih_metadata:', tif.nih_metadata)
 				thisChannel = 0
 				loaded_shape = tif.asarray().shape
 				loaded_dtype = tif.asarray().dtype
@@ -420,6 +445,8 @@ class bStack:
 
 		to add meta data, see
 		   https://github.com/CellProfiler/python-bioformats/issues/106
+		todo: this is savng as if we are converting oir to tif !!!
+				we now also have self.saveAs()
 		"""
 
 		#
@@ -429,6 +456,12 @@ class bStack:
 			# self.stack is czxy
 			#tifffile.imwrite(saveFilePath, self.stack[channelIdx,:,:,:], imagej=True, resolution=resolution, metadata=metadata, ijmetadata=ijmetadata)
 			self._save(saveFilePath, self.stack[channelIdx,:,:,:])
+
+	def saveVideoAs(self, savePath):
+		""" used when we import a video snapshot from video camera """
+		self.path = savePath
+		channelIdx = 0
+		self._save(self.path, self.stack[channelIdx,:,:])
 
 	def _save(self, fullFilePath, imageData, includeSpacing=True):
 		"""

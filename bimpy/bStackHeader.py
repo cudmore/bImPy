@@ -150,15 +150,15 @@ class bStackHeader:
 	@property
 	def bitDepth(self):
 		# get rid of this 'if', I am switching everything to use 'bitDepth'
-		if 'bitDepth' in self.header:
+		if 'bitDepth' in self.header.keys():
 			bitDepth = self.header['bitDepth']
-		elif 'bitsPerPixel' in self.header:
+		elif 'bitsPerPixel' in self.header.keys():
 			bitDepth = self.header['bitsPerPixel']
 		if type(bitDepth) == str:
-			print('   error: bStackHeader.bitDepth found str bits perpixel:', self.header['bitDepth'], self.path)
+			print('   error: bStackHeader.bitDepth @property found str bitDepth/bitsperpixel: ""', bitDepth, '"', self.path)
 			bitDepth = int(bitDepth)
 		if bitDepth is None or bitDepth=='':
-			print('   error: bStackHeader.bitDepth got bad bitDepth:', bitDepth, 'returning 8, path:', self.path)
+			print('   error: bStackHeader.bitDepth @property got bad (None or "") bitDepth:', bitDepth, 'returning 8, path:', self.path)
 			bitDepth = 8
 		#print('type(bitDepth):', type(bitDepth), bitDepth, self.path)
 		return bitDepth
@@ -293,6 +293,7 @@ class bStackHeader:
 
 	def assignToShape(self, stack):
 		"""shape is (channels, slices, x, y)"""
+		print('=== === bStackHeader.assignToShape()')
 		shape = stack.shape
 		if len(shape)==3:
 			# single plane image
@@ -310,10 +311,10 @@ class bStackHeader:
 			print('   error: bStackHeader.assignToShape() got bad shape:', shape)
 		#print('self.header:', self.header)
 		#bitDepth = self.header['bitDepth']
-		bitDepth = self.bitDepth
+		bitDepth = self.bitDepth # this will trigger warning if not already assigned
 		#if bitDepth is not None:
 		if type(self.bitDepth) is not 'NoneType':
-			print('assignToShape() self.header["bitDepth"] is already', self.bitDepth, type(self.bitDepth))
+			print('bStackHeader.assignToShape() bitDepth is already', self.bitDepth, type(self.bitDepth))
 		else:
 			dtype = stack.dtype
 			if dtype == 'uint8':
