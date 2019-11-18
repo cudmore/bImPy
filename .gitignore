@@ -9,3 +9,6 @@ __pycache__
 
 # this is the image we will save during video preview
 bimpy/interface/oneimage.tif
+
+# never copy canvas options, will always remake from scratch
+bimpy/interface/bCanvasApp_Options.json
