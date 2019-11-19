@@ -163,8 +163,13 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			self.canvas.save()
 
 		elif event =='Import From Scope':
-			self.canvas.findNewScopeFiles()
+			newScopeFileList = self.canvas.importNewScopeFiles()
+			for newScopeFile in newScopeFileList:
+				# append to view
+				self.myGraphicsView.appendScopeFile(newScopeFile)
 
+				# append to list
+				self.toolbarWidget.appendScopeFile(newScopeFile)
 		else:
 			print('bCanvasApp.userEvent() not understood:', event)
 
@@ -644,6 +649,71 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 		self.setScene(self.myScene)
 
+	def appendScopeFile(self, newScopeFile):
+		"""
+		"""
+
+		# THESE ARE FUCKING STRINGS !!!!!!!!!!!!!!!!!!!!
+		fileName = newScopeFile._fileName
+		xMotor = newScopeFile.header.header['xMotor']
+		yMotor = newScopeFile.header.header['yMotor']
+		umWidth = newScopeFile.header.header['umWidth']
+		umHeight = newScopeFile.header.header['umHeight']
+		#print('umWidth:', umWidth, 'umHeight:', umHeight)
+
+		if xMotor == 'None':
+			xMotor = None
+		if yMotor == 'None':
+			yMotor = None
+
+		#if xMotor is None or yMotor is None:
+		#	print('bCanvasApp.myQGraphicsView() not inserting scopeFile -->> xMotor or yMotor is None ???')
+		#	#continue
+
+		# todo: specify channel (1,2,3,4,...)
+		stackMax = newScopeFile.loadMax(channel=1, convertTo8Bit=True) # stackMax can be None
+		#imageStackHeight, imageStackWidth = stackMax.shape
+		imageStackWidth = newScopeFile.pixelsPerLine
+		imageStackHeight = newScopeFile.linesPerFrame
+		#print('imageStackWidth:', imageStackWidth, 'imageStackHeight:', imageStackHeight)
+
+		if stackMax is None:
+			print('myQGraphicsView.appendScopeFile() is making zero max image for newScopeFile:', newScopeFile)
+			stackMax = np.zeros((imageStackWidth, imageStackHeight), dtype=np.uint8)
+
+		myQImage = QtGui.QImage(stackMax, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
+
+		#
+		# try and set color
+		colors=[]
+		for i in range(256): colors.append(QtGui.qRgb(i/4,i,i/2))
+		myQImage.setColorTable(colors)
+
+		pixmap = QtGui.QPixmap(myQImage)
+		pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
+
+
+		# insert
+		#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
+		newIdx = 999 # do i use this???
+		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, '2P Max Layer', parent=pixmap)
+		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
+		pixMapItem.setToolTip(str(newIdx))
+		pixMapItem.setPos(xMotor,yMotor)
+		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
+		#pixMapItem.setZValue(numItems)
+		# this also effects bounding rect
+		#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
+
+		pixMapItem.setShapeMode(QtWidgets.QGraphicsPixmapItem.BoundingRectShape)
+		print('pixMapItem.shapeMode():', pixMapItem.shapeMode())
+
+		# add to scene
+		self.myScene.addItem(pixMapItem)
+
+		#numItems += 1
+
+	# todo: put this in __init__() as a function
 	def appendVideo(self, newVideoStack):
 		path = newVideoStack.path
 		fileName = newVideoStack._fileName
@@ -1432,6 +1502,9 @@ class myToolbarWidget(QtWidgets.QToolBar):
 	def on_toggle_image_contrast(self):
 		print('=== on_toggle_image_contrast()')
 	'''
+
+	def appendScopeFile(self, newScopeFileStack):
+		print('todo: !!!!!!!!! implement myToolbarWidget.appendScopeFile()')
 
 	def appendVideo(self, newVideoStack):
 		print('todo: !!!!!!!!! implement myToolbarWidget.appendVideo()')

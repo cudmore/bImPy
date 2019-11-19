@@ -86,20 +86,25 @@ class bStack:
 			return 'NOT FOUND ???'
 
 	def print(self):
+		shape = None
+		pixelType = None
+		if self.stack is not None:
+			shape = self.stack.shape
+			pixelType = self.stack.dtype
 		""" print basic properties of a stack """
 		print('   === bStack.print() fileName:', self.fileName)
 		print('      numChannels:', self.numChannels,
 			'numImages:', self.numImages,
 			'pixelsPerLine:', self.pixelsPerLine,
 			'linesPerFrame:', self.linesPerFrame,
-			'shape:', self.stack.shape,
+			'shape:', shape,
 			)
 		print('      xVoxel', self.xVoxel,
 			'yVoxel:', self.yVoxel,
 			'zVoxel:', self.zVoxel,
 			)
 		print('      bitDepth:', self.bitDepth,
-			'pixel type:', self.stack.dtype,
+			'pixel type:', pixelType,
 			)
 		print('      xMotor:', self.header.xMotor,
 			'yMotor:', self.header.yMotor,

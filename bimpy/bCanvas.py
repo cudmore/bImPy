@@ -32,11 +32,12 @@ class bCanvas:
 	def appendVideo(self, newVideoStack):
 		self._videoFileList.append(newVideoStack)
 
-	def findNewScopeFiles(self):
+	def importNewScopeFiles(self):
 		"""
 		look through files in our hard-drive folder and look for new files.
 		A new file is one that is not already in self.scopeFileList
 		"""
+		newStackList = [] # build a list of new files
 		listDir = os.listdir(self._folderPath)
 		thisFileExtension = '.oir'
 		for potentialNewFile in listDir:
@@ -52,6 +53,21 @@ class bCanvas:
 				# found a file that is not in scopeFileList
 				# we need to find it in bLogFilePosition
 				print('   New file:', potentialNewFile, 'find it in bLogFilePosition')
+				newFilePath = os.path.join(self._folderPath, potentialNewFile)
+				newScopeStack = bimpy.bStack(newFilePath, loadImages=False)
+				print('newScopeStack:', newScopeStack.print())
+				print('   ', newScopeStack.header.prettyPrint())
+				print('   todo: fix this, adding fake motor !!!')
+				newScopeStack.header.header['xMotor'] = 10000
+				newScopeStack.header.header['yMotor'] = 10000
+
+				# append to return list
+				newStackList.append(newScopeStack)
+
+				self._scopeFileList.append(newScopeStack)
+				print('   === REMEMBER TO SAVE !!!')
+
+		return newStackList
 
 	@property
 	def videoFileList(self):

@@ -215,11 +215,12 @@ class bStackHeader:
 
 	def prettyPrint(self):
 		print('   file:', os.path.split(self.path)[1],
-			'stackType:', self.stackType, ',',
+			'stackType:', self.stackType, ',', 'bitDepth:', self.bitDepth,
 			'channels:', self.numChannels, ',',
 			'images:', self.numImages, ',',
 			'x/y pixels:', self.pixelsPerLine, '/', self.linesPerFrame, ',',
 			'x/y um/pixel:', self.xVoxel, '/', self.yVoxel,
+			'umWidth:', self.umWidth, 'umHeight:', self.umHeight,
 			)
 
 	def getMetaData(self):
