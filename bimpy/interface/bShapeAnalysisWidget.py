@@ -1,34 +1,31 @@
 # Robert Cudmore
 # 20191115
 
+import numpy as np
 import pyqtgraph as pg
-
-"""
-to generate a mask of an arbitrary polygon
-
-    from skimage.draw import polygon
-    skimage.draw.polygon(r, c, shape=None)
-
-r: list of rows
-c: list of columns
-shape: (maxRows, maxCols) to constrain the results to within a given image
-returns: (rr, cc) : ndarray of int
-   Pixel coordinates of polygon. May be used to directly index into an array, e.g. img[rr, cc] = 1.
-
-see: https://scikit-image.org/docs/dev/api/skimage.draw.html#skimage.draw.polygon
-see sandbox/bPolygonMask.py
-"""
 
 class bShapeAnalysisWidget:
 	"""
 	handle interface of one shape roi at a time
 	"""
-	def __init__(self, myNapari, myStack):
-		self.myNapari = myNapari
+	def __init__(self, napariViewer, myStack):
+		self.napariViewer = napariViewer
 		self.myStack = myStack
 
 		self.lineProfileImage = None
 		self.FWHM = None
+
+		'''
+		@self.napariViewer.bind_key('u')
+		def updateStackLineProfile(viewer):
+			shapeType, data = self._getSelectedLine()
+			if shapeType == 'line':
+				src = data[0]
+				dst = data[1]
+				self.bShapeAnalysisWidget.updateStackLineProfile(src, dst)
+			if shapeType in ['rectangle', 'polygon']:
+				self.bShapeAnalysisWidget.updateStackPolygon(data)
+		'''
 
 		#
 		# pyqt graph plots
@@ -76,6 +73,17 @@ class bShapeAnalysisWidget:
 		self.verticalSliceLine3 = pg.InfiniteLine(pos=0, angle=90)
 		self.stackLineIntensityImage.addItem(self.verticalSliceLine3)
 
+	def updateStackPolygon(self, data):
+		"""
+		data is a list of points specifying vertices of a polygon
+		a rectangle is just a polygon with 4 evenly spaces vertices
+		"""
+		print('bShapeAnalysisWidget.updateStackPolygon() data:', data)
+		theMin, theMax, theMean = self.myStack.analysis.stackPolygonAnalysis(data)
+
+		xPlot = np.asarray([slice for slice in range(len(theMean))])
+		self.analysisDiameter.setData(xPlot, theMean, connect='finite')
+
 	def updateStackLineProfile(self, src, dst):
 		"""
 		generate a line profile for each image in a stack/timeseries
@@ -83,7 +91,7 @@ class bShapeAnalysisWidget:
 		src: source point
 		dst: destination point
 		"""
-		self.lineProfileImage, self.FWHM = self.myStack.analysis.stackLineProfile(src, dst)
+		x, self.lineProfileImage, self.FWHM = self.myStack.analysis.stackLineProfile(src, dst)
 
 		# why return ?
 		#return self.lineProfileImage
@@ -93,15 +101,20 @@ class bShapeAnalysisWidget:
 		self.img.setImage(self.lineProfileImage)
 
 		print('todo: this is an error FIX IT !!!!!!!!!!!!!!!!!!!!!!!!!!!')
-		print('updateStackLineProfile self.FWHM:', self.FWHM)
-		print(type(self.FWHM))
-		self.FWHM = self.FWHM[0,:]
-		print(type(self.FWHM))
-		#fwhmList = self.FWHM.tolist()
-		x = [i for i in range(len(fwhmList))]
-		#print(x.shape)
-		#print(self.FWHM.shape)
-		self.analysisDiameter.setData(x, fwhmList)
+		print('bShapeAnalysisWidget.updateStackLineProfile self.FWHM:', self.FWHM)
+
+		#
+		# x will be 2d, x points for each line profile in a stack
+		# here we are plotting only 1d so reduce x
+		'''
+		print('   x.shape:', x.shape)
+		print('   self.FWHM.shape:', self.FWHM.shape)
+		print('   x[:,0]:', x[:,0])
+		print('   self.FWHM:', self.FWHM)
+		'''
+		#self.analysisDiameter.setData(x[:,0], self.FWHM, connect='finite')
+		xPlot = np.asarray([slice for slice in range(len(self.FWHM))])
+		self.analysisDiameter.setData(xPlot, self.FWHM, connect='finite')
 
 	def updateVerticalSliceLine(self, sliceNum):
 		"""
@@ -110,39 +123,49 @@ class bShapeAnalysisWidget:
 		self.verticalSliceLine2.setValue(sliceNum)
 		self.verticalSliceLine3.setValue(sliceNum)
 
+	def updatePolygon(self, sliceNum, data):
+		"""
+		data is a list of vertex points
+		"""
+		print('bShapeAnalysisWidget.updatePolygon() data:', data)
+		theMin, theMax, theMean = self.myStack.analysis.polygonAnalysis(sliceNum, data)
+		print('   slice:', sliceNum, 'theMin:', theMin, 'theMax:', theMax, 'theMean:', theMean)
+
 	def updateLines(self, sliceNum, src, dst):
 		"""
 		"""
-		lineProfile, yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
+		x, lineProfile, yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
 		#x = [a for a in range(len(lineProfile))]
 		#yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.fitGaussian(x, lineProfile)
 
-		self.updateLineIntensityPlot(lineProfile, yFit, leftIdx, rightIdx)
+		self.updateLineIntensityPlot(x, lineProfile, yFit, leftIdx, rightIdx)
 
-	def updateLineIntensityPlot(self, oneProfile, fit=None, left_idx=None, right_idx=None): #, ind_lambda):
+	def updateLineIntensityPlot(self, x, oneProfile, fit=None, left_idx=np.nan, right_idx=np.nan): #, ind_lambda):
 		"""
 		Update the pyqt graph (top one) with a new line profile
 
 		Parameters:
 			oneProfile: ndarray of line intensity
 		"""
+		'''
+		print('updateLineIntensityPlot type(left_idx):', left_idx)
+		print('updateLineIntensityPlot type(right_idx):', right_idx)
+		'''
 		if (oneProfile is not None):
 			#
-			self.lineProfilePlot.setData(oneProfile)
+			self.lineProfilePlot.setData(x, oneProfile)
 		if (fit is not None):
 			#
-			self.fitPlot.setData(fit)
-		if (oneProfile is not None and left_idx is not None and right_idx is not None):
-			#if len(left_idx)>0 and len(right_idx)>0:
-			if 1:
-				left_y = oneProfile[left_idx]
-				# cludge because left/right threshold detection has different y ...
-				#right_y = oneProfile[right_idx]
-				right_y = left_y
-				xPnt = [left_idx, right_idx]
-				yPnt = [left_y, right_y]
-				#print('plot_pg() xPnt:', xPnt, 'yPnt:', yPnt)
-				self.fitPlot2.setData(xPnt, yPnt)
+			self.fitPlot.setData(x, fit)
+		if (oneProfile is not None and not np.isnan(left_idx) and not np.isnan(right_idx)):
+			left_y = oneProfile[left_idx]
+			# cludge because left/right threshold detection has different y ...
+			#right_y = oneProfile[right_idx]
+			right_y = left_y
+			xPnt = [left_idx, right_idx]
+			yPnt = [left_y, right_y]
+			#print('plot_pg() xPnt:', xPnt, 'yPnt:', yPnt)
+			self.fitPlot2.setData(xPnt, yPnt)
 
 if __name__ == '__main__':
 	pass

@@ -50,11 +50,15 @@ class bNapari:
 		#
 
 		@self.viewer.bind_key('u')
-		def updateStackLineProfile(viewer):
-			(src, dst) = self._getSelectedLine()
-			if src is not None:
-				# plugin
+		def keyboard_u(viewer):
+			shapeType, data = self._getSelectedLine()
+			print('keyboard_u()', shapeType, data)
+			if shapeType == 'line':
+				src = data[0]
+				dst = data[1]
 				self.bShapeAnalysisWidget.updateStackLineProfile(src, dst)
+			if shapeType in ['rectangle', 'polygon']:
+				self.bShapeAnalysisWidget.updateStackPolygon(data)
 
 		#self.myNapari = napari.view_image(
 		self.myNapari = self.viewer.add_image(
@@ -149,7 +153,7 @@ class bNapari:
 		lines = [line1, line2]
 		self.shapeLayer = self.viewer.add_shapes(lines,
 			shape_type='line',
-			edge_width = 3,
+			edge_width = 3+2,
 			edge_color = 'coral',
 			face_color = 'royalblue')
 		self.shapeLayer.mode = 'direct' #'select'
@@ -194,28 +198,37 @@ class bNapari:
 			# using new slice, update the intensity of a line
 			self.updateLines()
 			'''
-
 			#
 			# plugin
 			self.bShapeAnalysisWidget.updateVerticalSliceLine(self.sliceNum)
 			#self.bShapeAnalysisWidget.updateVerticalSliceLine(self.sliceNum)
 
 			# todo: this does not feal right ... fix this !!!
-			(src, dst) = self._getSelectedLine()
-			if src is not None:
+			shapeType, data = self._getSelectedLine()
+			if shapeType == 'line':
+				src = data[0]
+				dst = data[1]
 				self.bShapeAnalysisWidget.updateLines(self.sliceNum, src, dst)
+			if shapeType in ['rectangle', 'polygon']:
+				self.bShapeAnalysisWidget.updatePolygon(self.sliceNum, data)
 
 	def _getSelectedLine(self):
 		"""
 		return (src, dst), the coordinates of the selected line
 		"""
-		# self.shapeLayer.selected_data is a list of int tell us index into self.shapeLayer.data of all selected shapes
-		selected_data = self.shapeLayer.selected_data
-		if len(selected_data) > 0:
-			index = selected_data[0] # just the first selected shape
-			src = self.shapeLayer.data[index][0]
-			dst = self.shapeLayer.data[index][1]
-			return (src, dst)
+		# selected_data is a list of int tell us index into self.shapeLayer.data of all selected shapes
+		selectedDataList = self.shapeLayer.selected_data
+		print('selectedDataList:', selectedDataList)
+		if len(selectedDataList) > 0:
+			index = selectedDataList[0] # just the first selected shape
+			shapeType = self.shapeLayer.shape_types[index]
+			print('shapeType:', shapeType) #('line', 'rectangle', 'polygon')
+			print('   self.shapeLayer.data[index]:', self.shapeLayer.data[index])
+			# was this
+			#src = self.shapeLayer.data[index][0]
+			#dst = self.shapeLayer.data[index][1]
+			#return (src, dst)
+			return shapeType, self.shapeLayer.data[index]
 		else:
 			return (None, None)
 
@@ -227,10 +240,13 @@ class bNapari:
 		"""
 		# loop through all lines?
 		#for data in self.shapeLayer.data:
-		(src, dst) = self._getSelectedLine()
-		if src is not None:
-			# plugin
+		shapeType, data = self._getSelectedLine()
+		if shapeType == 'line':
+			src = data[0]
+			dst = data[1]
 			self.bShapeAnalysisWidget.updateLines(self.sliceNum, src, dst)
+		if shapeType in ['rectangle', 'polygon']:
+			self.bShapeAnalysisWidget.updatePolygon(self.sliceNum, data)
 
 	def lineShapeChange_callback(self, layer, event):
 		"""
@@ -251,9 +267,9 @@ class bNapari:
 if __name__ == '__main__':
 	#from PyQt5 import QtGui, QtCore, QtWidgets
 	# stack of vessel staining
-	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
+	#path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
 	# video of sa node artery, this file s too big, 1.2 GB, keep slices 4166, 9416
-	#path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
+	path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
 
 	# octa
 	#path = '/Users/cudmore/box/data/OCTa/vesselucida/PV_Crop_Reslice.tif'
