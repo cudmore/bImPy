@@ -92,13 +92,16 @@ class bShapeAnalysisWidget:
 		# update plots with new results
 		self.img.setImage(self.lineProfileImage)
 
+		print('todo: this is an error FIX IT !!!!!!!!!!!!!!!!!!!!!!!!!!!')
 		print('updateStackLineProfile self.FWHM:', self.FWHM)
+		print(type(self.FWHM))
 		self.FWHM = self.FWHM[0,:]
-		x = [i for i in range(len(self.FWHM))]
+		print(type(self.FWHM))
+		#fwhmList = self.FWHM.tolist()
+		x = [i for i in range(len(fwhmList))]
 		#print(x.shape)
 		#print(self.FWHM.shape)
-		print('todo: this is an error FIX IT !!!!!!!!!!!!!!!!!!!!!!!!!!!')
-		self.analysisDiameter.setData(x, self.FWHM)
+		self.analysisDiameter.setData(x, fwhmList)
 
 	def updateVerticalSliceLine(self, sliceNum):
 		"""

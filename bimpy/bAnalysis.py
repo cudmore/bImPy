@@ -54,8 +54,12 @@ class bAnalysis:
 				left_idx = left_idx[-1]
 			if right_idx is not None and len(right_idx)>0:
 				right_idx = right_idx[-1]
-			#print('fitGaussian() ... FWHM() ... left_idx:', left_idx, 'right_idx:', right_idx)
-			return X[right_idx] - X[left_idx], left_idx, right_idx #return the difference (full width)
+			if left_idx is not None and right_idx is not None:
+				fwhm = X[right_idx] - X[left_idx]
+			else:
+				fwhm = None
+			print('\n   *** fitGaussian() ... FWHM() ... left_idx:', left_idx, 'right_idx:', right_idx, fwhm)
+			return fwhm, left_idx, right_idx #return the difference (full width)
 
 		try:
 			popt,pcov = curve_fit(myGaussian,x,y)
@@ -109,6 +113,7 @@ class bAnalysis:
 				intensityProfile, yFit, fwhm, left_idx, right_idx = self.lineProfile(slice, src, dst, linewidth=linewidth, doFit=True)
 				intensityProfileList.append(intensityProfile)
 				fwhmList.append(fwhm)
+				print(idx, fwhm)
 			stopTime = time.time()
 			print('1) single-thread line profile for', numSlices, 'slices took', round(stopTime-startTime,3))
 		else:
@@ -130,7 +135,7 @@ class bAnalysis:
 			print('2 multi-thread line-profile for', numSlices, 'slices took', round(stopTime-startTime,3))
 
 		intensityProfileList = np.array(intensityProfileList)
-		fwhm = np.array(fwhm)
+		#fwhm = np.array(fwhm)
 		return intensityProfileList, fwhm
 
 	def euclideanDistance(self, pnt1, pnt2):
