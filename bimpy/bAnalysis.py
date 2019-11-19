@@ -16,6 +16,9 @@ class bAnalysis:
 
 	def fitGaussian(self, x, y):
 		"""
+		x: list of x, e.g. pixels or um
+		y: line intensity profile
+
 		for fitting a gaussian, see:
 		https://stackoverflow.com/questions/44480137/how-can-i-fit-a-gaussian-curve-in-python
 		for finding full width half maximal, see:
@@ -51,7 +54,7 @@ class bAnalysis:
 				left_idx = left_idx[-1]
 			if right_idx is not None and len(right_idx)>0:
 				right_idx = right_idx[-1]
-			print('fitGaussian() ... FWHM() ... left_idx:', left_idx, 'right_idx:', right_idx)
+			#print('fitGaussian() ... FWHM() ... left_idx:', left_idx, 'right_idx:', right_idx)
 			return X[right_idx] - X[left_idx], left_idx, right_idx #return the difference (full width)
 
 		try:
@@ -60,22 +63,32 @@ class bAnalysis:
 			myFWHM, left_idx, right_idx = FWHM(x,y)
 			return yFit, myFWHM, left_idx, right_idx
 		except RuntimeError as e:
-			print('... fitGaussian() error: ', e)
+			#print('... fitGaussian() error: ', e)
 			return None, None, None, None
 		except:
 			print('... fitGaussian() error: exception in bAnalysis.fitGaussian() !!!')
-			raise
+			return None, None, None, None
+			#raise
 			#return None, None, None, None
 
-	def lineProfile(self, slice, src, dst, linewidth=3):
+	def lineProfile(self, slice, src, dst, linewidth=3, doFit=True):
 		""" one slice """
 		#print('lineProfile() slice:', slice)
 		channel = 0
 		intensityProfile = profile.profile_line(self.stack.stack[channel,slice,:,:], src, dst, linewidth=linewidth)
-		return intensityProfile
+		#if doFit:
+		if 1:
+			x = [a for a in range(len(intensityProfile))] # make alist of x points (todo: should be um, not points!!!)
+			yFit, FWHM, left_idx, right_idx = self.fitGaussian(x,intensityProfile)
+			return intensityProfile, yFit, FWHM, left_idx, right_idx
+		#else:
+		#	return intensityProfile
 
 	def stackLineProfile(self, src, dst, linewidth=3):
-		""" entire stack """
+		"""
+		calculate line profile for each slice in a stack
+		todo: fix the logic here, my self.lineProfile is returning too much
+		"""
 		print('stackLineProfile() src:', src, 'dst:', dst)
 		self.stack.print()
 
@@ -84,33 +97,41 @@ class bAnalysis:
 
 		# not sure what is going on here
 		# a 3d stack of cd31 staining takes 3x longer when using multiprocessing?
+		intensityProfileList = [] # each element is intensity profile for one slice/image
+		fwhmList = [] # each element is intensity profile for one slice/image
 		if numSlices < 500:
-			intensityProfileList = []
+			print('   stackLineProfile performing loop through images')
 			startTime = time.time()
 			for idx, slice in enumerate(range(numSlices-1)): # why do i need -1 ???
 				if idx % 300 == 0:
 					# print every 100 slices
 					print('   idx:', idx, 'of', numSlices)
-				intensityProfile = self.lineProfile(slice, src, dst, linewidth=linewidth)
+				intensityProfile, yFit, fwhm, left_idx, right_idx = self.lineProfile(slice, src, dst, linewidth=linewidth, doFit=True)
 				intensityProfileList.append(intensityProfile)
+				fwhmList.append(fwhm)
 			stopTime = time.time()
 			print('1) single-thread line profile for', numSlices, 'slices took', round(stopTime-startTime,3))
 		else:
 			# threaded
-			intensityProfileList = []
+			#intensityProfileList = []
 			print('   multiprocessing.cpu_count():', multiprocessing.cpu_count())
 			numCPU = multiprocessing.cpu_count()
 			# create a list of parameters to function self.lineProfile as a tuple (slice, src, dst, linewidth)
-			poolParams = [(i, src, dst, linewidth) for i in range(numSlices-1)]
+			doFit = True # do the fit of each line
+			poolParams = [(i, src, dst, linewidth, doFit) for i in range(numSlices-1)]
+			#for poolParam in poolParams:
+			#	print(poolParam)
 			startTime = time.time()
 			with multiprocessing.Pool(processes=numCPU-1) as p:
 				#starmap() allows passing a paremeter list, map() does not
-				intensityProfileList = p.starmap(self.lineProfile, poolParams)
+				#tmpRet = p.starmap(self.lineProfile, poolParams)
+				intensityProfileList, yFit, fwhm, left_idx, right_idx = p.starmap(self.lineProfile, poolParams)
 			stopTime = time.time()
 			print('2 multi-thread line-profile for', numSlices, 'slices took', round(stopTime-startTime,3))
 
 		intensityProfileList = np.array(intensityProfileList)
-		return intensityProfileList
+		fwhm = np.array(fwhm)
+		return intensityProfileList, fwhm
 
 	def euclideanDistance(self, pnt1, pnt2):
 		"""
