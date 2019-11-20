@@ -8,6 +8,9 @@ from .bJavaBridge import bJavaBridge
 from .bWatchFolder import bWatchFolder
 from .bPrior import bPrior
 
+# for napari plugin
+from .bAnalysis2 import bAnalysis2
+
 '''
 from .interface.bStackContrastWidget import bStackContrastWidget
 from .interface.bStackFeebackWidget import bStackFeebackWidget
