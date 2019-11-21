@@ -137,12 +137,16 @@ class bAnalysis2:
 		print('cc:', cc)
 		'''
 		#roiImage = self.stack.stack[channel,slice,rr,cc] # extract the roi
-		roiImage = self.data[slice,rr,cc] # extract the roi
-		#print('roiImage:', roiImage, 'roiImage.shape', roiImage.shape, 'type(roiImage):', type(roiImage))
-		theMin = np.nanmin(roiImage)
-		theMax = np.nanmax(roiImage)
-		theMean = np.nanmean(roiImage)
-		return theMin, theMax, theMean
+		try:
+			roiImage = self.data[slice,rr,cc] # extract the roi
+			#print('roiImage:', roiImage, 'roiImage.shape', roiImage.shape, 'type(roiImage):', type(roiImage))
+			theMin = np.nanmin(roiImage)
+			theMax = np.nanmax(roiImage)
+			theMean = np.nanmean(roiImage)
+			return theMin, theMax, theMean
+		except IndexError as e:
+			print('*** IndexError exception in bAnalysis2.polygonAnalysis() e:', e)
+			raise
 
 	@property
 	def numImages(self):

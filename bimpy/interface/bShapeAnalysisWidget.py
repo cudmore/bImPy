@@ -1,9 +1,10 @@
 # Robert Cudmore
 # 20191115
 
-import os
+import os, time
 import numpy as np
 import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui
 
 import napari
 
@@ -28,7 +29,7 @@ class bShapeAnalysisWidget:
 		self.napariViewer = napariViewer
 		self.myImageLayer = imageLayer
 
-		self.analysis = bimpy.bAnalysis2(self.imageData)
+		self.analysis = bimpy.bAnalysis2(self.imageData) # self.imageData is a property
 
 		#
 		# add shapes
@@ -38,19 +39,35 @@ class bShapeAnalysisWidget:
 		line1 = np.array([[11, 13], [111, 113]])
 		line2 = np.array([[200, 200], [400, 300]])
 		lines = [line1, line2]
-		self.shapeLayer = self.napariViewer.add_shapes(lines,
+		self.shapeLayer = self.napariViewer.add_shapes(
+			lines,
+			name=self.myImageLayer.name + '_shapes',
 			shape_type='line',
 			edge_width = 3+2,
 			edge_color = 'coral',
 			face_color = 'royalblue')
 		self.shapeLayer.mode = 'direct' #'select'
 
+		'''
+		self.events.add(
+		    mode=Event,
+		    edge_width=Event,
+		    edge_color=Event,
+		    face_color=Event,
+		    highlight=Event,
+		)
+		'''
+		self.shapeLayer.events.mode.connect(self.layerChangeEvent)
+		self.shapeLayer.events.edge_width.connect(self.layerChangeEvent)
+		#self.shapeLayer.events.removed.connect(self.layerChangeEvent)
+
 		# callback for user changing slices
 		self.napariViewer.dims.events.axis.connect(self.my_update_slider)
 
 		# keyboard 'u' will update selected shape through all slices/images
 		@self.napariViewer.bind_key('u')
-		def updateStackLineProfile(viewer):
+		def user_keyboard_u(viewer):
+			print('=== user_keyboard_u')
 			shapeType, data = self._getSelectedShape()
 			if shapeType == 'line':
 				src = data[0]
@@ -59,9 +76,32 @@ class bShapeAnalysisWidget:
 			if shapeType in ['rectangle', 'polygon']:
 				self.updateStackPolygon(data)
 
+		'''
+		found delete_shape() and napari.layers.shapes.shapeList.remove()
+		in napari.layers.shapes.
+		def remove_selected(self):
+        	"""Remove any selected shapes."""
+        	to_remove = sorted(self.selected_data, reverse=True)
+        	for index in to_remove:
+            	self._data_view.remove(index)
+        	self.selected_data = []
+        	self._finish_drawing()
+		'''
+		# keyboard 'n' will spawn a new shape analysis plugin?
+		@self.napariViewer.bind_key('n')
+		def user_keyboar_n(viewer):
+			print('=== user_keyboard_n')
+			# viewer.active_layer
+			#print('viewer.layers:', viewer.layers)
+			for layer in self.napariViewer.layers:
+				print('type(layer).__name__:', type(layer).__name__)
+				print('   layer.name:', layer.name)
+				print('   layer.selected:', layer.selected)
+
 		#
 		# pyqt graph plots
 		self.pgWin = pg.GraphicsWindow(title="Shape Analysis Plugin") # creates a window
+		#self.pgWin = pg.QGraphicsLayoutWidget(title="Shape Analysis Plugin") # creates a window
 
 		pgRow = 0 # row of pyqtgraph
 
@@ -127,6 +167,23 @@ class bShapeAnalysisWidget:
 		#
 		self.analysisPolygon = self.polygonPlotItem.plot(name='polygonintensity')
 
+		# (5) tree view of all shapes
+		w = pg.TreeWidget()
+		w.setColumnCount(2)
+		w.show()
+		w.resize(500,500)
+		w.setWindowTitle('pyqtgraph example: TreeWidget')
+
+		i1  = QtGui.QTreeWidgetItem(["Item 1"])
+		i2  = QtGui.QTreeWidgetItem(["Item 2"])
+		i3  = QtGui.QTreeWidgetItem(["Item 3"])
+		w.addTopLevelItem(i1)
+		w.addTopLevelItem(i2)
+		w.addTopLevelItem(i3)
+
+		# does not work
+		#self.pgWin.addItems(w)
+
 		#
 		#
 		#@self.shapeLayer.mouse_move_callbacks.append
@@ -147,6 +204,9 @@ class bShapeAnalysisWidget:
 			while event.type == 'mouse_move':
 				self.lineShapeChange_callback(layer, event)
 				yield
+
+	def layerChangeEvent(self, event):
+		print(time.time(), 'layerChangeEvent() event:', event)
 
 	@property
 	def imageData(self):
