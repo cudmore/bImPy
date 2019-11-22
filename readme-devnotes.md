@@ -1,3 +1,11 @@
+## website to convert files, in particular .mov to .gif
+
+https://convertio.co/
+
+## hdf5 viewer
+
+https://www.hdfgroup.org/downloads/hdfview/#download
+
 ## Using multiprocessing to process measurements on many image slices
 
 line intensity profile

@@ -1,8 +1,10 @@
 # Robert Cudmore
 # 20191115
 
-import os, time
+import os, time, json
 import numpy as np
+import h5py
+
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 
@@ -31,11 +33,20 @@ class bShapeAnalysisWidget:
 
 		self.analysis = bimpy.bAnalysis2(self.imageData) # self.imageData is a property
 
+		# make an empty shape layer
+		self.shapeLayer = self.napariViewer.add_shapes(
+			name=self.myImageLayer.name + '_shapes',
+		)
+
 		#
 		# add shapes
 		self.lineProfileImage = None
 		self.FWHM = None
 
+		'''
+		'''
+		'''
+		# create default shapes
 		line1 = np.array([[11, 13], [111, 113]])
 		line2 = np.array([[200, 200], [400, 300]])
 		lines = [line1, line2]
@@ -43,10 +54,17 @@ class bShapeAnalysisWidget:
 			lines,
 			name=self.myImageLayer.name + '_shapes',
 			shape_type='line',
-			edge_width = 3+2,
+			edge_width = 3,
 			edge_color = 'coral',
 			face_color = 'royalblue')
 		self.shapeLayer.mode = 'direct' #'select'
+		'''
+		'''
+		'''
+
+		# load existing shapes
+		#self.save()
+		#self.load()
 
 		'''
 		self.events.add(
@@ -88,6 +106,7 @@ class bShapeAnalysisWidget:
         	self._finish_drawing()
 		'''
 		# keyboard 'n' will spawn a new shape analysis plugin?
+		'''
 		@self.napariViewer.bind_key('n')
 		def user_keyboar_n(viewer):
 			print('=== user_keyboard_n')
@@ -97,7 +116,181 @@ class bShapeAnalysisWidget:
 				print('type(layer).__name__:', type(layer).__name__)
 				print('   layer.name:', layer.name)
 				print('   layer.selected:', layer.selected)
+		'''
 
+		@self.napariViewer.bind_key('l')
+		def user_keyboar_l(viewer):
+			print('=== user_keyboard_l')
+			self.load()
+
+		@self.napariViewer.bind_key('s')
+		def user_keyboar_s(viewer):
+			print('=== user_keyboard_s')
+			self.save()
+
+		#
+		#
+		#@self.shapeLayer.mouse_move_callbacks.append
+		@self.shapeLayer.mouse_drag_callbacks.append
+		def shape_mouse_move_callback(layer, event):
+			#print('shape_mouse_move_callback() event.type:', event.type)
+			self.myMouseMove_Shape(layer, event)
+
+		# this decorator cannot point to member function directly because it needs yield
+		# put inline function with yield right after decorator
+		# and then call member functions from within
+		@self.shapeLayer.mouse_drag_callbacks.append
+		def shape_mouse_drag_callback(layer, event):
+			#print('shape_mouse_drag_callback() event.type:', event.type, 'event.pos:', event.pos, '')
+			self.lineShapeChange_callback(layer, event)
+			yield
+
+			while event.type == 'mouse_move':
+				self.lineShapeChange_callback(layer, event)
+				yield
+
+		self.buildPyQtGraphInterface()
+
+	def save(self):
+		"""
+		todo: save each of (shape_types, edge_colors, etc) as a group attrs rather than a dict
+		"""
+		print('=== bShapeAnalysisWidget.save()')
+		#print(type(self.shapeLayer.data[0]))
+		shapeList = []
+		for idx, shapeType in enumerate(self.shapeLayer.shape_types):
+			print('   idx:', idx, shapeType)
+			shapeDict = {
+				#'data:', self.shapeLayer.data[idx],
+				'shape_types': self.shapeLayer.shape_types[idx],
+				'edge_colors': self.shapeLayer.edge_colors[idx],
+				'face_colors': self.shapeLayer.face_colors[idx],
+				'edge_widths': self.shapeLayer.edge_widths[idx],
+				'opacities': self.shapeLayer.opacities[idx],
+				#z_indices for polygon is int64 and can not be with json.dumps ???
+				#'z_indices': int(self.shapeLayer.z_indices[idx]),
+			}
+			print('   shapeDict:', shapeDict)
+			shapeList.append(shapeDict)
+
+			# check the types
+			# z_indices is int64 and is not serializable ???
+			for k, v in shapeDict.items():
+				print('***', k, v, type(v))
+
+		print('writing file')
+		with h5py.File("test.h5", "w") as f:
+			for idx, shape in enumerate(shapeList):
+				print('   shape:', shape)
+				# each shape will have a group
+				group = f.create_group('shape' + str(idx))
+				# each shape group will have a shape dict with all parameters to draw ()
+				shapeDict_json = json.dumps(shape)
+				group.attrs['shapeDict'] = shapeDict_json
+				# each shape group will have 'data' with coordinates of polygon
+				shapeData = self.shapeLayer.data[idx]
+				group.create_dataset("data", data=shapeData)
+
+				# each group will have analysis
+				# todo: do this later
+
+		# debugging
+		#self.load()
+
+	def load(self):
+		print('=== bShapeAnalysisWidget.load()')
+		shape_type = []
+		edge_width = []
+		edge_color = []
+		face_color = []
+		with h5py.File("test.h5", "r") as f:
+			# iterate through h5py groups (shapes)
+			shapeList = []
+			linesList = []
+			for name in f:
+				print('name:', name)
+				json_str = f[name].attrs['shapeDict']
+				json_dict = json.loads(json_str) # convert from string to dict
+				'''
+				print('   json_dict:', json_dict)
+				print('   type(json_dict):', type(json_dict))
+				print('   json_dict["edge_colors"]', json_dict['edge_colors'])
+				'''
+				# load the coordinates of polygon
+				data = f[name + '/data'][()] # the wierd [()] converts it to numpy ndarray
+				'''
+				print('   data:', data)
+				print('   type(data)', type(data))
+				'''
+				linesList.append(data)
+
+				shapeDict = json_dict
+				shapeDict['data'] = data
+
+				shape_type.append(shapeDict['shape_types'])
+				edge_width.append(shapeDict['edge_widths'])
+				edge_color.append(shapeDict['edge_colors'])
+				face_color.append(shapeDict['face_colors'])
+
+				print("type(shapeDict['edge_colors'])", type(shapeDict['edge_colors']))
+
+				shapeList.append(shapeDict)
+
+		print('linesList:', linesList)
+		print('edge_color:', edge_color)
+		print('type(edge_color[0]):', type(edge_color[0]))
+
+		# create a shape from what we loaded
+		print('\n=== ===  appending loaded shapes to shapes layer')
+		#add a shape to existing shape layer
+		# this does not work because vispy is interpreting (edge_color, face_color) as a list
+		# and thus expecting rgb (or rgba?) and not string like 'black'
+		'''
+		self.shapeLayer.add(
+			linesList,
+			shape_type = shape_type,
+			edge_width = edge_width,
+			edge_color = edge_color,
+			face_color = face_color
+			)
+		'''
+		self.shapeLayer.add(
+			linesList,
+			shape_type = shape_type,
+			edge_width = edge_width,
+			)
+
+		#self.shapeLayer.edge_color = edge_color
+
+		'''
+		for tmp_edge_color in self.shapeLayer.edge_color:
+			print('tmp_edge_color:', tmp_edge_color)
+		'''
+
+		"""
+		for idx, shape in enumerate(shapeList):
+			'''
+			print('shape:', shape)
+			print('shape.keys()', shape.keys())
+			print('type(shape["shape_types"])', type(shape['shape_types']))
+			'''
+			self.shapeLayer = self.napariViewer.add_shapes(
+				# not sure what this is??
+				# was 'lines,
+				linesList[idx],
+				#name=self.myImageLayer.name + '_shapes',
+				shape_type = shape['shape_types'],
+				edge_width = shape['edge_widths'],
+				# todo: finish this
+				#edge_width = shape['edge_widths'],
+				edge_color = shape['edge_colors'],
+				face_color = shape['face_colors'],
+				#edge_color = 'coral',
+				#face_color = 'royalblue'
+			)
+		"""
+
+	def buildPyQtGraphInterface(self):
 		#
 		# pyqt graph plots
 		self.pgWin = pg.GraphicsWindow(title="Shape Analysis Plugin") # creates a window
@@ -111,6 +304,8 @@ class bShapeAnalysisWidget:
 		#
 		# (1) line intensity profile for one slice
 		self.lineIntensityPlotItem = self.pgWin.addPlot(title="Line Intensity Profile", row=pgRow, col=0)
+		self.lineIntensityPlotItem.setLabel('left', 'Intensity', units='')
+		self.lineIntensityPlotItem.setLabel('bottom', 'Line Profile', units='')
 		self.lineProfilePlot = self.lineIntensityPlotItem.plot(name='lineIntensityProfile')
 		self.lineProfilePlot.setShadowPen(pg.mkPen((255,255,255), width=2, cosmetic=True))
 		# fit
@@ -122,9 +317,9 @@ class bShapeAnalysisWidget:
 
 		#
 		# (2) diameter for each slice
-		self.analysisPlotItem = self.pgWin.addPlot(title="Diameter", row=pgRow, col=0)
-		self.analysisPlotItem.setLabel('left', 'Diameter', units='A')
-		self.analysisPlotItem.setLabel('bottom', 'Slices') #, units='s')
+		self.analysisPlotItem = self.pgWin.addPlot(title='', row=pgRow, col=0)
+		self.analysisPlotItem.setLabel('left', 'Diameter', units='')
+		#self.analysisPlotItem.setLabel('bottom', 'Slices') #, units='s')
 		# vertical line showing slice number selection in napari viewer
 		#self.sliceLineDiameter = pg.InfiniteLine(pos=0, angle=90)
 		sliceLine = pg.InfiniteLine(pos=0, angle=90)
@@ -155,8 +350,8 @@ class bShapeAnalysisWidget:
 		pgRow += 1
 
 		# (4) intensity of polygon for each slice
-		self.polygonPlotItem = self.pgWin.addPlot(title="Diameter", row=pgRow, col=0)
-		self.polygonPlotItem.setLabel('left', 'Intensity') #, units='A)
+		self.polygonPlotItem = self.pgWin.addPlot(title='', row=pgRow, col=0)
+		self.polygonPlotItem.setLabel('left', 'Mean Polygon Intensity') #, units='A)
 		self.polygonPlotItem.setLabel('bottom', 'Slices') #, units='s')
 		# vertical line showing slice number selection in napari viewer
 		#self.verticalSliceLine3 = pg.InfiniteLine(pos=0, angle=90)
@@ -184,27 +379,6 @@ class bShapeAnalysisWidget:
 		# does not work
 		#self.pgWin.addItems(w)
 
-		#
-		#
-		#@self.shapeLayer.mouse_move_callbacks.append
-		@self.shapeLayer.mouse_drag_callbacks.append
-		def shape_mouse_move_callback(layer, event):
-			#print('shape_mouse_move_callback() event.type:', event.type)
-			self.myMouseMove_Shape(layer, event)
-
-		# this decorator cannot point to member function directly because it needs yield
-		# put inline function with yield right after decorator
-		# and then call member functions from within
-		@self.shapeLayer.mouse_drag_callbacks.append
-		def shape_mouse_drag_callback(layer, event):
-			#print('shape_mouse_drag_callback() event.type:', event.type, 'event.pos:', event.pos, '')
-			self.lineShapeChange_callback(layer, event)
-			yield
-
-			while event.type == 'mouse_move':
-				self.lineShapeChange_callback(layer, event)
-				yield
-
 	def layerChangeEvent(self, event):
 		print(time.time(), 'layerChangeEvent() event:', event)
 
@@ -230,9 +404,7 @@ class bShapeAnalysisWidget:
 		Callback for when user clicks+drags to resize a line shape.
 
 		Responding to @self.shapeLayer.mouse_drag_callbacks
-		"""
 
-		"""
 		update pg plots with line intensity profile
 
 		get one selected line from list(self.shapeLayer.selected_data)
@@ -309,6 +481,7 @@ class bShapeAnalysisWidget:
 		src: source point
 		dst: destination point
 		"""
+		print('updateStackLineProfile() src:', src, 'dst:', dst)
 		#x, self.lineProfileImage, self.FWHM = self.myStack.analysis.stackLineProfile(src, dst)
 		x, self.lineProfileImage, self.FWHM = self.analysis.stackLineProfile(src, dst)
 
@@ -319,8 +492,8 @@ class bShapeAnalysisWidget:
 		# update plots with new results
 		self.img.setImage(self.lineProfileImage)
 
-		print('todo: this is an error FIX IT !!!!!!!!!!!!!!!!!!!!!!!!!!!')
-		print('bShapeAnalysisWidget.updateStackLineProfile self.FWHM:', self.FWHM)
+		#print('todo: this is an error FIX IT !!!!!!!!!!!!!!!!!!!!!!!!!!!')
+		#print('bShapeAnalysisWidget.updateStackLineProfile self.FWHM:', self.FWHM)
 
 		#
 		# x will be 2d, x points for each line profile in a stack
@@ -354,8 +527,11 @@ class bShapeAnalysisWidget:
 	def updateLines(self, sliceNum, src, dst):
 		"""
 		"""
+		print('bShapeAnalysisWidget.updateLines() sliceNum:', sliceNum, 'src:', src, 'dst:', dst)
 		#x, lineProfile, yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
+		# this can fail
 		x, lineProfile, yFit, fwhm, leftIdx, rightIdx = self.analysis.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
+
 		#x = [a for a in range(len(lineProfile))]
 		#yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.fitGaussian(x, lineProfile)
 

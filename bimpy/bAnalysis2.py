@@ -171,7 +171,7 @@ class bAnalysis2:
 		maxList = [] # each element is intensity profile for one slice/image
 		meanList = [] # each element is intensity profile for one slice/image
 		#if numSlices < 500:
-		doSingleThread= True
+		doSingleThread= False
 		if doSingleThread or self.numImages < 500:
 			print('   stackPolygonAnalysis performing loop through images')
 			startTime = time.time()
@@ -203,13 +203,23 @@ class bAnalysis2:
 
 		x: ndarray, one point for each point in the profile (NOT images/slice in stack)
 		"""
-		#print('lineProfile() slice:', slice)
+		'''
+		print('!!!! lineProfile() slice:', slice, 'src:', src, 'dst:', dst)
+		print('   slice:', slice)
+		print('   src:', src, type(src))
+		print('   dst:', dst, type(dst))
+		print('   self.data.shape:', self.data.shape)
+		print('   linewidth:', linewidth, type(linewidth))
+		'''
 		#channel = 0
 		#intensityProfile = profile.profile_line(self.stack.stack[channel,slice,:,:], src, dst, linewidth=linewidth)
-		intensityProfile = profile.profile_line(self.data[slice,:,:], src, dst, linewidth=linewidth)
-		x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
-		yFit, FWHM, left_idx, right_idx = self.fitGaussian(x,intensityProfile)
-
+		try:
+			intensityProfile = profile.profile_line(self.data[slice,:,:], src, dst, linewidth=linewidth)
+			x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
+			yFit, FWHM, left_idx, right_idx = self.fitGaussian(x,intensityProfile)
+		except ValueError as e:
+			print('!!!!!!!!!! *********** !!!!!!!!!!!!! my exception in lineProfile() ... too many values to unpack (expected 2)')
+			return (None, None, None, None, None, None)
 		'''
 		print('lineProfile() slice:', slice)
 		print('   x.shape:', x.shape)
@@ -232,7 +242,7 @@ class bAnalysis2:
 		fwhmList = [] # each element is intensity profile for one slice/image
 		# not sure what is going on here
 		# a 3d stack of cd31 staining takes 3x longer when using multiprocessing?
-		doSingleThread= True
+		doSingleThread= False
 		if doSingleThread or self.numImages < 500:
 			print('   stackLineProfile performing loop through images')
 			startTime = time.time()
