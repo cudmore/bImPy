@@ -43,24 +43,7 @@ class bShapeAnalysisWidget:
 		self.lineProfileImage = None
 		self.FWHM = None
 
-		'''
-		'''
-		'''
-		# create default shapes
-		line1 = np.array([[11, 13], [111, 113]])
-		line2 = np.array([[200, 200], [400, 300]])
-		lines = [line1, line2]
-		self.shapeLayer = self.napariViewer.add_shapes(
-			lines,
-			name=self.myImageLayer.name + '_shapes',
-			shape_type='line',
-			edge_width = 3,
-			edge_color = 'coral',
-			face_color = 'royalblue')
-		self.shapeLayer.mode = 'direct' #'select'
-		'''
-		'''
-		'''
+		#self.defaultShapes() # use keyboard 'd'
 
 		# load existing shapes
 		#self.save()
@@ -83,6 +66,10 @@ class bShapeAnalysisWidget:
 		self.napariViewer.dims.events.axis.connect(self.my_update_slider)
 
 		# keyboard 'u' will update selected shape through all slices/images
+		@self.napariViewer.bind_key('d')
+		def user_keyboard_d(viewer):
+			self.defaultShapes()
+
 		@self.napariViewer.bind_key('u')
 		def user_keyboard_u(viewer):
 			print('=== user_keyboard_u')
@@ -151,6 +138,26 @@ class bShapeAnalysisWidget:
 
 		self.buildPyQtGraphInterface()
 
+	def defaultShapes(self):
+		'''
+		'''
+		# create default shapes
+		shapeTypes = ['line', 'line', 'rectangle']
+		line1 = np.array([[11, 13], [111, 113]])
+		line2 = np.array([[200, 200], [400, 300]])
+		rect1 = np.array([[400, 400], [400, 600], [600, 600], [600, 400]])
+		lines = [line1, line2, rect1]
+		#self.shapeLayer = self.napariViewer.add_shapes(
+		self.shapeLayer.add(
+			lines,
+			shape_type=shapeTypes,
+			edge_width = 3,
+			edge_color = 'coral',
+			face_color = 'royalblue')
+		self.shapeLayer.mode = 'direct' #'select'
+		'''
+		'''
+
 	def save(self):
 		"""
 		todo: save each of (shape_types, edge_colors, etc) as a group attrs rather than a dict
@@ -179,7 +186,8 @@ class bShapeAnalysisWidget:
 				print('***', k, v, type(v))
 
 		print('writing file')
-		with h5py.File("test.h5", "w") as f:
+		h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
+		with h5py.File(h5File, "w") as f:
 			for idx, shape in enumerate(shapeList):
 				print('   shape:', shape)
 				# each shape will have a group
@@ -198,12 +206,13 @@ class bShapeAnalysisWidget:
 		#self.load()
 
 	def load(self):
+		h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
 		print('=== bShapeAnalysisWidget.load()')
 		shape_type = []
 		edge_width = []
 		edge_color = []
 		face_color = []
-		with h5py.File("test.h5", "r") as f:
+		with h5py.File(h5File, "r") as f:
 			# iterate through h5py groups (shapes)
 			shapeList = []
 			linesList = []
@@ -416,8 +425,11 @@ class bShapeAnalysisWidget:
 			src = data[0]
 			dst = data[1]
 			self.updateLines(self.sliceNum, src, dst)
+		# turned this off, was too slow
+		'''
 		if shapeType in ['rectangle', 'polygon']:
 			self.updatePolygon(self.sliceNum, data)
+		'''
 
 	def _getSelectedShape(self):
 		"""
@@ -569,6 +581,7 @@ if __name__ == '__main__':
 	with napari.gui_qt():
 		# path to a tif file. Assuming it is 3D with dimensions of (slice, rows, cols)
 		path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
+		path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit_cropped.tif'
 		filename = os.path.basename(path)
 		title = filename
 		viewer = napari.Viewer(title=title)

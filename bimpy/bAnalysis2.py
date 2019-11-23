@@ -115,6 +115,20 @@ class bAnalysis2:
 		elif len(self.data==4):
 			return self.data[0,0,:,:].shape
 
+	@property
+	def numImages(self):
+		"""
+		return number of images, either number of slice images in a stack or frames in a time-series
+		"""
+		if len(self.data.shape)==2:
+			return 1
+		elif len(self.data.shape)==3:
+			# assuming (slice, row, col)
+			return self.data.shape[0]
+		elif len(self.data.shape)==4:
+			# assuming (color, slice, row, col)
+			return self.data.shape[1]
+
 	def polygonAnalysis(self, slice, data):
 		"""
 		data: list of vertex points
@@ -148,19 +162,22 @@ class bAnalysis2:
 			print('*** IndexError exception in bAnalysis2.polygonAnalysis() e:', e)
 			raise
 
-	@property
-	def numImages(self):
+	def polygonAnalysis2(self, slice, rr, cc):
 		"""
-		return number of images, either number of slice images in a stack or frames in a time-series
+		data: list of vertex points
 		"""
-		if len(self.data.shape)==2:
-			return 1
-		elif len(self.data.shape)==3:
-			# assuming (slice, row, col)
-			return self.data.shape[0]
-		elif len(self.data.shape)==4:
-			# assuming (color, slice, row, col)
-			return self.data.shape[1]
+		if slice % 300 == 0:
+			print('   slice:', slice, 'of', self.numImages)
+		try:
+			roiImage = self.data[slice,rr,cc] # extract the roi
+			#print('roiImage:', roiImage, 'roiImage.shape', roiImage.shape, 'type(roiImage):', type(roiImage))
+			theMin = np.nanmin(roiImage)
+			theMax = np.nanmax(roiImage)
+			theMean = np.nanmean(roiImage)
+			return theMin, theMax, theMean
+		except IndexError as e:
+			print('*** IndexError exception in bAnalysis2.polygonAnalysis() e:', e)
+			raise
 
 	def stackPolygonAnalysis(self, data):
 		"""
@@ -186,12 +203,22 @@ class bAnalysis2:
 			print(   '1) single-thread ', self.numImages, 'slices took', round(stopTime-startTime,3))
 		else:
 			numCPU = multiprocessing.cpu_count()
-			# create a list of parameters to function self.lineProfile as a tuple (slice, src, dst, linewidth)
-			poolParams = [(slice, data) for slice in range(self.numImages)]
+			print('   stackPolygonAnalysis using multiprocessing pool starmap, num cpu is', numCPU)
+			print('   ', self.data.shape, self.data.dtype)# create a list of parameters to function self.lineProfile as a tuple (slice, src, dst, linewidth)
+			dataList = data.tolist()
+			r = list(zip(*dataList))[0]
+			c = list(zip(*dataList))[1]
+			#channel = 0
+			#myImageShape = self.stack.stack[channel,slice,:,:].shape
+			#myImageShape = self.data[slice,:,:].shape
+			(rr, cc) = polygon(r, c, shape=self.imageShape)
+			numImages = self.numImages
+			poolParams = [(slice, rr, cc) for slice in range(numImages)]
 			startTime = time.time()
+			#with multiprocessing.Pool(processes=int(numCPU/2)) as p:
 			with multiprocessing.Pool(processes=numCPU-1) as p:
 				#starmap() allows passing a paremeter list, map() does not
-				minList, maxList, meanList = zip(*p.starmap(self.polygonAnalysis, poolParams))
+				minList, maxList, meanList = zip(*p.starmap(self.polygonAnalysis2, poolParams, chunksize=numCPU*10)) # between ncpu*10 and ncpu*100
 			stopTime = time.time()
 			print('2) multi-thread stackPolygonAnalysis for', self.numImages, 'slices took', round(stopTime-startTime,3))
 		return np.asarray(minList), np.asarray(maxList), np.asarray(meanList)
@@ -214,11 +241,13 @@ class bAnalysis2:
 		#channel = 0
 		#intensityProfile = profile.profile_line(self.stack.stack[channel,slice,:,:], src, dst, linewidth=linewidth)
 		try:
+			#print('self.data[slice,:,:].shape', self.data[slice,:,:].shape)
 			intensityProfile = profile.profile_line(self.data[slice,:,:], src, dst, linewidth=linewidth)
 			x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
 			yFit, FWHM, left_idx, right_idx = self.fitGaussian(x,intensityProfile)
 		except ValueError as e:
 			print('!!!!!!!!!! *********** !!!!!!!!!!!!! my exception in lineProfile() ... too many values to unpack (expected 2)')
+			print('e:', e)
 			return (None, None, None, None, None, None)
 		'''
 		print('lineProfile() slice:', slice)
@@ -242,7 +271,7 @@ class bAnalysis2:
 		fwhmList = [] # each element is intensity profile for one slice/image
 		# not sure what is going on here
 		# a 3d stack of cd31 staining takes 3x longer when using multiprocessing?
-		doSingleThread= False
+		doSingleThread= True
 		if doSingleThread or self.numImages < 500:
 			print('   stackLineProfile performing loop through images')
 			startTime = time.time()
