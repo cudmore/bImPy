@@ -6,7 +6,7 @@
 created to be used with raw image data from napari bShapeAnalysisWidget
 """
 
-import time, math
+import sys, time, math
 import numpy as np
 
 from skimage.measure import profile
@@ -108,11 +108,11 @@ class bAnalysis2:
 	@property
 	def imageShape(self):
 		""" return the shape of an individual image """
-		if len(self.data==2):
+		if len(self.data.shape)==2:
 			return self.data.shape
-		elif len(self.data==3):
+		elif len(self.data.shape)==3:
 			return self.data[0,:,:].shape
-		elif len(self.data==4):
+		elif len(self.data.shape)==4:
 			return self.data[0,0,:,:].shape
 
 	@property
@@ -162,19 +162,24 @@ class bAnalysis2:
 			print('*** IndexError exception in bAnalysis2.polygonAnalysis() e:', e)
 			raise
 
-	def polygonAnalysis2(self, slice, rr, cc):
+	def polygonAnalysis2(self, slice):
 		"""
 		data: list of vertex points
 		"""
 		if slice % 300 == 0:
-			print('   slice:', slice, 'of', self.numImages)
+			print('   worker polygonAnalysis2() slice:', slice, 'of', self.numImages)
 		try:
-			roiImage = self.data[slice,rr,cc] # extract the roi
+			roiImage = self.data[slice,self.rr, self.cc] # extract the roi
 			#print('roiImage:', roiImage, 'roiImage.shape', roiImage.shape, 'type(roiImage):', type(roiImage))
 			theMin = np.nanmin(roiImage)
 			theMax = np.nanmax(roiImage)
 			theMean = np.nanmean(roiImage)
 			return theMin, theMax, theMean
+			'''
+			self.theMin[slice] = theMin
+			self.theMax[slice] = theMax
+			self.theMean[slice] = theMean
+			'''
 		except IndexError as e:
 			print('*** IndexError exception in bAnalysis2.polygonAnalysis() e:', e)
 			raise
@@ -190,7 +195,7 @@ class bAnalysis2:
 		#if numSlices < 500:
 		doSingleThread= False
 		if doSingleThread or self.numImages < 500:
-			print('   stackPolygonAnalysis performing loop through images')
+			print('stackPolygonAnalysis performing loop through images')
 			startTime = time.time()
 			for idx, slice in enumerate(range(self.numImages)): # why do i need -1 ???
 				if idx % 300 == 0:
@@ -203,22 +208,28 @@ class bAnalysis2:
 			print(   '1) single-thread ', self.numImages, 'slices took', round(stopTime-startTime,3))
 		else:
 			numCPU = multiprocessing.cpu_count()
-			print('   stackPolygonAnalysis using multiprocessing pool starmap, num cpu is', numCPU)
-			print('   ', self.data.shape, self.data.dtype)# create a list of parameters to function self.lineProfile as a tuple (slice, src, dst, linewidth)
+			chunksize = numCPU*200 #400 took 8.1 seconds, 200 takes 8 seconds, 100 takes 17 seconds, 50 takes 23 sec
+			print('stackPolygonAnalysis using multiprocessing pool imape, num cpu:', numCPU, 'chunksize:', chunksize)
+			print('   self.imageShape:', self.imageShape)
+			#print('   ', self.data.shape, self.data.dtype)# create a list of parameters to function self.lineProfile as a tuple (slice, src, dst, linewidth)
 			dataList = data.tolist()
 			r = list(zip(*dataList))[0]
 			c = list(zip(*dataList))[1]
-			#channel = 0
-			#myImageShape = self.stack.stack[channel,slice,:,:].shape
-			#myImageShape = self.data[slice,:,:].shape
 			(rr, cc) = polygon(r, c, shape=self.imageShape)
+			if len(rr)==0 or len(cc)==0:
+				print('stackPolygonAnalysis() got empty analysis polygon: rr.shape:', rr.shape, 'cc.shape:', cc.shape)
+				return None, None, None
 			numImages = self.numImages
-			poolParams = [(slice, rr, cc) for slice in range(numImages)]
+			#numImages = 100
+			self.rr = rr # used by polygonAnalysis2 worker
+			self.cc = cc
 			startTime = time.time()
-			#with multiprocessing.Pool(processes=int(numCPU/2)) as p:
+			myIterable = [a for a in range(numImages)]
+			#multiprocessing.set_executable('/Users/cudmore/anaconda3/bin/python3')
+			#print('sys.maxsize:', sys.maxsize)
 			with multiprocessing.Pool(processes=numCPU-1) as p:
-				#starmap() allows passing a paremeter list, map() does not
-				minList, maxList, meanList = zip(*p.starmap(self.polygonAnalysis2, poolParams, chunksize=numCPU*10)) # between ncpu*10 and ncpu*100
+				# previously tried starmap but it always ran out of memory?
+				minList, maxList, meanList = zip(*p.imap(self.polygonAnalysis2, myIterable, chunksize=chunksize))
 			stopTime = time.time()
 			print('2) multi-thread stackPolygonAnalysis for', self.numImages, 'slices took', round(stopTime-startTime,3))
 		return np.asarray(minList), np.asarray(maxList), np.asarray(meanList)
@@ -258,6 +269,25 @@ class bAnalysis2:
 		'''
 		return (x, intensityProfile, yFit, FWHM, left_idx, right_idx)
 
+	def lineProfile2(self, slice):
+		""" one slice
+
+		Returns:
+
+		x: ndarray, one point for each point in the profile (NOT images/slice in stack)
+		"""
+		if slice % 300 == 0:
+			print('   worker lineProfile2() slice:', slice, 'of', self.numImages)
+		try:
+			intensityProfile = profile.profile_line(self.data[slice,:,:], self.src, self.dst, linewidth=self.linewidth)
+			x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
+			yFit, FWHM, left_idx, right_idx = self.fitGaussian(x,intensityProfile)
+		except ValueError as e:
+			print('!!!!!!!!!! *********** !!!!!!!!!!!!! my exception in lineProfile2() ... too many values to unpack (expected 2)')
+			print('e:', e)
+			return (None, None, None, None, None, None)
+		return (x, intensityProfile, yFit, FWHM, left_idx, right_idx)
+
 	def stackLineProfile(self, src, dst, linewidth=3):
 		"""
 		calculate line profile for each slice in a stack
@@ -271,7 +301,7 @@ class bAnalysis2:
 		fwhmList = [] # each element is intensity profile for one slice/image
 		# not sure what is going on here
 		# a 3d stack of cd31 staining takes 3x longer when using multiprocessing?
-		doSingleThread= True
+		doSingleThread= False
 		if doSingleThread or self.numImages < 500:
 			print('   stackLineProfile performing loop through images')
 			startTime = time.time()
@@ -288,31 +318,24 @@ class bAnalysis2:
 		else:
 			# threaded
 			print('   running line profile for all slices in PARALLEL, numImages:', self.numImages)
-			print('   multiprocessing.cpu_count():', multiprocessing.cpu_count())
 			numCPU = multiprocessing.cpu_count()
-			# create a list of parameters to function self.lineProfile as a tuple (slice, src, dst, linewidth)
-			doFit = True # do the fit of each line
-			poolParams = [(i, src, dst, linewidth, doFit) for i in range(self.numImages)]
-			#for poolParam in poolParams:
-			#	print(poolParam)
+			# the time this takes will depend on (line length, complexity of fit, chunk size)
+			# longer line and more complex fit can go from 15 seconds to 30 seconds
+			# this seems variable, from run to run it can go from 15 sec to 30 sec???
+			# if fit is reasonable, it is 15 sec, if fit is absurd, it is 30 sec !!!
+			chunksize = numCPU * 100 #50 takes 20 sec, 100 takes 15 sec, 200 takes 18.5 sec, 400 takes 41 sec
+			print('   num cpu:', numCPU, 'chunksize:', chunksize)
+
+			self.src = src
+			self.dst = dst
+			self.linewidth = linewidth
+			myIterable = [a for a in range(self.numImages)] # list of all slice numbers
 			startTime = time.time()
 			with multiprocessing.Pool(processes=numCPU-1) as p:
-				#starmap() allows passing a paremeter list, map() does not
-				#xList, intensityProfileList, yFit, fwhm, left_idx, right_idx = p.starmap(self.lineProfile, poolParams)
-				xList, intensityProfileList, yFit, fwhmList, left_idx, right_idx = zip(*p.starmap(self.lineProfile, poolParams))
-				#tmpRet = p.starmap(self.lineProfile, poolParams)
-			print(type(fwhmList))
-			print(len(fwhmList))
-			'''
-			print('type(tmpRet):', type(tmpRet))
-			print('len(tmpRet):', len(tmpRet))
-			print('len(tmpRet[0]):', len(tmpRet[0]))
-			print('tmpRet[0]:', tmpRet[0])
-			print('tmpRet[-1]:', tmpRet[-1])
-			for tmpIdx, tmp in enumerate(tmpRet):
-				if len(tmp) != 6:
-					print(tmpIdx, tmp)
-			'''
+				# was this
+				#xList, intensityProfileList, yFit, fwhmList, left_idx, right_idx = zip(*p.starmap(self.lineProfile, poolParams, chunksize=chunksize))
+				xList, intensityProfileList, yFit, fwhmList, left_idx, right_idx = zip(*p.imap(self.lineProfile2, myIterable, chunksize=chunksize))
+			#print('   type(fwhmList):', type(fwhmList))
 			stopTime = time.time()
 			print('2) multi-thread line-profile for', self.numImages, 'slices took', round(stopTime-startTime,3))
 

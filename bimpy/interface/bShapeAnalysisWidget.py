@@ -45,6 +45,8 @@ class bShapeAnalysisWidget:
 
 		#self.defaultShapes() # use keyboard 'd'
 
+		self.myShapeList = []
+
 		# load existing shapes
 		#self.save()
 		#self.load()
@@ -60,10 +62,30 @@ class bShapeAnalysisWidget:
 		'''
 		self.shapeLayer.events.mode.connect(self.layerChangeEvent)
 		self.shapeLayer.events.edge_width.connect(self.layerChangeEvent)
+		# this event does not exist
 		#self.shapeLayer.events.removed.connect(self.layerChangeEvent)
 
 		# callback for user changing slices
 		self.napariViewer.dims.events.axis.connect(self.my_update_slider)
+
+		# keyboard 'l' will create a new line
+		@self.shapeLayer.bind_key('l', overwrite=True)
+		def shape_user_keyboard_l(layer):
+			print('shape_user_keyboard_l() layer:', layer)
+			self.addNewLine()
+
+		# keyboard p will create a new square
+		@self.shapeLayer.bind_key('r', overwrite=True)
+		def shape_user_keyboard_r(layer):
+			print('shape_user_keyboard_r() layer:', layer)
+			self.addNewRectangle()
+
+		# keyboard 'Backspace' will delete selected shape
+		@self.shapeLayer.bind_key('Backspace', overwrite=True)
+		def shape_user_keyboard_Backspace(layer):
+			print('shape_user_keyboard_Backspace() layer:', layer)
+			print('   ', self._getSelectedShape())
+			self.shapeLayer.remove_selected()
 
 		# keyboard 'u' will update selected shape through all slices/images
 		@self.napariViewer.bind_key('d')
@@ -73,11 +95,12 @@ class bShapeAnalysisWidget:
 		@self.napariViewer.bind_key('u')
 		def user_keyboard_u(viewer):
 			print('=== user_keyboard_u')
-			shapeType, data = self._getSelectedShape()
+			shapeType, index, data = self._getSelectedShape()
 			if shapeType == 'line':
-				src = data[0]
-				dst = data[1]
-				self.updateStackLineProfile(src, dst)
+				#src = data[0]
+				#dst = data[1]
+				#self.updateStackLineProfile(src, dst)
+				self.updateStackLineProfile(data)
 			if shapeType in ['rectangle', 'polygon']:
 				self.updateStackPolygon(data)
 
@@ -138,6 +161,40 @@ class bShapeAnalysisWidget:
 
 		self.buildPyQtGraphInterface()
 
+	def addNewLine(self):
+		"""
+		Add a new line shape, in response to user keyboard 'l'
+		"""
+		data = np.array([[20,20], [100,100]])
+		shapeType = 'line'
+		edge_width = 5
+		opacity = 0.5
+		self.shapeLayer.add(
+			data,
+			shape_type = shapeType,
+			edge_width = edge_width,
+			edge_color = 'coral',
+			face_color = 'royalblue',
+			opacity = opacity)
+
+		#self.myShapeList.append()
+
+	def addNewRectangle(self):
+		"""
+		Add a new rectangle shape, in response to user keyboard 'l'
+		"""
+		data = np.array([[200, 200], [200, 400], [400, 400], [400, 200]])
+		shapeType = 'rectangle'
+		edge_width = 3
+		opacity = 0.2
+		self.shapeLayer.add(
+			data,
+			shape_type = shapeType,
+			edge_width = edge_width,
+			edge_color = 'coral',
+			face_color = 'royalblue',
+			opacity = opacity)
+
 	def defaultShapes(self):
 		'''
 		'''
@@ -147,14 +204,16 @@ class bShapeAnalysisWidget:
 		line2 = np.array([[200, 200], [400, 300]])
 		rect1 = np.array([[400, 400], [400, 600], [600, 600], [600, 400]])
 		lines = [line1, line2, rect1]
-		#self.shapeLayer = self.napariViewer.add_shapes(
+		opacity = (0.5, 0.5, 0.2)#self.shapeLayer = self.napariViewer.add_shapes(
+		edge_width = (5, 5, 3)
 		self.shapeLayer.add(
 			lines,
 			shape_type=shapeTypes,
-			edge_width = 3,
+			edge_width = edge_width,
 			edge_color = 'coral',
-			face_color = 'royalblue')
-		self.shapeLayer.mode = 'direct' #'select'
+			face_color = 'royalblue',
+			opacity = opacity)
+		self.shapeLayer.mode = 'select' #'select'
 		'''
 		'''
 
@@ -369,7 +428,9 @@ class bShapeAnalysisWidget:
 		self.sliceLinesList.append(sliceLine)
 		self.polygonPlotItem.addItem(sliceLine)
 		#
-		self.analysisPolygon = self.polygonPlotItem.plot(name='polygonintensity')
+		self.analysisPolygonMean = self.polygonPlotItem.plot(name='analysisPolygonMean')
+		self.analysisPolygonMin = self.polygonPlotItem.plot(name='analysisPolygonMin')
+		self.analysisPolygonMax = self.polygonPlotItem.plot(name='analysisPolygonMax')
 
 		# (5) tree view of all shapes
 		w = pg.TreeWidget()
@@ -408,6 +469,10 @@ class bShapeAnalysisWidget:
 		for shapeType in self.shapeLayer.shape_types:
 			print('   shapeType:', shapeType)
 
+		print(self._getSelectedShape()) # (type, index, dict)
+
+		# set selected shape
+
 	def lineShapeChange_callback(self, layer, event):
 		"""
 		Callback for when user clicks+drags to resize a line shape.
@@ -420,12 +485,14 @@ class bShapeAnalysisWidget:
 		"""
 		# loop through all lines?
 		#for data in self.shapeLayer.data:
-		shapeType, data = self._getSelectedShape()
+		shapeType, index, data = self._getSelectedShape()
 		if shapeType == 'line':
-			src = data[0]
-			dst = data[1]
-			self.updateLines(self.sliceNum, src, dst)
+			#src = data[0]
+			#dst = data[1]
+			#self.updateLines(self.sliceNum, src, dst)
+			self.updateLines(self.sliceNum, data)
 		# turned this off, was too slow
+		# todo, just update and then plot polygon analysis for current slice
 		'''
 		if shapeType in ['rectangle', 'polygon']:
 			self.updatePolygon(self.sliceNum, data)
@@ -435,6 +502,7 @@ class bShapeAnalysisWidget:
 		"""
 		return the selected shape with a tuple (shapeType, data)
 			shapeType: ('line', 'polygon')
+			index:
 			data: the data from a shape layer, generally the coordinates of a shape
 				- for a line it is a list of two points
 				- for a polygon it is a list of N vertex points
@@ -449,9 +517,9 @@ class bShapeAnalysisWidget:
 			print('shapeType:', shapeType) #('line', 'rectangle', 'polygon')
 			print('   self.shapeLayer.data[index]:', self.shapeLayer.data[index])
 			'''
-			return shapeType, self.shapeLayer.data[index]
+			return shapeType, index, self.shapeLayer.data[index]
 		else:
-			return (None, None)
+			return (None, None, None)
 
 	def my_update_slider(self, event):
 		"""
@@ -465,11 +533,12 @@ class bShapeAnalysisWidget:
 			self.updateVerticalSliceLines(self.sliceNum)
 
 			# todo: this does not feal right ... fix this !!!
-			shapeType, data = self._getSelectedShape()
+			shapeType, index, data = self._getSelectedShape()
 			if shapeType == 'line':
-				src = data[0]
-				dst = data[1]
-				self.updateLines(self.sliceNum, src, dst)
+				#src = data[0]
+				#dst = data[1]
+				#self.updateLines(self.sliceNum, src, dst)
+				self.updateLines(self.sliceNum, data)
 			if shapeType in ['rectangle', 'polygon']:
 				self.updatePolygon(self.sliceNum, data)
 
@@ -479,20 +548,29 @@ class bShapeAnalysisWidget:
 		a rectangle is just a polygon with 4 evenly spaces vertices
 		"""
 		print('bShapeAnalysisWidget.updateStackPolygon() data:', data)
-		#theMin, theMax, theMean = self.myStack.analysis.stackPolygonAnalysis(data)
+
 		theMin, theMax, theMean = self.analysis.stackPolygonAnalysis(data)
 
-		xPlot = np.asarray([slice for slice in range(len(theMean))])
-		#self.analysisDiameter.setData(xPlot, theMean, connect='finite')
-		self.analysisPolygon.setData(xPlot, theMean, connect='finite')
+		if theMin is None:
+			return
 
-	def updateStackLineProfile(self, src, dst):
+		# store in shape metadata
+		shapeType, index, shapeDict = self._getSelectedShape()
+		#print('self.shapeLayer.metadata:', self.shapeLayer.metadata)
+		self.shapeLayer.metadata[index] = {'a':1, 'b':2, 'theMean': theMean}
+
+		# plot
+		xPlot = np.asarray([slice for slice in range(len(theMean))])
+		self.analysisPolygonMean.setData(xPlot, theMean, connect='finite') # connect 'finite' will make nan(s) disjoint
+
+	def updateStackLineProfile(self, data):
 		"""
 		generate a line profile for each image in a stack/timeseries
 
-		src: source point
-		dst: destination point
+		data: two points that make the line
 		"""
+		src = data[0]
+		dst = data[1]
 		print('updateStackLineProfile() src:', src, 'dst:', dst)
 		#x, self.lineProfileImage, self.FWHM = self.myStack.analysis.stackLineProfile(src, dst)
 		x, self.lineProfileImage, self.FWHM = self.analysis.stackLineProfile(src, dst)
@@ -536,9 +614,12 @@ class bShapeAnalysisWidget:
 		theMin, theMax, theMean = self.analysis.polygonAnalysis(sliceNum, data)
 		print('   slice:', sliceNum, 'theMin:', theMin, 'theMax:', theMax, 'theMean:', theMean)
 
-	def updateLines(self, sliceNum, src, dst):
+	def updateLines(self, sliceNum, data):
 		"""
+		data: two points that make the line
 		"""
+		src = data[0]
+		dst = data[1]
 		print('bShapeAnalysisWidget.updateLines() sliceNum:', sliceNum, 'src:', src, 'dst:', dst)
 		#x, lineProfile, yFit, fwhm, leftIdx, rightIdx = self.myStack.analysis.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
 		# this can fail
@@ -582,6 +663,7 @@ if __name__ == '__main__':
 		# path to a tif file. Assuming it is 3D with dimensions of (slice, rows, cols)
 		path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
 		path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit_cropped.tif'
+		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
 		filename = os.path.basename(path)
 		title = filename
 		viewer = napari.Viewer(title=title)
