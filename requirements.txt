@@ -9,3 +9,4 @@ javabridge
 python-bioformats
 napari
 h5py
+pyserial #for canvas
