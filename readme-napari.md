@@ -62,6 +62,7 @@ modified the following file:
 #abb 20191123
 #see: https://stackoverflow.com/questions/47776486/python-struct-error-i-format-requires-2147483648-number-2147483647
 #see: https://github.com/python/cpython/pull/10305/files
+'''
 def _send_bytes(self, buf):
 	n = len(buf)
 	if n > 0x7fffffff:
@@ -86,7 +87,7 @@ def _send_bytes(self, buf):
 			self._send(header + buf)
 
 '''
-#abb 20191123
+#was this abb 20191123
 def _send_bytes(self, buf):
 	n = len(buf)
 	# For wire compatibility with 3.2 and lower
@@ -116,7 +117,7 @@ def _recv_bytes(self, maxsize=None):
 	return self._recv(size)
 
 '''
-#abb 20191123
+#was this abb 20191123
 def _recv_bytes(self, maxsize=None):
 	buf = self._recv(4)
 	size, = struct.unpack("!i", buf.getvalue())
