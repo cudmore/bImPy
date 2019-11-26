@@ -17,7 +17,7 @@ class bShapeAnalysisWidget:
 	handle interface of one shape roi at a time
 	"""
 	#def __init__(self, napariViewer, path=None, myStack=None):
-	def __init__(self, napariViewer, imageLayer=None):
+	def __init__(self, napariViewer, imageLayer=None, imagePath=None):
 		"""
 		napariViewer: existing napari viewer
 		imageLayer: napari image layer to use as image
@@ -31,37 +31,29 @@ class bShapeAnalysisWidget:
 		self.napariViewer = napariViewer
 		self.myImageLayer = imageLayer
 
+		self.path = imagePath
+
 		self.analysis = bimpy.bAnalysis2(self.imageData) # self.imageData is a property
 
 		# make an empty shape layer
 		self.shapeLayer = self.napariViewer.add_shapes(
 			name=self.myImageLayer.name + '_shapes',
 		)
+		self.shapeLayer.mode = 'select' #'select'
+		self.shapeLayer.metadata = []
 
 		#
 		# add shapes
-		self.lineProfileImage = None
-		self.FWHM = None
+		#self.lineProfileImage = None
+		#self.FWHM = None
 
 		#self.defaultShapes() # use keyboard 'd'
 
-		self.myShapeList = []
-
-		# load existing shapes
-		#self.save()
-		#self.load()
-
-		'''
-		self.events.add(
-		    mode=Event,
-		    edge_width=Event,
-		    edge_color=Event,
-		    face_color=Event,
-		    highlight=Event,
-		)
-		'''
 		self.shapeLayer.events.mode.connect(self.layerChangeEvent)
+		self.shapeLayer.events.opacity.connect(self.layerChangeEvent)
 		self.shapeLayer.events.edge_width.connect(self.layerChangeEvent)
+		self.shapeLayer.events.face_color.connect(self.layerChangeEvent)
+		self.shapeLayer.events.edge_color.connect(self.layerChangeEvent)
 		# this event does not exist
 		#self.shapeLayer.events.removed.connect(self.layerChangeEvent)
 
@@ -94,15 +86,11 @@ class bShapeAnalysisWidget:
 
 		@self.napariViewer.bind_key('u')
 		def user_keyboard_u(viewer):
+			"""
+			update analysis
+			"""
 			print('=== user_keyboard_u')
-			shapeType, index, data = self._getSelectedShape()
-			if shapeType == 'line':
-				#src = data[0]
-				#dst = data[1]
-				#self.updateStackLineProfile(src, dst)
-				self.updateStackLineProfile(data)
-			if shapeType in ['rectangle', 'polygon']:
-				self.updateStackPolygon(data)
+			self.updateAnalysis()
 
 		'''
 		found delete_shape() and napari.layers.shapes.shapeList.remove()
@@ -143,8 +131,9 @@ class bShapeAnalysisWidget:
 		#@self.shapeLayer.mouse_move_callbacks.append
 		@self.shapeLayer.mouse_drag_callbacks.append
 		def shape_mouse_move_callback(layer, event):
-			#print('shape_mouse_move_callback() event.type:', event.type)
-			self.myMouseMove_Shape(layer, event)
+			"""respond to mouse_down
+			"""
+			self.myMouseDown_Shape(layer, event)
 
 		# this decorator cannot point to member function directly because it needs yield
 		# put inline function with yield right after decorator
@@ -161,42 +150,63 @@ class bShapeAnalysisWidget:
 
 		self.buildPyQtGraphInterface()
 
+	'''
+	def _defaultShapeDict(self):
+		shapeDict = {
+			'shape_type': 'line',
+			'edge_width': 5,
+			'opacity': 0.5,
+			'data': np.array([[20,20], [100,100]])
+		}
+		return shapeDict.copy()
+	'''
+
+	def _addNewShape(self, shapeDict):
+		self.shapeLayer.add(
+			data = shapeDict['data'],
+			shape_type = shapeDict['shape_type'],
+			edge_width = shapeDict['edge_width'],
+			edge_color = 'coral',
+			face_color = 'royalblue',
+			opacity = shapeDict['opacity'])
+		metaDataDict = {
+			'lineDiameter': np.zeros((0)),
+			'lineKymograph': np.zeros((1,1)),
+			'polygonMin': np.zeros((0)),
+			'polygonMax': np.zeros((0)),
+			'polygonMean': np.zeros((0)),
+		}
+		self.shapeLayer.metadata.append(metaDataDict)
+
 	def addNewLine(self):
 		"""
 		Add a new line shape, in response to user keyboard 'l'
 		"""
-		data = np.array([[20,20], [100,100]])
-		shapeType = 'line'
-		edge_width = 5
-		opacity = 0.5
-		self.shapeLayer.add(
-			data,
-			shape_type = shapeType,
-			edge_width = edge_width,
-			edge_color = 'coral',
-			face_color = 'royalblue',
-			opacity = opacity)
-
-		#self.myShapeList.append()
+		shapeDict = {
+			'shape_type': 'line',
+			'edge_width': 5,
+			'opacity': 0.5,
+			'data': np.array([[20,20], [100,100]])
+		}
+		self._addNewShape(shapeDict)
 
 	def addNewRectangle(self):
 		"""
 		Add a new rectangle shape, in response to user keyboard 'l'
 		"""
-		data = np.array([[200, 200], [200, 400], [400, 400], [400, 200]])
-		shapeType = 'rectangle'
-		edge_width = 3
-		opacity = 0.2
-		self.shapeLayer.add(
-			data,
-			shape_type = shapeType,
-			edge_width = edge_width,
-			edge_color = 'coral',
-			face_color = 'royalblue',
-			opacity = opacity)
+		shapeDict = {
+			'shape_type': 'rectangle',
+			'edge_width': 3,
+			'opacity': 0.2,
+			'data': np.array([[200, 200], [200, 400], [400, 400], [400, 200]])
+		}
+		self._addNewShape(shapeDict)
 
 	def defaultShapes(self):
-		'''
+		"""
+		"""
+		self.addNewLine()
+		self.addNewRectangle()
 		'''
 		# create default shapes
 		shapeTypes = ['line', 'line', 'rectangle']
@@ -213,9 +223,13 @@ class bShapeAnalysisWidget:
 			edge_color = 'coral',
 			face_color = 'royalblue',
 			opacity = opacity)
-		self.shapeLayer.mode = 'select' #'select'
 		'''
-		'''
+
+
+	def _getSavePath(self):
+		path, filename = os.path.split(self.path)
+		savePath = os.path.join(path, os.path.splitext(filename)[0] + '.h5')
+		return savePath
 
 	def save(self):
 		"""
@@ -225,7 +239,7 @@ class bShapeAnalysisWidget:
 		#print(type(self.shapeLayer.data[0]))
 		shapeList = []
 		for idx, shapeType in enumerate(self.shapeLayer.shape_types):
-			print('   idx:', idx, shapeType)
+			#print('   idx:', idx, shapeType)
 			shapeDict = {
 				#'data:', self.shapeLayer.data[idx],
 				'shape_types': self.shapeLayer.shape_types[idx],
@@ -236,37 +250,41 @@ class bShapeAnalysisWidget:
 				#z_indices for polygon is int64 and can not be with json.dumps ???
 				#'z_indices': int(self.shapeLayer.z_indices[idx]),
 			}
-			print('   shapeDict:', shapeDict)
+			#print('   shapeDict:', shapeDict)
 			shapeList.append(shapeDict)
 
 			# check the types
 			# z_indices is int64 and is not serializable ???
+			'''
 			for k, v in shapeDict.items():
 				print('***', k, v, type(v))
+			'''
 
-		print('writing file')
-		h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
+		h5File = self._getSavePath()
+		print('writing', len(shapeList), 'shapes to file:', h5File)
+		#h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
 		with h5py.File(h5File, "w") as f:
 			for idx, shape in enumerate(shapeList):
-				print('   shape:', shape)
+				print('   idx:', idx, 'shape:', shape)
 				# each shape will have a group
-				group = f.create_group('shape' + str(idx))
+				shapeGroup = f.create_group('shape' + str(idx))
 				# each shape group will have a shape dict with all parameters to draw ()
 				shapeDict_json = json.dumps(shape)
-				group.attrs['shapeDict'] = shapeDict_json
+				shapeGroup.attrs['shapeDict'] = shapeDict_json
 				# each shape group will have 'data' with coordinates of polygon
 				shapeData = self.shapeLayer.data[idx]
-				group.create_dataset("data", data=shapeData)
+				shapeGroup.create_dataset("data", data=shapeData)
 
-				# each group will have analysis
-				# todo: do this later
-
-		# debugging
-		#self.load()
+				#print('self.shapeLayer.metadata[idx]:', self.shapeLayer.metadata[idx])
+				for k,v in self.shapeLayer.metadata[idx].items():
+					newGroup = 'metadata/' + k
+					print('      ', newGroup)
+					shapeGroup.create_dataset(newGroup, data=v)
 
 	def load(self):
-		h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
-		print('=== bShapeAnalysisWidget.load()')
+		#h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
+		h5File = self._getSavePath()
+		print('=== bShapeAnalysisWidget.load() file:', h5File)
 		shape_type = []
 		edge_width = []
 		edge_color = []
@@ -275,8 +293,9 @@ class bShapeAnalysisWidget:
 			# iterate through h5py groups (shapes)
 			shapeList = []
 			linesList = []
+			#metadataList = [] # metadata is a special case
 			for name in f:
-				print('name:', name)
+				print('loading name:', name)
 				json_str = f[name].attrs['shapeDict']
 				json_dict = json.loads(json_str) # convert from string to dict
 				'''
@@ -286,11 +305,20 @@ class bShapeAnalysisWidget:
 				'''
 				# load the coordinates of polygon
 				data = f[name + '/data'][()] # the wierd [()] converts it to numpy ndarray
+
+				#metadata = f[name + '/metadata'][()] # the wierd [()] converts it to numpy ndarray
+				metadataDict = {}
+				for name2 in f[name + '/metadata']:
+					#print('name2:', name2)
+					metadataDict[name2] = f[name + '/metadata' + '/' + name2][()]
 				'''
 				print('   data:', data)
 				print('   type(data)', type(data))
 				'''
+
 				linesList.append(data)
+				#metadataList.append(metadataDict) # metadata is a special case
+				self.shapeLayer.metadata.append(metadataDict)
 
 				shapeDict = json_dict
 				shapeDict['data'] = data
@@ -300,20 +328,29 @@ class bShapeAnalysisWidget:
 				edge_color.append(shapeDict['edge_colors'])
 				face_color.append(shapeDict['face_colors'])
 
-				print("type(shapeDict['edge_colors'])", type(shapeDict['edge_colors']))
+				#print("type(shapeDict['edge_colors'])", type(shapeDict['edge_colors']))
 
 				shapeList.append(shapeDict)
 
+		'''
 		print('linesList:', linesList)
 		print('edge_color:', edge_color)
 		print('type(edge_color[0]):', type(edge_color[0]))
 
+		print('self.shapeLayer.metadata:', self.shapeLayer.metadata)
+		'''
+
 		# create a shape from what we loaded
-		print('\n=== ===  appending loaded shapes to shapes layer')
-		#add a shape to existing shape layer
+		print('\n=== ===  appending', len(linesList), 'loaded shapes to shapes layer')
+
+		# metadata is a special case
+		#self.shapeLayer.metadata = metadataList
+
+		#add shapes to existing shape layer
+		'''
+		# 1)
 		# this does not work because vispy is interpreting (edge_color, face_color) as a list
 		# and thus expecting rgb (or rgba?) and not string like 'black'
-		'''
 		self.shapeLayer.add(
 			linesList,
 			shape_type = shape_type,
@@ -322,41 +359,13 @@ class bShapeAnalysisWidget:
 			face_color = face_color
 			)
 		'''
+		# 2)
 		self.shapeLayer.add(
 			linesList,
 			shape_type = shape_type,
 			edge_width = edge_width,
 			)
 
-		#self.shapeLayer.edge_color = edge_color
-
-		'''
-		for tmp_edge_color in self.shapeLayer.edge_color:
-			print('tmp_edge_color:', tmp_edge_color)
-		'''
-
-		"""
-		for idx, shape in enumerate(shapeList):
-			'''
-			print('shape:', shape)
-			print('shape.keys()', shape.keys())
-			print('type(shape["shape_types"])', type(shape['shape_types']))
-			'''
-			self.shapeLayer = self.napariViewer.add_shapes(
-				# not sure what this is??
-				# was 'lines,
-				linesList[idx],
-				#name=self.myImageLayer.name + '_shapes',
-				shape_type = shape['shape_types'],
-				edge_width = shape['edge_widths'],
-				# todo: finish this
-				#edge_width = shape['edge_widths'],
-				edge_color = shape['edge_colors'],
-				face_color = shape['face_colors'],
-				#edge_color = 'coral',
-				#face_color = 'royalblue'
-			)
-		"""
 
 	def buildPyQtGraphInterface(self):
 		#
@@ -428,11 +437,16 @@ class bShapeAnalysisWidget:
 		self.sliceLinesList.append(sliceLine)
 		self.polygonPlotItem.addItem(sliceLine)
 		#
-		self.analysisPolygonMean = self.polygonPlotItem.plot(name='analysisPolygonMean')
-		self.analysisPolygonMin = self.polygonPlotItem.plot(name='analysisPolygonMin')
-		self.analysisPolygonMax = self.polygonPlotItem.plot(name='analysisPolygonMax')
+		self.analysisPolygonMean = self.polygonPlotItem.plot(symbolSize=3, name='analysisPolygonMean')
+		#self.analysisPolygonMin = self.polygonPlotItem.plot(name='analysisPolygonMin')
+		#self.analysisPolygonMax = self.polygonPlotItem.plot(name='analysisPolygonMax')
+
+		# all polygon mean across all rois
+		self.polygonMeanListPlot = []
+		#self.polygonMeanListPlot.append(self.polygonPlotItem.plot(name='polygonMeanListPlot'))
 
 		# (5) tree view of all shapes
+		'''
 		w = pg.TreeWidget()
 		w.setColumnCount(2)
 		w.show()
@@ -448,30 +462,33 @@ class bShapeAnalysisWidget:
 
 		# does not work
 		#self.pgWin.addItems(w)
+		'''
 
 	def layerChangeEvent(self, event):
-		print(time.time(), 'layerChangeEvent() event:', event)
+		print(time.time(), 'layerChangeEvent() event.type:', event.type)
+		respondToTheseEvents = ['edge_width']
 
 	@property
 	def imageData(self):
 		return self.myImageLayer.data
 
-	def myMouseMove_Shape(self, layer, event):
+	def myMouseDown_Shape(self, layer, event):
 		"""
 		Detect mouse move in shape layer (not called when mouse is down).
+
+		responds to event.type in (mouse_press)
 
 		event is type vispy.app.canvas.MouseEvent
 		see: http://api.vispy.org/en/v0.1.0-0/event.html
 		"""
-		print('myMouseMove_Shape()', layer, event.type)
-		# check the shape layer for a new shape
-		# this works !!!
-		for shapeType in self.shapeLayer.shape_types:
-			print('   shapeType:', shapeType)
+		print('myMouseDown_Shape()', layer, event.type)
 
-		print(self._getSelectedShape()) # (type, index, dict)
+		type, index, dict = self._getSelectedShape()
+		print('   type:', type)
+		print('   index:', index)
+		print('   dict:', dict) # (type, index, dict)
 
-		# set selected shape
+		self.updatePlots()
 
 	def lineShapeChange_callback(self, layer, event):
 		"""
@@ -539,15 +556,26 @@ class bShapeAnalysisWidget:
 				#dst = data[1]
 				#self.updateLines(self.sliceNum, src, dst)
 				self.updateLines(self.sliceNum, data)
-			if shapeType in ['rectangle', 'polygon']:
+			'''
+			elif shapeType in ['rectangle', 'polygon']:
 				self.updatePolygon(self.sliceNum, data)
+			'''
 
-	def updateStackPolygon(self, data):
+	def updateAnalysis(self):
+		shapeType, index, data = self._getSelectedShape()
+		if shapeType == 'rectangle':
+			theMin, theMax, theMean = self.analysis.stackPolygonAnalysis(data)
+			if theMin is None:
+				return
+
+	def updateStackPolygon(self, index=None):
 		"""
 		data is a list of points specifying vertices of a polygon
 		a rectangle is just a polygon with 4 evenly spaces vertices
 		"""
-		print('bShapeAnalysisWidget.updateStackPolygon() data:', data)
+		print('bShapeAnalysisWidget.updateStackPolygon() index:', index)
+
+		shapeType, index, data = self._getSelectedShape()
 
 		theMin, theMax, theMean = self.analysis.stackPolygonAnalysis(data)
 
@@ -555,48 +583,119 @@ class bShapeAnalysisWidget:
 			return
 
 		# store in shape metadata
-		shapeType, index, shapeDict = self._getSelectedShape()
 		#print('self.shapeLayer.metadata:', self.shapeLayer.metadata)
-		self.shapeLayer.metadata[index] = {'a':1, 'b':2, 'theMean': theMean}
+		self.shapeLayer.metadata[index]['polygonMean'] = theMean
 
 		# plot
+		self.updatePlots()
+		'''
+		if shapeType == 'line':
+			self.updateStackLinePlot(index)
+		elif shapeType == 'rectangle':
+			self.updateStackPolygonPlot(index=index)
+		'''
+
+		'''
 		xPlot = np.asarray([slice for slice in range(len(theMean))])
 		self.analysisPolygonMean.setData(xPlot, theMean, connect='finite') # connect 'finite' will make nan(s) disjoint
+		'''
 
-	def updateStackLineProfile(self, data):
+	def updatePlots(self, index=None):
+		"""
+		update plots based on current selection
+		"""
+		print('updatePlots() index:', index)
+
+		shapeType, index, data = self._getSelectedShape()
+		if index is None:
+			# no shape selection
+			return
+		# plot
+		if shapeType == 'line':
+			print('   updating line at index:', index)
+			# diameter
+			lineDiameter = self.shapeLayer.metadata[index]['lineDiameter']
+			xPlot = np.asarray([slice for slice in range(len(lineDiameter))])
+			self.analysisDiameter.setData(xPlot, lineDiameter, connect='finite')
+			# kymograph
+			lineKymograph = self.shapeLayer.metadata[index]['lineKymograph']
+			self.img.setImage(lineKymograph)
+		elif shapeType == 'rectangle':
+			print('   updating rectangle at index:', index)
+			polygonMean = self.shapeLayer.metadata[index]['polygonMean']
+			# normalize to first few points
+			tmpMean = np.nanmean(polygonMean[0:10])
+			polygonMean = polygonMean / tmpMean * 100
+			polygonMean += index * 20
+			#print('   polygonMean.shape:', polygonMean.shape)
+
+			xPlot = np.asarray([slice for slice in range(len(polygonMean))])
+			self.analysisPolygonMean.setData(xPlot, polygonMean, connect='finite') # connect 'finite' will make nan(s) disjoint
+
+			#
+			# plot all rectangle polygonMean
+			#
+			# first clear all
+			for idx in range(len(self.polygonMeanListPlot)):
+				self.polygonMeanListPlot[idx].setData([], [], connect='finite')
+			# then replot
+			for idx, type in enumerate(self.shapeLayer.shape_types):
+				if type == 'rectangle':
+					if len(self.polygonMeanListPlot)-1 < idx:
+						self.polygonMeanListPlot.append(self.polygonPlotItem.plot(pen=(255,0,0), name='polygonMeanListPlot'+str(idx)))
+					if idx == index:
+						# skip the one that is slected, plotted above in white
+						continue
+					print('appending rectangle for shape idx:', idx)
+					polygonMean = self.shapeLayer.metadata[idx]['polygonMean']
+					xPlot = np.asarray([slice for slice in range(len(polygonMean))])
+					#print(idx, 'polygonMean.shape:', polygonMean.shape)
+					if len(polygonMean)<1:
+						continue
+					# normalize to first few points
+					tmpMean = np.nanmean(polygonMean[0:10])
+					polygonMean = polygonMean / tmpMean * 100
+					polygonMean += idx * 20
+
+					self.polygonMeanListPlot[idx].setData(xPlot, polygonMean, connect='finite')
+			#self.analysisPolygonMean.setData(xPlotList, polygonMeanList, connect='finite') # connect 'finite' will make nan(s) disjoint
+
+	def updateAnalysis(self):
+		shapeType, index, data = self._getSelectedShape()
+		if index is None:
+			return
+		if shapeType == 'line':
+			self.updateStackLineProfile()
+		elif shapeType in ['rectangle', 'polygon']:
+			self.updateStackPolygon()
+
+	def updateStackLineProfile(self):
 		"""
 		generate a line profile for each image in a stack/timeseries
 
 		data: two points that make the line
 		"""
+		shapeType, index, data = self._getSelectedShape()
+
 		src = data[0]
 		dst = data[1]
 		print('updateStackLineProfile() src:', src, 'dst:', dst)
 		#x, self.lineProfileImage, self.FWHM = self.myStack.analysis.stackLineProfile(src, dst)
-		x, self.lineProfileImage, self.FWHM = self.analysis.stackLineProfile(src, dst)
+		x, lineKymograph, lineDiameter = self.analysis.stackLineProfile(src, dst)
 
-		# why return ?
-		#return self.lineProfileImage
+		self.shapeLayer.metadata[index]['lineDiameter'] = lineDiameter
+		self.shapeLayer.metadata[index]['lineKymograph'] = lineKymograph
 
+		self.updatePlots()
+
+		'''
 		#
 		# update plots with new results
 		self.img.setImage(self.lineProfileImage)
 
-		#print('todo: this is an error FIX IT !!!!!!!!!!!!!!!!!!!!!!!!!!!')
-		#print('bShapeAnalysisWidget.updateStackLineProfile self.FWHM:', self.FWHM)
-
-		#
-		# x will be 2d, x points for each line profile in a stack
-		# here we are plotting only 1d so reduce x
-		'''
-		print('   x.shape:', x.shape)
-		print('   self.FWHM.shape:', self.FWHM.shape)
-		print('   x[:,0]:', x[:,0])
-		print('   self.FWHM:', self.FWHM)
-		'''
-		#self.analysisDiameter.setData(x[:,0], self.FWHM, connect='finite')
 		xPlot = np.asarray([slice for slice in range(len(self.FWHM))])
 		self.analysisDiameter.setData(xPlot, self.FWHM, connect='finite')
+		'''
 
 	def updateVerticalSliceLines(self, sliceNum):
 		"""
@@ -662,8 +761,8 @@ if __name__ == '__main__':
 	with napari.gui_qt():
 		# path to a tif file. Assuming it is 3D with dimensions of (slice, rows, cols)
 		path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
-		path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit_cropped.tif'
-		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
+		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit_cropped.tif'
+		path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
 		filename = os.path.basename(path)
 		title = filename
 		viewer = napari.Viewer(title=title)
@@ -679,4 +778,4 @@ if __name__ == '__main__':
 			#title=title)
 
 		# run the plugin
-		bShapeAnalysisWidget(viewer, imageLayer=myImageLayer)
+		bShapeAnalysisWidget(viewer, imageLayer=myImageLayer, imagePath=path)
