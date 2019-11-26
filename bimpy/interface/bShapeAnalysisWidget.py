@@ -30,8 +30,10 @@ class bShapeAnalysisWidget:
 
 		self.napariViewer = napariViewer
 		self.myImageLayer = imageLayer
-
 		self.path = imagePath
+
+		# difference image
+		#self.myImageLayer.data
 
 		self.analysis = bimpy.bAnalysis2(self.imageData) # self.imageData is a property
 
