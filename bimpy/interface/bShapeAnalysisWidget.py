@@ -34,6 +34,16 @@ class bShapeAnalysisWidget:
 
 		# difference image
 		#self.myImageLayer.data
+		print('calculating the difference')
+		self.difference = np.ndarray(self.myImageLayer.data.shape)
+		for idx, slice in enumerate(range(self.difference.shape[0])):
+			if idx>2:
+				self.difference[idx,:,:] = self.myImageLayer.data[idx,:,:] - self.myImageLayer.data[idx-3,:,:]
+		self.differenceImage = self.napariViewer.add_image(
+			data = self.difference,
+			name=self.myImageLayer.name + '_diff',
+		)
+		print('   done')
 
 		self.analysis = bimpy.bAnalysis2(self.imageData) # self.imageData is a property
 
