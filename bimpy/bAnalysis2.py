@@ -225,8 +225,6 @@ class bAnalysis2:
 			self.cc = cc
 			startTime = time.time()
 			myIterable = [a for a in range(numImages)]
-			#multiprocessing.set_executable('/Users/cudmore/anaconda3/bin/python3')
-			#print('sys.maxsize:', sys.maxsize)
 			with multiprocessing.Pool(processes=numCPU-1) as p:
 				# previously tried starmap but it always ran out of memory?
 				minList, maxList, meanList = zip(*p.imap(self.polygonAnalysis2, myIterable, chunksize=chunksize))

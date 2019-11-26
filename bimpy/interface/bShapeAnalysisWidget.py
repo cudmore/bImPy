@@ -5,6 +5,9 @@ import os, time, json
 import numpy as np
 import h5py
 
+#from scipy.ndimage import gaussian_filter
+import scipy.ndimage
+
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 
@@ -33,17 +36,7 @@ class bShapeAnalysisWidget:
 		self.path = imagePath
 
 		# difference image
-		#self.myImageLayer.data
-		print('calculating the difference')
-		self.difference = np.ndarray(self.myImageLayer.data.shape)
-		for idx, slice in enumerate(range(self.difference.shape[0])):
-			if idx>2:
-				self.difference[idx,:,:] = self.myImageLayer.data[idx,:,:] - self.myImageLayer.data[idx-3,:,:]
-		self.differenceImage = self.napariViewer.add_image(
-			data = self.difference,
-			name=self.myImageLayer.name + '_diff',
-		)
-		print('   done')
+		self.filterImage()
 
 		self.analysis = bimpy.bAnalysis2(self.imageData) # self.imageData is a property
 
@@ -167,6 +160,33 @@ class bShapeAnalysisWidget:
 
 		self.buildPyQtGraphInterface()
 
+	def filterImage(self):
+		print('filterImage() calculating the difference for 3d image:', self.myImageLayer.data.shape)
+		startTime = time.time()
+		self.filtered = scipy.ndimage.gaussian_filter(self.myImageLayer.data, sigma=1)
+		#self.filtered = scipy.ndimage.median_filter(self.myImageLayer.data, size=3)
+
+		print('   self.myImageLayer.data.dtype:', self.myImageLayer.data.dtype)
+		print('   self.filtered.dtype:', self.filtered.dtype)
+		self.difference = None
+		'''
+		self.difference = np.ndarray(shape=self.filtered.shape, dtype=np.int16) #np.ndarray(self.filtered.shape)
+		for idx, slice in enumerate(range(self.difference.shape[0])):
+			if idx>3:
+				self.difference[idx,:,:] = self.filtered[idx,:,:] - self.filtered[idx-4,:,:]
+			print('   self.difference.dtype:', self.difference.dtype)
+		'''
+
+		stopTime = time.time()
+		print('   took', round(stopTime-startTime,2), 'seconds')
+
+		# append image to napari
+		self.differenceImage = self.napariViewer.add_image(
+			data = self.difference if self.difference is not None else self.filtered,
+			name=self.myImageLayer.name + '_diff',
+		)
+		print('   done')
+
 	'''
 	def _defaultShapeDict(self):
 		shapeDict = {
@@ -215,7 +235,7 @@ class bShapeAnalysisWidget:
 			'shape_type': 'rectangle',
 			'edge_width': 3,
 			'opacity': 0.2,
-			'data': np.array([[200, 200], [200, 400], [400, 400], [400, 200]])
+			'data': np.array([[50, 50], [50, 80], [80, 80], [80, 50]])
 		}
 		self._addNewShape(shapeDict)
 
@@ -487,7 +507,8 @@ class bShapeAnalysisWidget:
 
 	@property
 	def imageData(self):
-		return self.myImageLayer.data
+		#return self.myImageLayer.data
+		return self.filtered
 
 	def myMouseDown_Shape(self, layer, event):
 		"""
@@ -779,7 +800,7 @@ if __name__ == '__main__':
 		# path to a tif file. Assuming it is 3D with dimensions of (slice, rows, cols)
 		path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
 		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit_cropped.tif'
-		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
+		path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
 		filename = os.path.basename(path)
 		title = filename
 		viewer = napari.Viewer(title=title)
