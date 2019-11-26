@@ -116,12 +116,17 @@ class bShapeAnalysisWidget:
 				print('   layer.selected:', layer.selected)
 		'''
 
-		@self.napariViewer.bind_key('l')
+		@self.napariViewer.bind_key('Control-Shift-l')
+		def loadOtherFile(viewer):
+			print('=== loadOtherFile')
+			#self.load()
+
+		@self.napariViewer.bind_key('Control-l', overwrite=True)
 		def user_keyboar_l(viewer):
 			print('=== user_keyboard_l')
 			self.load()
 
-		@self.napariViewer.bind_key('s')
+		@self.napariViewer.bind_key('Control-s', overwrite=True)
 		def user_keyboar_s(viewer):
 			print('=== user_keyboard_s')
 			self.save()
@@ -762,7 +767,7 @@ if __name__ == '__main__':
 		# path to a tif file. Assuming it is 3D with dimensions of (slice, rows, cols)
 		path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
 		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit_cropped.tif'
-		path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
+		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
 		filename = os.path.basename(path)
 		title = filename
 		viewer = napari.Viewer(title=title)
