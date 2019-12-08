@@ -13,6 +13,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 import bimpy
 from bimpy.interface import bStackWidget
+import bimpy.bMotor as bMotor
 
 
 class bCanvasApp(QtWidgets.QMainWindow):
@@ -28,8 +29,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.myMenu = bimpy.interface.bMenu(self)
 
-		# on sutter this is x/y/x !!!
-		self.xyzMotor = bimpy.bPrior(isReal=False)
+		motorName = 'bPrior'
+		self.assignMotor(motorName)
 
 		if loadIgorCanvas is not None:
 			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
@@ -75,27 +76,41 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.myStackList = [] # a list of open bStack
 
+	def assignMotor(self, motorName):
+		"""
+		Create a motor controller from a class name
+
+		Parameters:
+			motorName: A string corresponding to a derived class of bMotor. File is in bimpy/bMotor folder
+		"""
+		# we will import user defined motor class using a string
+		# see: https://stackoverflow.com/questions/4821104/dynamic-instantiation-from-string-name-of-a-class-in-dynamically-imported-module
+		# on sutter this is x/y/x !!!
+		class_ = getattr(bMotor, motorName) # class_ is a module
+		class_ = getattr(class_, motorName) # class_ is a class
+		self.xyzMotor = class_(isReal=False)
+
 	def userEvent(self, event):
 		print('=== bCanvasApp.userEvent():', event)
 		if event == 'move stage right':
 			# todo: read current x/y move distance
-			thePos = self.xyzMotor.priorMove('right', 500) # the pos is (x,y)
+			thePos = self.xyzMotor.move('right', 500) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage left':
 			# todo: read current x/y move distance
-			thePos = self.xyzMotor.priorMove('left', 500) # the pos is (x,y)
+			thePos = self.xyzMotor.move('left', 500) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage front':
 			# todo: read current x/y move distance
-			thePos = self.xyzMotor.priorMove('front', 500) # the pos is (x,y)
+			thePos = self.xyzMotor.move('front', 500) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage back':
 			# todo: read current x/y move distance
-			thePos = self.xyzMotor.priorMove('back', 500) # the pos is (x,y)
+			thePos = self.xyzMotor.move('back', 500) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'read motor position':
 			# update the interface
-			x,y = self.xyzMotor.priorReadPos()
+			x,y = self.xyzMotor.readPosition()
 			self.motorToolbarWidget.xStagePositionLabel.setText(str(x))
 			self.motorToolbarWidget.yStagePositionLabel.setText(str(y))
 
@@ -133,7 +148,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			newVideoStack = bimpy.bStack(oneImagePath, loadImages=True)
 			# tweek header
 			# todo: this is not complete
-			xMotor,yMotor = self.xyzMotor.priorReadPos()
+			xMotor,yMotor = self.xyzMotor.readPosition()
 			#newVideoStack.header.header['bitDepth'] = 8
 			#newVideoStack.header.header['bitDepth'] = 8
 			newVideoStack.header.header['umWidth'] = umWidth

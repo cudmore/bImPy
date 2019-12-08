@@ -3,8 +3,12 @@
 
 import serial, time
 
-class bPrior:
+from bimpy.bMotor import bMotor
+
+class bPrior(bMotor):
 	def __init__(self, isReal=True):
+		bMotor.__init__(self, type='bPrior')
+
 		self.eol = '\r\n'
 		self.port = 'COM5'
 		self.timeout = 1 # seconddef
@@ -58,7 +62,7 @@ class bPrior:
 			resp = "111,222,333"
 		return resp
 
-	def priorReadPos(self):
+	def readPosition(self):
 		try:
 			if self.isReal:
 				# open port
@@ -75,15 +79,15 @@ class bPrior:
 				yPos = self.fake_y
 
 		except Exception as e:
-			print('exception in priorReadPos():', e)
+			print('exception in bPrior.readPosition():', e)
 			raise
 		finally:
 			self.close()
 
-		print('priorReadPos() returning:', xPos, yPos)
+		print('bPRior.priorReadPos() returning:', xPos, yPos)
 		return xPos, yPos
 
-	def priorMove(self, direction, umDistance):
+	def move(self, direction, umDistance):
 		"""
 		direction: str:  in ['left', 'right', 'front', 'back']
 		umDistance: int: Not sure on units yet
@@ -147,7 +151,7 @@ class bPrior:
 			self.close()
 
 		# not sure if timing with real motor will report correct position???
-		theRet = self.priorReadPos()
+		theRet = self.readPosition()
 		return theRet
 
 if __name__ == '__main__':
@@ -157,11 +161,11 @@ if __name__ == '__main__':
 
 	# test read position
 	if 0:
-		xPos, yPos = prior.priorReadPos()
+		xPos, yPos = prior.readPosition()
 		print('xPos:', xPos, 'yPos:', yPos)
 
 	# test move
 	if 1:
-		print('start posiiton:', prior.priorReadPos())
+		print('start posiiton:', prior.readPosition())
 		prior.priorMove('left', 100000)
-		print('end posiiton:', prior.priorReadPos())
+		print('end posiiton:', prior.readPosition())

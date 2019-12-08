@@ -6,7 +6,7 @@ from .bStackHeader import bStackHeader # this is not working?
 from .bCanvas import bCanvas
 from .bJavaBridge import bJavaBridge
 from .bWatchFolder import bWatchFolder
-from .bPrior import bPrior
+from .bMotor import bPrior
 
 # for napari plugin
 from .bAnalysis2 import bAnalysis2
