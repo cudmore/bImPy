@@ -300,9 +300,13 @@ class bCanvas:
 
 		with open(self._filePath) as f:
 			data = json.load(f)
+
+		'''
 		print(' ')
 		print ('bCanvas.load() loaded:')
 		print('data:', json.dumps(data, indent=4))
+		'''
+
 		# iterate through keys in data and take action
 		# e.g. ('canvasOptions', 'videofiles', 'scopefiles')
 		for key, item in data.items():

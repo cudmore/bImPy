@@ -26,7 +26,6 @@ from matplotlib.figure import Figure
 from matplotlib.backends import backend_qt5agg
 
 import bimpy
-#from bimpy.interface import bStackContrastWidget
 
 '''
 from bimpy import bStackContrastWidget
@@ -883,6 +882,8 @@ class bStackWidget(QtWidgets.QWidget):
 		self.mySliceSlider.setMaximum(self.mySimpleStack.numImages)
 		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numImages
 		self.mySliceSlider.setMinimum(0)
+		if self.mySimpleStack.numImages < 2:
+			self.mySliceSlider.setDisabled(True)
 		self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
 
 		self.myHBoxLayout2.addWidget(self.myStackView)
@@ -894,15 +895,19 @@ class bStackWidget(QtWidgets.QWidget):
 		#self.myVBoxLayout.addWidget(self.myStackView) #, stretch = 9)
 		self.myVBoxLayout.addLayout(self.myHBoxLayout2) #, stretch = 9)
 
+		# todo: Need to show/hide annotation table
 		self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
-		#self.verticalSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-
-
 		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) # stretch=10, not sure on the units???
-		#self.myHBoxLayout.addItem(self.verticalSpacer)
+		print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
+		if self.mySimpleStack.slabList is None:
+			self.annotationTable.hide()
+			self.showLeftControlBar = False
+		else:
+			pass
+			#self.annotationTable.hide()
+
 		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=7) # stretch=10, not sure on the units???
 
-		#self.connect(self.myHBoxLayout, QtCore.SIGNAL("dropped"), self.dropEvent)
 		'''
 		self.setFocusPolicy(QtCore.Qt.ClickFocus)
 		self.setFocus()
@@ -921,9 +926,12 @@ class bStackWidget(QtWidgets.QWidget):
 	def updateDisplayedWidgets(self):
 		# left control bar
 		if self.showLeftControlBar:
-			self.annotationTable.show()
+			# todo: fix this
+			if self.annotationTable is not None:
+				self.annotationTable.show()
 		else:
-			self.annotationTable.hide()
+			if self.annotationTable is not None:
+				self.annotationTable.hide()
 		# contrast bar
 		if self.showContrastBar:
 			self.myContrastWidget.show()
@@ -1013,6 +1021,16 @@ class bStackWidget(QtWidgets.QWidget):
 			self.mySimpleStack.setAnnotation('toggle bad edge', selectedEdge)
 			# force refresh of table, I need to use model/view/controller !!!!
 			self.annotationTable.refreshRow(selectedEdge)
+
+		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
+		elif event.text() == '[':
+			isVisible = self.annotationTable.isVisible()
+			if isVisible:
+				self.annotationTable.hide()
+				self.showLeftControlBar = False
+			else:
+				self.annotationTable.show()
+				self.showLeftControlBar = True
 
 		else:
 			print('bStackWidget.keyPressEvent() not handled', event.text())
@@ -1108,6 +1126,7 @@ class bStackWidget(QtWidgets.QWidget):
 
 if __name__ == '__main__':
 	import sys
+	#from bimpy.interface import bStackWidget
 
 	#path = '/Users/cudmore/box/DeepVess/data/invivo/20190613__0028.tif'
 	if len(sys.argv) == 2:

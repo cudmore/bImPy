@@ -1629,12 +1629,12 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		"""
 		called when user clicks on check box
 		"""
-		print('=== fileSelected_changed() item:', item, 'col:', col, 'is now checked:', item.checkState(0))
+		#print('=== fileSelected_changed() item:', item, 'col:', col, 'is now checked:', item.checkState(0))
 		column = 0
 		filename = item.text(column)
 		isNowChecked = item.checkState(column) # 0:not checked, 2:is checked
 		doShow = True if isNowChecked==2 else False
-		print('   telling self.myQGraphicsView.hideShowItem() filename:', filename, 'doShow:', doShow)
+		#print('   telling self.myQGraphicsView.hideShowItem() filename:', filename, 'doShow:', doShow)
 		self.myQGraphicsView.hideShowItem(filename, doShow)
 
 	def fileSelected_callback(self):
@@ -1735,7 +1735,7 @@ if __name__ == '__main__':
 		# make a new canvas and load what we just saved
 		savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		w2 = bCanvasApp(path=savedCanvasPath)
-		print('w2.optionsFile:', w2.optionsFile)
+		print('bCanvasApp.__main__() w2.optionsFile:', w2.optionsFile)
 		w2.resize(1024, 768)
 		w2.show()
 
