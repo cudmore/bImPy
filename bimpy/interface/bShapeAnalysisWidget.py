@@ -2,15 +2,22 @@
 	# Author: Robert Cudmore
 	# Date: 20191115
 
-	This is a napari plugin to manager a list of shapes and perform analysis
+	This is a napari plugin to manager a list of shapes and perform analysis.
+
+	For each image in a stack or time-series,
+		For 'line' shape, calculates the width from the intensity profile.
+		For 'rectangle' shape, calculates mean/min/max/sd/n
+
+	Saves/loads shape analysis dictionaries and image files (kymographs) in h5f file.
 
 	Requires:
 	 - bimpy.bShapeAnalysis
-	 
+
 	Todo:
 	 - rewrite code to use native napari plotting with VisPy, we are currently using PyQtGraph
 	 - Work with napari developers to create API to manage shapes (add, delete, move, drag vertex, etc. etc.)
 	 - Detatch from pImpy and make a simple 2 file standalone github repo (bShapeAnalysisWidget.py, bShapeAnalysis.py)
+
 	See:
 	 - [WIP] Histogram with 2-way LUT control #675
 	   https://github.com/napari/napari/pull/675
