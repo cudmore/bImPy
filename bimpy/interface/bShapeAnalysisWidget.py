@@ -1,5 +1,24 @@
-# Robert Cudmore
-# 20191115
+"""
+	# Author: Robert Cudmore
+	# Date: 20191115
+
+	This is a napari plugin to manager a list of shapes and perform analysis
+
+	Requires:
+	 - bimpy.bShapeAnalysis
+	 
+	Todo:
+	 - rewrite code to use native napari plotting with VisPy, we are currently using PyQtGraph
+	 - Work with napari developers to create API to manage shapes (add, delete, move, drag vertex, etc. etc.)
+	 - Detatch from pImpy and make a simple 2 file standalone github repo (bShapeAnalysisWidget.py, bShapeAnalysis.py)
+	See:
+	 - [WIP] Histogram with 2-way LUT control #675
+	   https://github.com/napari/napari/pull/675
+	 - Receive events on shape create and delete #720
+	   https://github.com/napari/napari/issues/720
+	 - Shape layer analysis plugin ... #719
+	   https://github.com/napari/napari/issues/719
+"""
 
 import os, time, json
 import numpy as np
@@ -13,11 +32,13 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 import napari
 
-import bimpy
+import bimpy # needed for bAnalysis2.py, the backend analysis for shapes
 
 class bShapeAnalysisWidget:
 	"""
 	handle interface of one shape roi at a time
+
+	uses bimpy.bShapeAnalysis for back end analysis
 	"""
 	#def __init__(self, napariViewer, path=None, myStack=None):
 	def __init__(self, napariViewer, imageLayer=None, imagePath=None):
@@ -35,10 +56,9 @@ class bShapeAnalysisWidget:
 		self.myImageLayer = imageLayer
 		self.path = imagePath
 
-		# difference image
-		self.filterImage()
+		self.filterImage() # filter the raw image for analysis
 
-		self.analysis = bimpy.bAnalysis2(self.imageData) # self.imageData is a property
+		self.analysis = bimpy.bShapeAnalysis(self.imageData) # self.imageData is a property
 
 		# make an empty shape layer
 		self.shapeLayer = self.napariViewer.add_shapes(
@@ -47,71 +67,95 @@ class bShapeAnalysisWidget:
 		self.shapeLayer.mode = 'select' #'select'
 		self.shapeLayer.metadata = []
 
-		#
-		# add shapes
-		#self.lineProfileImage = None
-		#self.FWHM = None
-
-		#self.defaultShapes() # use keyboard 'd'
-
+		"""
+		# not sure what these were doing ?
 		self.shapeLayer.events.mode.connect(self.layerChangeEvent)
 		self.shapeLayer.events.opacity.connect(self.layerChangeEvent)
 		self.shapeLayer.events.edge_width.connect(self.layerChangeEvent)
 		self.shapeLayer.events.face_color.connect(self.layerChangeEvent)
 		self.shapeLayer.events.edge_color.connect(self.layerChangeEvent)
-		# this event does not exist
+		# this event does not exist, todo: work with napari developers to implement
 		#self.shapeLayer.events.removed.connect(self.layerChangeEvent)
+		"""
 
 		# callback for user changing slices
 		self.napariViewer.dims.events.axis.connect(self.my_update_slider)
 
-		# keyboard 'l' will create a new line
+		self.mouseBindings() # map key strokes to funciton calls
+		self.keyboardBindings() # map mouse down/drag to function calls
+
+		self.buildPyQtGraphInterface() # build second window to show results of shape analysis
+
+	def mouseBindings(self):
+		#@self.shapeLayer.mouse_move_callbacks.append
+		@self.shapeLayer.mouse_drag_callbacks.append
+		def shape_mouse_move_callback(layer, event):
+			"""r espond to mouse_down """
+			self.myMouseDown_Shape(layer, event)
+
+		# this decorator cannot point to member function directly because it needs yield
+		# put inline function with yield right after decorator
+		# and then call member functions from within
+		@self.shapeLayer.mouse_drag_callbacks.append
+		def shape_mouse_drag_callback(layer, event):
+			### respond to click+drag """
+			#print('shape_mouse_drag_callback() event.type:', event.type, 'event.pos:', event.pos, '')
+			self.lineShapeChange_callback(layer, event)
+			yield
+
+			while event.type == 'mouse_move':
+				self.lineShapeChange_callback(layer, event)
+				yield
+
+	def keyboardBindings(self):
+		""" set up keyboard callbacks """
+
+		@self.shapeLayer.bind_key('h', overwrite=True)
+		def shape_user_keyboard_h(layer):
+			""" print help """
+			print('=== bShapeAnalysisWidget Help')
+			print('l: Create new line shape')
+			print('r: Create new rectangle shape')
+			print('Delete: Delete selected shape')
+			print('d: Load shapes from h5f file')
+			print('u: Update analysis on selected shape')
+			print('Command+Shift+L: Load h5f file (prompt user for file)')
+			print('Command+l: Load default h5f file (each .tif has corresponding h5f file)')
+			print('Command+s: Save default h5f file (each .tif has corresponding h5f file)')
+
 		@self.shapeLayer.bind_key('l', overwrite=True)
 		def shape_user_keyboard_l(layer):
-			print('shape_user_keyboard_l() layer:', layer)
+			""" create/add new line shape, user should not use napari icon to create shape """
+			print('=== shape_user_keyboard_l() layer:', layer)
 			self.addNewLine()
 
-		# keyboard p will create a new square
 		@self.shapeLayer.bind_key('r', overwrite=True)
 		def shape_user_keyboard_r(layer):
-			print('shape_user_keyboard_r() layer:', layer)
+			""" create/add new rectangle shape, user should not use napari icon to create shape """
+			print('=== shape_user_keyboard_r() layer:', layer)
 			self.addNewRectangle()
 
-		# keyboard 'Backspace' will delete selected shape
 		@self.shapeLayer.bind_key('Backspace', overwrite=True)
 		def shape_user_keyboard_Backspace(layer):
-			print('shape_user_keyboard_Backspace() layer:', layer)
-			print('   ', self._getSelectedShape())
-			self.shapeLayer.remove_selected()
+			""" delete selected shape """
+			print('=== shape_user_keyboard_Backspace() layer:', layer)
+			self._deleteShape()
 
-		# keyboard 'u' will update selected shape through all slices/images
 		@self.napariViewer.bind_key('d')
 		def user_keyboard_d(viewer):
+			""" load default shapes """
 			self.defaultShapes()
 
 		@self.napariViewer.bind_key('u')
 		def user_keyboard_u(viewer):
-			"""
-			update analysis
-			"""
+			""" update analysis """
 			print('=== user_keyboard_u')
 			self.updateAnalysis()
 
 		'''
-		found delete_shape() and napari.layers.shapes.shapeList.remove()
-		in napari.layers.shapes.
-		def remove_selected(self):
-        	"""Remove any selected shapes."""
-        	to_remove = sorted(self.selected_data, reverse=True)
-        	for index in to_remove:
-            	self._data_view.remove(index)
-        	self.selected_data = []
-        	self._finish_drawing()
-		'''
-		# keyboard 'n' will spawn a new shape analysis plugin?
-		'''
 		@self.napariViewer.bind_key('n')
 		def user_keyboar_n(viewer):
+			""" spawn a new shape analysis plugin? """
 			print('=== user_keyboard_n')
 			# viewer.active_layer
 			#print('viewer.layers:', viewer.layers)
@@ -136,56 +180,38 @@ class bShapeAnalysisWidget:
 			print('=== user_keyboard_s')
 			self.save()
 
-		#
-		#
-		#@self.shapeLayer.mouse_move_callbacks.append
-		@self.shapeLayer.mouse_drag_callbacks.append
-		def shape_mouse_move_callback(layer, event):
-			"""respond to mouse_down
-			"""
-			self.myMouseDown_Shape(layer, event)
-
-		# this decorator cannot point to member function directly because it needs yield
-		# put inline function with yield right after decorator
-		# and then call member functions from within
-		@self.shapeLayer.mouse_drag_callbacks.append
-		def shape_mouse_drag_callback(layer, event):
-			#print('shape_mouse_drag_callback() event.type:', event.type, 'event.pos:', event.pos, '')
-			self.lineShapeChange_callback(layer, event)
-			yield
-
-			while event.type == 'mouse_move':
-				self.lineShapeChange_callback(layer, event)
-				yield
-
-		self.buildPyQtGraphInterface()
-
 	def filterImage(self):
+		""" not working, just playing around """
 		print('filterImage() calculating the difference for 3d image:', self.myImageLayer.data.shape)
 		startTime = time.time()
 		self.filtered = scipy.ndimage.gaussian_filter(self.myImageLayer.data, sigma=1)
 		#self.filtered = scipy.ndimage.median_filter(self.myImageLayer.data, size=3)
 
+		"""
 		print('   self.myImageLayer.data.dtype:', self.myImageLayer.data.dtype)
 		print('   self.filtered.dtype:', self.filtered.dtype)
 		self.difference = None
-		'''
+		"""
+
+		"""
 		self.difference = np.ndarray(shape=self.filtered.shape, dtype=np.int16) #np.ndarray(self.filtered.shape)
 		for idx, slice in enumerate(range(self.difference.shape[0])):
 			if idx>3:
 				self.difference[idx,:,:] = self.filtered[idx,:,:] - self.filtered[idx-4,:,:]
 			print('   self.difference.dtype:', self.difference.dtype)
-		'''
+		"""
 
 		stopTime = time.time()
 		print('   took', round(stopTime-startTime,2), 'seconds')
 
+		"""
 		# append image to napari
 		self.differenceImage = self.napariViewer.add_image(
 			data = self.difference if self.difference is not None else self.filtered,
 			name=self.myImageLayer.name + '_diff',
 		)
 		print('   done')
+		"""
 
 	'''
 	def _defaultShapeDict(self):
@@ -198,7 +224,55 @@ class bShapeAnalysisWidget:
 		return shapeDict.copy()
 	'''
 
+	def _deleteShape(self):
+		""" Delete selected shape, from napari and from pyqtgraph"""
+
+		shapeType, index, data = self._getSelectedShape()
+
+		print('_deleteShape()')
+		print('   shapeType:', shapeType)
+		print('   index:', index) # absolute shape index
+		print('   data:', data)
+
+		# (1)
+		if shapeType == 'rectangle':
+			# we can't use index as it includes all shapes, we need index into rectangle to remove?
+			rectangleIndex = self._getRectangleIndex(index)
+			# before we delete, clear the plot
+			self.polygonMeanListPlot[rectangleIndex].setData([], [], connect='finite')
+			# remove the plot
+			self.polygonMeanListPlot.pop(rectangleIndex) # remove from self.polygonMeanListPlot
+
+		# order matters, this has to be after (1) above
+		self.shapeLayer.remove_selected() # remove from napari
+
+		# todo: this is not updating correctly, it is not removing the newly deleted rectangle analysis
+		self.updatePlots() #refresh plots
+
+	def _getRectangleIndex(self, shapeIndex):
+		"""
+		Given the absolute index of a shape, return the index based on number of rectangles
+
+		Parameters:
+			shapeIndex: absolute shape index
+		"""
+		theRectangleIndex = None
+		rectangleIdx = 0
+		for idx, shapeType in enumerate(self.shapeLayer.shape_types):
+			print('looking for rectangle at shapeIndex:', shapeIndex, 'idx:', idx, 'shapeType:', shapeType)
+			if shapeType == 'rectangle':
+				if idx == shapeIndex:
+					theRectangleIndex = rectangleIdx
+					break
+				rectangleIdx += 1
+		print('_getRectangleIndex() returning theRectangleIndex:', theRectangleIndex)
+		return theRectangleIndex
+
 	def _addNewShape(self, shapeDict):
+		""" Add a new shape
+
+		todo: write function to return well defined shapeDict
+		"""
 		self.shapeLayer.add(
 			data = shapeDict['data'],
 			shape_type = shapeDict['shape_type'],
@@ -270,10 +344,14 @@ class bShapeAnalysisWidget:
 
 	def save(self):
 		"""
+		Save all shapes and analysis to a h5f file
+
 		todo: save each of (shape_types, edge_colors, etc) as a group attrs rather than a dict
 		"""
 		print('=== bShapeAnalysisWidget.save()')
 		#print(type(self.shapeLayer.data[0]))
+
+		# create a dict for each shape/roi
 		shapeList = []
 		for idx, shapeType in enumerate(self.shapeLayer.shape_types):
 			#print('   idx:', idx, shapeType)
@@ -297,6 +375,7 @@ class bShapeAnalysisWidget:
 				print('***', k, v, type(v))
 			'''
 
+		# write each shape dict to an h5f file
 		h5File = self._getSavePath()
 		print('writing', len(shapeList), 'shapes to file:', h5File)
 		#h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
@@ -319,7 +398,9 @@ class bShapeAnalysisWidget:
 					shapeGroup.create_dataset(newGroup, data=v)
 
 	def load(self):
-		#h5File = self.myImageLayer.name + '_shapeAnalysis.h5'
+		"""
+		Load shapes and analysis from h5f file
+		"""
 		h5File = self._getSavePath()
 		print('=== bShapeAnalysisWidget.load() file:', h5File)
 		shape_type = []
@@ -378,7 +459,7 @@ class bShapeAnalysisWidget:
 		'''
 
 		# create a shape from what we loaded
-		print('\n=== ===  appending', len(linesList), 'loaded shapes to shapes layer')
+		print('=== Appending', len(linesList), 'loaded shapes to shapes layer')
 
 		# metadata is a special case
 		#self.shapeLayer.metadata = metadataList
@@ -403,6 +484,7 @@ class bShapeAnalysisWidget:
 			edge_width = edge_width,
 			)
 
+		#self.updatePlots()
 
 	def buildPyQtGraphInterface(self):
 		#
@@ -478,7 +560,7 @@ class bShapeAnalysisWidget:
 		#self.analysisPolygonMin = self.polygonPlotItem.plot(name='analysisPolygonMin')
 		#self.analysisPolygonMax = self.polygonPlotItem.plot(name='analysisPolygonMax')
 
-		# all polygon mean across all rois
+		# all polygon mean across all shapes/rois
 		self.polygonMeanListPlot = []
 		#self.polygonMeanListPlot.append(self.polygonPlotItem.plot(name='polygonMeanListPlot'))
 
@@ -501,12 +583,19 @@ class bShapeAnalysisWidget:
 		#self.pgWin.addItems(w)
 		'''
 
+	'''
 	def layerChangeEvent(self, event):
+		""" todo: not sure what the purpose of this was? """
 		print(time.time(), 'layerChangeEvent() event.type:', event.type)
 		respondToTheseEvents = ['edge_width']
+	'''
 
 	@property
 	def imageData(self):
+		""" return image data for analysis
+
+		should be using a filtered image
+		"""
 		#return self.myImageLayer.data
 		return self.filtered
 
@@ -641,13 +730,27 @@ class bShapeAnalysisWidget:
 	def updatePlots(self, index=None):
 		"""
 		update plots based on current selection
+
+		todo: The logic here is all screwed up. We need to update even if there is not a selection !!!!
+
+		This needs to update (1) a line based on selection and (2) all rectangle shapes/roi, regardless of selection
 		"""
+
 		print('updatePlots() index:', index)
 
 		shapeType, index, data = self._getSelectedShape()
+
+		# on delete, these will all be None
+		print('   shapeType:', shapeType)
+		print('   index:', index)
+		print('   data:', data)
+
+		'''
 		if index is None:
 			# no shape selection
 			return
+		'''
+
 		# plot
 		if shapeType == 'line':
 			print('   updating line at index:', index)
@@ -659,44 +762,48 @@ class bShapeAnalysisWidget:
 			lineKymograph = self.shapeLayer.metadata[index]['lineKymograph']
 			self.img.setImage(lineKymograph)
 		elif shapeType == 'rectangle':
+			#
+			# plot all rectangle polygonMean
+			#
 			print('   updating rectangle at index:', index)
 			polygonMean = self.shapeLayer.metadata[index]['polygonMean']
+
 			# normalize to first few points
 			tmpMean = np.nanmean(polygonMean[0:10])
 			polygonMean = polygonMean / tmpMean * 100
 			polygonMean += index * 20
-			#print('   polygonMean.shape:', polygonMean.shape)
 
 			xPlot = np.asarray([slice for slice in range(len(polygonMean))])
 			self.analysisPolygonMean.setData(xPlot, polygonMean, connect='finite') # connect 'finite' will make nan(s) disjoint
 
-			#
-			# plot all rectangle polygonMean
-			#
-			# first clear all
-			for idx in range(len(self.polygonMeanListPlot)):
-				self.polygonMeanListPlot[idx].setData([], [], connect='finite')
-			# then replot
-			for idx, type in enumerate(self.shapeLayer.shape_types):
-				if type == 'rectangle':
-					if len(self.polygonMeanListPlot)-1 < idx:
-						self.polygonMeanListPlot.append(self.polygonPlotItem.plot(pen=(255,0,0), name='polygonMeanListPlot'+str(idx)))
-					if idx == index:
-						# skip the one that is slected, plotted above in white
-						continue
-					print('appending rectangle for shape idx:', idx)
-					polygonMean = self.shapeLayer.metadata[idx]['polygonMean']
-					xPlot = np.asarray([slice for slice in range(len(polygonMean))])
-					#print(idx, 'polygonMean.shape:', polygonMean.shape)
-					if len(polygonMean)<1:
-						continue
-					# normalize to first few points
-					tmpMean = np.nanmean(polygonMean[0:10])
-					polygonMean = polygonMean / tmpMean * 100
-					polygonMean += idx * 20
+		# first clear all
+		for idx in range(len(self.polygonMeanListPlot)):
+			self.polygonMeanListPlot[idx].setData([], [], connect='finite')
+		# then replot
+		numRectangle = 0 # keep track of rectangle number 0, 1, 2, ... to index into self.polygonMeanListPlot
+		for idx, type in enumerate(self.shapeLayer.shape_types):
+			if type == 'rectangle':
+				#numRectangle += 1
+				if len(self.polygonMeanListPlot)-1 < numRectangle:
+					self.polygonMeanListPlot.append(self.polygonPlotItem.plot(pen=(255,0,0), name='polygonMeanListPlot'+str(idx)))
+				if idx == index:
+					# skip the one that is selected, plotted above in white
+					continue
+				print('   appending rectangle for shape idx:', idx)
+				polygonMean = self.shapeLayer.metadata[idx]['polygonMean']
+				xPlot = np.asarray([slice for slice in range(len(polygonMean))])
+				#print(idx, 'polygonMean.shape:', polygonMean.shape)
+				if len(polygonMean)<1:
+					continue
+				# normalize to first few points
+				tmpMean = np.nanmean(polygonMean[0:10])
+				polygonMean = polygonMean / tmpMean * 100
+				polygonMean += idx * 20
 
-					self.polygonMeanListPlot[idx].setData(xPlot, polygonMean, connect='finite')
-			#self.analysisPolygonMean.setData(xPlotList, polygonMeanList, connect='finite') # connect 'finite' will make nan(s) disjoint
+				print('   DEBUG: idx:', idx, 'len(self.polygonMeanListPlot):', len(self.polygonMeanListPlot))
+				self.polygonMeanListPlot[numRectangle].setData(xPlot, polygonMean, connect='finite')
+
+				numRectangle += 1
 
 	def updateAnalysis(self):
 		shapeType, index, data = self._getSelectedShape()
@@ -800,7 +907,7 @@ if __name__ == '__main__':
 		# path to a tif file. Assuming it is 3D with dimensions of (slice, rows, cols)
 		path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
 		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit_cropped.tif'
-		path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
+		#path = '/Volumes/t3/20191105(Tie2Cre-GCaMP6f)/ISO_IN_500nM_8bit.tif'
 		filename = os.path.basename(path)
 		title = filename
 		viewer = napari.Viewer(title=title)

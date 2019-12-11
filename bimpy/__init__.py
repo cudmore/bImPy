@@ -9,7 +9,7 @@ from .bWatchFolder import bWatchFolder
 from .bMotor import bPrior
 
 # for napari plugin
-from .bAnalysis2 import bAnalysis2
+from .bShapeAnalysis import bShapeAnalysis
 
 '''
 from .interface.bStackContrastWidget import bStackContrastWidget
