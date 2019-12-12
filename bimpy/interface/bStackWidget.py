@@ -29,6 +29,7 @@ import bimpy
 
 '''
 from bimpy import bStackContrastWidget
+from bimpy import bStackContrastWidget
 from bimpy import bStackFeebackWidget
 from bimpy import bStack
 #from bSimpleStack import bSimpleStack

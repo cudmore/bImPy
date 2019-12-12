@@ -11,8 +11,8 @@ from .bMotor import bPrior
 # for napari plugin
 from .bShapeAnalysis import bShapeAnalysis
 
-'''
 from .interface.bStackContrastWidget import bStackContrastWidget
+'''
 from .interface.bStackFeebackWidget import bStackFeebackWidget
 from .interface.bStackWidget import bStackWidget
 from .interface.bCanvasApp import bCanvasApp
