@@ -54,11 +54,12 @@ for idx, tmpx in enumerate(x):
 	if np.isnan(tmpx):
 		# next idx is new edge
 		#print(idx, 'currentEdgeList:', currentEdgeList)
-		masterEdgeList.append(np.asarray(currentEdgeList))
-		currentEdgeIdx += 1
+		masterEdgeList.append(currentEdgeList)
 		# debug
-		if currentEdgeIdx == 1:
+		if currentEdgeIdx == 0:
 			print('idx:', idx, 'currentEdgeIdx:', currentEdgeIdx, np.array(currentEdgeList))
+		# reset
+		currentEdgeIdx += 1
 		currentEdgeList = []
 			
 		# colors
@@ -72,10 +73,20 @@ for idx, tmpx in enumerate(x):
 
 	myPointColors.append(pointColorList[pointColorIdx])
 
-print('masterEdgeList[0].shape:', masterEdgeList[0].shape)
-myPath0 = np.asarray(masterEdgeList)
-print('myPath0.shape:', myPath0.shape)
-	
+print('masterEdgeList:', len(masterEdgeList))
+print('masterEdgeList[0]:', len(masterEdgeList[0]))
+arrayList  = [np.array(xx) for xx in masterEdgeList]
+print('arrayList:', len(arrayList))
+print('arrayList[0].shape:', arrayList[0].shape)
+myPath0 = np.array(arrayList)
+print('type(myPath0):', type(myPath0), 'myPath0.shape:', myPath0.shape)
+print('myPath0[0]:', myPath0[0])
+
+myPath0 = arrayList # always give napari a list where each[i] is a np.array ???
+
+edge_width0 = 3
+edge_color0 = 'red'
+
 #
 # dead ends in red
 deadEndx = myStack.slabList.deadEndx.reshape((-1,1))
@@ -103,7 +114,7 @@ with napari.gui_qt():
 	viewer = napari.view_image(myStack.stack, name='vessellucida', scale=scale)
 	
 	# add the points
-	pointLayer = viewer.add_points(xyzPoints, size=myPointSize, edge_color=myPointColors, face_color=myPointColors)
+	#pointLayer = viewer.add_points(xyzPoints, size=myPointSize, edge_color=myPointColors, face_color=myPointColors)
 
 	deadEndSize = 4
 	deadEndColor = 'red'
@@ -112,5 +123,5 @@ with napari.gui_qt():
 	#print(pointLayer.face_colors)
 
 	layer = viewer.add_shapes(
-		myPath, shape_type='path', edge_width=edge_width, edge_color=['red', 'blue']
+		myPath0, shape_type='path', edge_width=edge_width0, edge_color=edge_color0
 	)	
