@@ -8,7 +8,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 
 import bimpy
-from bimpy.interface import bShapeAnalysisWidget
+#from bimpy.interface import bShapeAnalysisWidget
 import napari
 
 class bNapari:
@@ -45,7 +45,8 @@ class bNapari:
 		#
 		#
 		# replace all the above with this !!!
-		self.bShapeAnalysisWidget = bShapeAnalysisWidget(self.viewer, self.myStack)
+		# abb 20191216 removed
+		#self.bShapeAnalysisWidget = bShapeAnalysisWidget(self.viewer, self.myStack)
 		#
 		#
 

@@ -11,7 +11,10 @@ class bSlabList:
 	This should work for both Vesselucida and output of DeepVess
 	"""
 	def __init__(self, tifPath):
-
+		"""
+		tifPath : full file path to Tiff file
+		"""
+		
 		self.tifPath = tifPath
 
 		# nodes
