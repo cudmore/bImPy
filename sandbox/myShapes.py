@@ -13,6 +13,9 @@ myPointColors = [0.0, 1.0, 1.0] #'cyan'
 #path = '/Users/cudmore/Sites/bImpy-Data/vesselucida/20191017__0001.tif'
 path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
 path = '/Users/cudmore/box/data/bImpy-Data/OCTa/PV_Crop_Reslice.tif'
+
+path = 'D:/Users/cudmore/data/vessellucida/20191017__0001.tif'
+
 myStack = bimpy.bStack(path=path)
 
 print('=== NAPARI')

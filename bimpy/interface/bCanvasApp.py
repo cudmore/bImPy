@@ -88,7 +88,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		# on sutter this is x/y/x !!!
 		class_ = getattr(bMotor, motorName) # class_ is a module
 		class_ = getattr(class_, motorName) # class_ is a class
-		self.xyzMotor = class_(isReal=False)
+		self.xyzMotor = class_(isReal=True)
 
 	def userEvent(self, event):
 		print('=== bCanvasApp.userEvent():', event)
@@ -506,6 +506,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			umWidth = videoFile.header.header['umWidth']
 			umHeight = videoFile.header.header['umHeight']
 
+			# 20191217, why did I have to add this???
+			xMotor = float(xMotor)
+			yMotor = float(yMotor)
+			
 			#videoImage = videoFile.getVideoImage() # ndarray
 			videoImage = videoFile.getImage() # ndarray
 			imageStackHeight, imageStackWidth = videoImage.shape
@@ -738,6 +742,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		umWidth = newVideoStack.header.header['umWidth']
 		umHeight = newVideoStack.header.header['umHeight']
 
+		xMotor = float(xMotor)
+		yMotor = float(yMotor)
+		print('appendVideo xMotor:', xMotor, 'yMotor:', yMotor)
+		
 		#videoImage = videoFile.getVideoImage() # ndarray
 		videoImage = newVideoStack.getImage() # ndarray
 		imageStackHeight, imageStackWidth = videoImage.shape
@@ -1036,7 +1044,14 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		x = x
 		y = y - self.fontSize/2
 
-		self.setPos(x,y)
+		print('myCrosshair x:', x, 'y:', y)
+		
+		newPnt = self.mapToScene(x, y)
+		
+		print('   after mapToScene x:', newPnt.x(), 'y:', newPnt.y())
+
+		#self.setPos(x,y)
+		self.setPos(newPnt)
 
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
@@ -1246,7 +1261,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		icon  = QtGui.QIcon(iconPath)
 		frontButton = QtWidgets.QPushButton()
 		frontButton.setIcon(icon)
-		frontButton.setToolTip('Move stage back')
+		frontButton.setToolTip('Move stage front')
 		frontButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		grid.addWidget(leftButton, 1, 0) # row, col
@@ -1270,7 +1285,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		# we will need to set these from code
 		xStagePositionLabel_ = QtWidgets.QLabel("X (um)")
 		self.xStagePositionLabel = QtWidgets.QLabel("None")
-		yStagePositionLabel_ = QtWidgets.QLabel("None")
+		yStagePositionLabel_ = QtWidgets.QLabel("Y (um)")
 		self.yStagePositionLabel = QtWidgets.QLabel("Y (um)")
 
 		gridReadPosition.addWidget(readPositionButton, 0, 0) # row, col
@@ -1734,6 +1749,7 @@ if __name__ == '__main__':
 
 		# make a new canvas and load what we just saved
 		savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
+		savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		w2 = bCanvasApp(path=savedCanvasPath)
 		print('bCanvasApp.__main__() w2.optionsFile:', w2.optionsFile)
 		w2.resize(1024, 768)
