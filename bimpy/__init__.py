@@ -3,10 +3,10 @@ from .bAnalysis import bAnalysis
 from .bSlabList import bSlabList # this is not working?
 from .bFileUtil import bFileUtil
 from .bStackHeader import bStackHeader # this is not working?
-from .bCanvas import bCanvas
 from .bJavaBridge import bJavaBridge
-from .bWatchFolder import bWatchFolder
-from .bMotor import bPrior
+#from .bCanvas import bCanvas
+#from .bWatchFolder import bWatchFolder
+#from .bMotor import bPrior
 
 # for napari plugin
 #from .bShapeAnalysis import bShapeAnalysis

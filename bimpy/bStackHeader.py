@@ -79,7 +79,8 @@ class bStackHeader:
 		elif path.endswith('.oir'):
 				self.readOirHeader()
 		else:
-			print('warning: bStackHeader.__init__() did not load header')
+			#print('warning: bStackHeader.__init__() did not load header')
+			pass
 
 	'''
 	def getHeaderFromDict(self, igorImportDict):
@@ -155,10 +156,12 @@ class bStackHeader:
 		elif 'bitsPerPixel' in self.header.keys():
 			bitDepth = self.header['bitsPerPixel']
 		if type(bitDepth) == str:
-			print('   error: bStackHeader.bitDepth @property found str bitDepth/bitsperpixel: ""', bitDepth, '"', self.path)
+			# todo: put this back in
+			#print('   error: bStackHeader.bitDepth @property found str bitDepth/bitsperpixel: ""', bitDepth, '"', self.path)
 			bitDepth = int(bitDepth)
 		if bitDepth is None or bitDepth=='':
-			print('   error: bStackHeader.bitDepth @property got bad (None or "") bitDepth:', bitDepth, 'returning 8, path:', self.path)
+			# todo: put this back in
+			#print('   error: bStackHeader.bitDepth @property got bad (None or "") bitDepth:', bitDepth, 'returning 8, path:', self.path)
 			bitDepth = 8
 		#print('type(bitDepth):', type(bitDepth), bitDepth, self.path)
 		return bitDepth
@@ -168,7 +171,7 @@ class bStackHeader:
 	def _loadHeaderFromConverted(self, convertedStackHeaderPath):
 		"""Load header from coverted header .txt file"""
 
-		print('bStackHeader._loadHeaderFromConverted() convertedStackHeaderPath:', convertedStackHeaderPath)
+		#print('bStackHeader._loadHeaderFromConverted() convertedStackHeaderPath:', convertedStackHeaderPath)
 		# clear our existing header
 		self.initHeader()
 
@@ -294,7 +297,7 @@ class bStackHeader:
 
 	def assignToShape(self, stack):
 		"""shape is (channels, slices, x, y)"""
-		print('=== === bStackHeader.assignToShape()')
+		#print('=== === bStackHeader.assignToShape()')
 		shape = stack.shape
 		if len(shape)==3:
 			# single plane image
@@ -315,7 +318,8 @@ class bStackHeader:
 		bitDepth = self.bitDepth # this will trigger warning if not already assigned
 		#if bitDepth is not None:
 		if type(self.bitDepth) is not 'NoneType':
-			print('bStackHeader.assignToShape() bitDepth is already', self.bitDepth, type(self.bitDepth))
+			#print('bStackHeader.assignToShape() bitDepth is already', self.bitDepth, type(self.bitDepth))
+			pass
 		else:
 			dtype = stack.dtype
 			if dtype == 'uint8':

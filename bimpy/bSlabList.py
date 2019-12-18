@@ -112,7 +112,7 @@ class bSlabList:
 		slabFilePath += '_slabs.txt'
 
 		if not os.path.isfile(slabFilePath):
-			print('bSlabList warning, did not find DeepVess slabFilePath:', slabFilePath)
+			#print('bSlabList warning, did not find DeepVess slabFilePath:', slabFilePath)
 			pass
 		else:
 			df = pd.read_csv(slabFilePath)
@@ -176,7 +176,7 @@ class bSlabList:
 		xmlFilePath, ext = os.path.splitext(self.tifPath)
 		xmlFilePath += '.xml'
 		if not os.path.isfile(xmlFilePath):
-			print('bSlabList.loadVesselucida_xml() warning, did not find', xmlFilePath)
+			#print('bSlabList.loadVesselucida_xml() warning, did not find', xmlFilePath)
 			return
 
 		print('loadVesselucida_xml() file', xmlFilePath)

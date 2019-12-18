@@ -328,9 +328,9 @@ class bStack:
 			print('loadMax() ERROR max file in:', maxFile, 'path:', self.path)
 			return None
 
-	def loadStack(self):
+	def loadStack(self, verbose=False):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
-		print('   bStack.loadStack()', self.path)
+		if verbose: print('   bStack.loadStack()', self.path)
 
 		self.loadHeader()
 
@@ -349,7 +349,7 @@ class bStack:
 		'''
 		if channels is None:
 			channels = 1
-			print('error: bStack.loadStack() -->> None channels -->> set channels = 1')
+			#print('error: bStack.loadStack() -->> None channels -->> set channels = 1')
 
 		#self.stack = np.zeros((channels, slices, rows, cols), dtype=np.int16)
 
@@ -357,25 +357,30 @@ class bStack:
 
 		# if it is a Tiff file use tifffile, otherwise, use bioformats
 		if self.path.endswith('.tif'):
-			print('   bStack.loadStack() is using tifffile...')
+			if verbose: print('   bStack.loadStack() is using tifffile...')
 			with tifffile.TiffFile(self.path) as tif:
-				tag = tif.pages[0].tags['XResolution']
-				#print('   XResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
-				if tag.value[0]>0 and tag.value[1]>0:
-					xVoxel = tag.value[1] / tag.value[0]
-				else:
-					#print('   error, got zero tag value?')
-					xVoxel = 1
-				print('   xVoxel from XResolutions:', xVoxel)
+				xVoxel = 1
+				yVoxel = 1
+				try:
+					tag = tif.pages[0].tags['XResolution']
+					#print('   XResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+					if tag.value[0]>0 and tag.value[1]>0:
+						xVoxel = tag.value[1] / tag.value[0]
+					else:
+						#print('   error, got zero tag value?')
+						xVoxel = 1
+						if verbose: print('   xVoxel from XResolutions:', xVoxel)
 
-				tag = tif.pages[0].tags['YResolution']
-				#print('   YResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
-				if tag.value[0]>0 and tag.value[1]>0:
-					yVoxel = tag.value[1] / tag.value[0]
-				else:
-					#print('   error, got zero tag value?')
-					yVoxel = 1
-				print('   yVoxel from YResolutions:', yVoxel)
+					tag = tif.pages[0].tags['YResolution']
+					#print('   YResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
+					if tag.value[0]>0 and tag.value[1]>0:
+						yVoxel = tag.value[1] / tag.value[0]
+					else:
+						#print('   error, got zero tag value?')
+						yVoxel = 1
+						if verbose: print('   yVoxel from YResolutions:', yVoxel)
+				except (KeyError) as e:
+					if verbose: print('KeyError exception reading XResolution/YResolution from TIff')
 
 				#print('   tif.imagej_metadata:', tif.imagej_metadata)
 				#print('   tif.tags:', tif.is_nih)
@@ -385,7 +390,7 @@ class bStack:
 				thisChannel = 0
 				loaded_shape = tif.asarray().shape
 				loaded_dtype = tif.asarray().dtype
-				print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype)
+				if verbose: print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype)
 				newShape = (channels,) + loaded_shape
 				self.stack = np.zeros(newShape, dtype=loaded_dtype)
 
@@ -396,11 +401,11 @@ class bStack:
 					#3d stack
 					self.stack[thisChannel, :, :, :] = tif.asarray()
 				else:
-					print('   error: got bad shape:', loaded_shape)
+					if verbose: print('   error: got bad shape:', loaded_shape)
 				self.header.assignToShape(self.stack)
-				print('      after load tiff, self.stack.shape:', self.stack.shape)
+				#print('      after load tiff, self.stack.shape:', self.stack.shape)
 		else:
-			print('   bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
+			if verbose: print('   bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
 			#with bioformats.GetImageReader(self.path) as reader:
 			with bioformats.ImageReader(self.path) as reader:
 				for channelIdx in range(self.numChannels):
