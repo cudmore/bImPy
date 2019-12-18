@@ -84,7 +84,9 @@ class bPrior(bMotor):
 		finally:
 			self.close()
 
-		print('bPRior.priorReadPos() returning:', xPos, yPos)
+		xPos = float(xPos)
+		yPos = float(yPos)
+		print('bPrior.priorReadPos() returning:', xPos, yPos)
 		return xPos, yPos
 
 	def move(self, direction, umDistance):

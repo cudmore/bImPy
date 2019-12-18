@@ -88,7 +88,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		# on sutter this is x/y/x !!!
 		class_ = getattr(bMotor, motorName) # class_ is a module
 		class_ = getattr(class_, motorName) # class_ is a class
-		self.xyzMotor = class_(isReal=True)
+		self.xyzMotor = class_(isReal=gMotorIsReal)
 
 	def userEvent(self, event):
 		print('=== bCanvasApp.userEvent():', event)
@@ -131,7 +131,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 				subprocess.Popen(["xdg-open", path])
 
 		elif event == 'Grab Image':
-			print('bCanvasApp.userEvent() event:', event)
+			print('=== bCanvasApp.userEvent() event:', event)
 			# load .tif file that is being repeatdely saved by bCamera
 			# grab (videoWidth, videoHeight) fropm options
 			codeFolder = self.getCodeFolder()
@@ -509,7 +509,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			# 20191217, why did I have to add this???
 			xMotor = float(xMotor)
 			yMotor = float(yMotor)
-			
+
 			#videoImage = videoFile.getVideoImage() # ndarray
 			videoImage = videoFile.getImage() # ndarray
 			imageStackHeight, imageStackWidth = videoImage.shape
@@ -744,8 +744,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		xMotor = float(xMotor)
 		yMotor = float(yMotor)
-		print('appendVideo xMotor:', xMotor, 'yMotor:', yMotor)
-		
+		print('myQGraphicsView.appendVideo() xMotor:', xMotor, 'yMotor:', yMotor)
+
 		#videoImage = videoFile.getVideoImage() # ndarray
 		videoImage = newVideoStack.getImage() # ndarray
 		imageStackHeight, imageStackWidth = videoImage.shape
@@ -851,7 +851,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#event.setAccepted(False)
 
 	def mouseMoveEvent(self, event):
-		#print('=== myQGraphicsView.mouseMoveEvent()')
+		print('=== myQGraphicsView.mouseMoveEvent() x:', event.x(), 'y:', event.y())
 		# this is critical, allows dragging view/scene around
 		super().mouseMoveEvent(event)
 		event.setAccepted(True)
@@ -1045,13 +1045,13 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		y = y - self.fontSize/2
 
 		print('myCrosshair x:', x, 'y:', y)
-		
-		newPnt = self.mapToScene(x, y)
-		
-		print('   after mapToScene x:', newPnt.x(), 'y:', newPnt.y())
 
-		#self.setPos(x,y)
-		self.setPos(newPnt)
+		#newPnt = self.mapToScene(x, y)
+
+		#print('   after mapToScene x:', newPnt.x(), 'y:', newPnt.y())
+
+		self.setPos(x,y)
+		#self.setPos(newPnt)
 
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
@@ -1732,6 +1732,8 @@ if __name__ == '__main__':
 	import traceback
 
 	try:
+		gMotorIsReal = False
+
 		#from bJavaBridge import bJavaBridge
 		myJavaBridge = bimpy.bJavaBridge()
 		myJavaBridge.start()
@@ -1749,7 +1751,7 @@ if __name__ == '__main__':
 
 		# make a new canvas and load what we just saved
 		savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
-		savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
+		#savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		w2 = bCanvasApp(path=savedCanvasPath)
 		print('bCanvasApp.__main__() w2.optionsFile:', w2.optionsFile)
 		w2.resize(1024, 768)

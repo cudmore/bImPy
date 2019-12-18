@@ -14,7 +14,7 @@ class bSlabList:
 		"""
 		tifPath : full file path to Tiff file
 		"""
-		
+
 		self.tifPath = tifPath
 
 		# nodes
@@ -84,9 +84,10 @@ class bSlabList:
 		return len(self.edgeDictList)
 
 	def _massage_xyz(self, x, y, z):
-		xUmPerPixel = 0.49718
-		yUmPerPixel = 0.49718
-		zUmPerSlice = 0.6 # Olympus .txt is telling us 0.4 ???
+		# todo: read this from header and triple check if valid, if not valid then us 1/1/1
+		xUmPerPixel = 1 #0.31074033574250315 #0.49718
+		yUmPerPixel = 1 # 0.31074033574250315 #0.49718
+		zUmPerSlice = 1 #0.5 #0.6 # Olympus .txt is telling us 0.4 ???
 		zOffset = 0
 
 		# flip y

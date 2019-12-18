@@ -10,11 +10,15 @@ myPointSize = 2
 myPointColors = [[1.0, 0.1, 0.1], [0.1, 1.0, 0.1], [0.1, 0.1, 1.0]]
 myPointColors = [0.0, 1.0, 1.0] #'cyan'
 
+scale = (1,1,1)
+
 #path = '/Users/cudmore/Sites/bImpy-Data/vesselucida/20191017__0001.tif'
 path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
 path = '/Users/cudmore/box/data/bImpy-Data/OCTa/PV_Crop_Reslice.tif'
 
 path = 'D:/Users/cudmore/data/vessellucida/20191017__0001.tif'
+path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/high_mag_top_of_node/tracing_20191217.tif'
+scale = (0.5, 0.31074033574250315, 0.31074033574250315)
 
 myStack = bimpy.bStack(path=path)
 
@@ -122,8 +126,8 @@ print('myPath.shape:', myPath.shape)
 
 with napari.gui_qt():
 	# add the image
-	scale = (0.2, 0.2, 1)
-	scale = (1, 1, 1)
+	#scale = (0.2, 0.2, 1)
+	#scale = (1, 1, 1)
 	viewer = napari.view_image(myStack.stack, name='Vessel Viewer', scale=scale)
 
 	# add the points

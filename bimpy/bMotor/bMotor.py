@@ -14,6 +14,10 @@ class bMotor(object):
 		self._type = type
 
 	def readPosition(self):
+		"""
+		Returns:
+			(x,y): Tuple of float withx and y position, float
+		"""
 		pass
 
 	def move(direction, umDistance):
