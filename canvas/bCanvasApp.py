@@ -974,10 +974,10 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		#self.fake_y = -10079.0 #-20079.0 #-83
 		self.penSize = 15
 
-		self.xPos = -4811.0
-		self.yPos = -10079.0
-		self.width = 500.0
-		self.height = 500.0
+		self.xPos = None
+		self.yPos = None
+		self.width = 693.0
+		self.height = 433.0
 
 		#myRect = QtCore.QRectF(self.xPos, self.yPos, self.width, self.height)
 		# I really do not understand use of parent ???
@@ -996,25 +996,26 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 
 		#print('self.boundingRect():', self.boundingRect())
 
+	def setWidthHeight(self, width, height):
+		"""Use this to set different 2p zooms and video"""
+		pass
+
 	def setMotorPosition(self, xMotor, yMotor):
 		"""
 		update the crosshair to a new position
 		"""
-		print('myQGraphicsRectItem.setMotorPosition() xMotor:', xMotor, 'yMotor:', yMotor)
-		self.xPos = xMotor - self.width/2
-		self.yPos = yMotor - self.height/2
+		#print('myQGraphicsRectItem.setMotorPosition() xMotor:', xMotor, 'yMotor:', yMotor)
+		self.xPos = xMotor #- self.width/2
+		self.yPos = yMotor #- self.height/2
 
 		# BINGO, DO NOT USE setPos !!! Only use setRect !!!
 		#self.setPos(self.xPos, self.yPos)
 
 		self.setRect(self.xPos, self.yPos, self.width, self.height)
 
-		print('   self.pos():', self.pos())
-		print('   self.rect():', self.rect())
-
-		self.myCrosshair.setMotorPosition(xMotor, yMotor)
-		#self.myCrosshair.setPos(xMotor, yMotor)
-
+		xCrosshair = self.xPos + (self.width/2)
+		yCrosshair = self.yPos + (self.height/2)
+		self.myCrosshair.setMotorPosition(xCrosshair, yCrosshair)
 
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)
@@ -1033,10 +1034,8 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 
 		#painter.setOpacity(1.0)
 
-		#print('   drawCrosshairRect() is now self.boundingRect():', self.boundingRect())
-		#print('   drawCrosshairRect() is now self.rect():', self.rect())
-		print('   myQGraphicsRectItem.drawCrosshairRect():', self.pos().x(), self.pos().y())
-		painter.drawRect(self.boundingRect())
+		if self.xPos is not None and self.yPos is not None:
+			painter.drawRect(self.boundingRect())
 
 
 '''
@@ -1211,6 +1210,14 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		gridReadPosition.addWidget(self.yStagePositionLabel, 0, 4) # row, col
 
 		vBoxLayout.addLayout(gridReadPosition)
+
+		#
+		# center crosshair
+		buttonName = 'center canvas on motor position'
+		centerCrosshairButton = QtWidgets.QPushButton('+')
+		centerCrosshairButton.setToolTip('Center canvas on motor position crosshair')
+		centerCrosshairButton.clicked.connect(partial(self.on_button_click,buttonName))
+		vBoxLayout.addWidget(centerCrosshairButton)
 
 		#
 		# x/y step size
