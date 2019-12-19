@@ -52,6 +52,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.centralwidget = QtWidgets.QWidget(parent)
 		self.centralwidget.setObjectName("centralwidget")
 
+		# V Layout for | canvas | one line feedback
 		self.myQVBoxLayout = QtWidgets.QVBoxLayout(self.centralwidget)
 
 		self.title = 'Canvas'
@@ -64,6 +65,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.setMinimumSize(1024, 1024)
 		self.setWindowTitle(self.title)
 		self.setGeometry(self.left, self.top, self.width, self.height)
+
+		#
+		#
+		# 201912, need to load canvas first, ow myQGraphicsView will not populate
+		tmpPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
+		#self.load(thisFile=tmpPath)
+		#
+		#
 
 		# main view to hold images
 		self.myGraphicsView = myQGraphicsView(self.canvas, self)
@@ -256,9 +265,15 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			self.myStackList.append(tmp)
 
 	def save(self):
+		"""
+		Save the canvas
+		"""
 		self.canvas.save()
 
 	def load(self, thisFile = None):
+		"""
+		Load a canvas
+		"""
 		if thisFile is not None:
 			if os.path.isfile(thisFile):
 				self.canvas.load(thisFile=thisFile)
@@ -334,7 +349,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 	"""
 	#def __init__(self, fileName, index, myLayer, myQGraphicsView, parent=None):
 	def __init__(self, fileName, index, myLayer, parent=None):
-		super(QtWidgets.QGraphicsPixmapItem, self).__init__(parent)
+		super(myQGraphicsPixmapItem, self).__init__(parent)
 		#self.myQGraphicsView = myQGraphicsView
 		self._fileName = fileName
 		self._index = index # index into canvas list (list of either video or scope)
@@ -483,7 +498,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	Main canvas widget
 	"""
 	def __init__(self, theCanvas, parent=None):
-		super(QtWidgets.QGraphicsView, self).__init__(parent)
+		super(myQGraphicsView, self).__init__(parent)
 
 		self.myParentApp = parent
 		self.myCanvas = theCanvas
@@ -492,7 +507,9 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		#20191217
 		#self.myScene = QtWidgets.QGraphicsScene(self)
-		self.myScene = QtWidgets.QGraphicsScene()
+		#self.myScene = QtWidgets.QGraphicsScene()
+		myScene = QtWidgets.QGraphicsScene(self)
+		self.setScene(myScene)
 
 		# visually turn off scroll bars
 		self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -503,12 +520,12 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
 		# I want to set the initial videw of the scene to include all items ??????
-		#self.myScene.setSceneRect(QtCore.QRectF())
+		#myScene.setSceneRect(QtCore.QRectF())
 
 		# add an object at really small x/y
 		'''
 		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(-20000, -20000, 100, 100))
-		self.myScene.addItem(rect_item)
+		myScene.addItem(rect_item)
 		'''
 
 		numItems = 0 # used to stack items with item.setZValue()
@@ -545,10 +562,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixMapItem.setZValue(numItems)
 
 			# report
-			print('myQGraphicsView.__init__() added video image at xMotor:', xMotor, 'yMotor:', yMotor)
+			print('myQGraphicsView.__init__() added video image', fileName, 'at xMotor:', xMotor, 'yMotor:', yMotor)
 
 			# add to scene
-			self.myScene.addItem(pixMapItem)
+			self.scene().addItem(pixMapItem)
 
 			numItems += 1
 
@@ -602,7 +619,6 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixmap = QtGui.QPixmap(myQImage)
 			pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
 
-
 			# insert
 			#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
 			pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', parent=pixmap)
@@ -614,10 +630,13 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
 
 			pixMapItem.setShapeMode(QtWidgets.QGraphicsPixmapItem.BoundingRectShape)
-			print('pixMapItem.shapeMode():', pixMapItem.shapeMode())
+			print('   pixMapItem.shapeMode():', pixMapItem.shapeMode())
+
+			# report
+			print('myQGraphicsView.__init__() added scope image', fileName, 'at xMotor:', xMotor, 'yMotor:', yMotor)
 
 			# add to scene
-			self.myScene.addItem(pixMapItem)
+			self.scene().addItem(pixMapItem)
 			numItems += 1
 
 			'''
@@ -627,7 +646,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			rect_item = myQGraphicsRectItem('2P Squares Layer', QtCore.QRectF(xMotor, yMotor, width, height))
 			rect_item.setPen(myPen) #QBrush
 			rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
-			self.myScene.addItem(rect_item)
+			myScene.addItem(rect_item)
 			'''
 
 			'''
@@ -653,7 +672,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			pixMapItem.setPos(xMotor,yMotor)
 			#pixMapItem.setOpacity(0) # this works but we loose mouse click selection and bounding selection rect
 			pixMapItem.setVisible(True) # this works
-			self.myScene.addItem(pixMapItem)
+			myScene.addItem(pixMapItem)
 			'''
 
 			# 20191104 removed scope rectangles, try and just hide image but still show selection rectangle?
@@ -665,7 +684,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				rect_item.setPen(myPen) #QBrush
 				rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True) # we don't want to select rects?
 				rect_item.setZValue(numItems)
-				self.myScene.addItem(rect_item)
+				myScene.addItem(rect_item)
 				numItems += 1
 			'''
 
@@ -678,16 +697,26 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#self.myCrosshair = myQGraphicsRectItem(self)
 		self.myCrosshair = myQGraphicsRectItem()
 		self.myCrosshair.setZValue(numItems)
-		self.myScene.addItem(self.myCrosshair)
+		myScene.addItem(self.myCrosshair)
 
 		# add an object at really big x/y
 		'''
 		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(20000, 20000, 100, 100))
-		self.myScene.addItem(rect_item)
+		myScene.addItem(rect_item)
 		'''
 
 		self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
-		self.setScene(self.myScene)
+		#self.setScene(self.myScene)
+
+		tmpSceneRect = self.scene().sceneRect()
+		print('  myQGraphicsView() is done initializing. self.scene().sceneRect()',
+			tmpSceneRect.left(),
+			tmpSceneRect.top(),
+			tmpSceneRect.right(),
+			tmpSceneRect.bottom(),
+			)
+
+		self.ensureVisible(tmpSceneRect)
 
 	def appendScopeFile(self, newScopeFile):
 		"""
@@ -732,7 +761,6 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		pixmap = QtGui.QPixmap(myQImage)
 		pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
 
-
 		# insert
 		#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
 		newIdx = 999 # do i use this???
@@ -749,7 +777,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		print('pixMapItem.shapeMode():', pixMapItem.shapeMode())
 
 		# add to scene
-		self.myScene.addItem(pixMapItem)
+		#self.myScene.addItem(pixMapItem)
+		self.scene().addItem(pixMapItem)
 
 		#numItems += 1
 
@@ -789,7 +818,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#pixMapItem.setZValue(tmpNumItems) # do i use this???
 
 		# add to scene
-		self.myScene.addItem(pixMapItem)
+		self.scene().addItem(pixMapItem)
 
 
 	def setSelectedItem(self, fileName):
@@ -799,7 +828,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		"""
 		print('   myQGraphicsView.setSelectedItem() fileName:', fileName)
 		selectThisItem = None
-		for item in self.myScene.items():
+		for item in self.scene().items():
 			# I don't want to select rect when showing both 2p max and rect
 			#print(item._fileName, isinstance(item, QtWidgets.QGraphicsPixmapItem)) # only select images, not rects
 			#print('   item.flags():', item.flags())
@@ -813,7 +842,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				selectThisItem = item
 		if selectThisItem is not None:
 			print('   myQGraphicsView.setSelectedItem:', selectThisItem, selectThisItem._fileName, selectThisItem.pos())
-		self.myScene.setFocusItem(selectThisItem)
+		self.scene().setFocusItem(selectThisItem)
 		selectThisItem.setSelected(True)
 
 	def hideShowItem(self, fileName, doShow):
@@ -823,7 +852,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		todo: if a layer is off then do not hide/show, better yet,
 		when layer is off, disable checkboxes in myToolbarWidget
 		"""
-		for item in self.myScene.items():
+		for item in self.scene().items():
 			if item._fileName == fileName:
 				# todo: need to ask the self.myCanvas if the layer is on !!!
 
@@ -840,7 +869,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		if hide/show thisLayer is '2p max layer' then set opacity of '2p max layer'
 		"""
 		print('myQGraphicsView.hideShowLayer()', thisLayer, isVisible)
-		for item in self.myScene.items():
+		for item in self.scene().items():
 			if item.myLayer == thisLayer:
 				# don't show items in this layer that are not visible
 				# not visible are files that are checked off in myToolbarWidget
@@ -859,7 +888,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		open a stack on a double-click
 		"""
 		print('=== myQGraphicsView.mouseDoubleClickEvent')
-		selectedItems = self.myScene.selectedItems()
+		selectedItems = self.scene().selectedItems()
 		if len(selectedItems) > 0:
 			selectedItem = selectedItems[0]
 			fileName = selectedItem._fileName
@@ -867,7 +896,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			self.myParentApp.openStack(fileName, layer)
 
 	def mousePressEvent(self, event):
-		print('=== myQGraphicsView.mousePressEvent()', event.x(), event.y())
+		scenePoint = self.mapToScene(event.x(), event.y())
+		print('=== myQGraphicsView.mousePressEvent() scene_x:', scenePoint.x(), 'scene_y:', scenePoint.y())
 		super().mousePressEvent(event)
 		#event.setAccepted(False)
 
@@ -882,7 +912,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		super().mouseReleaseEvent(event)
 
 		print('   tell the parent self.myParentApp (bCanvasApp) to select this file in its file list')
-		selectedItems = self.myScene.selectedItems()
+		selectedItems = self.scene().selectedItems()
 		#print('   selectedItems:', selectedItems)#event.setAccepted(False)
 		if len(selectedItems) > 0:
 			selectedItem = selectedItems[0]
@@ -971,7 +1001,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		"""
 		Get the currently selected item, return None if no selection
 		"""
-		selectedItems = self.myScene.selectedItems()
+		selectedItems = self.scene().selectedItems()
 		if len(selectedItems) > 0:
 			return selectedItems[0]
 		else:
@@ -987,7 +1017,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		"""
 		print('myQGraphicsView.changeOrder()', this)
 		if this == 'bring to front':
-			selectedItems = self.myScene.selectedItems()
+			selectedItems = self.scene().selectedItems()
 			if len(selectedItems) > 0:
 				print('   bring item to front:', selectedItems)
 				selectedItem = selectedItems[0]
@@ -995,7 +1025,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			else:
 				print('myQGraphicsView.changeOrder() did not find a selected item???')
 		elif this == 'send to back':
-			selectedItems = self.myScene.selectedItems()
+			selectedItems = self.scene().selectedItems()
 			if len(selectedItems) > 0:
 				print('   send item to back:', selectedItems)
 				selectedItem = selectedItems[0]
@@ -1128,7 +1158,7 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		self.drawCrosshairRect(painter)
 
 	def drawCrosshairRect(self, painter):
-		print('myQGraphicsRectItem.drawCrosshairRect()')
+		#print('myQGraphicsRectItem.drawCrosshairRect()')
 		self.focusbrush = QtGui.QBrush()
 
 		self.focuspen = QtGui.QPen(QtCore.Qt.DashLine) # SolidLine, DashLine
@@ -1140,9 +1170,9 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 
 		#painter.setOpacity(1.0)
 
-		print('   drawCrosshairRect() is now self.boundingRect():', self.boundingRect())
-		print('   drawCrosshairRect() is now self.rect():', self.rect())
-		print('   drawCrosshairRect() is now self.pos():', self.pos())
+		#print('   drawCrosshairRect() is now self.boundingRect():', self.boundingRect())
+		#print('   drawCrosshairRect() is now self.rect():', self.rect())
+		print('   myQGraphicsRectItem.drawCrosshairRect() is now self.pos():', self.pos().x(), self.pos().y())
 		#painter.drawRect(self.boundingRect())
 		#20191217
 		painter.drawRect(self.rect())
@@ -1778,7 +1808,7 @@ if __name__ == '__main__':
 		#savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		#w2 = bCanvasApp(path=savedCanvasPath)
 		w2 = bCanvasApp()
-		w2.load(thisFile=savedCanvasPath)
+		#w2.load(thisFile=savedCanvasPath)
 		print('bCanvasApp.__main__() w2.optionsFile:', w2.optionsFile)
 		w2.resize(1024, 768)
 		w2.show()

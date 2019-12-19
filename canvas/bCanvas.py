@@ -339,7 +339,7 @@ class bCanvas:
 							videoStack.header.header[headerStr] = headerValue
 						else:
 							# todo: put this back in
-							#print('warning: bCanvas.load() did not find VIdeoFile key "' + headerStr + '" in file', fileName)
+							#print('warning: bCanvas.load() did not find VideoFile key "' + headerStr + '" in file', fileName)
 							pass
 					#videoStack.loadStack() # load the actual video image
 
