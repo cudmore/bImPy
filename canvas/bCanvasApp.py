@@ -178,10 +178,13 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			print('   newVideoStack:', newVideoStack.print())
 
 			# save as (in canvas video folder)
-			numVideoFiles = len(self.canvas.videoFileList)
-			saveVideoFile = 'v' + self.canvas.enclosingFolder + '_' + str(numVideoFiles) + '.tif'
-			saveVideoPath = os.path.join(self.canvas.videoFolderPath, saveVideoFile)
-			newVideoStack.saveVideoAs(saveVideoPath)
+			try:
+				numVideoFiles = len(self.canvas.videoFileList)
+				saveVideoFile = 'v' + self.canvas.enclosingFolder + '_' + str(numVideoFiles) + '.tif'
+				saveVideoPath = os.path.join(self.canvas.videoFolderPath, saveVideoFile)
+				newVideoStack.saveVideoAs(saveVideoPath)
+			except (TypeError) as e:
+				print('error: exception while trying to save new video stack, canvas has no folder ... FIX THIS')
 
 			# append to canvas
 			#self.canvas.videoFileList.append(newVideoStack)
@@ -531,171 +534,21 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		numItems = 0 # used to stack items with item.setZValue()
 
 		for idx, videoFile in enumerate(theCanvas.videoFileList):
-			path = videoFile.path # todo: remove use of ._ ## fakeImages[image]['path']
-			fileName = videoFile._fileName
-			#videoFileHeader = videoFile.getHeader()
-			xMotor = videoFile.header.header['xMotor']
-			yMotor = videoFile.header.header['yMotor']
-			umWidth = videoFile.header.header['umWidth']
-			umHeight = videoFile.header.header['umHeight']
-
-			# 20191217, why did I have to add this???
-			xMotor = float(xMotor)
-			yMotor = float(yMotor)
-
-			#videoImage = videoFile.getVideoImage() # ndarray
-			videoImage = videoFile.getImage() # ndarray
-			imageStackHeight, imageStackWidth = videoImage.shape
-
-			myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
-			#myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_RGB32)
-
-			pixmap = QtGui.QPixmap(myQImage)
-			pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
-
-			# insert
-			#pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', self, parent=pixmap)
-			pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', parent=pixmap)
-			pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
-			pixMapItem.setToolTip(str(idx))
-			pixMapItem.setPos(xMotor,yMotor)
-			pixMapItem.setZValue(numItems)
-
-			# report
-			print('myQGraphicsView.__init__() added video image', fileName, 'at xMotor:', xMotor, 'yMotor:', yMotor)
-
-			# add to scene
-			self.scene().addItem(pixMapItem)
-
+			self.appendVideo(videoFile)
 			numItems += 1
 
 		# this is to load 2p file ... put back in
 		#for idx, image in enumerate(fakeTwoPImages.keys()):
 		for idx, scopeFile in enumerate(theCanvas.scopeFileList):
-			'''
-			print('scopeFile.header.prettyPrint():', scopeFile.header.prettyPrint())
-			print('   xMotor:', scopeFile.header.header['xMotor'])
-			print('   yMotor:', scopeFile.header.header['yMotor'])
-			print('   umWidth:', scopeFile.header.header['umWidth'])
-			print('   umHeight:', scopeFile.header.header['umHeight'])
-			'''
-
-			# THESE ARE FUCKING STRINGS !!!!!!!!!!!!!!!!!!!!
-			fileName = scopeFile._fileName
-			xMotor = scopeFile.header.header['xMotor']
-			yMotor = scopeFile.header.header['yMotor']
-			umWidth = scopeFile.header.header['umWidth']
-			umHeight = scopeFile.header.header['umHeight']
-			#print('umWidth:', umWidth, 'umHeight:', umHeight)
-
-			if xMotor == 'None':
-				xMotor = None
-			if yMotor == 'None':
-				yMotor = None
-
-			if xMotor is None or yMotor is None:
-				print('bCanvasApp.myQGraphicsView() not inserting scopeFile -->> xMotor or yMotor is None ???')
-				continue
-
-			# todo: specify channel (1,2,3,4,...)
-			stackMax = scopeFile.loadMax(channel=1, convertTo8Bit=True) # stackMax can be None
-			#imageStackHeight, imageStackWidth = stackMax.shape
-			imageStackWidth = scopeFile.pixelsPerLine
-			imageStackHeight = scopeFile.linesPerFrame
-			#print('imageStackWidth:', imageStackWidth, 'imageStackHeight:', imageStackHeight)
-
-			if stackMax is None:
-				print('myQGraphicsView.__init__() is making zero max image for scopeFile:', scopeFile)
-				stackMax = np.zeros((imageStackWidth, imageStackHeight), dtype=np.uint8)
-
-			myQImage = QtGui.QImage(stackMax, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
-
-			#
-			# try and set color
-			colors=[]
-			for i in range(256): colors.append(QtGui.qRgb(i/4,i,i/2))
-			myQImage.setColorTable(colors)
-
-			pixmap = QtGui.QPixmap(myQImage)
-			pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
-
-			# insert
-			#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
-			pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', parent=pixmap)
-			pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
-			pixMapItem.setToolTip(str(idx))
-			pixMapItem.setPos(xMotor,yMotor)
-			pixMapItem.setZValue(numItems)
-			# this also effects bounding rect
-			#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
-
-			pixMapItem.setShapeMode(QtWidgets.QGraphicsPixmapItem.BoundingRectShape)
-			print('   pixMapItem.shapeMode():', pixMapItem.shapeMode())
-
-			# report
-			print('myQGraphicsView.__init__() added scope image', fileName, 'at xMotor:', xMotor, 'yMotor:', yMotor)
-
-			# add to scene
-			self.scene().addItem(pixMapItem)
+			self.appendScopeFile(scopeFile)
 			numItems += 1
-
-			'''
-			# a rectangle
-			myPen = QtGui.QPen(QtCore.Qt.cyan)
-			myPen.setWidth(10)
-			rect_item = myQGraphicsRectItem('2P Squares Layer', QtCore.QRectF(xMotor, yMotor, width, height))
-			rect_item.setPen(myPen) #QBrush
-			rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
-			myScene.addItem(rect_item)
-			'''
-
-			'''
-			path = fakeTwoPImages[image]['path']
-			xMotor = fakeTwoPImages[image]['xMotor']
-			yMotor = fakeTwoPImages[image]['yMotor']
-			width = fakeTwoPImages[image]['width']
-			height = fakeTwoPImages[image]['height']
-			# load the image (need to somehow load max of stack ???
-			pixmap = QtGui.QPixmap(path)
-			pixmap.fill()
-			#pixmapWidth = pixmap.width()
-			#pixmapHeight = pixmap.height()
-			# scale image
-			#newWidth = 200 #pixmapWidth
-			#newHeight = 200 #pixmapHeight
-			pixmap = pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio)
-			# insert
-			#pixMapItem = QtWidgets.QGraphicsPixmapItem(pixmap)
-			pixMapItem = myQGraphicsPixmapItem('2P Max Layer', pixmap)
-			pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
-			pixMapItem.setToolTip('2p_' + str(idx))
-			pixMapItem.setPos(xMotor,yMotor)
-			#pixMapItem.setOpacity(0) # this works but we loose mouse click selection and bounding selection rect
-			pixMapItem.setVisible(True) # this works
-			myScene.addItem(pixMapItem)
-			'''
-
-			# 20191104 removed scope rectangles, try and just hide image but still show selection rectangle?
-			'''
-			if xMotor is not None and yMotor is not None:
-				myPen = QtGui.QPen(QtCore.Qt.cyan)
-				myPen.setWidth(10)
-				rect_item = myQGraphicsRectItem(fileName,'2P Squares Layer', QtCore.QRectF(xMotor, yMotor, umWidth, umHeight))
-				rect_item.setPen(myPen) #QBrush
-				rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True) # we don't want to select rects?
-				rect_item.setZValue(numItems)
-				myScene.addItem(rect_item)
-				numItems += 1
-			'''
-
-			#numItems += 1
 
 
 		# a cross hair and rectangle (size of zoom)
 		# todo: add popup to select 2p zoom (Video, 1, 2, 3, 4)
 		#20191217
 		#self.myCrosshair = myQGraphicsRectItem(self)
-		self.myCrosshair = myQGraphicsRectItem()
+		self.myCrosshair = myQGraphicsRectItem(self)
 		self.myCrosshair.setZValue(numItems)
 		myScene.addItem(self.myCrosshair)
 
@@ -721,6 +574,9 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	def appendScopeFile(self, newScopeFile):
 		"""
 		"""
+
+		# what about
+		# pixMapItem.setZValue(numItems)
 
 		# THESE ARE FUCKING STRINGS !!!!!!!!!!!!!!!!!!!!
 		fileName = newScopeFile._fileName
@@ -784,6 +640,9 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 	# todo: put this in __init__() as a function
 	def appendVideo(self, newVideoStack):
+		# what about
+		# pixMapItem.setZValue(numItems)
+
 		path = newVideoStack.path
 		fileName = newVideoStack._fileName
 		#videoFileHeader = videoFile.getHeader()
@@ -1120,11 +979,12 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		self.width = 500.0
 		self.height = 500.0
 
-		#20191217
-		myRect = QtCore.QRectF(self.xPos, self.yPos, self.width, self.height)
+		#myRect = QtCore.QRectF(self.xPos, self.yPos, self.width, self.height)
 		# I really do not understand use of parent ???
-		super(QtWidgets.QGraphicsRectItem, self).__init__(myRect)
-		#super(QtWidgets.QGraphicsRectItem, self).__init__()
+		# was this
+		#super(QtWidgets.QGraphicsRectItem, self).__init__(myRect)
+		super(QtWidgets.QGraphicsRectItem, self).__init__()
+
 		self._fileName = ''
 		self.myLayer = 'crosshair'
 
@@ -1144,14 +1004,17 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		self.xPos = xMotor - self.width/2
 		self.yPos = yMotor - self.height/2
 
-		self.setPos(self.xPos, self.yPos)
+		# BINGO, DO NOT USE setPos !!! Only use setRect !!!
+		#self.setPos(self.xPos, self.yPos)
+
 		self.setRect(self.xPos, self.yPos, self.width, self.height)
+
+		print('   self.pos():', self.pos())
+		print('   self.rect():', self.rect())
 
 		self.myCrosshair.setMotorPosition(xMotor, yMotor)
 		#self.myCrosshair.setPos(xMotor, yMotor)
 
-		print('   self.pos():', self.pos())
-		print('   self.rect():', self.rect())
 
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)
@@ -1172,10 +1035,9 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 
 		#print('   drawCrosshairRect() is now self.boundingRect():', self.boundingRect())
 		#print('   drawCrosshairRect() is now self.rect():', self.rect())
-		print('   myQGraphicsRectItem.drawCrosshairRect() is now self.pos():', self.pos().x(), self.pos().y())
-		#painter.drawRect(self.boundingRect())
-		#20191217
-		painter.drawRect(self.rect())
+		print('   myQGraphicsRectItem.drawCrosshairRect():', self.pos().x(), self.pos().y())
+		painter.drawRect(self.boundingRect())
+
 
 '''
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):

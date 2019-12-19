@@ -85,11 +85,19 @@ class bCanvas:
 	@property
 	def enclosingFolder(self):
 		""" Name of the enclosing folder"""
-		return os.path.basename(os.path.normpath(self._folderPath))
+		if self._folderPath is None:
+			print('error: @property enclosingFolder got None self._folderPath')
+			return None
+		else:
+			return os.path.basename(os.path.normpath(self._folderPath))
 
 	@property
 	def videoFolderPath(self):
-		return os.path.join(self._folderPath, self.enclosingFolder + '_video')
+		if self._folderPath is None:
+			print('error: @property videoFolderPath got None self._folderPath')
+			return None
+		else:
+			return os.path.join(self._folderPath, self.enclosingFolder + '_video')
 
 	def importIgorCanvas(self):
 		"""
@@ -290,6 +298,10 @@ class bCanvas:
 		#print('saveDict:', json.dumps(saveDict, indent=4))
 
 		# write the dictionary to a file
+		if self._folderPath is None or self.enclosingFolder is None:
+			print('error: bCanvas.Save() got None self._folderPath or self.enclosingFolder')
+			return
+
 		saveFilePath = os.path.join(self._folderPath, self.enclosingFolder + '_canvas.txt')
 		print('bCanvas.save() saving to:', saveFilePath)
 		with open(saveFilePath, 'w') as outfile:
