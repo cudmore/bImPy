@@ -1478,7 +1478,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		adjustThisLayer = self.getSelectedContrast() # todo: work out the strings I am using !!!!!!!!!!!!!
 
 		selectedItem = None
-		selectedItems = self.myQGraphicsView.myScene.selectedItems() # can be none
+		selectedItems = self.myQGraphicsView.scene().selectedItems() # can be none
 		if len(selectedItems) > 0:
 			# the first selected item
 			selectedItem = selectedItems[0]
@@ -1491,12 +1491,12 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			# todo: change this in future
 			useMaxProject = True
 		#elif adjustThisLayer == 'selected':
-		#	selectedItems = self.myQGraphicsView.myScene.selectedItems()
+		#	selectedItems = self.myQGraphicsView.scene().selectedItems()
 		#	print('NOT IMPLEMENTED')
 
 		print('=== on_contrast_slider', 'adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject, 'theMin:', theMin, 'theMax:', theMax)
 
-		for item in  self.myQGraphicsView.myScene.items():
+		for item in  self.myQGraphicsView.scene().items():
 
 			# CHANGE TO GENERALIZE
 			#if item.myLayer == 'Video Layer':
@@ -1523,12 +1523,18 @@ class myToolbarWidget(QtWidgets.QToolBar):
 				# todo: canvas should have one list of stacks (not separate video and scope lists)
 				#if adjustThisLayer == 'Video Layer':
 				if item.myLayer == 'Video Layer':
-					videoFile = self.myQGraphicsView.myCanvas.videoFileList[item._index]
+					print('len(self.myQGraphicsView.myCanvas.videoFileList):', len(self.myQGraphicsView.myCanvas.videoFileList))
+					print(item._index)
+					videoFile = self.myQGraphicsView.myCanvas.findByName(item._fileName)
+					#videoFile = self.myQGraphicsView.myCanvas.videoFileList[item._index]
 				#elif adjustThisLayer == '2P Max Layer':
 				elif item.myLayer == '2P Max Layer':
 					videoFile = self.myQGraphicsView.myCanvas.scopeFileList[item._index]
 				else:
 					print('bCanvasApp.on_contrast_slider() ERRRRRRRORRORORORRORORRORORORORORRORORO')
+					continue
+
+				if videoFile is None:
 					continue
 
 				umWidth = videoFile.getHeaderVal('umWidth')

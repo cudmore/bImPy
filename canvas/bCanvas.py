@@ -34,6 +34,12 @@ class bCanvas:
 		if filePath is not None:
 			self.load()
 
+	def findByName(self, filename):
+		for file in self._videoFileList:
+			if file._fileName == filename:
+				return file
+		return None
+
 	def appendVideo(self, newVideoStack):
 		self._videoFileList.append(newVideoStack)
 
