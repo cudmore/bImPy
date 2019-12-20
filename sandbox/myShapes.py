@@ -13,12 +13,16 @@ myPointColors = [0.0, 1.0, 1.0] #'cyan'
 scale = (1,1,1)
 
 #path = '/Users/cudmore/Sites/bImpy-Data/vesselucida/20191017__0001.tif'
-path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
+
+# 1) show fernando this nathan immuno image
+#path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
+
+# 2) show fernando this oct image
 path = '/Users/cudmore/box/data/bImpy-Data/OCTa/PV_Crop_Reslice.tif'
 
-path = 'D:/Users/cudmore/data/vessellucida/20191017__0001.tif'
-path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/high_mag_top_of_node/tracing_20191217.tif'
-scale = (0.5, 0.31074033574250315, 0.31074033574250315)
+#path = 'D:/Users/cudmore/data/vessellucida/20191017__0001.tif'
+#path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/high_mag_top_of_node/tracing_20191217.tif'
+#scale = (0.5, 0.31074033574250315, 0.31074033574250315)
 
 myStack = bimpy.bStack(path=path)
 
@@ -133,7 +137,7 @@ with napari.gui_qt():
 	# add the points
 	#pointLayer = viewer.add_points(xyzPoints, size=myPointSize, edge_color=myPointColors, face_color=myPointColors)
 
-	deadEndSize = 1
+	deadEndSize = 5
 	deadEndColor = 'red'
 	pointLayer = viewer.add_points(xyzDeadEnds,
 		size=deadEndSize, edge_color=deadEndColor, face_color=deadEndColor, name='deadEnds')

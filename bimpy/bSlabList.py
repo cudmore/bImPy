@@ -85,10 +85,18 @@ class bSlabList:
 
 	def _massage_xyz(self, x, y, z):
 		# todo: read this from header and triple check if valid, if not valid then us 1/1/1
-		xUmPerPixel = 1 #0.31074033574250315 #0.49718
+		xUmPerPixel = 1 # 0.31074033574250315 #0.49718
 		yUmPerPixel = 1 # 0.31074033574250315 #0.49718
 		zUmPerSlice = 1 #0.5 #0.6 # Olympus .txt is telling us 0.4 ???
+
 		zOffset = 0
+
+		if self.tifPath.endswith('20191017__0001.tif'):
+			print('!!! scaling tiff file 20191017__0001.tif')
+			xUmPerPixel = 0.49718
+			yUmPerPixel = 0.49718
+			zUmPerPixel = 0.6
+			zOffset = 25
 
 		# flip y
 		y = abs(y)
@@ -377,11 +385,17 @@ class bSlabList:
 		self.deadEndz = np.array(self.deadEndz, dtype='float32')
 
 		# debug min/max of x/y/z
-		if 0:
-			print('x min/max', np.nanmin(self.x), np.nanmax(self.x))
-			print('y min/max', np.nanmin(self.y), np.nanmax(self.y))
-			print('z min/max', np.nanmin(self.z), np.nanmax(self.z))
+		if 1:
+			print('   x min/max', np.nanmin(self.x), np.nanmax(self.x))
+			print('   y min/max', np.nanmin(self.y), np.nanmax(self.y))
+			print('   z min/max', np.nanmin(self.z), np.nanmax(self.z))
+
+			print('taking abs value of z')
+			self.z = np.absolute(self.z)
+			self.deadEndz = np.absolute(self.deadEndz)
+
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
+
 
 	def save(self):
 		"""
