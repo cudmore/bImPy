@@ -500,9 +500,13 @@ class bStackView(QtWidgets.QGraphicsView):
 				#
 				# nodes
 				zNodeMasked = np.ma.masked_outside(self.mySimpleStack.slabList.nodez, upperz, lowerz)
-				#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
-				xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
-				yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
+				if len(zNodeMasked) > 0:
+					#idMasked = self.mySimpleStack.slabList.id[~self.zMasked.mask]
+					xNodeMasked = self.mySimpleStack.slabList.nodey[~zNodeMasked.mask] # swapping
+					yNodeMasked = self.mySimpleStack.slabList.nodex[~zNodeMasked.mask]
+				else:
+					xNodeMasked = []
+					yNodeMasked = []
 
 				maskedNodeDict = {
 					'zNodeMasked': zNodeMasked,
@@ -1135,7 +1139,14 @@ if __name__ == '__main__':
 	else:
 		path = '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif'
 		#path = '/Users/cudmore/box/DeepVess/data/invivo/20190613__0028.tif'
-		path = '/Users/cudmore/Sites/bImpy-Data/deepvess/mytest.tif'
+
+		# works well
+		path = '/Users/cudmore/box/data/bImpy-Data/deepvess/mytest.tif'
+		path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
+
+		# for this one, write code to revover tracing versus image scale
+		# x/y=0.3107, z=0.5
+		path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/high_mag_top_of_node/tracing_20191217.tif'
 
 	app = QtWidgets.QApplication(sys.argv)
 

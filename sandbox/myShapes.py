@@ -15,10 +15,10 @@ scale = (1,1,1)
 #path = '/Users/cudmore/Sites/bImpy-Data/vesselucida/20191017__0001.tif'
 
 # 1) show fernando this nathan immuno image
-#path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
+path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
 
 # 2) show fernando this oct image
-path = '/Users/cudmore/box/data/bImpy-Data/OCTa/PV_Crop_Reslice.tif'
+#path = '/Users/cudmore/box/data/bImpy-Data/OCTa/PV_Crop_Reslice.tif'
 
 #path = 'D:/Users/cudmore/data/vessellucida/20191017__0001.tif'
 #path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/high_mag_top_of_node/tracing_20191217.tif'

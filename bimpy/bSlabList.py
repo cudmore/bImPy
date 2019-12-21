@@ -89,6 +89,9 @@ class bSlabList:
 		yUmPerPixel = 1 # 0.31074033574250315 #0.49718
 		zUmPerSlice = 1 #0.5 #0.6 # Olympus .txt is telling us 0.4 ???
 
+		# z can never be negative
+		z = np.absolute(z)
+
 		zOffset = 0
 
 		if self.tifPath.endswith('20191017__0001.tif'):
@@ -97,6 +100,11 @@ class bSlabList:
 			yUmPerPixel = 0.49718
 			zUmPerPixel = 0.6
 			zOffset = 25
+
+		if self.tifPath.endswith('tracing_20191217.tif'):
+			xUmPerPixel = 0.3107
+			yUmPerPixel = 0.3107
+			zUmPerPixel = 0.5
 
 		# flip y
 		y = abs(y)
@@ -393,6 +401,7 @@ class bSlabList:
 			print('taking abs value of z')
 			self.z = np.absolute(self.z)
 			self.deadEndz = np.absolute(self.deadEndz)
+			self.nodez = np.absolute(self.nodez)
 
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
 
