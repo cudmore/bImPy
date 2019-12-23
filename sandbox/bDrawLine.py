@@ -28,7 +28,7 @@ class MouseTracker(QWidget):
 		self.pos = None
 		self.startPos = None
 		self.isDrawing = False
-		
+
 		self.figure = Figure()
 		self.canvas = backend_qt5agg.FigureCanvas(self.figure)
 		self.axes = self.figure.add_axes([0, 0, 1, 1]) #remove white border
@@ -38,7 +38,7 @@ class MouseTracker(QWidget):
 		markerColor = 'red'
 		markerSize = 5
 		self.oneRoi = self.axes.scatter([], [], marker='o', color=markerColor, s=markerSize)
-		
+
 	def initUI(self):
 		self.setGeometry(200, 200, 1000, 500)
 		self.setWindowTitle('Mouse Tracker')
@@ -48,7 +48,7 @@ class MouseTracker(QWidget):
 		#self.pos = None
 
 	def mouseMoveEvent(self, event):
-		self.label.setText('Coordinates: ( %d : %d )' % (event.x(), event.y()))	   
+		self.label.setText('Coordinates: ( %d : %d )' % (event.x(), event.y()))
 		if self.isDrawing:
 			self.pos = event.pos()
 			self.update()
@@ -57,12 +57,12 @@ class MouseTracker(QWidget):
 		print('mousePressEvent', event.x(), event.y())
 		self.isDrawing = True
 		self.startPos = event.pos()
-		
+
 	def mouseReleaseEvent(self, event):
 		print('mouseReleaseEvent', event.x(), event.y())
 		self.isDrawing = False
 		self.drawRoi()
-		
+
 	def paintEvent(self, event):
 		if self.pos:
 			print('paintEvent', self.pos.x(), self.pos.y())
@@ -78,9 +78,9 @@ class MouseTracker(QWidget):
 		x = [100, 200]
 		y = [100, 300]
 		self.oneRoi.set_offsets(np.c_[x, y])
-		
+
 		self.canvas.draw()
-	
+
 app = QApplication(sys.argv)
 ex = MouseTracker()
 sys.exit(app.exec_())
