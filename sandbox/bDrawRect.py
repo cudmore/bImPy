@@ -2,6 +2,15 @@ import sys
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 
+class myRectItem(QtWidgets.QGraphicsRectItem):
+	def paint(self, painter, option, widget=None):
+		super(myRectItem, self).paint(painter, option, widget)
+		painter.save()
+		painter.setRenderHint(QtGui.QPainter.Antialiasing)
+		painter.setBrush(QtCore.Qt.red)
+		painter.drawEllipse(option.rect)
+		painter.restore()
+
 class MyWidget(QtWidgets.QWidget):
 	def __init__(self):
 		super().__init__()

@@ -212,6 +212,17 @@ class bAnnotationTable(QtWidgets.QWidget):
 		#print('   ', row, yStat)
 		self.mainWindow.signal('selectEdgeFromTable', row, fromTable=True)
 
+'''
+class myRectItem(QtWidgets.QGraphicsRectItem):
+	def paint(self, painter, option, widget=None):
+		super(myRectItem, self).paint(painter, option, widget)
+		painter.save()
+		painter.setRenderHint(QtGui.QPainter.Antialiasing)
+		painter.setBrush(QtCore.Qt.red)
+		painter.drawEllipse(option.rect)
+		painter.restore()
+'''
+
 ################################################################################
 #class bStackView(QtWidgets.QWidget):
 class bStackView(QtWidgets.QGraphicsView):
@@ -287,10 +298,18 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
-		self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
-		self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+		#self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 
+		# was this
+		self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+		#self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+		# now this
+		#self.setTransformationAnchor(QtGui.QGraphicsView.NoAnchor)
+		#self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
+
+		# this does nothing???
 		#self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(30, 30, 30)))
+
 		self.setFrameShape(QtWidgets.QFrame.NoFrame)
 
 		#todo: add interface to turn axes.axis ('on', 'off')
@@ -340,6 +359,13 @@ class bStackView(QtWidgets.QGraphicsView):
 		#self.canvas.mpl_connect('button_press_event', self.onclick)
 		#self.canvas.mpl_connect('scroll_event', self.onscroll)
 		self.canvas.mpl_connect('pick_event', self.onpick)
+
+		'''
+		#rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(100, 100, 100, 100))
+		rect_item = myRectItem(QtCore.QRectF(100, 100, 100, 100))
+		rect_item.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable, True)
+		scene.addItem(rect_item)
+		'''
 
 		# trying this
 		'''
@@ -662,15 +688,6 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.repaint() # this is updating the widget !!!!!!!!
 		'''
 
-	def zoom(self, zoom):
-		#print('=== bStackView.zoom()', zoom)
-		if zoom == 'in':
-			scale = 1.2
-		else:
-			scale = 0.8
-		self.scale(scale,scale)
-		#self.zoomToPoint(100,100)
-
 	def keyPressEvent(self, event):
 		#print('=== bStackView.keyPressEvent() event.key():', event.key())
 		if event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
@@ -722,6 +739,15 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.mainWindow.bStackFeebackWidget.setFeedback('sliding z', self.displaySlidingZ)
 		self.setSlice(recursion=False) # just refresh
 
+	def zoom(self, zoom):
+		#print('=== bStackView.zoom()', zoom)
+		if zoom == 'in':
+			scale = 1.2
+		else:
+			scale = 0.8
+		self.scale(scale,scale)
+		#self.zoomToPoint(100,100)
+
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
 
@@ -729,11 +755,28 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		if modifiers == QtCore.Qt.ControlModifier:
+			self.setTransformationAnchor(QtGui.QGraphicsView.NoAnchor)
+			self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
+
+			oldPos = self.mapToScene(event.pos())
+			print('oldPos:', oldPos)
 			if event.angleDelta().y() > 0:
-				self.zoom('in')
+				zoomFactor = 1.2
 			else:
-				self.zoom('out')
+				zoomFactor = 0.8
+			self.scale(zoomFactor,zoomFactor)
+			newPos = self.mapToScene(event.pos())
+			print('newPos:', newPos)
+			# Move scene to old position
+			delta = newPos - oldPos
+			print('delta:', delta)
+
+			#self.translate(delta.x(), delta.y())
+
+			#self.centerOn(newPos)
+
 			event.setAccepted(True)
+			#super(bStackView,self).wheelEvent(event)
 		else:
 			if event.angleDelta().y() > 0:
 				self.currentSlice -= 1
@@ -814,7 +857,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
-			'nodePenSize': 80,
+			'nodePenSize': 10,
 			'nodeColor': 'r',
 			'nodeSelectionPenSize': 120,
 			'nodeSelectionColor': 'c',
@@ -822,13 +865,13 @@ class bStackView(QtWidgets.QGraphicsView):
 			'nodeSelectionFlashColor': 'm',
 			'showTracingAboveSlices': 5,
 			'showTracingBelowSlices': 5,
-			'tracingPenSize': 10,
+			'tracingPenSize': 5,
 			'tracingColor': 'y',
 			'tracingSelectionPenSize': 10,
 			'tracingSelectionColor': 'c',
 			'tracingSelectionFlashPenSize': 80,
 			'tracingSelectionFlashColor': 'm',
-			'deadEndPenSize': 40,
+			'deadEndPenSize': 5,
 			'deadEndColor': 'b',
 			})
 
