@@ -815,6 +815,35 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#self.scene().mouseMoveEvent(event) # this is an error because scene is wrong class???
 	'''
 
+	def wheelEvent(self, event):
+		#if self.hasPhoto():
+		if 1:
+			if event.angleDelta().y() > 0:
+				self.zoom('in')
+				#factor = 1.25
+				#self._zoom += 1
+			else:
+				self.zoom('out')
+				#factor = 0.8
+				#self._zoom -= 1
+			'''
+			if self._zoom > 0:
+				self.scale(factor, factor)
+			elif self._zoom == 0:
+				self.fitInView()
+			else:
+				self._zoom = 0
+			'''
+
+	def zoom(self, zoom):
+		#print('=== myGraphicsView.zoom()', zoom)
+		if zoom == 'in':
+			scale = 1.2
+		else:
+			scale = 0.8
+		self.scale(scale,scale)
+
+
 	def keyPressEvent(self, event):
 		print('\n=== myQGraphicsView.keyPressEvent()', event.text())
 		# QtCore.Qt.Key_Tab
@@ -892,25 +921,6 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			else:
 				print('myQGraphicsView.changeOrder() did not find a selected item???')
 
-	def wheelEvent(self, event):
-		#if self.hasPhoto():
-		if 1:
-			if event.angleDelta().y() > 0:
-				self.zoom('in')
-				#factor = 1.25
-				#self._zoom += 1
-			else:
-				self.zoom('out')
-				#factor = 0.8
-				#self._zoom -= 1
-			'''
-			if self._zoom > 0:
-				self.scale(factor, factor)
-			elif self._zoom == 0:
-				self.fitInView()
-			else:
-				self._zoom = 0
-			'''
 	'''
 	def pan(self, direction):
 		stepSize = 100
@@ -928,14 +938,6 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		print('pan() x:', xOffset, 'y:', yOffset)
 		#self.translate(xOffset,yOffset)
 	'''
-
-	def zoom(self, zoom):
-		#print('=== myGraphicsView.zoom()', zoom)
-		if zoom == 'in':
-			scale = 1.2
-		else:
-			scale = 0.8
-		self.scale(scale,scale)
 
 class myCrosshair(QtWidgets.QGraphicsTextItem):
 	def __init__(self, parent=None):
