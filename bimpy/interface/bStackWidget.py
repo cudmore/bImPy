@@ -302,7 +302,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# was this
 		self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
-		#self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+		self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 		# now this
 		#self.setTransformationAnchor(QtGui.QGraphicsView.NoAnchor)
 		#self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
@@ -755,27 +755,26 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		if modifiers == QtCore.Qt.ControlModifier:
+			'''
 			self.setTransformationAnchor(QtGui.QGraphicsView.NoAnchor)
 			self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
+			'''
 
 			oldPos = self.mapToScene(event.pos())
-			print('oldPos:', oldPos)
 			if event.angleDelta().y() > 0:
 				zoomFactor = 1.2
 			else:
 				zoomFactor = 0.8
 			self.scale(zoomFactor,zoomFactor)
 			newPos = self.mapToScene(event.pos())
-			print('newPos:', newPos)
 			# Move scene to old position
 			delta = newPos - oldPos
-			print('delta:', delta)
 
-			#self.translate(delta.x(), delta.y())
+			self.translate(delta.y(), delta.x())
 
 			#self.centerOn(newPos)
 
-			event.setAccepted(True)
+			#event.setAccepted(True)
 			#super(bStackView,self).wheelEvent(event)
 		else:
 			if event.angleDelta().y() > 0:

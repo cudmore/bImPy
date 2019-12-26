@@ -20,6 +20,12 @@ class bCanvas:
 		self._filePath = None #filePath # todo: not used
 		self._folderPath = None
 
+		if filePath is not None:
+			self._filePath = filePath
+			self._folderPath, tmpFilename = os.path.split(filePath)
+		print('_filePath:', _filePath)
+		print('_folderPath:', _folderPath)
+
 		'''if len(folderPath)>0:
 			self._folderPath = folderPath # for Igor canvas
 		else:
@@ -31,8 +37,10 @@ class bCanvas:
 		self._videoFileList = []
 		self._scopeFileList = [] # images off the scope
 
+		'''
 		if filePath is not None:
 			self.load()
+		'''
 
 	def findByName(self, filename):
 		for file in self._videoFileList:

@@ -4,6 +4,7 @@
 import os, sys, json, subprocess
 from functools import partial
 from collections import OrderedDict
+from datetime import datetime
 
 import skimage
 import tifffile
@@ -19,36 +20,14 @@ import bMotor
 
 #print('bMotor:', bMotor)
 
-class bCanvasApp(QtWidgets.QMainWindow):
-	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
-		"""
-		loadIgorCanvas: path to folder of converted Igor canvas
-		path: path to text file of a saved Python canvas
-		"""
-		print('bCanvasApp.__init__()')
-		super(bCanvasApp, self).__init__(parent)
+class bCanvasWidget(QtWidgets.QWidget):
+	def __init__(self, filePath, parent=None):
+		super(bCanvasWidget, self).__init__(parent)
+		self.filePath = filePath
+		self.canvas = bCanvas(filePath=filePath)
+		self.buildUI()
 
-		self.optionsLoad()
-
-		self.myMenu = bMenu(self)
-
-		#self.canvasList = {}
-
-		motorName = 'bPrior'
-		self.assignMotor(motorName)
-
-		if loadIgorCanvas is not None:
-			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
-			#tmpCanvasFolderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
-			self.canvas = bimpy.bCanvas(folderPath=loadIgorCanvas)
-
-			# this is only for import from igor
-			self.canvas.importIgorCanvas()
-
-			self.canvas.buildFromScratch()
-		else:
-			self.canvas = bCanvas(filePath=path)
-
+	def buildUI(self):
 		self.centralwidget = QtWidgets.QWidget(parent)
 		self.centralwidget.setObjectName("centralwidget")
 
@@ -75,14 +54,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		#
 
 		# main view to hold images
-		self.myGraphicsView = myQGraphicsView(self.canvas, self)
+		self.myGraphicsView = myQGraphicsView(self)
 		self.myQVBoxLayout.addWidget(self.myGraphicsView)
 
 		# todo: 20191217, add a status bar !!!
 
 		# here I am linking the toolbar to the graphics view
 		# i can't figure out how to use QAction !!!!!!
-		self.motorToolbarWidget = myScopeToolbarWidget(self.canvas, parent=self)
+		self.motorToolbarWidget = myScopeToolbarWidget(parent=self)
 		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
 
 		self.toolbarWidget = myToolbarWidget(self.myGraphicsView, self.canvas)
@@ -91,6 +70,38 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.setCentralWidget(self.centralwidget)
 
 		self.myStackList = [] # a list of open bStack
+
+class bCanvasApp(QtWidgets.QMainWindow):
+	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
+		"""
+		loadIgorCanvas: path to folder of converted Igor canvas
+		path: path to text file of a saved Python canvas
+		"""
+		print('bCanvasApp.__init__()')
+		super(bCanvasApp, self).__init__(parent)
+
+		self.optionsLoad()
+
+		self.myMenu = bMenu(self)
+
+		motorName = 'bPrior'
+		self.assignMotor(motorName)
+
+		self.canvasDict = {}
+		'''
+		if loadIgorCanvas is not None:
+			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
+			#tmpCanvasFolderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
+			self.canvas = bimpy.bCanvas(folderPath=loadIgorCanvas)
+
+			# this is only for import from igor
+			self.canvas.importIgorCanvas()
+
+			self.canvas.buildFromScratch()
+		else:
+			self.canvas = bCanvas(filePath=path)
+		'''
+
 
 	def assignMotor(self, motorName):
 		"""
@@ -267,6 +278,27 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			tmp.show()
 			self.myStackList.append(tmp)
 
+	def newCanvas(self, shortName):
+		savePath = self._optionsDict['savePath']
+		dateStr = datetime.today().strftime('%Y%m%d')
+
+		datePath = os.path.join(savePath, dateStr)
+		if not os.path.isdir(datePath):
+			os.mkdir(datePath)
+
+		folderName = dateStr + '_' + shortName
+		folderPath = os.path.join(datePath, folderName)
+		if not os.path.isdir(folderPath):
+			os.mkdir(folderPath)
+
+		fileName = dateStr + '_' + shortName + '.txt'
+		filePath = os.path.join(folderPath, fileName)
+
+		if os.path.isfile(filePath):
+			print('newCanvas() error, file exists:', filePath)
+		else:
+			self.canvasDict[fileName] = bCanvasWidget(filePath) #bCanvas(filePath=filePath)
+
 	def save(self):
 		"""
 		Save the canvas
@@ -315,6 +347,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
 		self._optionsDict['version'] = 0.1
+		self._optionsDict['savePath'] = '/Users/cudmore/box/data/canvas'
 
 		self._optionsDict['video'] = OrderedDict()
 		self._optionsDict['video']['oneimage'] = 'oneimage.tif'
@@ -326,6 +359,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			self.optionsDefault()
 			self.optionsSave()
 		else:
+			print('bCanvasApp.optionsLoad() loading:', self.optionsFile)
 			with open(self.optionsFile) as f:
 				self._optionsDict = json.load(f)
 
@@ -500,11 +534,12 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	"""
 	Main canvas widget
 	"""
-	def __init__(self, theCanvas, parent=None):
+	#def __init__(self, theCanvas, parent=None):
+	def __init__(self, parent=None):
 		super(myQGraphicsView, self).__init__(parent)
 
 		self.myParentApp = parent
-		self.myCanvas = theCanvas
+		#self.myCanvas = theCanvas
 
 		self.setBackgroundBrush(QtCore.Qt.darkGray)
 
@@ -816,24 +851,30 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	'''
 
 	def wheelEvent(self, event):
-		#if self.hasPhoto():
-		if 1:
-			if event.angleDelta().y() > 0:
-				self.zoom('in')
-				#factor = 1.25
-				#self._zoom += 1
-			else:
-				self.zoom('out')
-				#factor = 0.8
-				#self._zoom -= 1
-			'''
-			if self._zoom > 0:
-				self.scale(factor, factor)
-			elif self._zoom == 0:
-				self.fitInView()
-			else:
-				self._zoom = 0
-			'''
+		'''
+		self.setTransformationAnchor(QtGui.QGraphicsView.NoAnchor)
+		self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
+		'''
+
+		oldPos = self.mapToScene(event.pos())
+		if event.angleDelta().y() > 0:
+			#self.zoom('in')
+			scale = 1.2
+		else:
+			#self.zoom('out')
+			scale = 0.8
+		self.scale(scale,scale)
+		newPos = self.mapToScene(event.pos())
+		delta = newPos - oldPos
+		self.translate(delta.y(), delta.x())
+		'''
+		if self._zoom > 0:
+			self.scale(factor, factor)
+		elif self._zoom == 0:
+			self.fitInView()
+		else:
+			self._zoom = 0
+		'''
 
 	def zoom(self, zoom):
 		#print('=== myGraphicsView.zoom()', zoom)
@@ -1132,10 +1173,11 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 			print('  key not handled:text:', event.text(), 'modifyers:', event.modifiers())
 
 class myScopeToolbarWidget(QtWidgets.QToolBar):
-	def __init__(self, theCanvas, parent=None):
+	#def __init__(self, theCanvas, parent=None):
+	def __init__(self, parent=None):
 		print('myScopeToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
-		self.theCanvas = theCanvas
+		#self.theCanvas = theCanvas
 		self.myParentApp = parent
 
 		myGroupBox = QtWidgets.QGroupBox()
@@ -1311,9 +1353,8 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		self.myParentApp.userEvent(name)
 
 class myToolbarWidget(QtWidgets.QToolBar):
-	def __init__(self, myQGraphicsView, theCanvas, parent=None):
+	def __init__(self, myQGraphicsView, parent=None):
 		"""
-		todo: remove theCanvas, not used
 		"""
 		print('myToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
@@ -1332,7 +1373,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 		buttonName = 'Save Canvas'
 		button = QtWidgets.QPushButton(buttonName)
-		button.setToolTip('Load a canvas from disk')
+		#button.setToolTip('Load a canvas from disk')
 		button.clicked.connect(partial(self.on_button_click,buttonName))
 		self.addWidget(button)
 
@@ -1688,7 +1729,8 @@ if __name__ == '__main__':
 		#w2.load(thisFile=savedCanvasPath)
 		print('bCanvasApp.__main__() w2.optionsFile:', w2.optionsFile)
 		w2.resize(1024, 768)
-		w2.show()
+		w2.newCanvas('tst1')
+		#w2.show()
 
 		sys.exit(app.exec_())
 	except Exception as e:
