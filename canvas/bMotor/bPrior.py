@@ -74,9 +74,22 @@ class bPrior(bMotor):
 				self.writeLine('p') # write 'p' to ask for position
 				resp = self.readLine() # read response
 
-				xPos, yPos, zPos = resp.split(',')
-
-				self.close()
+				print('bPrior.readPosition() resp:', resp)
+				try:
+					xPos, yPos, zPos = resp.split(',')
+				except:
+					print('readPosition exception')
+					xPos = 'Nan'
+					yPos = 'Nan'
+				'''
+				if len(resp) == 3:
+					xPos, yPos, zPos = resp.split(',')
+				else:
+					print('error reading Prior motor position')
+					xPos = 'Nan'
+					yPos = 'Nan'
+				'''
+				#self.close()
 			else:
 				xPos = self.fake_x
 				yPos = self.fake_y

@@ -141,12 +141,15 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			self.myGraphicsView.myCrosshair.setMotorPosition(x, y)
 
 		elif event == 'Canvas Folder':
-			print('open folder on hdd')
+			#print('sys.platform:', sys.platform)
+			print('open folder on hdd', self.myCanvas._folderPath)
 			path = self.myCanvas._folderPath
 			if sys.platform.startswith('darwin'):
 				subprocess.Popen(["open", path])
-			elif sys.platform.startswith('Windows'):
-				os.startfile(path)
+			elif sys.platform.startswith('win'):
+				windowsPath = os.path.abspath(path)
+				#print('windowsPath:', windowsPath)
+				os.startfile(windowsPath)
 			else:
 				subprocess.Popen(["xdg-open", path])
 
@@ -228,8 +231,8 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.myQVBoxLayout = QtWidgets.QVBoxLayout(self.centralwidget)
 
 		self.title = self.filePath
-		self.left = 10
-		self.top = 10
+		self.left = 50
+		self.top = 50
 		self.width = 1000
 		self.height = 1000
 
@@ -506,15 +509,20 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	def centerOnCrosshair(self):
 		print('myQGraphicsView.centerOnCrosshair()')
 
+		# works on windows
 		# works when paired with self.scene().update(sceneRect)
 		self.centerOn(self.myCrosshair)
 
 		# kinda works
+		print('self.myCrosshair.rect():', self.myCrosshair.rect())
 		self.ensureVisible(self.myCrosshair.rect(), xMargin=500, yMargin=500)
-
+		# end works on windows
+		
+		'''
 		sceneRect = self.scene().sceneRect() #this is qrectf
 		self.ensureVisible(sceneRect, xMargin=0, yMargin=0)
-
+		'''
+		
 		#sceneRect = self.mapToScene(self.rect()).boundingRect()
 		#self.fitInView(sceneRect)
 		#self.ensureVisible(sceneRect)
@@ -528,9 +536,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#self.setSceneRect(sceneRect)
 		#self.updateSceneRect(sceneRect)
 		#self.update()
+		'''
 		sceneRect = self.scene().sceneRect() #this is qrectf
 		self.scene().update(sceneRect)
-
+		'''
+		
 	def appendScopeFile(self, newScopeFile):
 		"""
 		"""

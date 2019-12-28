@@ -12,11 +12,17 @@ import bimpy
 from canvas import bCanvasWidget, bMenu
 import bMotor
 
+# todo: put this in scope config json (along with motor name like 'Prior')
+gMotorIsReal = True
+
 #class bCanvasApp(QtWidgets.QMainWindow):
 #class bCanvasApp(QtWidgets.QApplication):
 # was this
-#class bCanvasApp(QtWidgets.QMainWindow):
-class bCanvasApp(QtWidgets.QWidget):
+# widget do not have menus
+#class bCanvasApp(QtWidgets.QWidget):
+# on windows, this needs to be a qmain window so we get menus
+# todo: have the canvas app open stackbrowser (so we get a main window)
+class bCanvasApp(QtWidgets.QMainWindow):
 	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
 		"""
 		loadIgorCanvas: path to folder of converted Igor canvas
@@ -49,7 +55,7 @@ class bCanvasApp(QtWidgets.QWidget):
 		else:
 			self.canvas = bCanvas(filePath=path)
 		'''
-
+		self.show()
 
 	def assignMotor(self, motorName):
 		"""
@@ -239,7 +245,6 @@ if __name__ == '__main__':
 	import traceback
 
 	try:
-		gMotorIsReal = False
 
 		#from bJavaBridge import bJavaBridge
 		myJavaBridge = bimpy.bJavaBridge()
@@ -270,6 +275,9 @@ if __name__ == '__main__':
 		#w2.newCanvas('tst2')
 		#w2.newCanvas('')
 
+		myCanvasApp.optionsFile = 'C:/Users/cudmore/Sites/bImPy/canvas/config/Olympus_Options.json'
+		myCanvasApp.optionsLoad()
+		
 		path = '/Users/cudmore/box/data/canvas/20191226/20191226_tst1/20191226_tst1_canvas.txt'
 		if os.path.isfile(path):
 			myCanvasApp.load(path)
