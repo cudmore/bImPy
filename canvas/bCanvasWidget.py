@@ -435,6 +435,9 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		self.myCanvasWidget = myCanvasWidget
 
+		self.myMouse_x = None
+		self.myMouse_y = None
+
 		self.setBackgroundBrush(QtCore.Qt.darkGray)
 
 		#20191217
@@ -722,6 +725,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	def mouseMoveEvent(self, event):
 		#print('=== myQGraphicsView.mouseMoveEvent() x:', event.x(), 'y:', event.y())
 		# this is critical, allows dragging view/scene around
+		#scenePoint = self.mapToScene(event.x(), event.y())
+		#print(scenePoint)
+		self.myMouse_x = event.x() #scenePoint.x()
+		self.myMouse_y = event.y() #scenePoint.y()
+
 		super().mouseMoveEvent(event)
 		event.setAccepted(True)
 
@@ -774,6 +782,23 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#self.scene().mouseMoveEvent(event) # this is an error because scene is wrong class???
 	'''
 
+	def zoom(self, inout):
+		oldPos = QtCore.QPoint(self.myMouse_x, self.myMouse_y) #
+		oldPos = self.mapToScene(oldPos)
+		'''
+		oldPos = self.mapToScene(event.pos())
+		'''
+		if inout=='in':
+			scale = 1.25
+		else:
+			scale = 1/1.25
+		self.scale(scale,scale)
+
+		newPos = QtCore.QPoint(self.myMouse_x, self.myMouse_y)
+		newPos = self.mapToScene(newPos)
+		delta = newPos - oldPos
+		self.translate(delta.y(), delta.x())
+
 	def wheelEvent(self, event):
 		'''
 		self.setTransformationAnchor(QtGui.QGraphicsView.NoAnchor)
@@ -820,7 +845,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		print('\n=== myQGraphicsView.keyPressEvent()', event.text())
 		# QtCore.Qt.Key_Tab
 
-		# pan
+		# pan is handled by super
+		'''
 		if event.key() == QtCore.Qt.Key_Left:
 			self._getBoundingRect()
 			self.pan('left')
@@ -830,8 +856,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			self.pan('up')
 		if event.key() == QtCore.Qt.Key_Down:
 			self.pan('down')
-
-		#super().keyPressEvent(event)
+		'''
 
 		# zoom
 		if event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
@@ -845,6 +870,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			#print('b for send to back')
 			self.changeOrder('send to back')
 		if event.key() == QtCore.Qt.Key_H:
+			# 'h' for show/hide
 			selectedItem = self.getSelectedItem()
 			if selectedItem is not None:
 				filename = selectedItem._fileName
@@ -856,6 +882,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				#setCheckedState(fileName, doSHow)
 		if event.key() == QtCore.Qt.Key_C:
 			print('todo: set scene centered on crosshair, if no crosshair, center on all images')
+
+		super(myQGraphicsView, self).keyPressEvent(event)
 
 	def _getBoundingRect(self):
 		leftMin = float('Inf')
@@ -1153,11 +1181,21 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 
 		#
 		# center crosshair
+		crosshair_hBoxLayout = QtWidgets.QHBoxLayout()
 		buttonName = 'center canvas on motor position'
 		centerCrosshairButton = QtWidgets.QPushButton('+')
 		centerCrosshairButton.setToolTip('Center canvas on motor position crosshair')
 		centerCrosshairButton.clicked.connect(partial(self.on_button_click,buttonName))
-		vBoxLayout.addWidget(centerCrosshairButton)
+		crosshair_hBoxLayout.addWidget(centerCrosshairButton)
+
+		comboBox = QtGui.QComboBox()
+		comboBox.addItem("Video")
+		comboBox.addItem("1x")
+		comboBox.addItem("1.5x")
+		comboBox.activated[str].connect(self.crosshairSizeChoice)
+		crosshair_hBoxLayout.addWidget(comboBox)
+
+		vBoxLayout.addLayout(crosshair_hBoxLayout)
 
 		#
 		# x/y step size
@@ -1239,6 +1277,9 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 
 		# finish
 		self.addWidget(myGroupBox)
+
+	def crosshairSizeChoice(self, text):
+		print('crosshairSizeChoice() text:', text)
 
 	def stepValueChanged(self):
 		xStep = self.xStepSpinBox.value()

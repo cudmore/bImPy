@@ -25,6 +25,9 @@ class bCanvasApp(QtWidgets.QWidget):
 		print('bCanvasApp.__init__()')
 		super(bCanvasApp, self).__init__()
 
+		self.myApp = parent
+
+		self.optionsFile = ''
 		self.optionsLoad()
 
 		self.myMenu = bMenu(self)
@@ -116,10 +119,18 @@ class bCanvasApp(QtWidgets.QWidget):
 		"""
 		self.canvas.save()
 
-	def load(self, filePath):
+	def load(self, filePath='', askUser=False):
 		"""
 		Load a canvas
 		"""
+		if askUser:
+			dataFolder = '/Users/cudmore/box/data/canvas' #os.path.join(self._getCodeFolder(), 'config')
+			if not os.path.isdir(dataFolder):
+				dataFolder = ''
+			filePath = QtWidgets.QFileDialog.getOpenFileName(caption='xxx load canvas file', directory=dataFolder, filter="Canvas Files (*.txt)")
+			filePath = filePath[0] # filePath is a tuple
+			print('optionsLoad() got user file:', filePath)
+
 		if os.path.isfile(filePath):
 			#self.canvas.load(thisFile=thisFile)
 			basename = os.path.basename(filePath)
@@ -134,11 +145,24 @@ class bCanvasApp(QtWidgets.QWidget):
 
 		else:
 			print('Warning: bCanvasApp.load() did not find file:', filePath)
+			return
+
 
 	@property
 	def options(self):
 		return self._optionsDict
 
+	def defaultOptionsFile(self):
+		if getattr(sys, 'frozen', False):
+			# we are running in a bundle (frozen)
+			bundle_dir = sys._MEIPASS
+		else:
+			# we are running in a normal Python environment
+			bundle_dir = os.path.dirname(os.path.abspath(__file__))
+		optionsFilePath = os.path.join(bundle_dir, 'config', 'Default_Options.json')
+		return optionsFilePath
+
+	'''
 	@property
 	def optionsFile(self):
 		"""
@@ -153,6 +177,7 @@ class bCanvasApp(QtWidgets.QWidget):
 			bundle_dir = os.path.dirname(os.path.abspath(__file__))
 		optionsFilePath = os.path.join(bundle_dir, 'config', 'bCanvasApp_Options.json')
 		return optionsFilePath
+	'''
 
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
@@ -164,18 +189,46 @@ class bCanvasApp(QtWidgets.QWidget):
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
 
-	def optionsLoad(self):
-		if not os.path.isfile(self.optionsFile):
-			self.optionsDefault()
-			self.optionsSave()
+	def optionsLoad(self, askUser=False):
+		if askUser:
+			optionsFolder = os.path.join(self._getCodeFolder(), 'config')
+			fname = QtWidgets.QFileDialog.getOpenFileName(caption='xxx load options file', directory=optionsFolder, filter="Options Files (*.json)")
+			fname = fname[0]
+			#dialog.setNameFilter("*.cpp *.cc *.C *.cxx *.c++");
+			print('optionsLoad() got user file selection:', fname)
+			if os.path.isfile(fname):
+				with open(fname) as f:
+					self._optionsDict = json.load(f)
+				self.optionsFile = fname
 		else:
-			print('bCanvasApp.optionsLoad() loading:', self.optionsFile)
-			with open(self.optionsFile) as f:
-				self._optionsDict = json.load(f)
+			if not os.path.isfile(self.optionsFile):
+				self.optionsFile = self.defaultOptionsFile()
+				print('bCanvasApp.optionsLoad() is creating defaults options and saving them in:', self.optionsFile)
+				self.optionsDefault()
+				self.optionsSave()
+			else:
+				print('bCanvasApp.optionsLoad() loading:', self.optionsFile)
+				with open(self.optionsFile) as f:
+					self._optionsDict = json.load(f)
 
 	def optionsSave(self):
 		with open(self.optionsFile, 'w') as outfile:
 			json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
+
+	def _getCodeFolder(self):
+		""" get full path to the folder where this file of code lives
+
+		We are using this to
+		1) Store single image file snapshot off video camera
+		2) Place to store icons
+		"""
+		if getattr(sys, 'frozen', False):
+			# we are running in a bundle (frozen)
+			bundle_dir = sys._MEIPASS
+		else:
+			# we are running in a normal Python environment
+			bundle_dir = os.path.dirname(os.path.abspath(__file__))
+		return bundle_dir
 
 
 if __name__ == '__main__':
@@ -208,17 +261,18 @@ if __name__ == '__main__':
 		#savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		#savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
 		#w2 = bCanvasApp(path=savedCanvasPath)
-		w2 = bCanvasApp()
+		myCanvasApp = bCanvasApp(parent=app)
 		#w2.load(thisFile=savedCanvasPath)
-		print('bCanvasApp.__main__() w2.optionsFile:', w2.optionsFile)
-		w2.resize(1024, 768)
+		#print('bCanvasApp.__main__() myCanvasApp.optionsFile:', myCanvasApp.optionsFile)
+		#myCanvasApp.resize(1024, 768)
 
 		# working
 		#w2.newCanvas('tst2')
 		#w2.newCanvas('')
 
 		path = '/Users/cudmore/box/data/canvas/20191226/20191226_tst1/20191226_tst1_canvas.txt'
-		w2.load(path)
+		if os.path.isfile(path):
+			myCanvasApp.load(path)
 
 		sys.exit(app.exec_())
 	except Exception as e:

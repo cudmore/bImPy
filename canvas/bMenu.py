@@ -24,9 +24,20 @@ class bMenu:
 
 		file.addSeparator()
 
-		file.addAction('Save', self.save, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S))
+		file.addAction('Save Canvas', self.save, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S))
+
+		file.addSeparator()
+
+		file.addAction('Exit', self.quit, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Q))
 
 		self.myMenuBar.addMenu(file)
+
+		# options menu
+		options = self.myMenuBar.addMenu("Options")
+		options.addAction('Load Scope Config ...', self.loadScopeConfig)
+		options.addSeparator()
+		options.addAction('Load Users Config ...', self.loadUserConfig)
+		self.myMenuBar.addMenu(options)
 
 	'''
 	def processtrigger(self,q):
@@ -38,10 +49,21 @@ class bMenu:
 		self.myCanvasApp.newCanvas()
 
 	def open(self):
-		print('bMenu.open')
-		fname = QtWidgets.QFileDialog.getOpenFileName(caption='xxx load a canvas')
-		print('bMenu.open() got user file selection:', fname)
-		return 0
+		print('bMenu.open() a canvas')
+		self.myCanvasApp.load(askUser=True)
 
 	def save(self):
-		print('bMenu.save')
+		print('bMenu.save() does nothing')
+
+	def quit(self):
+		print('bMenu.quit')
+		#self.myCanvasApp.myApp.
+		self.myCanvasApp.myApp.quit()
+
+	def loadScopeConfig(self):
+		print('bMenu.loadScopeConfig')
+		self.myCanvasApp.optionsLoad(askUser=True)
+
+	def loadUserConfig(self):
+		print('bMenu.loadUserConfig')
+		#self.myCanvasApp.optionsLoad(askUser=True)
