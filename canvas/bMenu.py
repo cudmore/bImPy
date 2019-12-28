@@ -7,7 +7,11 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 class bMenu:
 	def __init__(self, parent):
-		self.parent = parent # the parent canvas app
+		"""
+		parent: bCanvasApp
+		"""
+		#self.parent = parent # the parent canvas app
+		self.myCanvasApp = parent
 
 		if sys.platform.startswith('darwin') :
 			self.myMenuBar = QtGui.QMenuBar() # parentless menu bar for Mac OS
@@ -15,8 +19,8 @@ class bMenu:
 			self.myMenuBar = parent.menuBar() # refer to the default one
 
 		file = self.myMenuBar.addMenu("File")
-		file.addAction('New...', self.new, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_N))
-		file.addAction('Open...', self.open, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_O))
+		file.addAction('New Canvas ...', self.new, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_N))
+		file.addAction('Open Canvas ...', self.open, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_O))
 
 		file.addSeparator()
 
@@ -30,10 +34,14 @@ class bMenu:
 	'''
 
 	def new(self):
-		print('bMenu.new')
+		print('=== bMenu.new')
+		self.myCanvasApp.newCanvas()
 
 	def open(self):
 		print('bMenu.open')
+		fname = QtWidgets.QFileDialog.getOpenFileName(caption='xxx load a canvas')
+		print('bMenu.open() got user file selection:', fname)
+		return 0
 
 	def save(self):
 		print('bMenu.save')

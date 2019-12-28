@@ -20,6 +20,8 @@ class bPrior(bMotor):
 
 		self.ser = None
 
+		self.readPosition()
+
 	def open(self):
 		if self.ser is not None:
 			print('port already opened')
@@ -87,7 +89,7 @@ class bPrior(bMotor):
 
 		xPos = float(xPos)
 		yPos = float(yPos)
-		print('bPrior.priorReadPos() returning:', xPos, yPos)
+		print('bPrior.readPosition() returning:', xPos, yPos)
 		return xPos, yPos
 
 	def move(self, direction, umDistance):

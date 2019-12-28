@@ -292,7 +292,10 @@ class bStack:
 		if useMaxProject:
 			# need to specify channel !!!!!!
 			#print('self.maxProjectImage.shape:', self.maxProjectImage.shape, 'max:', np.max(self.maxProjectImage))
-			return np.take(lut, self.maxProjectImage)
+			if self.maxProjectImage is not None:
+				return np.take(lut, self.maxProjectImage)
+			else:
+				return None
 		else:
 			return np.take(lut, self.getImage(channel=channel, sliceNum=sliceNum))
 
@@ -326,6 +329,21 @@ class bStack:
 			return theArray
 		else:
 			print('loadMax() ERROR max file in:', maxFile, 'path:', self.path)
+			self.maxProjectImage = self.makeMaxProject()
+			return None
+
+	def makeMaxProject(self):
+		if self.stack is None:
+			print('   makeMaxProject() found self.stack is None')
+			return None
+		else:
+			print('   makeMaxProject() taking max from self.data.size:', self.data.size)
+			size = self.stack.size
+			lenSize = len(size)
+			'''
+			if lenSize == 2:
+				return self.stack
+			'''
 			return None
 
 	def loadStack(self, verbose=False):
@@ -623,4 +641,4 @@ if __name__ == '__main__':
 		javabridge.kill_vm()
 		pass
 
-	print('bstack main finished')
+	print('bstack __main__ finished')

@@ -2,23 +2,32 @@
 # 20191224
 
 import os, sys, subprocess
-
 from functools import partial
+
+import numpy as np
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 import bimpy
-from bimpy.interface import bStackWidget
-from bCanvas import bCanvas
+#from bimpy.interface import bStackWidget
+import canvas
 
-# I want this to inherit from QWidgtet, but that does not have addToolbar ???
+# I want this to inherit from QWidget, but that does not have addToolbar ???
+#class bCanvasWidget(QtWidgets.QWidget):
 class bCanvasWidget(QtWidgets.QMainWindow):
 	def __init__(self, filePath, parent=None):
+		"""
+		parent: bCanvasApp
+		"""
 		super(bCanvasWidget, self).__init__(parent)
 		self.filePath = filePath
 		self.myCanvasApp = parent
-		self.myCanvas = bCanvas(filePath=filePath)
+		self.myCanvas = canvas.bCanvas(filePath=filePath, parent=self)
 		self.myStackList = [] # a list of open bStack
+
+		folderPath = os.path.dirname(self.filePath)
+		self.myLogFilePosiiton = canvas.bLogFilePosition(folderPath, self.myCanvasApp.xyzMotor)
+		#self.myLogFilePosiiton.run()
 
 		self.buildUI()
 
@@ -93,7 +102,11 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			stack.activateWindow()
 			stack.raise_()
 		else:
-			tmp = bStackWidget(path=stackPath)
+			# if I pass parent=self, all hell break loos (todo: fix this)
+			# when i don't pass parent=self then closing the last stack window quits the application?
+			#tmp = bimpy.interface.bStackWidget(path=stackPath, parent=self)
+			tmp = bimpy.interface.bStackWidget(path=stackPath)
+			#print('done creating bStackWidget')
 			tmp.show()
 			self.myStackList.append(tmp)
 
@@ -120,6 +133,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			x,y = self.myCanvasApp.xyzMotor.readPosition()
 			self.motorToolbarWidget.xStagePositionLabel.setText(str(x))
 			self.motorToolbarWidget.yStagePositionLabel.setText(str(y))
+
+			# x/y coords are not updating???
+			#self.motorToolbarWidget.xStagePositionLabel.update()
 
 			# set red crosshair
 			self.myGraphicsView.myCrosshair.setMotorPosition(x, y)
@@ -186,6 +202,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			self.myCanvas.save()
 
 		elif event =='Import From Scope':
+			print('=== bCanvasWidget.userEvent() event:', event)
 			newScopeFileList = self.myCanvas.importNewScopeFiles()
 			for newScopeFile in newScopeFileList:
 				# append to view
@@ -193,6 +210,12 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 				# append to list
 				self.toolbarWidget.appendScopeFile(newScopeFile)
+			if len(newScopeFileList) > 0:
+				self.myCanvas.save()
+
+		elif event == 'center canvas on motor position':
+			self.getGraphicsView().centerOnCrosshair()
+
 		else:
 			print('bCanvasWidget.userEvent() not understood:', event)
 
@@ -454,7 +477,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# todo: add popup to select 2p zoom (Video, 1, 2, 3, 4)
 		#20191217
 		#self.myCrosshair = myQGraphicsRectItem(self)
-		self.myCrosshair = myQGraphicsRectItem(self)
+		self.myCrosshair = myQGraphicsRectItem()
 		self.myCrosshair.setZValue(numItems)
 		myScene.addItem(self.myCrosshair)
 
@@ -476,6 +499,34 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			)
 
 		self.ensureVisible(tmpSceneRect)
+
+	def centerOnCrosshair(self):
+		print('myQGraphicsView.centerOnCrosshair()')
+
+		# works when paired with self.scene().update(sceneRect)
+		self.centerOn(self.myCrosshair)
+
+		# kinda works
+		self.ensureVisible(self.myCrosshair.rect(), xMargin=500, yMargin=500)
+
+		sceneRect = self.scene().sceneRect() #this is qrectf
+		self.ensureVisible(sceneRect, xMargin=0, yMargin=0)
+
+		#sceneRect = self.mapToScene(self.rect()).boundingRect()
+		#self.fitInView(sceneRect)
+		#self.ensureVisible(sceneRect)
+
+		#viewRect = self.mapFromScene(sceneRect)
+		#self.update(sceneRect.toRect()) # update requires QRect, not QRectF
+
+		#self.ensureVisible(sceneRect)
+		#self.fitInView(sceneRect)
+
+		#self.setSceneRect(sceneRect)
+		#self.updateSceneRect(sceneRect)
+		#self.update()
+		sceneRect = self.scene().sceneRect() #this is qrectf
+		self.scene().update(sceneRect)
 
 	def appendScopeFile(self, newScopeFile):
 		"""
@@ -528,7 +579,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		newIdx = 999 # do i use this???
 		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, '2P Max Layer', parent=pixmap)
 		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
-		pixMapItem.setToolTip(str(newIdx))
+		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
 		#pixMapItem.setZValue(numItems)
@@ -559,7 +610,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		xMotor = float(xMotor)
 		yMotor = float(yMotor)
-		print('myQGraphicsView.appendVideo() xMotor:', xMotor, 'yMotor:', yMotor)
+
+		#print('myQGraphicsView.appendVideo() xMotor:', xMotor, 'yMotor:', yMotor)
 
 		#videoImage = videoFile.getVideoImage() # ndarray
 		videoImage = newVideoStack.getImage() # ndarray
@@ -576,10 +628,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		newIdx = 999 # do i use this???
 		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, 'Video Layer', parent=pixmap)
 		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
-		pixMapItem.setToolTip(str(newIdx))
+		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
-		tmpNumItems = 100
+		#tmpNumItems = 100
 		#pixMapItem.setZValue(tmpNumItems) # do i use this???
 
 		# add to scene
@@ -658,6 +710,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			selectedItem = selectedItems[0]
 			fileName = selectedItem._fileName
 			layer = selectedItem.myLayer
+			#print('   layer:', layer)
 			self.myCanvasWidget.openStack(fileName, layer)
 
 	def mousePressEvent(self, event):
@@ -883,6 +936,8 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	Used for 2p images so we can show/hide max project and still see square
 	"""
 	def __init__(self, parent=None):
+		super(myQGraphicsRectItem, self).__init__(parent)
+
 		#-9815.6, -20083.0
 		#self.fake_x = -4811.0 #-9811.7 #185
 		#self.fake_y = -10079.0 #-20079.0 #-83
@@ -897,7 +952,6 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		# I really do not understand use of parent ???
 		# was this
 		#super(QtWidgets.QGraphicsRectItem, self).__init__(myRect)
-		super(QtWidgets.QGraphicsRectItem, self).__init__()
 
 		self._fileName = ''
 		self.myLayer = 'crosshair'
@@ -1014,33 +1068,6 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		else:
 			print('   myQGraphicsRectItem.bringToFront() item is already front most')
 '''
-
-class myTreeWidget(QtWidgets.QTreeWidget):
-	def __init__(self, parent=None):
-		super(myTreeWidget, self).__init__(parent)
-		self.myCanvasWidget = parent
-
-	def keyPressEvent(self, event):
-		print('myTreeWidget.keyPressEvent() event.text():', event.text())
-		#self.myGraphicsView.keyPressEvent(event)
-
-		# todo: fix this, this assumes selected file in list is same as selected file in graphics view !
-		if event.key() == QtCore.Qt.Key_F:
-			#print('f for bring to front')
-			self.myCanvasWidget.getGraphicsView().changeOrder('bring to front')
-		elif event.key() == QtCore.Qt.Key_B:
-			#print('b for send to back')
-			self.myCanvasWidget.getGraphicsView().changeOrder('send to back')
-		elif event.key() == QtCore.Qt.Key_Left:
-			print('todo: left arrow reselect')
-		elif event.key() == QtCore.Qt.Key_Right:
-			print('todo: right arrow reselect')
-		elif event.key() == QtCore.Qt.Key_Up:
-			print('todo: up arrow, previous annotations')
-		elif event.key() == QtCore.Qt.Key_Down:
-			print('todo: down arrow, next selection')
-		else:
-			print('  key not handled:text:', event.text(), 'modifyers:', event.modifiers())
 
 class myScopeToolbarWidget(QtWidgets.QToolBar):
 	#def __init__(self, theCanvas, parent=None):
@@ -1246,7 +1273,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		buttonName = 'Save Canvas'
 		button = QtWidgets.QPushButton(buttonName)
 		#button.setToolTip('Load a canvas from disk')
-		button.clicked.connect(partial(self.on_button_click,buttonName))
+		button.clicked.connect(partial(self.on_button_click, buttonName))
 		self.addWidget(button)
 
 		checkBoxName = 'Video Layer'
@@ -1314,68 +1341,25 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		self.addWidget(self.contrastGroupBox)
 
 		#
-		# file list
-		#self.fileList = QtWidgets.QListWidget()
-
-		#self.fileList = QtWidgets.QTreeWidget()
+		# file list (tree view)
 		self.fileList = myTreeWidget(self.myCanvasWidget)
-		self.fileList.itemSelectionChanged.connect(self.fileSelected_callback)
-		self.fileList.itemChanged.connect(self.fileSelected_changed)
 
 		self.addWidget(self.fileList)
 
-		self.fileList.setHeaderLabels(['File',]) # 'Show'])
-
 		itemList = []
 		for videoFile in self.myCanvasWidget.getCanvas().videoFileList:
-			print('videoFile:', videoFile._fileName)
-			#self.fileList.addItem(videoFile._fileName)
-			item = QtWidgets.QTreeWidgetItem(self.fileList)
-			item.setText(0, videoFile._fileName)
-			item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-			item.setCheckState(0, QtCore.Qt.Checked)
+			#print('   myToolbarWidget appending videoFile to fileList (tree):', videoFile._fileName)
+			self.fileList.appendStack(videoFile, 'Video Layer')
 
-			itemList.append(item)
 		for scopeFile in self.myCanvasWidget.getCanvas().scopeFileList:
-			print('scopeFile:', scopeFile._fileName)
-			#self.fileList.addItem(scopeFile._fileName)
-			item = QtWidgets.QTreeWidgetItem(self.fileList)
-			item.setText(0, scopeFile._fileName)
-			item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
-			item.setCheckState(0, QtCore.Qt.Checked)
-			itemList.append(item)
+			#print('   myToolbarWidget appending scopeFile to fileList (tree):', scopeFile._fileName)
+			self.fileList.appendStack(scopeFile, '2P Max Layer')
 
-		# add all file list items to tree
-		self.fileList.insertTopLevelItems(0, itemList)
+	def appendScopeFile(self, newStack):
+		self.fileList.appendStack(newStack, '2P Max Layer') #type: ('Video Layer', '2P Max Layer')
 
-		# itemChanged
-
-		# try and make checkboxes
-		# 20191105, get this working!!!
-		'''
-		for item in itemList:
-			checkBoxName = 'File Check Box'
-			tmpCheckbox = QtWidgets.QCheckBox(checkBoxName)
-			tmpCheckbox.setToolTip('show/Hide Image')
-			tmpCheckbox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
-			tmpCheckbox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, 'tmptmptmp'))
-			#
-			column = 2
-			self.fileList.setItemWidget(item, column, tmpCheckbox)
-		'''
-
-		print('myToolbarWidget.__init__() done')
-
-	'''
-	def on_toggle_image_contrast(self):
-		print('=== on_toggle_image_contrast()')
-	'''
-
-	def appendScopeFile(self, newScopeFileStack):
-		print('todo: !!!!!!!!! implement myToolbarWidget.appendScopeFile()')
-
-	def appendVideo(self, newVideoStack):
-		print('todo: !!!!!!!!! implement myToolbarWidget.appendVideo()')
+	def appendVideo(self, newStack):
+		self.fileList.appendStack(newStack, 'Video Layer') #type: ('Video Layer', '2P Max Layer')
 
 	def getSelectedContrast(self):
 		if self.selectedContrast.isChecked():
@@ -1442,7 +1426,12 @@ class myToolbarWidget(QtWidgets.QToolBar):
 					#videoFile = self.myQGraphicsView.myCanvas.videoFileList[item._index]
 				#elif adjustThisLayer == '2P Max Layer':
 				elif item.myLayer == '2P Max Layer':
-					videoFile = self.myCanvasWidget.getCanvas().scopeFileList[item._index]
+					try:
+						videoFile = self.myCanvasWidget.getCanvas().findScopeFileByName(item._fileName)
+						#videoFile = self.myCanvasWidget.getCanvas().scopeFileList[item._index]
+					except:
+						print(len(self.myCanvasWidget.getCanvas().scopeFileList), item._index)
+						videoFile = None
 				else:
 					print('bCanvasWidget.on_contrast_slider() ERRRRRRRORRORORORRORORRORORORORORRORORO')
 					continue
@@ -1463,24 +1452,199 @@ class myToolbarWidget(QtWidgets.QToolBar):
 				# where do I put this ???????
 				videoImage = videoFile.getImage_ContrastEnhanced(theMin, theMax, useMaxProject=useMaxProject) # return the original as an nd_array
 
-				imageStackHeight, imageStackWidth = videoImage.shape
+				if videoImage is None:
+					# error
+					pass
+				else:
+					imageStackHeight, imageStackWidth = videoImage.shape
 
-				#print('mean:', np.mean(videoImage))
+					#print('mean:', np.mean(videoImage))
 
-				myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
+					myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 
-				#
-				# try and set color
-				if adjustThisLayer == '2P Max Layer':
-					colors=[]
-					for i in range(256): colors.append(QtGui.qRgb(i/4,i,i/2))
-					myQImage.setColorTable(colors)
+					#
+					# try and set color
+					if adjustThisLayer == '2P Max Layer':
+						colors=[]
+						for i in range(256): colors.append(QtGui.qRgb(i/4,i,i/2))
+						myQImage.setColorTable(colors)
 
-				pixmap = QtGui.QPixmap(myQImage)
-				pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
+					pixmap = QtGui.QPixmap(myQImage)
+					pixmap = pixmap.scaled(umWidth, umHeight, QtCore.Qt.KeepAspectRatio)
 
-				item.setPixmap(pixmap)
+					item.setPixmap(pixmap)
 		#firstItem.setPixmap(pixmap)
+
+	def setSelectedItem(self, filename):
+		"""
+		Respond to user clicking on the image and select the file in the list.
+		"""
+		#print('myToolbarWidget.setSelectedItem() filename:', filename)
+		self.fileList.setSelectedItem(filename)
+
+		'''
+		# todo: use self._findItemByFilename()
+		items = self.fileList.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
+		if len(items)>0:
+			item = items[0]
+			#print('   item:', item)
+			self.fileList.setCurrentItem(item)
+		'''
+
+	def setCheckedState(self, filename, doShow):
+		"""
+		set the visible checkbox
+		"""
+		#print('myToolbarWidget.setCheckedState() filename:', filename, 'doShow:', doShow)
+		self.fileList.setCheckedState(filename, doShow)
+
+		'''
+		item = self._findItemByFilename(filename)
+		if item is not None:
+			column = 0
+			item.setCheckState(column, doShow)
+		'''
+
+	'''
+	def _findItemByFilename(self, filename):
+		"""
+		Given a filename, return the item. Return None if not found.
+		"""
+		items = self.fileList.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
+		if len(items)>0:
+			return items[0]
+		else:
+			return None
+	'''
+
+	'''
+	def mousePressEvent(self, event):
+		print('myToolbarWidget.mousePressEvent()')
+	'''
+
+	'''
+	def keyPressEvent(self, event):
+		print('myToolbarWidget.keyPressEvent() event:', event)
+		print('   enable bring to front and send to back')
+	'''
+
+	@QtCore.pyqtSlot()
+	def on_button_click(self, name):
+		print('=== myToolbarWidget.on_button_click() name:', name)
+
+	@QtCore.pyqtSlot()
+	def on_checkbox_click(self, name, checkBoxObject):
+		print('=== myToolbarWidget.on_checkbox_click() name:', name, 'checkBoxObject:', checkBoxObject)
+		checkState = checkBoxObject.checkState()
+
+		if name == 'Video Layer':
+			self.myCanvasWidget.getGraphicsView().hideShowLayer('Video Layer', checkState==2)
+			#self.myQGraphicsView.hideShowLayer('Video Layer', checkState==2)
+		if name == '2P Max Layer':
+			self.myCanvasWidget.getGraphicsView().hideShowLayer('2P Max Layer', checkState==2)
+			#self.myQGraphicsView.hideShowLayer('2P Max Layer', checkState==2)
+		if name == '2P Squares Layer':
+			self.myCanvasWidget.getGraphicsView().hideShowLayer('2P Squares Layer', checkState==2)
+			#self.myQGraphicsView.hideShowLayer('2P Squares Layer', checkState==2)
+
+class myTreeWidget(QtWidgets.QTreeWidget):
+	def __init__(self, parent=None):
+		super(myTreeWidget, self).__init__(parent)
+		self.myCanvasWidget = parent
+
+		self.setHeaderLabels(['File','Type','xPixels', 'yPixels', 'numSlices']) # 'Show'])
+		self.setColumnWidth(0, 200)
+		self.setColumnWidth(1, 20)
+		self.setColumnWidth(2, 40)
+		self.setColumnWidth(3, 40)
+		self.setColumnWidth(4, 40)
+
+		self.itemSelectionChanged.connect(self.fileSelected_callback)
+		self.itemChanged.connect(self.fileSelected_changed)
+
+	def appendStack(self, theStack, type):
+		"""
+		type: ('Video Layer', '2P Max Layer')
+		"""
+		item = QtWidgets.QTreeWidgetItem(self)
+		item.setText(0, theStack._fileName)
+		if type == 'Video Layer':
+			item.setText(1, 'v')
+		elif type == '2P Max Layer':
+			item.setText(1, '2p')
+		else:
+			item.setText(1, 'Unknown')
+		item.setText(2, str(theStack.pixelsPerLine))
+		item.setText(3, str(theStack.linesPerFrame))
+		item.setText(4, str(theStack.numImages))
+		item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+		item.setCheckState(0, QtCore.Qt.Checked)
+
+		#self.insertTopLevelItems(0, item)
+		self.addTopLevelItem(item)
+
+	def setSelectedItem(self, filename):
+		"""
+		Respond to user clicking on the image and select the file in the list.
+		"""
+		items = self.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
+		if len(items)>0:
+			item = items[0]
+			self.setCurrentItem(item)
+		else:
+			print('warning: myTreeWidget.setSelectedItem() did not find filename:', filename)
+
+	def setCheckedState(self, filename, doShow):
+		"""
+		set the visible checkbox
+		"""
+		items = self.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
+		if item is not None:
+			column = 0
+			item.setCheckState(column, doShow)
+
+	def keyPressEvent(self, event):
+		#print('myTreeWidget.keyPressEvent() event.text():', event.text())
+
+		# todo: fix this, this assumes selected file in list is same as selected file in graphics view !
+		if event.key() == QtCore.Qt.Key_F:
+			#print('f for bring to front')
+			self.myCanvasWidget.getGraphicsView().changeOrder('bring to front')
+		elif event.key() == QtCore.Qt.Key_B:
+			#print('b for send to back')
+			self.myCanvasWidget.getGraphicsView().changeOrder('send to back')
+
+		elif event.key() == QtCore.Qt.Key_Left:
+			super(myTreeWidget, self).keyPressEvent(event)
+		elif event.key() == QtCore.Qt.Key_Right:
+			super(myTreeWidget, self).keyPressEvent(event)
+		elif event.key() == QtCore.Qt.Key_Up:
+			super(myTreeWidget, self).keyPressEvent(event)
+		elif event.key() == QtCore.Qt.Key_Down:
+			super(myTreeWidget, self).keyPressEvent(event)
+		else:
+			print('  key not handled:text:', event.text(), 'modifyers:', event.modifiers())
+			super(myTreeWidget, self).keyPressEvent(event)
+
+	def mouseDoubleClickEvent(self, event):
+		"""
+		open a stack on a double-click
+		"""
+		print('=== myTreeWidget.mouseDoubleClickEvent')
+		selectedItems = self.selectedItems()
+		if len(selectedItems) > 0:
+			selectedItem = selectedItems[0]
+			fileName = selectedItem.text(0)
+			type = selectedItem.text(1) # in ['v', '2p']
+			if type == 'v':
+				layer = 'Video Layer'
+			elif type == '2p':
+				layer = '2P Max Layer'
+			else:
+				# error
+				layer = None
+			if layer is not None:
+				self.myCanvasWidget.openStack(fileName, layer)
 
 	def fileSelected_changed(self, item, col):
 		"""
@@ -1499,7 +1663,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		Respond to user click in the file list (selects a file)
 		"""
 		print('=== myToolbarWidget.fileSelected_callback()')
-		theItems = self.fileList.selectedItems()
+		theItems = self.selectedItems()
 		if len(theItems) > 0:
 			theItem = theItems[0]
 			#selectedRow = self.fileList.currentRow() # self.fileList is a QTreeWidget
@@ -1508,60 +1672,3 @@ class myToolbarWidget(QtWidgets.QToolBar):
 			#print('   fileSelected_callback()', filename)
 			# visually select image in canvas with yellow square
 			self.myCanvasWidget.getGraphicsView().setSelectedItem(filename)
-
-	def setSelectedItem(self, filename):
-		"""
-		Respond to user clicking on the image and select the file in the list.
-		"""
-		print('myToolbarWidget.setSelectedItem() filename:', filename)
-		# todo: use self._findItemByFilename()
-		items = self.fileList.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
-		if len(items)>0:
-			item = items[0]
-			#print('   item:', item)
-			self.fileList.setCurrentItem(item)
-
-	def setCheckedState(self, filename, doShow):
-		"""
-		set the visible checkbox
-		"""
-		print('myToolbarWidget.setCheckedState() filename:', filename, 'doShow:', doShow)
-		item = self._findItemByFilename(filename)
-		if item is not None:
-			column = 0
-			item.setCheckState(column, doShow)
-
-	def _findItemByFilename(self, filename):
-		"""
-		Given a filename, return the item. Return None if not found.
-		"""
-		items = self.fileList.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
-		if len(items)>0:
-			return items[0]
-		else:
-			return None
-
-	def mousePressEvent(self, event):
-		print('myToolbarWidget.mousePressEvent()')
-
-	'''
-	def keyPressEvent(self, event):
-		print('myToolbarWidget.keyPressEvent() event:', event)
-		print('   enable bring to front and send to back')
-	'''
-
-	@QtCore.pyqtSlot()
-	def on_button_click(self, name):
-		print('=== myToolbarWidget.on_button_click() name:', name)
-
-	@QtCore.pyqtSlot()
-	def on_checkbox_click(self, name, checkBoxObject):
-		print('=== myToolbarWidget.on_checkbox_click() name:', name, 'checkBoxObject:', checkBoxObject)
-		checkState = checkBoxObject.checkState()
-
-		if name == 'Video Layer':
-			self.myQGraphicsView.hideShowLayer('Video Layer', checkState==2)
-		if name == '2P Max Layer':
-			self.myQGraphicsView.hideShowLayer('2P Max Layer', checkState==2)
-		if name == '2P Squares Layer':
-			self.myQGraphicsView.hideShowLayer('2P Squares Layer', checkState==2)

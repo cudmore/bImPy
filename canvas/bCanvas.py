@@ -10,12 +10,13 @@ class bCanvas:
 	"""
 	A visuospatial convas that brings together different light paths of a scope.
 	"""
-	def __init__(self, filePath=None, folderPath=''):
+	def __init__(self, filePath=None, folderPath='', parent=None):
 		"""
 		filePath: path to .txt file to load a canvas
 		folderPath: to load a converted Igor canvas (DEPRECIATED)
 		"""
 
+		self.myCanvasWidget = parent # use, self.myCanvasWidget.myLogFilePosiiton
 		# need to call self.load()
 		self._filePath = None #filePath # todo: not used
 		self._folderPath = None
@@ -48,6 +49,12 @@ class bCanvas:
 				return file
 		return None
 
+	def findScopeFileByName(self, filename):
+		for file in self._scopeFileList:
+			if file._fileName == filename:
+				return file
+		return None
+
 	def appendVideo(self, newVideoStack):
 		self._videoFileList.append(newVideoStack)
 
@@ -62,7 +69,7 @@ class bCanvas:
 		for potentialNewFile in listDir:
 			if not potentialNewFile.endswith(thisFileExtension):
 				continue
-			print('considering file:', potentialNewFile)# check if file is in self.scopeFileList
+			print('bCanvas.importNewScopeFiles() considering file:', potentialNewFile)# check if file is in self.scopeFileList
 			isInList = False
 			for loadedScopeFile in self.scopeFileList:
 				if loadedScopeFile._fileName == potentialNewFile:
@@ -74,17 +81,22 @@ class bCanvas:
 				print('   New file:', potentialNewFile, 'find it in bLogFilePosition')
 				newFilePath = os.path.join(self._folderPath, potentialNewFile)
 				newScopeStack = bimpy.bStack(newFilePath, loadImages=False)
-				print('newScopeStack:', newScopeStack.print())
-				print('   ', newScopeStack.header.prettyPrint())
-				print('   todo: fix this, adding fake motor !!!')
-				newScopeStack.header.header['xMotor'] = 10000
-				newScopeStack.header.header['yMotor'] = 10000
-
+				print('   newScopeStack:', newScopeStack.print())
+				#print('      ', newScopeStack.header.prettyPrint())
+				#print('      todo: fix this, adding fake motor !!! get motor position of file from bLogFilePosition !!!')
+				xPos, yPos = self.myCanvasWidget.myLogFilePosiiton.getFilePosiiton(potentialNewFile)
+				if xPos is not None and yPos is not None:
+					newScopeStack.header.header['xMotor'] = xPos
+					newScopeStack.header.header['yMotor'] = yPos
+				else:
+					print('error: bCanvas.importNewScopeFiles() did not find file position for file:', potentialNewFile)
+					newScopeStack.header.header['xMotor'] = 0
+					newScopeStack.header.header['yMotor'] = 0
 				# append to return list
 				newStackList.append(newScopeStack)
 
 				self._scopeFileList.append(newScopeStack)
-				print('   === REMEMBER TO SAVE !!!')
+				print('*** importNewScopeFiles() REMEMBER TO SAVE !!!')
 
 		return newStackList
 

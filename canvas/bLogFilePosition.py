@@ -11,8 +11,10 @@ Watches a folder for new files and for each new file
 import os, time, json
 from datetime import datetime
 import threading, queue
+from collections import OrderedDict
 
-from bimpy import bWatchFolder, bPrior
+#from canvas import bWatchFolder, bPrior
+import canvas
 
 class bLogFilePosition(threading.Thread):
 	"""
@@ -23,31 +25,36 @@ class bLogFilePosition(threading.Thread):
 
 	On constructor, check if there is already a log file and load it
 	"""
-	def __init__(self, path=None, realPriorStage=True):
+	def __init__(self, folderPath, stageController):
+		"""
+		folderPath: The folder to watch for new 2p scope files
+		stageController: stage controller from the main bCanvasApp (we only want one stage controller)
+		"""
 		threading.Thread.__init__(self)
 
-		self.path = path
+		print('bLogFilePosition() ready to watch folder, need to call run, folderPath:', folderPath)
+		self.path = folderPath
 
 		# load log file if it exists
-		#todo: put this in fu ction, also used by self.run()
-		watchFileName = os.path.basename(os.path.normpath(path))
+		#todo: put this in function, also used by self.run()
+		watchFileName = os.path.basename(os.path.normpath(self.path))
 		watchFileName += '_watched.txt'
-		watchFileLogPath = os.path.join(path, watchFileName)
+		watchFileLogPath = os.path.join(self.path, watchFileName)
 		self.myLogDict = OrderedDict()
 		if os.path.isfile(watchFileLogPath):
-			print('bLogFilePosition() needs to load pre-existing log file')
+			print('bLogFilePosition() is loading pre-existing log file watchFileLogPath:', watchFileLogPath)
 			with open(watchFileLogPath) as f:
 				# load as json!
 				self.myLogDict = json.load(f)
-				
-		self.priorStage = bPrior(isReal=realPriorStage)
+
+		self.myStageController = stageController #bPrior(isReal=realPriorStage)
 
 		self._stop_event = threading.Event()
 
 		self.inQueue = queue.Queue() # queue is infinite length
 		self.outQueue = queue.Queue()
 		self.errorQueue = queue.Queue()
-		self.myWatchFolder = bWatchFolder(path=path,
+		self.myWatchFolder = canvas.bWatchFolder(path=self.path,
 			inQueue=self.inQueue,
 			outQueue=self.outQueue,
 			errorQueue=self.errorQueue)
@@ -58,6 +65,7 @@ class bLogFilePosition(threading.Thread):
 		self.daemon = True
 		self.start()
 
+	# todo: we don't need this ???
 	def setWatchFolder(self, path):
 		if not os.path.isdir(path):
 			print('error: bLogFilePosition.setWatchFolder() got a bad path:',path)
@@ -65,22 +73,34 @@ class bLogFilePosition(threading.Thread):
 		self.path = path
 		self.myWatchFolder.setFolder(path)
 
+	def getFilePosiiton(self, fileName):
+		if fileName in self.myLogDict.keys():
+			print('getFilePosiiton()', fileName, self.myLogDict[fileName])
+			xPos = self.myLogDict[fileName]['xPos']
+			yPos = self.myLogDict[fileName]['yPos']
+			return xPos, yPos
+		else:
+			return None, None
+
 	def run(self):
+		print('bLogFilePosition.run()')
 		while not self._stop_event.is_set():
 			while not self.outQueue.empty():
+				# item is file name
 				item = self.outQueue.get(block=False)
 				print('bLogFilePosition.run() found outQueue item:', item)
 				# read position of motor from prior stage
-				xPos, yPos = self.priorStage.priorReadPos()
-				print('xPos:', xPos, 'yPos:', yPos)
+				xPos, yPos = self.myStageController.readPosition()
+				#print('xPos:', xPos, 'yPos:', yPos)
 
 				#datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
 				dateStr = datetime.today().strftime('%Y%m%d')
 				timeStr = datetime.today().strftime('%H:%M:%S')
-				logLine = dateStr + ',' + timeStr + ',' + item + ',' + xPos + ',' + yPos
-				print('logLine:', logLine)
+				logLine = dateStr + ',' + timeStr + ',' + item + ',' + str(xPos) + ',' + str(yPos)
+				print('   logLine:', logLine)
 
 				self.myLogDict[item] = OrderedDict()
+				self.myLogDict[item]['filename'] = item
 				self.myLogDict[item]['date'] = dateStr
 				self.myLogDict[item]['time'] = timeStr
 				self.myLogDict[item]['xPos'] = xPos
@@ -93,15 +113,16 @@ class bLogFilePosition(threading.Thread):
 				watchFileName = os.path.basename(os.path.normpath(watchPath))
 				watchFileName += '_watched.txt'
 				watchFileLogPath = os.path.join(watchPath, watchFileName)
-				print('watchFileLogPath:', watchFileLogPath)
-				with open(watchFileLogPath, 'a') as f:
+				print('   watchFileLogPath:', watchFileLogPath)
+				with open(watchFileLogPath, 'w') as f:
 					#f.write(logLine + '\n')
 					json.dump(self.myLogDict, f, indent=4) #, sort_keys=True)
-
-		time.sleep(0.1)
+				time.sleep(0.1)
+			time.sleep(0.1)
 
 if __name__ == '__main__':
 	path = None
+	'''
 	lfp = bLogFilePosition(path=path, realPriorStage=False)
 
 	#path = '/Users/cudmore/Desktop/watchThisFolder'
@@ -111,3 +132,4 @@ if __name__ == '__main__':
 			pass
 		except KeyboardInterrupt:
 			pass
+	'''

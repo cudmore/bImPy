@@ -12,14 +12,18 @@ import bimpy
 from canvas import bCanvasWidget, bMenu
 import bMotor
 
-class bCanvasApp(QtWidgets.QMainWindow):
+#class bCanvasApp(QtWidgets.QMainWindow):
+#class bCanvasApp(QtWidgets.QApplication):
+# was this
+#class bCanvasApp(QtWidgets.QMainWindow):
+class bCanvasApp(QtWidgets.QWidget):
 	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
 		"""
 		loadIgorCanvas: path to folder of converted Igor canvas
 		path: path to text file of a saved Python canvas
 		"""
 		print('bCanvasApp.__init__()')
-		super(bCanvasApp, self).__init__(parent)
+		super(bCanvasApp, self).__init__()
 
 		self.optionsLoad()
 
@@ -69,29 +73,41 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		print('myApp.keyPressEvent() event:', event)
 		self.myGraphicsView.keyPressEvent(event)
 
-	def newCanvas(self, shortName):
+	def newCanvas(self, shortName=''):
+		if shortName=='':
+			text, ok = QtWidgets.QInputDialog.getText(self, 'Text Input Dialog', 'Enter your name:')
+			if ok:
+				shortName = str(text)
+
+		if shortName == '':
+			return
+
 		savePath = self._optionsDict['savePath']
 		dateStr = datetime.today().strftime('%Y%m%d')
 
 		datePath = os.path.join(savePath, dateStr)
-		if not os.path.isdir(datePath):
-			os.mkdir(datePath)
 
 		folderName = dateStr + '_' + shortName
 		folderPath = os.path.join(datePath, folderName)
-		if not os.path.isdir(folderPath):
-			os.mkdir(folderPath)
 
 		videoFolderPath = os.path.join(folderPath, folderName + '_video')
-		if not os.path.isdir(videoFolderPath):
-			os.mkdir(videoFolderPath)
 
-		fileName = dateStr + '_' + shortName + '.txt'
+		fileName = dateStr + '_' + shortName + '_canvas.txt'
 		filePath = os.path.join(folderPath, fileName)
 
+		print('bCanvasApp.newCanvas() filePath:', filePath)
 		if os.path.isfile(filePath):
-			print('newCanvas() error, file exists:', filePath)
+			print('   error: newCanvas() file exists:', filePath)
 		else:
+			if not os.path.isdir(datePath):
+				os.mkdir(datePath)
+			if not os.path.isdir(folderPath):
+				os.mkdir(folderPath)
+
+			if not os.path.isdir(videoFolderPath):
+				os.mkdir(videoFolderPath)
+
+			# finally, make the canvas
 			self.canvasDict[fileName] = bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
 
 	def save(self):
@@ -107,7 +123,12 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		if os.path.isfile(filePath):
 			#self.canvas.load(thisFile=thisFile)
 			basename = os.path.basename(filePath)
+
+			# this is causing waste of time problems
+			# if I pass self to constructor, the canvas widget end up with multiple copies of its sub widgets?
 			loadedCanvas = bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
+			#loadedCanvas = bCanvasWidget(filePath) #bCanvas(filePath=filePath)
+
 			#loadedCanvas.buildUI()
 			self.canvasDict[basename] = loadedCanvas
 
@@ -172,6 +193,7 @@ if __name__ == '__main__':
 		myJavaBridge.start()
 
 		app = QtWidgets.QApplication(sys.argv)
+		#app.setQuitOnLastWindowClosed(False)
 
 		'''
 		loadIgorCanvas = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
@@ -192,7 +214,8 @@ if __name__ == '__main__':
 		w2.resize(1024, 768)
 
 		# working
-		w2.newCanvas('tst2')
+		#w2.newCanvas('tst2')
+		#w2.newCanvas('')
 
 		path = '/Users/cudmore/box/data/canvas/20191226/20191226_tst1/20191226_tst1_canvas.txt'
 		w2.load(path)
@@ -206,5 +229,7 @@ if __name__ == '__main__':
 		#sys.exit(app.exec_())
 		#raise
 	finally:
+		print('bCanvasApp __main__ finally')
 		myJavaBridge.stop()
 		#sys.exit(app.exec_())
+	print('bCanvasApp __main__ last line')

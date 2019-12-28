@@ -6,6 +6,7 @@ Watch a folder for new files
 """
 
 import os, time
+from datetime import datetime
 import threading, queue
 
 class bWatchFolder(threading.Thread):
@@ -22,7 +23,7 @@ class bWatchFolder(threading.Thread):
 		if path is not None:
 			self.fileListSet = set(os.listdir(path))
 
-		print('bWatchFolder() fileListSet:', self.fileListSet)
+		print('bWatchFolder() initial fileListSet:', self.fileListSet)
 
 		threading.Thread.__init__(self)
 
@@ -31,6 +32,10 @@ class bWatchFolder(threading.Thread):
 		self.inQueue = inQueue
 		self.outQueue = outQueue
 		self.errorQueue = errorQueue
+
+		self.theseFileExtensions = set(['.oir']) # passing a list to constructor is important
+		print('bWatchFolder will be watching for file extensions:', self.theseFileExtensions)
+		#self.ignoreList = [] # keep track of file names we have already rejected
 
 	def setFolder(self, path):
 		if path is None or os.path.isdir(path):
@@ -52,14 +57,24 @@ class bWatchFolder(threading.Thread):
 					newFileListSet = set(os.listdir(self.path))
 					#print('newFileListSet:', newFileListSet)
 					for file in newFileListSet:
-						if file not in self.fileListSet:
-							print('bWatchFolder.run() new file:', file)
-							# add the file to our list of files
-							self.fileListSet.add(file)
-							# transmit that we found a new file
-							self.outQueue.put(file)
+						tmpFileName, tmpFileExtenion = os.path.splitext(file)
+						if not tmpFileExtenion in self.theseFileExtensions:
+							pass
+							'''
+							if not file in self.ignoreList:
+								#tmpTimeStr = datetime.today().strftime('%H:%M:%S')
+								print('   found new file but not in theseFileExtensions:', file)
+								self.ignoreList.append(file)
+							'''
+						else:
+							if file not in self.fileListSet:
+								print('   bWatchFolder.run() new file:', file)
+								# add the file to our list of files
+								self.fileListSet.add(file)
+								# transmit that we found a new file (log file position will read motor x/y and log to a file)
+								self.outQueue.put(file)
 				# make sure not to remove this
-				time.sleep(0.1)
+				time.sleep(0.5)
 		except Exception as e:
 			self.errorQueue.put(e)
 			raise
@@ -94,7 +109,7 @@ if __name__ == '__main__':
 				'''
 				item = outQueue.get(block=False)
 				print('bWatchFolder.main() found outQueue item:', item)
-		time.sleep(0.1)
+			time.sleep(0.1)
 	except KeyboardInterrupt:
 		pass
 	except:

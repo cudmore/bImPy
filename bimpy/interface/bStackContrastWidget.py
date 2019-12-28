@@ -45,7 +45,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		#
 		# upper/min
-		self.upperHBoxLayout = QtWidgets.QHBoxLayout(self)
+		self.upperHBoxLayout = QtWidgets.QHBoxLayout() # don't use self
 
 		self.minLabel = QtWidgets.QLabel("Min")
 		self.minSpinBox = QtWidgets.QSpinBox()
@@ -65,11 +65,11 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.upperHBoxLayout.addWidget(self.minLabel)
 		self.upperHBoxLayout.addWidget(self.minSpinBox)
 		self.upperHBoxLayout.addWidget(self.minContrastSlider)
-		self.myQVBoxLayout.addLayout(self.upperHBoxLayout)
+		self.myQVBoxLayout.addLayout(self.upperHBoxLayout) # triggering non trace warning
 
 		#
 		# lower/max
-		self.lowerHBoxLayout = QtWidgets.QHBoxLayout(self)
+		self.lowerHBoxLayout = QtWidgets.QHBoxLayout() # don't use self
 
 		self.maxLabel = QtWidgets.QLabel("Max")
 		self.maxSpinBox = QtWidgets.QSpinBox()
@@ -90,6 +90,6 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.lowerHBoxLayout.addWidget(self.maxSpinBox)
 		self.lowerHBoxLayout.addWidget(self.maxContrastSlider)
 
-		self.myQVBoxLayout.addLayout(self.lowerHBoxLayout)
+		self.myQVBoxLayout.addLayout(self.lowerHBoxLayout) # triggering non trace warning
 
 		#self.setLayout(self.myQVBoxLayout)

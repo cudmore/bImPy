@@ -36,6 +36,307 @@ from bimpy import bStack
 '''
 
 ################################################################################
+#class bStackWidget(QtWidgets.QMainWindow):
+class bStackWidget(QtWidgets.QWidget):
+	"""
+	A widget to display a stack. This includes a bStackView and a bAnnotationTable.
+	"""
+	def __init__(self, mainWindow=None, parent=None, path=''):
+		super(bStackWidget, self).__init__()
+
+		#self.options_defaults()
+
+		self.path = path
+
+		basename = os.path.basename(self.path)
+		self.setWindowTitle(basename)
+
+		self.setObjectName('bStackWidget0')
+		self.setStyleSheet("""
+			#bStackWidget0 {
+				background-color: #222;
+			}
+			.QLabel {
+				color: #bbb;
+			}
+			.QCheckBox {
+				color: #bbb;
+			}
+		""")
+
+		#
+		#self.mySimpleStack = bSimpleStack(path) # backend stack
+		self.mySimpleStack = bimpy.bStack(path) # backend stack
+		#
+
+		self.showLeftControlBar = True
+		self.showContrastBar = True
+		self.showFeebackBar = True
+
+		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
+
+		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
+
+		self.myContrastWidget = bimpy.interface.bStackContrastWidget(mainWindow=self)
+
+		self.bStackFeebackWidget = bimpy.interface.bStackFeebackWidget(mainWindow=self)
+		self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numImages)
+
+		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
+
+		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
+
+		# a slider to set slice number
+		self.mySliceSlider = QtWidgets.QSlider(QtCore.Qt.Vertical)
+		self.mySliceSlider.setMaximum(self.mySimpleStack.numImages)
+		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numImages
+		self.mySliceSlider.setMinimum(0)
+		if self.mySimpleStack.numImages < 2:
+			self.mySliceSlider.setDisabled(True)
+		self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
+
+		self.myHBoxLayout2.addWidget(self.myStackView)
+		self.myHBoxLayout2.addWidget(self.mySliceSlider)
+
+		# add
+		self.myVBoxLayout.addWidget(self.myContrastWidget) #, stretch=0.1)
+		self.myVBoxLayout.addWidget(self.bStackFeebackWidget) #, stretch=0.1)
+		#self.myVBoxLayout.addWidget(self.myStackView) #, stretch = 9)
+		self.myVBoxLayout.addLayout(self.myHBoxLayout2) #, stretch = 9)
+
+		# todo: Need to show/hide annotation table
+		self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
+		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) # stretch=10, not sure on the units???
+		print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
+		if self.mySimpleStack.slabList is None:
+			self.annotationTable.hide()
+			self.showLeftControlBar = False
+		else:
+			pass
+			#self.annotationTable.hide()
+
+		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=7) # stretch=10, not sure on the units???
+
+		'''
+		self.setFocusPolicy(QtCore.Qt.ClickFocus)
+		self.setFocus()
+		'''
+
+		self.updateDisplayedWidgets()
+
+		self.move(100,100)
+
+		self.myStackView.setSlice(0)
+
+	def sliceSliderValueChanged(self):
+		theSlice = self.mySliceSlider.value()
+		self.signal('set slice', theSlice)
+
+	def updateDisplayedWidgets(self):
+		# left control bar
+		if self.showLeftControlBar:
+			# todo: fix this
+			if self.annotationTable is not None:
+				self.annotationTable.show()
+		else:
+			if self.annotationTable is not None:
+				self.annotationTable.hide()
+		# contrast bar
+		if self.showContrastBar:
+			self.myContrastWidget.show()
+		else:
+			self.myContrastWidget.hide()
+		# feedback bar
+		if self.showFeebackBar:
+			self.bStackFeebackWidget.show()
+		else:
+			self.bStackFeebackWidget.hide()
+
+
+	# get rid of this
+	def getStack(self):
+		return self.mySimpleStack
+
+	def signal(self, signal, value=None, fromTable=False, recursion=True):
+		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
+		if signal == 'selectNodeFromTable':
+			nodeIdx = value
+			print('=== bStackWidget.signal() selectNodeFromTable nodeIdx:', nodeIdx)
+			self.selectNode(nodeIdx, snapz=True)
+			'''
+			if not fromTable:
+				self.annotationTable.selectRow(nodeIdx)
+			'''
+			#self.myStackView.selectNode(nodeIdx, snapz=True)
+
+		if signal == 'selectEdgeFromTable':
+			print('=== bStackWidget.signal() selectEdgeFromTable')
+			self.selectEdge(value, snapz=True)
+			if not fromTable:
+				self.annotationTable.selectRow(value)
+		if signal == 'selectEdgeFromImage':
+			print('=== bStackWidget.signal() selectEdgeFromImage')
+			self.selectEdge(value, snapz=False)
+			if not fromTable:
+				self.annotationTable.selectRow(value)
+
+		if signal == 'contrast change':
+			minContrast = value['minContrast']
+			maxContrast = value['maxContrast']
+			self.myStackView.minContrast = minContrast
+			self.myStackView.maxContrast = maxContrast
+			self.myStackView.setSlice(index=None) # will just refresh current slice
+
+		if signal == 'set slice':
+			self.bStackFeebackWidget.setFeedback('set slice', value)
+			if recursion:
+				self.myStackView.setSlice(value, recursion=False)
+			self.mySliceSlider.setValue(value)
+
+		if signal == 'toggle sliding z':
+			self.myStackView._toggleSlidingZ(recursion=recursion)
+
+		if signal == 'save':
+			self.mySimpleStack.saveAnnotations()
+
+	def selectNode(self, nodeIdx, snapz=False):
+		print('bStackWidget.selectNode() nodeIdx:', nodeIdx)
+		self.myStackView.selectNode(nodeIdx, snapz=snapz)
+		#self.repaint() # this is updating the widget !!!!!!!!
+
+	def selectEdge(self, edgeIdx, snapz=False):
+		print('bStackWidget.selectEdge() edgeIdx:', edgeIdx)
+		self.myStackView.selectEdge(edgeIdx, snapz=snapz)
+		#self.repaint() # this is updating the widget !!!!!!!!
+
+	def keyPressEvent(self, event):
+		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
+		if event.key() in [QtCore.Qt.Key_Escape]:
+			self.myStackView.selectEdge(None)
+		elif event.key() in [QtCore.Qt.Key_L]:
+			self.showLeftControlBar = not self.showLeftControlBar
+			self.updateDisplayedWidgets()
+		elif event.key() in [QtCore.Qt.Key_C]:
+			self.showContrastBar = not self.showContrastBar
+			self.updateDisplayedWidgets()
+		elif event.key() in [QtCore.Qt.Key_F]:
+			self.showFeebackBar = not self.showFeebackBar
+			self.updateDisplayedWidgets()
+		elif event.key() in [QtCore.Qt.Key_H]:
+			self.printHelp()
+		elif event.key() in [QtCore.Qt.Key_B]:
+			print('set selected edge to bad')
+			selectedEdge = self.myStackView.mySelectedEdge
+			self.mySimpleStack.setAnnotation('toggle bad edge', selectedEdge)
+			# force refresh of table, I need to use model/view/controller !!!!
+			self.annotationTable.refreshRow(selectedEdge)
+
+		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
+		elif event.text() == '[':
+			isVisible = self.annotationTable.isVisible()
+			if isVisible:
+				self.annotationTable.hide()
+				self.showLeftControlBar = False
+			else:
+				self.annotationTable.show()
+				self.showLeftControlBar = True
+
+		elif event.text() == 'i':
+			self.mySimpleStack.print()
+
+		else:
+			print('bStackWidget.keyPressEvent() not handled', event.text())
+
+	def printHelp(self):
+		print('=============================================================')
+		print('bStackWidget help')
+		print('==============================================================')
+		print(' Navigation')
+		print('   mouse wheel: scroll through images')
+		print('   command + mouse wheel: zoom in/out (follows mouse position)')
+		print('   +/-: zoom in/out (follows mouse position)')
+		print('   click + drag: pan')
+		print(' Show/Hide interface')
+		print('   t: show/hide tracing')
+		print('   l: show/hide list of annotations')
+		print('   c: show/hide contrast bar')
+		print('   f: show/hide feedback bar')
+		print('   esc: remove edge selection (cyan)')
+		print(' Stacks To Display')
+		print('   1: Channel 1 - Raw Data')
+		print('   2: Channel 2 - Raw Data')
+		print('   3: Channel 3 - Raw Data')
+		print('   9: Segmentation mask - DeepVess')
+		print('   0: Skeleton mask - DeepVess')
+		print(' Sliding Z-Projection')
+		print('   z: toggle sliding z-projection on/off, will apply to all "Stacks To Display"')
+		print(' ' )
+
+
+	'''
+	def mousePressEvent(self, event):
+		print('=== bStackWidget.mousePressEvent()')
+		super().mousePressEvent(event)
+		self.myStackView.mousePressEvent(event)
+		event.setAccepted(False)
+	def mouseMoveEvent(self, event):
+		#print('=== bStackWidget.mouseMoveEvent()')
+		super().mouseMoveEvent(event)
+		self.myStackView.mouseMoveEvent(event)
+		event.setAccepted(False)
+	def mouseReleaseEvent(self, event):
+		print('=== bStackWidget.mouseReleaseEvent()')
+		super().mouseReleaseEvent(event)
+		self.myStackView.mousePressEvent(event)
+		event.setAccepted(False)
+	'''
+
+	"""
+	def dragEnterEvent(self, event):
+		#print('dragEnterEvent:', event)
+		if event.mimeData().hasUrls:
+			event.setDropAction(QtCore.Qt.CopyAction)
+			event.accept()
+		else:
+			event.ignore()
+
+	def dragMoveEvent(self, event):
+		#print('dragMoveEvent:', event)
+		if event.mimeData().hasUrls:
+			event.setDropAction(QtCore.Qt.CopyAction)
+			event.accept()
+		else:
+			event.ignore()
+
+	def dropEvent(self, event):
+		print('dropEvent:', event)
+		if event.mimeData().hasUrls:
+			for url in event.mimeData().urls():
+				print('   ', url.toLocalFile())
+		else:
+			event.ignore()
+	"""
+
+	'''
+	def onkey(self, event):
+		print('bStackWindow.onkey()', event.key)
+		key = event.key
+
+	def onclick(self, event):
+		print('bStackWindow.onclick()', event.button, event.x, event.y, event.xdata, event.ydata)
+
+	def onscroll(self, event):
+		if event.button == 'up':
+			self.currentSlice -= 1
+		elif event.button == 'down':
+			self.currentSlice += 1
+		self.setSlice(self.currentSlice)
+
+	def onpick(self, event):
+		print('bStackWindow.onpick()', event.ind)
+	'''
+
+################################################################################
 class bAnnotationTable(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None, parent=None, slabList=None):
 		super(bAnnotationTable, self).__init__(parent)
@@ -611,7 +912,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				downSlices = self.options['Stack']['downSlidingZSlices']
 				image = self.mySimpleStack.getSlidingZ(index, self.displayThisStack, upSlices, downSlices, self.minContrast, self.maxContrast)
 			else:
-				print('setSlice() index:', index)
+				#print('setSlice() index:', index)
 				#image = self.mySimpleStack.getImage_ContrastEnhanced(self.minContrast, self.maxContrast, channel=1, sliceNum=index, useMaxProject=False)
 				# works
 				image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
@@ -874,303 +1175,6 @@ class bStackView(QtWidgets.QGraphicsView):
 			'deadEndColor': 'b',
 			})
 
-################################################################################
-class bStackWidget(QtWidgets.QWidget):
-	"""
-	A widget to display a stack. This includes a bStackView and a bAnnotationTable.
-	"""
-	def __init__(self, mainWindow=None, parent=None, path=''):
-		super(bStackWidget, self).__init__(parent)
-
-		#self.options_defaults()
-
-		self.path = path
-
-		basename = os.path.basename(self.path)
-		self.setWindowTitle(basename)
-
-		self.setObjectName('bStackWidget0')
-		self.setStyleSheet("""
-			#bStackWidget0 {
-				background-color: #222;
-			}
-			.QLabel {
-				color: #bbb;
-			}
-			.QCheckBox {
-				color: #bbb;
-			}
-		""")
-
-		#
-		#self.mySimpleStack = bSimpleStack(path) # backend stack
-		self.mySimpleStack = bimpy.bStack(path) # backend stack
-		#
-
-		self.showLeftControlBar = True
-		self.showContrastBar = True
-		self.showFeebackBar = True
-
-		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
-
-		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
-
-		self.myContrastWidget = bimpy.interface.bStackContrastWidget(mainWindow=self)
-
-		self.bStackFeebackWidget = bimpy.interface.bStackFeebackWidget(mainWindow=self)
-		self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numImages)
-
-		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
-
-		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
-
-		# a slider to set slice number
-		self.mySliceSlider = QtWidgets.QSlider(QtCore.Qt.Vertical)
-		self.mySliceSlider.setMaximum(self.mySimpleStack.numImages)
-		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numImages
-		self.mySliceSlider.setMinimum(0)
-		if self.mySimpleStack.numImages < 2:
-			self.mySliceSlider.setDisabled(True)
-		self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
-
-		self.myHBoxLayout2.addWidget(self.myStackView)
-		self.myHBoxLayout2.addWidget(self.mySliceSlider)
-
-		# add
-		self.myVBoxLayout.addWidget(self.myContrastWidget) #, stretch=0.1)
-		self.myVBoxLayout.addWidget(self.bStackFeebackWidget) #, stretch=0.1)
-		#self.myVBoxLayout.addWidget(self.myStackView) #, stretch = 9)
-		self.myVBoxLayout.addLayout(self.myHBoxLayout2) #, stretch = 9)
-
-		# todo: Need to show/hide annotation table
-		self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
-		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) # stretch=10, not sure on the units???
-		print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
-		if self.mySimpleStack.slabList is None:
-			self.annotationTable.hide()
-			self.showLeftControlBar = False
-		else:
-			pass
-			#self.annotationTable.hide()
-
-		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=7) # stretch=10, not sure on the units???
-
-		'''
-		self.setFocusPolicy(QtCore.Qt.ClickFocus)
-		self.setFocus()
-		'''
-
-		self.updateDisplayedWidgets()
-
-		self.move(100,100)
-
-		self.myStackView.setSlice(0)
-
-	def sliceSliderValueChanged(self):
-		theSlice = self.mySliceSlider.value()
-		self.signal('set slice', theSlice)
-
-	def updateDisplayedWidgets(self):
-		# left control bar
-		if self.showLeftControlBar:
-			# todo: fix this
-			if self.annotationTable is not None:
-				self.annotationTable.show()
-		else:
-			if self.annotationTable is not None:
-				self.annotationTable.hide()
-		# contrast bar
-		if self.showContrastBar:
-			self.myContrastWidget.show()
-		else:
-			self.myContrastWidget.hide()
-		# feedback bar
-		if self.showFeebackBar:
-			self.bStackFeebackWidget.show()
-		else:
-			self.bStackFeebackWidget.hide()
-
-
-	# get rid of this
-	def getStack(self):
-		return self.mySimpleStack
-
-	def signal(self, signal, value=None, fromTable=False, recursion=True):
-		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
-		if signal == 'selectNodeFromTable':
-			nodeIdx = value
-			print('=== bStackWidget.signal() selectNodeFromTable nodeIdx:', nodeIdx)
-			self.selectNode(nodeIdx, snapz=True)
-			'''
-			if not fromTable:
-				self.annotationTable.selectRow(nodeIdx)
-			'''
-			#self.myStackView.selectNode(nodeIdx, snapz=True)
-
-		if signal == 'selectEdgeFromTable':
-			print('=== bStackWidget.signal() selectEdgeFromTable')
-			self.selectEdge(value, snapz=True)
-			if not fromTable:
-				self.annotationTable.selectRow(value)
-		if signal == 'selectEdgeFromImage':
-			print('=== bStackWidget.signal() selectEdgeFromImage')
-			self.selectEdge(value, snapz=False)
-			if not fromTable:
-				self.annotationTable.selectRow(value)
-
-		if signal == 'contrast change':
-			minContrast = value['minContrast']
-			maxContrast = value['maxContrast']
-			self.myStackView.minContrast = minContrast
-			self.myStackView.maxContrast = maxContrast
-			self.myStackView.setSlice(index=None) # will just refresh current slice
-
-		if signal == 'set slice':
-			self.bStackFeebackWidget.setFeedback('set slice', value)
-			if recursion:
-				self.myStackView.setSlice(value, recursion=False)
-			self.mySliceSlider.setValue(value)
-
-		if signal == 'toggle sliding z':
-			self.myStackView._toggleSlidingZ(recursion=recursion)
-
-		if signal == 'save':
-			self.mySimpleStack.saveAnnotations()
-
-	def selectNode(self, nodeIdx, snapz=False):
-		print('bStackWidget.selectNode() nodeIdx:', nodeIdx)
-		self.myStackView.selectNode(nodeIdx, snapz=snapz)
-		#self.repaint() # this is updating the widget !!!!!!!!
-
-	def selectEdge(self, edgeIdx, snapz=False):
-		print('bStackWidget.selectEdge() edgeIdx:', edgeIdx)
-		self.myStackView.selectEdge(edgeIdx, snapz=snapz)
-		#self.repaint() # this is updating the widget !!!!!!!!
-
-	def keyPressEvent(self, event):
-		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
-		if event.key() in [QtCore.Qt.Key_Escape]:
-			self.myStackView.selectEdge(None)
-		elif event.key() in [QtCore.Qt.Key_L]:
-			self.showLeftControlBar = not self.showLeftControlBar
-			self.updateDisplayedWidgets()
-		elif event.key() in [QtCore.Qt.Key_C]:
-			self.showContrastBar = not self.showContrastBar
-			self.updateDisplayedWidgets()
-		elif event.key() in [QtCore.Qt.Key_F]:
-			self.showFeebackBar = not self.showFeebackBar
-			self.updateDisplayedWidgets()
-		elif event.key() in [QtCore.Qt.Key_H]:
-			self.printHelp()
-		elif event.key() in [QtCore.Qt.Key_B]:
-			print('set selected edge to bad')
-			selectedEdge = self.myStackView.mySelectedEdge
-			self.mySimpleStack.setAnnotation('toggle bad edge', selectedEdge)
-			# force refresh of table, I need to use model/view/controller !!!!
-			self.annotationTable.refreshRow(selectedEdge)
-
-		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
-		elif event.text() == '[':
-			isVisible = self.annotationTable.isVisible()
-			if isVisible:
-				self.annotationTable.hide()
-				self.showLeftControlBar = False
-			else:
-				self.annotationTable.show()
-				self.showLeftControlBar = True
-
-		else:
-			print('bStackWidget.keyPressEvent() not handled', event.text())
-
-	def printHelp(self):
-		print('=============================================================')
-		print('bStackWidget help')
-		print('==============================================================')
-		print(' Navigation')
-		print('   mouse wheel: scroll through images')
-		print('   command + mouse wheel: zoom in/out (follows mouse position)')
-		print('   +/-: zoom in/out (follows mouse position)')
-		print('   click + drag: pan')
-		print(' Show/Hide interface')
-		print('   t: show/hide tracing')
-		print('   l: show/hide list of annotations')
-		print('   c: show/hide contrast bar')
-		print('   f: show/hide feedback bar')
-		print('   esc: remove edge selection (cyan)')
-		print(' Stacks To Display')
-		print('   1: Channel 1 - Raw Data')
-		print('   2: Channel 2 - Raw Data')
-		print('   3: Channel 3 - Raw Data')
-		print('   9: Segmentation mask - DeepVess')
-		print('   0: Skeleton mask - DeepVess')
-		print(' Sliding Z-Projection')
-		print('   z: toggle sliding z-projection on/off, will apply to all "Stacks To Display"')
-		print(' ' )
-
-
-	'''
-	def mousePressEvent(self, event):
-		print('=== bStackWidget.mousePressEvent()')
-		super().mousePressEvent(event)
-		self.myStackView.mousePressEvent(event)
-		event.setAccepted(False)
-	def mouseMoveEvent(self, event):
-		#print('=== bStackWidget.mouseMoveEvent()')
-		super().mouseMoveEvent(event)
-		self.myStackView.mouseMoveEvent(event)
-		event.setAccepted(False)
-	def mouseReleaseEvent(self, event):
-		print('=== bStackWidget.mouseReleaseEvent()')
-		super().mouseReleaseEvent(event)
-		self.myStackView.mousePressEvent(event)
-		event.setAccepted(False)
-	'''
-
-	"""
-	def dragEnterEvent(self, event):
-		#print('dragEnterEvent:', event)
-		if event.mimeData().hasUrls:
-			event.setDropAction(QtCore.Qt.CopyAction)
-			event.accept()
-		else:
-			event.ignore()
-
-	def dragMoveEvent(self, event):
-		#print('dragMoveEvent:', event)
-		if event.mimeData().hasUrls:
-			event.setDropAction(QtCore.Qt.CopyAction)
-			event.accept()
-		else:
-			event.ignore()
-
-	def dropEvent(self, event):
-		print('dropEvent:', event)
-		if event.mimeData().hasUrls:
-			for url in event.mimeData().urls():
-				print('   ', url.toLocalFile())
-		else:
-			event.ignore()
-	"""
-
-	'''
-	def onkey(self, event):
-		print('bStackWindow.onkey()', event.key)
-		key = event.key
-
-	def onclick(self, event):
-		print('bStackWindow.onclick()', event.button, event.x, event.y, event.xdata, event.ydata)
-
-	def onscroll(self, event):
-		if event.button == 'up':
-			self.currentSlice -= 1
-		elif event.button == 'down':
-			self.currentSlice += 1
-		self.setSlice(self.currentSlice)
-
-	def onpick(self, event):
-		print('bStackWindow.onpick()', event.ind)
-	'''
-
 if __name__ == '__main__':
 	import sys
 	#from bimpy.interface import bStackWidget
@@ -1190,6 +1194,7 @@ if __name__ == '__main__':
 		# x/y=0.3107, z=0.5
 		path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/high_mag_top_of_node/tracing_20191217.tif'
 
+	print('!!! bStackWidget __main__ is creating QApplication')
 	app = QtWidgets.QApplication(sys.argv)
 
 	sw = bStackWidget(mainWindow=app, parent=None, path=path)
@@ -1204,4 +1209,5 @@ if __name__ == '__main__':
 
 	#print('app.topLevelWidgets():', app.topLevelWidgets())
 
+	print('bStackWidget __main__ done')
 	sys.exit(app.exec_())
