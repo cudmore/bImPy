@@ -193,7 +193,7 @@ if __name__ == '__main__':
 		myJavaBridge.start()
 
 		app = QtWidgets.QApplication(sys.argv)
-		#app.setQuitOnLastWindowClosed(False)
+		app.setQuitOnLastWindowClosed(False)
 
 		'''
 		loadIgorCanvas = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
