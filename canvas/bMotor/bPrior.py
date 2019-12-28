@@ -74,11 +74,22 @@ class bPrior(bMotor):
 				self.writeLine('p') # write 'p' to ask for position
 				resp = self.readLine() # read response
 
-				print('bPrior.readPosition() resp:', resp)
+				print('   bPrior.readPosition() resp:', resp)
 				try:
 					xPos, yPos, zPos = resp.split(',')
+					
+					print(xPos)
+					# when prior is at -18937.0 um we get -189370
+					xPos = float(xPos)
+					yPos = float(yPos)
+					xPos /= 10
+					yPos /= 10
+					
+					# step by 500 moves ~50 um
+					# need to *10 the microns we specify in canvas interface
+					
 				except:
-					print('readPosition exception')
+					print('   bPrior.readPosition() exception')
 					xPos = 'Nan'
 					yPos = 'Nan'
 				'''
