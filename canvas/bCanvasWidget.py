@@ -539,7 +539,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#20191217
 		#self.myCrosshair = myQGraphicsRectItem(self)
 		self.myCrosshair = myQGraphicsRectItem()
-		self.myCrosshair.setZValue(10000)
+		self.myCrosshair.setZValue(300)
 		myScene.addItem(self.myCrosshair)
 
 		# add an object at really big x/y
@@ -551,7 +551,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 		#self.setScene(self.myScene)
 
-		tmpSceneRect = self.scene().sceneRect()
+		# trying to snap to the visible objects -- does not work???
+		'''tmpSceneRect = self.scene().sceneRect()
 		print('  myQGraphicsView() is done initializing. self.scene().sceneRect()',
 			tmpSceneRect.left(),
 			tmpSceneRect.top(),
@@ -560,6 +561,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			)
 
 		self.ensureVisible(tmpSceneRect)
+		'''
 
 	def centerOnCrosshair(self):
 		print('myQGraphicsView.centerOnCrosshair()')
@@ -650,7 +652,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
-		#pixMapItem.setZValue(newIdx)
+		pixMapItem.setZValue(200)
 		# this also effects bounding rect
 		#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
 
@@ -699,7 +701,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
 		#tmpNumItems = 100
-		#pixMapItem.setZValue(newIdx) # do i use this???
+		pixMapItem.setZValue(100) # do i use this???
 
 		# add to scene
 		self.scene().addItem(pixMapItem)
@@ -1022,14 +1024,15 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		self.setDefaultTextColor(QtCore.Qt.red)
 		self.document().setDocumentMargin(0)
 		# hide until self.setMotorPosition
-		self.hide()
+		#self.hide()
 
 	def setMotorPosition(self, x, y):
 		if x is None or y is None:
 			self.hide()
+			print('setMotorPosition() hid crosshair')
 			return
 
-		self.show()
+		#self.show()
 
 		# offset so it is centered
 		x = x
@@ -1104,6 +1107,8 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 			xCrosshair = self.xPos + (self.width/2)
 			yCrosshair = self.yPos + (self.height/2)
 			self.myCrosshair.setMotorPosition(xCrosshair, yCrosshair)
+		else:
+			print('setMotorPosition() did not set')
 
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)
@@ -1123,8 +1128,10 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		#painter.setOpacity(1.0)
 
 		if self.xPos is not None and self.yPos is not None:
+			print('drawCrosshairRect() self.boundingRect():', self.boundingRect())
 			painter.drawRect(self.boundingRect())
-
+		else:
+			print('drawCrosshairRect() did not draw')
 '''
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
@@ -1792,7 +1799,7 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		"""
 
 		myIndex = self.topLevelItemCount()
-		print('!!! appendStack() myIndex:', myIndex)
+		#print('!!! appendStack() myIndex:', myIndex)
 
 		item = QtWidgets.QTreeWidgetItem(self)
 		item.setText(self.myColumns['Index'], str(myIndex+1))
