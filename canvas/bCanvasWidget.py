@@ -540,7 +540,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#self.myCrosshair = myQGraphicsRectItem(self)
 		self.myCrosshair = myQGraphicsRectItem()
 		self.myCrosshair.setZValue(300)
-		myScene.addItem(self.myCrosshair)
+		self.scene().addItem(self.myCrosshair)
 
 		# add an object at really big x/y
 		'''
@@ -1024,7 +1024,7 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		self.setDefaultTextColor(QtCore.Qt.red)
 		self.document().setDocumentMargin(0)
 		# hide until self.setMotorPosition
-		#self.hide()
+		self.hide()
 
 	def setMotorPosition(self, x, y):
 		if x is None or y is None:
@@ -1032,7 +1032,7 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 			print('setMotorPosition() hid crosshair')
 			return
 
-		#self.show()
+		self.show()
 
 		# offset so it is centered
 		x = x
@@ -1040,12 +1040,12 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 
 		print('myCrosshair.setMotorPosition() x:', x, 'y:', y)
 
-		#newPnt = self.mapToScene(x, y)
+		newPnt = self.mapToScene(x, y)
 
 		#print('   after mapToScene x:', newPnt.x(), 'y:', newPnt.y())
 
-		self.setPos(x,y)
-		#self.setPos(newPnt)
+		#self.setPos(x,y)
+		self.setPos(newPnt)
 
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
@@ -1125,13 +1125,14 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		painter.setBrush(self.focusbrush)
 		painter.setPen(self.focuspen)
 
-		#painter.setOpacity(1.0)
+		# THIS IS NECCESSARY !!!! OTherwise the rectangle disapears !!!
+		painter.setOpacity(1.0)
 
 		if self.xPos is not None and self.yPos is not None:
 			print('drawCrosshairRect() self.boundingRect():', self.boundingRect())
 			painter.drawRect(self.boundingRect())
 		else:
-			print('drawCrosshairRect() did not draw')
+			print('!!! myQGraphicsRectItem.drawCrosshairRect() did not draw')
 '''
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
