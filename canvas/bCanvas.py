@@ -49,11 +49,13 @@ class bCanvas:
 				return file
 		return None
 
+	'''
 	def findScopeFileByName(self, filename):
 		for file in self._scopeFileList:
 			if file._fileName == filename:
 				return file
 		return None
+	'''
 
 	def appendVideo(self, newVideoStack):
 		self._videoFileList.append(newVideoStack)
@@ -367,7 +369,8 @@ class bCanvas:
 			elif key=='videoFiles':
 				for fileName, fileDict in item.items():
 					videoFilePath = os.path.join(self.videoFolderPath, fileName)
-					print('bCanvas.load() videoFilePath:', videoFilePath)
+					# todo: keep track of number and print out at end
+					#print('bCanvas.load() videoFilePath:', videoFilePath)
 					videoStack = bimpy.bStack(videoFilePath, loadImages=True)
 					#videoStack.loadHeader() # at least makes default bStackHeader()
 					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
@@ -387,7 +390,8 @@ class bCanvas:
 			elif key =='scopeFiles':
 				for fileName, fileDict in item.items():
 					scopeFilePath = os.path.join(self._folderPath, fileName)
-					print('bCanvas.load() scopeFilePath:', scopeFilePath)
+					# todo: keep track of number and print out at end
+					#print('bCanvas.load() scopeFilePath:', scopeFilePath)
 					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
 					#scopeStack.loadHeader() # at least makes default bStackHeader()
 					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)

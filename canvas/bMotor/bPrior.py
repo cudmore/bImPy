@@ -77,17 +77,17 @@ class bPrior(bMotor):
 				print('   bPrior.readPosition() resp:', resp)
 				try:
 					xPos, yPos, zPos = resp.split(',')
-					
+
 					print(xPos)
 					# when prior is at -18937.0 um we get -189370
 					xPos = float(xPos)
 					yPos = float(yPos)
 					xPos /= 10
 					yPos /= 10
-					
+
 					# step by 500 moves ~50 um
 					# need to *10 the microns we specify in canvas interface
-					
+
 				except:
 					print('   bPrior.readPosition() exception')
 					xPos = 'Nan'
@@ -149,13 +149,13 @@ class bPrior(bMotor):
 				self.writeLine(outStr)
 			else:
 				if direction == 'left':
-					self.fake_x -= int(umDistanceStr)
+					self.fake_x -= float(umDistanceStr)
 				elif direction == 'right':
-					self.fake_x += int(umDistanceStr)
+					self.fake_x += float(umDistanceStr)
 				elif direction == 'front':
-					self.fake_y += int(umDistanceStr)
+					self.fake_y += float(umDistanceStr)
 				elif direction == 'back':
-					self.fake_y -= int(umDistanceStr)
+					self.fake_y -= float(umDistanceStr)
 
 			# wait for response of 'R'
 			if self.isReal:

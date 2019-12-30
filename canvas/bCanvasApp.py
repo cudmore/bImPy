@@ -12,8 +12,10 @@ import bimpy
 from canvas import bCanvasWidget, bMenu
 import bMotor
 
+#from bCameraStream import VideoStreamWidget
+
 # todo: put this in scope config json (along with motor name like 'Prior')
-gMotorIsReal = True
+#gMotorIsReal = False
 
 #class bCanvasApp(QtWidgets.QMainWindow):
 #class bCanvasApp(QtWidgets.QApplication):
@@ -38,8 +40,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.myMenu = bMenu(self)
 
-		motorName = 'bPrior'
-		self.assignMotor(motorName)
+		motorName = self._optionsDict['motor']['name'] # = 'bPrior'
+		isReal = self._optionsDict['motor']['isReal'] #= False
+		#motorName = 'bPrior'
+		self.assignMotor(motorName, isReal)
 
 		self.canvasDict = {}
 		'''
@@ -55,9 +59,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		else:
 			self.canvas = bCanvas(filePath=path)
 		'''
+
+		# todo: only needed on windows
 		self.show()
 
-	def assignMotor(self, motorName):
+	def assignMotor(self, motorName, isReal):
 		"""
 		Create a motor controller from a class name
 
@@ -70,7 +76,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		class_ = getattr(bMotor, motorName) # class_ is a module
 		#print('class_:', class_)
 		#class_ = getattr(class_, motorName) # class_ is a class
-		self.xyzMotor = class_(isReal=gMotorIsReal)
+		self.xyzMotor = class_(isReal=isReal)
 
 
 	def mousePressEvent(self, event):
@@ -190,10 +196,20 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['version'] = 0.1
 		self._optionsDict['savePath'] = '/Users/cudmore/box/data/canvas'
 
+		self._optionsDict['motor'] = OrderedDict()
+		self._optionsDict['motor']['name'] = 'bPrior' # the name of the class derived from bMotor
+		self._optionsDict['motor']['isReal'] = False
+
+		# on olympus, camera is 1920 x 1200
 		self._optionsDict['video'] = OrderedDict()
-		self._optionsDict['video']['oneimage'] = 'oneimage.tif'
+		self._optionsDict['video']['oneimage'] = 'bCamera/oneimage.tif'
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
+		self._optionsDict['video']['stepFraction'] = 0.1
+
+		self._optionsDict['scanning'] = OrderedDict()
+		self._optionsDict['scanning']['zoomOneWidthHeight'] = 509.116882454314
+		self._optionsDict['scanning']['stepFraction'] = 0.2
 
 	def optionsLoad(self, askUser=False):
 		if askUser:
@@ -275,12 +291,16 @@ if __name__ == '__main__':
 		#w2.newCanvas('tst2')
 		#w2.newCanvas('')
 
+		'''
 		myCanvasApp.optionsFile = 'C:/Users/cudmore/Sites/bImPy/canvas/config/Olympus_Options.json'
 		myCanvasApp.optionsLoad()
-		
+		'''
+
 		path = '/Users/cudmore/box/data/canvas/20191226/20191226_tst1/20191226_tst1_canvas.txt'
 		if os.path.isfile(path):
 			myCanvasApp.load(path)
+
+		#video_stream_widget = VideoStreamWidget()
 
 		sys.exit(app.exec_())
 	except Exception as e:

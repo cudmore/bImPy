@@ -99,6 +99,10 @@ class bStack:
 			'linesPerFrame:', self.linesPerFrame,
 			'shape:', shape,
 			)
+		print('      zoom:', self.getHeaderVal('zoom'),
+			'umWidth:', self.getHeaderVal('umWidth'),
+			'umHeight:', self.getHeaderVal('umHeight'),
+			)
 		print('      xVoxel', self.xVoxel,
 			'yVoxel:', self.yVoxel,
 			'zVoxel:', self.zVoxel,
@@ -406,6 +410,7 @@ class bStack:
 				#print('   tif[0].image_description:', tif.image_description)
 				#print('   tif.nih_metadata:', tif.nih_metadata)
 				thisChannel = 0
+				#print('bStack.loadStack() type(tif)', type(tif))
 				loaded_shape = tif.asarray().shape
 				loaded_dtype = tif.asarray().dtype
 				if verbose: print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype)

@@ -39,6 +39,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 	def getGraphicsView(self):
 		return self.myGraphicsView
 
+	def getStatusToolbar(self):
+		return self.statusToolbarWidget
+
 	def _getCodeFolder(self):
 		""" get full path to the folder where this file of code lives
 
@@ -112,27 +115,32 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 	def userEvent(self, event):
 		print('=== myCanvasWidget.userEvent() event:', event)
+		xStep, yStep = self.motorToolbarWidget.getStepSize()
 		if event == 'move stage right':
 			# todo: read current x/y move distance
-			thePos = self.myCanvasApp.xyzMotor.move('right', 500) # the pos is (x,y)
+			thePos = self.myCanvasApp.xyzMotor.move('right', xStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage left':
 			# todo: read current x/y move distance
-			thePos = self.myCanvasApp.xyzMotor.move('left', 500) # the pos is (x,y)
+			thePos = self.myCanvasApp.xyzMotor.move('left', xStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage front':
 			# todo: read current x/y move distance
-			thePos = self.myCanvasApp.xyzMotor.move('front', 500) # the pos is (x,y)
+			thePos = self.myCanvasApp.xyzMotor.move('front', yStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage back':
 			# todo: read current x/y move distance
-			thePos = self.myCanvasApp.xyzMotor.move('back', 500) # the pos is (x,y)
+			thePos = self.myCanvasApp.xyzMotor.move('back', yStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'read motor position':
 			# update the interface
 			x,y = self.myCanvasApp.xyzMotor.readPosition()
-			self.motorToolbarWidget.xStagePositionLabel.setText(str(x))
-			self.motorToolbarWidget.yStagePositionLabel.setText(str(y))
+			self.motorToolbarWidget.xStagePositionLabel.setText(str(round(x,1)))
+			self.motorToolbarWidget.xStagePositionLabel.repaint()
+			self.motorToolbarWidget.yStagePositionLabel.setText(str(round(y,1)))
+			self.motorToolbarWidget.yStagePositionLabel.repaint()
+
+			#self.motorToolbarWidget.setStepSize(x,y)
 
 			# x/y coords are not updating???
 			#self.motorToolbarWidget.xStagePositionLabel.update()
@@ -168,8 +176,22 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			#
 			umWidth = self.myCanvasApp.options['video']['umWidth']
 			umHeight = self.myCanvasApp.options['video']['umHeight']
+
+			# when loading from images that are saved at an interval, this will occassionally file with
+			#   IndexError: list index out of range
+			# presumably because file can not be read at same time as write
+			# maybe add try/except to actual bStack code ?
+			# todo: add try/except clause to catch it
+
 			# load image as a new stack
-			newVideoStack = bimpy.bStack(oneImagePath, loadImages=True)
+			try:
+				newVideoStack = bimpy.bStack(oneImagePath, loadImages=True)
+			except (IndexError) as e:
+				print('warning: exception while loading stack. this happends when background video stream is saving saving at the same time')
+				print('just try loading again !!!')
+				print(e)
+				return
+
 			# tweek header
 			# todo: this is not complete
 			xMotor,yMotor = self.myCanvasApp.xyzMotor.readPosition()
@@ -216,11 +238,27 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			if len(newScopeFileList) > 0:
 				self.myCanvas.save()
 
+		elif event == 'print stack info':
+			selectedItem = self.myGraphicsView.getSelectedItem()
+			if selectedItem is not None:
+				selectedItem.myStack.print()
+				'''
+				fileName = selectedItem._fileName
+				selectedStack = self.myCanvas.findScopeFileByName(fileName)
+				if selectedStack is not None:
+					selectedStack.print()
+				else:
+					print('no stack selection')
+				'''
+
 		elif event == 'center canvas on motor position':
 			self.getGraphicsView().centerOnCrosshair()
 
 		else:
 			print('bCanvasWidget.userEvent() not understood:', event)
+
+	def getOptions(self):
+		return self.myCanvasApp._optionsDict
 
 	def buildUI(self):
 		self.centralwidget = QtWidgets.QWidget()
@@ -253,6 +291,8 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.myQVBoxLayout.addWidget(self.myGraphicsView)
 
 		# todo: 20191217, add a status bar !!!
+		self.statusToolbarWidget = myStatusToolbarWidget(parent=self)
+		self.addToolBar(QtCore.Qt.BottomToolBarArea, self.statusToolbarWidget)
 
 		# here I am linking the toolbar to the graphics view
 		# i can't figure out how to use QAction !!!!!!
@@ -284,13 +324,28 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 	Each item is added to a scene (QGraphicsScene)
 	"""
 	#def __init__(self, fileName, index, myLayer, myQGraphicsView, parent=None):
-	def __init__(self, fileName, index, myLayer, parent=None):
+	def __init__(self, fileName, index, myLayer, theStack, parent=None):
+		"""
+		theStack: the underlying bStack, assuming it has at least its header loaded ???
+		"""
+
+		'''
+		print('myQGraphicsPixmapItem.__init__')
+		print('   fileName:', fileName)
+		print('   index:', index)
+		print('   myLayer:', myLayer)
+		print('   theStack:', theStack)
+		print('   parent:', parent)
+		'''
+
 		super(myQGraphicsPixmapItem, self).__init__(parent)
 		#self.myQGraphicsView = myQGraphicsView
 		self._fileName = fileName
 		self._index = index # index into canvas list (list of either video or scope)
 		self.myLayer = myLayer
 		self._isVisible = True
+		# new 20191229
+		self.myStack = theStack # underlying bStack
 
 	# was trying to not have ot use opacity 0.01
 	'''
@@ -484,7 +539,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#20191217
 		#self.myCrosshair = myQGraphicsRectItem(self)
 		self.myCrosshair = myQGraphicsRectItem()
-		self.myCrosshair.setZValue(numItems)
+		self.myCrosshair.setZValue(10000)
 		myScene.addItem(self.myCrosshair)
 
 		# add an object at really big x/y
@@ -517,12 +572,12 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		print('self.myCrosshair.rect():', self.myCrosshair.rect())
 		self.ensureVisible(self.myCrosshair.rect(), xMargin=500, yMargin=500)
 		# end works on windows
-		
+
 		'''
 		sceneRect = self.scene().sceneRect() #this is qrectf
 		self.ensureVisible(sceneRect, xMargin=0, yMargin=0)
 		'''
-		
+
 		#sceneRect = self.mapToScene(self.rect()).boundingRect()
 		#self.fitInView(sceneRect)
 		#self.ensureVisible(sceneRect)
@@ -536,11 +591,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#self.setSceneRect(sceneRect)
 		#self.updateSceneRect(sceneRect)
 		#self.update()
-		'''
+
+		# needed for update on macos
 		sceneRect = self.scene().sceneRect() #this is qrectf
 		self.scene().update(sceneRect)
-		'''
-		
+
 	def appendScopeFile(self, newScopeFile):
 		"""
 		"""
@@ -590,20 +645,19 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# insert
 		#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
 		newIdx = 999 # do i use this???
-		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, '2P Max Layer', parent=pixmap)
+		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, '2P Max Layer', newScopeFile, parent=pixmap)
 		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
-		#pixMapItem.setZValue(numItems)
+		#pixMapItem.setZValue(newIdx)
 		# this also effects bounding rect
 		#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
 
 		pixMapItem.setShapeMode(QtWidgets.QGraphicsPixmapItem.BoundingRectShape)
-		print('pixMapItem.shapeMode():', pixMapItem.shapeMode())
+		print('appendScopeFile() setting pixMapItem.shapeMode():', pixMapItem.shapeMode())
 
 		# add to scene
-		#self.myScene.addItem(pixMapItem)
 		self.scene().addItem(pixMapItem)
 
 		#numItems += 1
@@ -639,13 +693,13 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# insert
 		#pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', self, parent=pixmap)
 		newIdx = 999 # do i use this???
-		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, 'Video Layer', parent=pixmap)
+		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, 'Video Layer', newVideoStack, parent=pixmap)
 		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
 		#tmpNumItems = 100
-		#pixMapItem.setZValue(tmpNumItems) # do i use this???
+		#pixMapItem.setZValue(newIdx) # do i use this???
 
 		# add to scene
 		self.scene().addItem(pixMapItem)
@@ -698,8 +752,9 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		"""
 		if hide/show thisLayer is '2p max layer' then set opacity of '2p max layer'
 		"""
-		print('myQGraphicsView.hideShowLayer()', thisLayer, isVisible)
+		print('myQGraphicsView.hideShowLayer() thisLayer:', thisLayer, 'isVisible:', isVisible)
 		for item in self.scene().items():
+			#print(item._fileName, item.myLayer)
 			if item.myLayer == thisLayer:
 				# don't show items in this layer that are not visible
 				# not visible are files that are checked off in myToolbarWidget
@@ -709,9 +764,14 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 					# turn off both image and outline
 					item.setOpacity(1.0 if isVisible else 0)
 				else:
+					#print('not hiding 2p squares???')
 					item.setOpacity(1.0 if isVisible else 0.01)
 				# not with 0
 				#item.setOpacity(1.0 if isVisible else 0.1)
+			else:
+				#debug
+				#print('rejected:', item.myLayer)
+				pass
 
 	def mouseDoubleClickEvent(self, event):
 		"""
@@ -737,6 +797,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# this is critical, allows dragging view/scene around
 		#scenePoint = self.mapToScene(event.x(), event.y())
 		#print(scenePoint)
+
+		scenePoint = self.mapToScene(event.x(), event.y())
+		self.myCanvasWidget.getStatusToolbar().setMousePosition(scenePoint)
+
 		self.myMouse_x = event.x() #scenePoint.x()
 		self.myMouse_y = event.y() #scenePoint.y()
 
@@ -890,6 +954,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				#todo: this is a prime example of figuring out signal/slot
 				self.myCanvasWidget.toggleVisibleCheck(filename, doShow)
 				#setCheckedState(fileName, doSHow)
+		if event.key() == QtCore.Qt.Key_I:
+			# 'i' is for info
+			self.myCanvasWidget.userEvent('print stack info')
+
 		if event.key() == QtCore.Qt.Key_C:
 			print('todo: set scene centered on crosshair, if no crosshair, center on all images')
 
@@ -953,8 +1021,16 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		self.setPlainText('+')
 		self.setDefaultTextColor(QtCore.Qt.red)
 		self.document().setDocumentMargin(0)
+		# hide until self.setMotorPosition
+		self.hide()
 
 	def setMotorPosition(self, x, y):
+		if x is None or y is None:
+			self.hide()
+			return
+
+		self.show()
+
 		# offset so it is centered
 		x = x
 		y = y - self.fontSize/2
@@ -1004,24 +1080,30 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 
 	def setWidthHeight(self, width, height):
 		"""Use this to set different 2p zooms and video"""
-		pass
+		self.width = width
+		self.height = height
+		self.setMotorPosition(xMotor=None, yMotor=None) # don't adjust position, just size
 
-	def setMotorPosition(self, xMotor, yMotor):
+	def setMotorPosition(self, xMotor=None, yMotor=None):
 		"""
 		update the crosshair to a new position
+
+		also used when changing the size of the square (Video, 1x, 1.5x, etc)
 		"""
 		#print('myQGraphicsRectItem.setMotorPosition() xMotor:', xMotor, 'yMotor:', yMotor)
-		self.xPos = xMotor #- self.width/2
-		self.yPos = yMotor #- self.height/2
+		if xMotor is not None and yMotor is not None:
+			self.xPos = xMotor #- self.width/2
+			self.yPos = yMotor #- self.height/2
 
 		# BINGO, DO NOT USE setPos !!! Only use setRect !!!
 		#self.setPos(self.xPos, self.yPos)
 
-		self.setRect(self.xPos, self.yPos, self.width, self.height)
+		if self.xPos is not None and self.yPos is not None:
+			self.setRect(self.xPos, self.yPos, self.width, self.height)
 
-		xCrosshair = self.xPos + (self.width/2)
-		yCrosshair = self.yPos + (self.height/2)
-		self.myCrosshair.setMotorPosition(xCrosshair, yCrosshair)
+			xCrosshair = self.xPos + (self.width/2)
+			yCrosshair = self.yPos + (self.height/2)
+			self.myCrosshair.setMotorPosition(xCrosshair, yCrosshair)
 
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)
@@ -1107,19 +1189,64 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 			print('   myQGraphicsRectItem.bringToFront() item is already front most')
 '''
 
-class myScopeToolbarWidget(QtWidgets.QToolBar):
-	#def __init__(self, theCanvas, parent=None):
+class myStatusToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, parent):
+		print('myStatusToolbarWidget.__init__')
+		super(QtWidgets.QToolBar, self).__init__(parent)
+		self.myCanvasWidget = parent
+
+		self.setMovable(False)
+
+		myGroupBox = QtWidgets.QGroupBox()
+		myGroupBox.setTitle('')
+
+		hBoxLayout = QtWidgets.QHBoxLayout()
+
+		self.lastActionLabel = QtWidgets.QLabel("Last Action: None")
+		hBoxLayout.addWidget(self.lastActionLabel)
+
+		xMousePosition_ = QtWidgets.QLabel("X (um)")
+		self.xMousePosition = QtWidgets.QLabel("None")
+		hBoxLayout.addWidget(xMousePosition_)
+		hBoxLayout.addWidget(self.xMousePosition)
+
+		yMousePosition_ = QtWidgets.QLabel("X (um)")
+		self.yMousePosition = QtWidgets.QLabel("None")
+		hBoxLayout.addWidget(yMousePosition_)
+		hBoxLayout.addWidget(self.yMousePosition)
+
+		# finish
+		myGroupBox.setLayout(hBoxLayout)
+		self.addWidget(myGroupBox)
+
+	def setMousePosition(self, point):
+		self.xMousePosition.setText(str(round(point.x(),1)))
+		self.xMousePosition.repaint()
+		self.yMousePosition.setText(str(round(point.y(),1)))
+		self.yMousePosition.repaint()
+
+class myScopeToolbarWidget(QtWidgets.QToolBar):
+	def __init__(self, parent):
+		"""
+		A Toolbar for controlling the scope. This includes:
+			- reading and moving stage/objective position
+			- setting the size of a crosshair/box to show current motor position
+			- setting x/y step size
+			- showing a video window
+			- capturing single images from video camera
+			- importing scanning files from scope
+		"""
 		print('myScopeToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
 		self.myCanvasWidget = parent
 
 		myGroupBox = QtWidgets.QGroupBox()
 		myGroupBox.setTitle('Scope Controller')
-		myGroupBox.setFlat(True)
+		#myGroupBox.setFlat(True)
 
 		# main v box
 		vBoxLayout = QtWidgets.QVBoxLayout()
+		vBoxLayout.setSpacing(4)
 
 		#
 		# arrows for left/right, front/back
@@ -1198,11 +1325,22 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		centerCrosshairButton.clicked.connect(partial(self.on_button_click,buttonName))
 		crosshair_hBoxLayout.addWidget(centerCrosshairButton)
 
+		squareSizeLabel_ = QtWidgets.QLabel("Square Size")
 		comboBox = QtGui.QComboBox()
 		comboBox.addItem("Video")
 		comboBox.addItem("1x")
 		comboBox.addItem("1.5x")
+		comboBox.addItem("2x")
+		comboBox.addItem("2.5x")
+		comboBox.addItem("3x")
+		comboBox.addItem("3.5x")
+		comboBox.addItem("4x")
+		comboBox.addItem("4.5x")
+		comboBox.addItem("5x")
+		comboBox.addItem("5.5x")
+		comboBox.addItem("6x")
 		comboBox.activated[str].connect(self.crosshairSizeChoice)
+		crosshair_hBoxLayout.addWidget(squareSizeLabel_)
 		crosshair_hBoxLayout.addWidget(comboBox)
 
 		vBoxLayout.addLayout(crosshair_hBoxLayout)
@@ -1211,19 +1349,22 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		# x/y step size
 		grid2 = QtWidgets.QGridLayout()
 
-		xStepLabel = QtWidgets.QLabel("X Step")
-		self.xStepSpinBox = QtWidgets.QSpinBox()
-		self.xStepSpinBox.setMinimum(0) # si user can specify whatever they want
-		self.xStepSpinBox.setMaximum(10000)
-		self.xStepSpinBox.setValue(1000)
+		xStepLabel = QtWidgets.QLabel("X Step (um)")
+		self.xStepSpinBox = QtWidgets.QDoubleSpinBox()
+		self.xStepSpinBox.setMinimum(0.0)
+		self.xStepSpinBox.setMaximum(10000.0) # need something here, otherwise max is 100
+		#self.xStepSpinBox.setValue(1000)
 		self.xStepSpinBox.valueChanged.connect(self.stepValueChanged)
 
-		yStepLabel = QtWidgets.QLabel("Y Step")
-		self.yStepSpinBox = QtWidgets.QSpinBox()
-		self.yStepSpinBox.setMinimum(0) # si user can specify whatever they want
-		self.yStepSpinBox.setMaximum(10000)
-		self.yStepSpinBox.setValue(500)
+		yStepLabel = QtWidgets.QLabel("Y Step (um)")
+		self.yStepSpinBox = QtWidgets.QDoubleSpinBox()
+		self.yStepSpinBox.setMinimum(0)
+		self.yStepSpinBox.setMaximum(10000) # need something here, otherwise max is 100
+		#self.yStepSpinBox.setValue(500)
 		self.yStepSpinBox.valueChanged.connect(self.stepValueChanged)
+
+		# set values of x/y step to Video
+		self.crosshairSizeChoice('Video')
 
 		grid2.addWidget(xStepLabel, 0, 0) # row, col
 		grid2.addWidget(self.xStepSpinBox, 0, 1) # row, col
@@ -1290,6 +1431,39 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 
 	def crosshairSizeChoice(self, text):
 		print('crosshairSizeChoice() text:', text)
+		options = self.myCanvasWidget.getOptions()
+		if text=='Video':
+			umWidth = options['video']['umWidth']
+			umHeight = options['video']['umHeight']
+			stepFraction = options['video']['stepFraction']
+			# set step size
+			xStep = umWidth - (umWidth*stepFraction)
+			yStep = umHeight - (umHeight*stepFraction)
+			self.setStepSize(xStep, yStep)
+			# set visible red rectangle
+			self.myCanvasWidget.getGraphicsView().myCrosshair.setWidthHeight(umWidth, umHeight)
+		else:
+			# assuming each option is of form(1x, 1.5x, etc)
+			text = text.strip('x')
+			zoom = float(text)
+			zoomOneWidthHeight = options['scanning']['zoomOneWidthHeight']
+			stepFraction = options['scanning']['stepFraction']
+			# set step size
+			zoomWidthHeight = zoomOneWidthHeight / zoom
+			xStep = zoomWidthHeight - (zoomWidthHeight*stepFraction) # always square
+			yStep = zoomWidthHeight - (zoomWidthHeight*stepFraction)
+			self.setStepSize(xStep, yStep)
+			# set visible red rectangle
+			self.myCanvasWidget.getGraphicsView().myCrosshair.setWidthHeight(zoomWidthHeight, zoomWidthHeight)
+
+	def getStepSize(self):
+		xStep = self.xStepSpinBox.value()
+		yStep = self.yStepSpinBox.value()
+		return xStep, yStep
+
+	def setStepSize(self, xStep, yStep):
+		self.xStepSpinBox.setValue(xStep)
+		self.yStepSpinBox.setValue(yStep)
 
 	def stepValueChanged(self):
 		xStep = self.xStepSpinBox.value()
@@ -1311,65 +1485,58 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 		self.myCanvasWidget = parent
 
-		# a button
-		'''
-		buttonName = 'Load Canvas'
-		button = QtWidgets.QPushButton(buttonName)
-		button.setToolTip('Load a canvas from disk')
-		#button.move(100,70)
-		button.clicked.connect(partial(self.on_button_click,buttonName))
-		self.addWidget(button)
-		'''
-
-		buttonName = 'Save Canvas'
-		button = QtWidgets.QPushButton(buttonName)
-		#button.setToolTip('Load a canvas from disk')
-		button.clicked.connect(partial(self.on_button_click, buttonName))
-		self.addWidget(button)
+		#
+		# layers
+		layersGroupBox = QtWidgets.QGroupBox('Layers')
+		layersHBoxLayout = QtWidgets.QHBoxLayout()
 
 		checkBoxName = 'Video Layer'
-		self.showVideoCheckBox = QtWidgets.QCheckBox(checkBoxName)
-		self.showVideoCheckBox.setToolTip('Load a canvas from disk')
+		self.showVideoCheckBox = QtWidgets.QCheckBox('Video')
+		self.showVideoCheckBox.setToolTip('Toggle video layer on and off')
 		self.showVideoCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.showVideoCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.showVideoCheckBox))
-		self.addWidget(self.showVideoCheckBox)
+		#self.addWidget(self.showVideoCheckBox)
+		layersHBoxLayout.addWidget(self.showVideoCheckBox)
 
 		checkBoxName = '2P Max Layer'
-		self.show2pMaxCheckBox = QtWidgets.QCheckBox(checkBoxName)
-		self.show2pMaxCheckBox.setToolTip('Load a canvas from disk')
+		self.show2pMaxCheckBox = QtWidgets.QCheckBox('Scanning Max Project')
+		self.show2pMaxCheckBox.setToolTip('Toggle scanning layer on and off')
 		self.show2pMaxCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.show2pMaxCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.show2pMaxCheckBox))
-		self.addWidget(self.show2pMaxCheckBox)
+		#self.addWidget(self.show2pMaxCheckBox)
+		layersHBoxLayout.addWidget(self.show2pMaxCheckBox)
 
 		checkBoxName = '2P Squares Layer'
-		self.show2pSquaresCheckBox = QtWidgets.QCheckBox(checkBoxName)
-		self.show2pSquaresCheckBox.setToolTip('Load a canvas from disk')
+		self.show2pSquaresCheckBox = QtWidgets.QCheckBox('Scanning Squares')
+		self.show2pSquaresCheckBox.setToolTip('Toggle scanning squares on and off')
 		self.show2pSquaresCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.show2pSquaresCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.show2pSquaresCheckBox))
-		self.addWidget(self.show2pSquaresCheckBox)
+		#self.addWidget(self.show2pSquaresCheckBox)
+		layersHBoxLayout.addWidget(self.show2pSquaresCheckBox)
+
+		layersGroupBox.setLayout(layersHBoxLayout)
+		self.addWidget(layersGroupBox)
 
 		#
 		# radio buttons to select type of contrast (selected, video layer, scope layer)
 		self.contrastGroupBox = QtWidgets.QGroupBox('Image Contrast')
 
+		contrastVBox = QtWidgets.QVBoxLayout()
+
+		contrastRadioHBoxLayout = QtWidgets.QHBoxLayout()
 		self.selectedContrast = QtWidgets.QRadioButton('Selected')
 		self.videoLayerContrast = QtWidgets.QRadioButton('Video Layer')
 		self.scopeLayerContrast = QtWidgets.QRadioButton('Scope Layer')
 
-		'''
-		self.selectedContrast.toggled.connect(self.on_toggle_image_contrast)
-		self.videoLayerContrast.toggled.connect(self.on_toggle_image_contrast)
-		self.scopeLayerContrast.toggled.connect(self.on_toggle_image_contrast)
-		'''
-
+		# default to selecting 'Selected' image (for contrast adjustment)
 		self.selectedContrast.setChecked(True)
 
-		contrastVBox = QtWidgets.QVBoxLayout()
-		contrastVBox.addWidget(self.selectedContrast)
-		contrastVBox.addWidget(self.videoLayerContrast)
-		contrastVBox.addWidget(self.scopeLayerContrast)
+		contrastRadioHBoxLayout.addWidget(self.selectedContrast)
+		contrastRadioHBoxLayout.addWidget(self.videoLayerContrast)
+		contrastRadioHBoxLayout.addWidget(self.scopeLayerContrast)
 
-		#
+		contrastVBox.addLayout(contrastRadioHBoxLayout)
+
 		# contrast sliders
 		# min
 		self.minSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -1444,7 +1611,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#	selectedItems = self.myCanvasWidget.getGraphicsView().scene().selectedItems()
 		#	print('NOT IMPLEMENTED')
 
-		print('=== on_contrast_slider', 'adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject, 'theMin:', theMin, 'theMax:', theMax)
+		print('=== myToolbarWidget.on_contrast_slider() adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject, 'theMin:', theMin, 'theMax:', theMax)
 
 		for item in  self.myCanvasWidget.getGraphicsView().scene().items():
 
@@ -1473,15 +1640,15 @@ class myToolbarWidget(QtWidgets.QToolBar):
 				# todo: canvas should have one list of stacks (not separate video and scope lists)
 				#if adjustThisLayer == 'Video Layer':
 				if item.myLayer == 'Video Layer':
-					videoFile = self.myCanvasWidget.getCanvas().findByName(item._fileName)
-					#videoFile = self.myQGraphicsView.myCanvas.videoFileList[item._index]
-				#elif adjustThisLayer == '2P Max Layer':
+					# new 20191229
+					#videoFile = self.myCanvasWidget.getCanvas().findByName(item._fileName)
+					videoFile = item.myStack
 				elif item.myLayer == '2P Max Layer':
 					try:
-						videoFile = self.myCanvasWidget.getCanvas().findScopeFileByName(item._fileName)
-						#videoFile = self.myCanvasWidget.getCanvas().scopeFileList[item._index]
+						#videoFile = self.myCanvasWidget.getCanvas().findScopeFileByName(item._fileName)
+						videoFile = item.myStack
 					except:
-						print(len(self.myCanvasWidget.getCanvas().scopeFileList), item._index)
+						print('exception !!!@@@!!!', len(self.myCanvasWidget.getCanvas().scopeFileList), item._index)
 						videoFile = None
 				else:
 					print('bCanvasWidget.on_contrast_slider() ERRRRRRRORRORORORRORORRORORORORORRORORO')
@@ -1603,12 +1770,18 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		super(myTreeWidget, self).__init__(parent)
 		self.myCanvasWidget = parent
 
-		self.setHeaderLabels(['File','Type','xPixels', 'yPixels', 'numSlices']) # 'Show'])
-		self.setColumnWidth(0, 200)
-		self.setColumnWidth(1, 20)
-		self.setColumnWidth(2, 40)
-		self.setColumnWidth(3, 40)
-		self.setColumnWidth(4, 40)
+		myColumns = ['Index', 'File', 'Type', 'xPixels', 'yPixels', 'numSlices'] # have to be unique
+		self.myColumns = {}
+		for idx, column in enumerate(myColumns):
+			self.myColumns[column] = idx
+
+		self.setHeaderLabels(myColumns) # 'Show'])
+		self.setColumnWidth(self.myColumns['Index'], 40)
+		self.setColumnWidth(self.myColumns['File'], 200)
+		self.setColumnWidth(self.myColumns['Type'], 20)
+		self.setColumnWidth(self.myColumns['xPixels'], 40)
+		self.setColumnWidth(self.myColumns['yPixels'], 40)
+		self.setColumnWidth(self.myColumns['numSlices'], 40)
 
 		self.itemSelectionChanged.connect(self.fileSelected_callback)
 		self.itemChanged.connect(self.fileSelected_changed)
@@ -1617,28 +1790,35 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		"""
 		type: ('Video Layer', '2P Max Layer')
 		"""
+
+		myIndex = self.topLevelItemCount()
+		print('!!! appendStack() myIndex:', myIndex)
+
 		item = QtWidgets.QTreeWidgetItem(self)
-		item.setText(0, theStack._fileName)
+		item.setText(self.myColumns['Index'], str(myIndex+1))
+		item.setText(self.myColumns['File'], theStack._fileName)
 		if type == 'Video Layer':
-			item.setText(1, 'v')
+			item.setText(self.myColumns['Type'], 'v')
 		elif type == '2P Max Layer':
-			item.setText(1, '2p')
+			item.setText(self.myColumns['Type'], '2p')
 		else:
-			item.setText(1, 'Unknown')
-		item.setText(2, str(theStack.pixelsPerLine))
-		item.setText(3, str(theStack.linesPerFrame))
-		item.setText(4, str(theStack.numImages))
+			print('ERROR: myTreeWidget.appendStack() got unknown type???')
+			item.setText(self.myColumns['Type'], 'Unknown')
+		item.setText(self.myColumns['xPixels'], str(theStack.pixelsPerLine))
+		item.setText(self.myColumns['yPixels'], str(theStack.linesPerFrame))
+		item.setText(self.myColumns['numSlices'], str(theStack.numImages))
 		item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
 		item.setCheckState(0, QtCore.Qt.Checked)
 
 		#self.insertTopLevelItems(0, item)
 		self.addTopLevelItem(item)
 
+
 	def setSelectedItem(self, filename):
 		"""
 		Respond to user clicking on the image and select the file in the list.
 		"""
-		items = self.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
+		items = self.findItems(filename, QtCore.Qt.MatchFixedString, column=self.myColumns['File'])
 		if len(items)>0:
 			item = items[0]
 			self.setCurrentItem(item)
@@ -1649,8 +1829,9 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		"""
 		set the visible checkbox
 		"""
-		items = self.findItems(filename, QtCore.Qt.MatchFixedString, column=0)
-		if item is not None:
+		items = self.findItems(filename, QtCore.Qt.MatchFixedString, column=self.myColumns['File'])
+		if len(items)>0:
+			item = items[0]
 			column = 0
 			item.setCheckState(column, doShow)
 
@@ -1685,8 +1866,8 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		selectedItems = self.selectedItems()
 		if len(selectedItems) > 0:
 			selectedItem = selectedItems[0]
-			fileName = selectedItem.text(0)
-			type = selectedItem.text(1) # in ['v', '2p']
+			fileName = selectedItem.text(self.myColumns['File'])
+			type = selectedItem.text(self.myColumns['Type']) # in ['v', '2p']
 			if type == 'v':
 				layer = 'Video Layer'
 			elif type == '2p':
@@ -1702,9 +1883,9 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		called when user clicks on check box
 		"""
 		#print('=== fileSelected_changed() item:', item, 'col:', col, 'is now checked:', item.checkState(0))
-		column = 0
-		filename = item.text(column)
-		isNowChecked = item.checkState(column) # 0:not checked, 2:is checked
+		filename = item.text(self.myColumns['File'])
+		#isNowChecked = item.checkState(self.myColumns['Index']) # 0:not checked, 2:is checked
+		isNowChecked = item.checkState(0) # 0:not checked, 2:is checked
 		doShow = True if isNowChecked==2 else False
 		#print('   telling self.myQGraphicsView.hideShowItem() filename:', filename, 'doShow:', doShow)
 		self.myCanvasWidget.getGraphicsView().hideShowItem(filename, doShow)
@@ -1713,13 +1894,12 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		"""
 		Respond to user click in the file list (selects a file)
 		"""
-		print('=== myToolbarWidget.fileSelected_callback()')
+		print('=== myTreeWidget.fileSelected_callback()')
 		theItems = self.selectedItems()
 		if len(theItems) > 0:
 			theItem = theItems[0]
 			#selectedRow = self.fileList.currentRow() # self.fileList is a QTreeWidget
-			column = 0
-			filename = theItem.text(column)
+			filename = theItem.text(self.myColumns['File'])
 			#print('   fileSelected_callback()', filename)
 			# visually select image in canvas with yellow square
 			self.myCanvasWidget.getGraphicsView().setSelectedItem(filename)

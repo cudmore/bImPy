@@ -137,6 +137,9 @@ class bStackHeader:
 	def zVoxel(self):
 		return self.header['zVoxel']
 	@property
+	def zoom(self):
+		return self.header['zoom']
+	@property
 	def umWidth(self):
 		return self.header['umWidth']
 	@property
