@@ -1,0 +1,17 @@
+-r requirements.txt
+
+opencv-python
+pyserial #for canvas
+
+# from main requirements file
+#numpy
+#pandas
+#matplotlib
+#tifffile
+#PyQt5 # version >=5.13 has 16bit indexed image !!!
+#PyQtChart
+#scikit-image
+#javabridge
+#python-bioformats
+#napari
+#h5py
