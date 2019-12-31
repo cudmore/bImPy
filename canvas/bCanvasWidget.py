@@ -538,8 +538,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# todo: add popup to select 2p zoom (Video, 1, 2, 3, 4)
 		#20191217
 		#self.myCrosshair = myQGraphicsRectItem(self)
-		self.myCrosshair = myQGraphicsRectItem()
-		self.myCrosshair.setZValue(300)
+		self.myCrosshair = myQGraphicsRectItem(self)
+		self.myCrosshair.setZValue(10000)
 		self.scene().addItem(self.myCrosshair)
 
 		# add an object at really big x/y
@@ -1053,7 +1053,9 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	Used for 2p images so we can show/hide max project and still see square
 	"""
 	def __init__(self, parent=None):
-		super(myQGraphicsRectItem, self).__init__(parent)
+		super(myQGraphicsRectItem, self).__init__()
+
+		self.myQGraphicsView = parent
 
 		#-9815.6, -20083.0
 		#self.fake_x = -4811.0 #-9811.7 #185
@@ -1076,6 +1078,8 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		#self.myCrosshair = QtWidgets.QGraphicsTextItem(self)
 		#self.myCrosshair.setPlainText('x')
 		self.myCrosshair = myCrosshair(self)
+		self.myQGraphicsView.scene().addItem(self.myCrosshair)
+		self.myCrosshair.setZValue(10001)
 		#self.myCrosshair.setMotorPosition(self.xPos, self.yPos)
 		#self.myCrosshair.setPos(self.xPos, self.yPos)
 
