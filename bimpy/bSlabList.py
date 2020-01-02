@@ -95,7 +95,7 @@ class bSlabList:
 		zOffset = 0
 
 		if self.tifPath.endswith('20191017__0001.tif'):
-			print('!!! scaling tiff file 20191017__0001.tif')
+			#print('!!! scaling tiff file 20191017__0001.tif')
 			xUmPerPixel = 0.49718
 			yUmPerPixel = 0.49718
 			zUmPerPixel = 0.6
@@ -204,6 +204,7 @@ class bSlabList:
 		self.x = []
 		self.y = []
 		self.z = []
+		self.d = []
 		self.orig_x = []
 		self.orig_y = []
 		self.orig_z = []
@@ -284,6 +285,7 @@ class bSlabList:
 						self.x.append(x)
 						self.y.append(y)
 						self.z.append(z)
+						self.d.append(diam)
 
 						newZList.append(z)
 						'''
@@ -313,6 +315,7 @@ class bSlabList:
 					self.x.append(np.nan)
 					self.y.append(np.nan)
 					self.z.append(np.nan)
+					self.d.append(np.nan)
 					masterSlabIdx += 1
 					'''
 					self.d.append(np.nan)
@@ -363,6 +366,7 @@ class bSlabList:
 		self.x = np.array(self.x, dtype='float32')
 		self.y = np.array(self.y, dtype='float32')
 		self.z = np.array(self.z, dtype='float32')
+		self.d = np.array(self.d, dtype='float32')
 
 		#
 		# create dead ends

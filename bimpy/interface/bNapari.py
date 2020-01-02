@@ -24,10 +24,11 @@ class bNapari:
 	"""
 	def __init__(self, path):
 
-		print('bNapari() path:', path)
+		print('=== bNapari.__init__() path:', path)
 
 		filename = os.path.basename(path)
 
+		# todo: this is loading again? just pass data to __init__ if already loaded
 		self.myStack = bimpy.bStack(path)
 
 		#print('   self.myStack.stack.shape:', self.myStack.stack.shape)
@@ -46,20 +47,23 @@ class bNapari:
 		#
 		# replace all the above with this !!!
 		# abb 20191216 removed
+		self.bShapeAnalysisWidget = None
 		#self.bShapeAnalysisWidget = bShapeAnalysisWidget(self.viewer, self.myStack)
 		#
 		#
 
+		'''
 		@self.viewer.bind_key('u')
 		def keyboard_u(viewer):
 			shapeType, data = self._getSelectedLine()
-			print('keyboard_u()', shapeType, data)
+			print('   keyboard_u()', shapeType, data)
 			if shapeType == 'line':
 				src = data[0]
 				dst = data[1]
 				self.bShapeAnalysisWidget.updateStackLineProfile(src, dst)
 			if shapeType in ['rectangle', 'polygon']:
 				self.bShapeAnalysisWidget.updateStackPolygon(data)
+		'''
 
 		#self.myNapari = napari.view_image(
 		self.myNapari = self.viewer.add_image(
@@ -83,29 +87,33 @@ class bNapari:
 			x = self.myStack.slabList.x
 			y = self.myStack.slabList.y
 			z = self.myStack.slabList.z
+			d = self.myStack.slabList.d
 
 			# this has nans which I assume will lead to some crashes ...
 			points = np.column_stack((z,x,y,))
 			print('   points.shape:', points.shape)
 
 			# all points will be one size
-			size = 10
+			#size = 10
+			size = d
 
 			# this allows us to color different points with different colors
 			#use this to label: ('nodes')
 			# we can also change the size of different points
-			slabSize = 5
-			nodeSize = 9
+			#slabSize = 5
+			#nodeSize = 9
 
 			size = []
 			face_color = []
 			foundNan = False
 			for i, idx in enumerate(range(len(x))):
 				if foundNan:
+					nodeSize = d[idx] # might not be good idea
 					size.append(nodeSize)
 					face_color.append('red')
 					foundNan = False
 				else:
+					slabSize = d[idx] # might not be good idea
 					size.append(slabSize)
 					face_color.append('cyan')
 				if math.isnan(x[i]):
@@ -124,7 +132,8 @@ class bNapari:
 			x = self.myStack.slabList.nodex
 			y = self.myStack.slabList.nodey
 			z = self.myStack.slabList.nodez
-			size = 10
+			#size = 10
+			size = self.myStack.slabList.noded
 			face_color = 'yellow'
 			nodePoints = np.column_stack((z,x,y,))
 			#nodeLayer = self.myNapari.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
@@ -147,6 +156,7 @@ class bNapari:
 		#
 		# make a selection layer
 
+		'''
 		#
 		# shapes layer (for drawing lines)
 		line1 = np.array([[11, 13], [111, 113]])
@@ -176,6 +186,7 @@ class bNapari:
 			while event.type == 'mouse_move':
 				self.lineShapeChange_callback(layer, event)
 				yield
+		'''
 
 	# this works
 	def myMouseMove_Shape(self, layer, event):
@@ -201,10 +212,13 @@ class bNapari:
 			'''
 			#
 			# plugin
+			'''
 			self.bShapeAnalysisWidget.updateVerticalSliceLine(self.sliceNum)
+			'''
 			#self.bShapeAnalysisWidget.updateVerticalSliceLine(self.sliceNum)
 
 			# todo: this does not feal right ... fix this !!!
+			'''
 			shapeType, data = self._getSelectedLine()
 			if shapeType == 'line':
 				src = data[0]
@@ -212,6 +226,7 @@ class bNapari:
 				self.bShapeAnalysisWidget.updateLines(self.sliceNum, src, dst)
 			if shapeType in ['rectangle', 'polygon']:
 				self.bShapeAnalysisWidget.updatePolygon(self.sliceNum, data)
+			'''
 
 	def _getSelectedLine(self):
 		"""
@@ -219,12 +234,12 @@ class bNapari:
 		"""
 		# selected_data is a list of int tell us index into self.shapeLayer.data of all selected shapes
 		selectedDataList = self.shapeLayer.selected_data
-		print('selectedDataList:', selectedDataList)
+		print('bNapari._getSelectedLine() selectedDataList:', selectedDataList)
 		if len(selectedDataList) > 0:
 			index = selectedDataList[0] # just the first selected shape
 			shapeType = self.shapeLayer.shape_types[index]
-			print('shapeType:', shapeType) #('line', 'rectangle', 'polygon')
-			print('   self.shapeLayer.data[index]:', self.shapeLayer.data[index])
+			print('   shapeType:', shapeType) #('line', 'rectangle', 'polygon')
+			print('      self.shapeLayer.data[index]:', self.shapeLayer.data[index])
 			# was this
 			#src = self.shapeLayer.data[index][0]
 			#dst = self.shapeLayer.data[index][1]
@@ -241,6 +256,7 @@ class bNapari:
 		"""
 		# loop through all lines?
 		#for data in self.shapeLayer.data:
+		'''
 		shapeType, data = self._getSelectedLine()
 		if shapeType == 'line':
 			src = data[0]
@@ -248,6 +264,7 @@ class bNapari:
 			self.bShapeAnalysisWidget.updateLines(self.sliceNum, src, dst)
 		if shapeType in ['rectangle', 'polygon']:
 			self.bShapeAnalysisWidget.updatePolygon(self.sliceNum, data)
+		'''
 
 	def lineShapeChange_callback(self, layer, event):
 		"""

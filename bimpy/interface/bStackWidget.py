@@ -107,7 +107,7 @@ class bStackWidget(QtWidgets.QWidget):
 		# todo: Need to show/hide annotation table
 		self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
 		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) # stretch=10, not sure on the units???
-		print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
+		#print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
 		if self.mySimpleStack.slabList is None:
 			self.annotationTable.hide()
 			self.showLeftControlBar = False
@@ -552,7 +552,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.currentSlice = 0
 		self.minContrast = 0
 		#self.maxContrast = 2 ** self.mySimpleStack.getHeaderVal('bitDepth')
-		print('   bStackView.__init__ got stack bot depth of:', self.mySimpleStack.bitDepth, 'type:', type(self.mySimpleStack.bitDepth))
+		print('   bStackView.__init__ got stack bit depth of:', self.mySimpleStack.bitDepth, 'type:', type(self.mySimpleStack.bitDepth))
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth
 
 		'''
@@ -592,7 +592,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		#
 		scene = QtWidgets.QGraphicsScene(self)
-		#self.scene = scene
+		# this works
+		#scene.setBackgroundBrush(QtCore.Qt.blue);
 
 		# was this
 		# visually turn off scroll bars
@@ -620,6 +621,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.canvas = backend_qt5agg.FigureCanvas(self.figure)
 		self.axes = self.figure.add_axes([0, 0, 1, 1]) #remove white border
 		self.axes.axis('off') #turn off axis labels
+
+		# OMG, this took many hours to find the right function, set the background of the figure !!!
+		self.figure.set_facecolor("black")
 
 		# slab/point list
 		markersize = self.options['Tracing']['tracingPenSize'] #2**2
@@ -680,7 +684,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.setScene(scene)
 
-		print('sceneRect:', self.sceneRect())
+		print('bStackView.__init__() sceneRect:', self.sceneRect())
 		#self.setSceneRect(-100, -100, 640+100, 640+100)
 
 	def flashNode(self, nodeIdx, numberOfFlashes):
@@ -922,6 +926,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				cmap = self.options['Stack']['colorLut'] #2**2
 				#self.imgplot = self.axes.imshow(image, cmap=cmap, extent=[self.iLeft, self.iRight, self.iBottom, self.iTop])  # l, r, b, t
 				self.imgplot = self.axes.imshow(image, cmap=cmap)  # l, r, b, t
+
 			else:
 				self.imgplot.set_data(image)
 		else:

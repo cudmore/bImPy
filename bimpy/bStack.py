@@ -6,8 +6,8 @@ from collections import OrderedDict
 import numpy as np
 import skimage
 
-import javabridge
-import bioformats
+#import javabridge
+#import bioformats
 
 import tifffile
 
@@ -592,7 +592,7 @@ if __name__ == '__main__':
 	debugging
 	"""
 
-	import javabridge
+	#import javabridge
 
 	try:
 
@@ -627,6 +627,7 @@ if __name__ == '__main__':
 		print('--- bstack main is loading max')
 		myStack.loadMax()
 
+		'''
 		with javabridge.vm(
 				run_headless=True,
 				class_path=bioformats.JARS
@@ -640,10 +641,11 @@ if __name__ == '__main__':
 
 			print('--- bstack main is calling convert()')
 			myStack.convert()
+		'''
 
 	finally:
 		#print('__main__ finally')
-		javabridge.kill_vm()
+		#javabridge.kill_vm()
 		pass
 
 	print('bstack __main__ finished')
