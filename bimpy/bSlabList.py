@@ -83,7 +83,7 @@ class bSlabList:
 	def numEdges(self):
 		return len(self.edgeDictList)
 
-	def _massage_xyz(self, x, y, z):
+	def _massage_xyz(self, x, y, z, diam):
 		# todo: read this from header and triple check if valid, if not valid then us 1/1/1
 		xUmPerPixel = 1 # 0.31074033574250315 #0.49718
 		yUmPerPixel = 1 # 0.31074033574250315 #0.49718
@@ -96,6 +96,7 @@ class bSlabList:
 
 		if self.tifPath.endswith('20191017__0001.tif'):
 			#print('!!! scaling tiff file 20191017__0001.tif')
+			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
 			xUmPerPixel = 0.49718
 			yUmPerPixel = 0.49718
 			zUmPerPixel = 0.6
@@ -119,8 +120,9 @@ class bSlabList:
 		x = x / xUmPerPixel
 		y = y / yUmPerPixel
 		z = z / zUmPerSlice
+		diam = diam / xUmPerPixel # assuming diamter is a sphere in x/y (not z?)
 
-		return x,y,z
+		return x,y,z, diam
 
 	def loadDeepVess(self):
 		# todo: change this to _slabs.txt
@@ -231,7 +233,7 @@ class bSlabList:
 						z = float(point0.attributes['z'].value)
 						diam = float(point0.attributes['d'].value)
 
-						x,y,z = self._massage_xyz(x,y,z)
+						x,y,z,diam = self._massage_xyz(x,y,z,diam)
 
 						self.nodex.append(x)
 						self.nodey.append(y)
@@ -260,13 +262,13 @@ class bSlabList:
 			#print('   found', len(edges), 'edges')
 			for j, edge in enumerate(edges):
 				edgeList = vessel.getElementsByTagName('edge')
-				#print('      found', len(edgeList), 'edges')
+				#print('	  found', len(edgeList), 'edges')
 				# one edge (vessel segment between 2 branch points)
 				for k in range(len(edgeList)):
 					edge_id = edgeList[k].attributes['id'].value
 					points = edgeList[k].getElementsByTagName('point') # edge is a list of 3d points
 					# this is my 'edge' list, the tubes between branch points ???
-					#print('         for edge id', edge_id, 'found', len(points), 'points')
+					#print('		 for edge id', edge_id, 'found', len(points), 'points')
 					# list of points for one edge
 					thisSlabList = []
 					newZList = []
@@ -280,7 +282,7 @@ class bSlabList:
 						self.orig_y.append(y)
 						self.orig_z.append(z)
 
-						x,y,z = self._massage_xyz(x,y,z)
+						x,y,z,diam = self._massage_xyz(x,y,z,diam)
 
 						self.x.append(x)
 						self.y.append(y)
@@ -409,6 +411,87 @@ class bSlabList:
 
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
 
+		# debug
+		#print(len(self.edgeDictList))
+		#print('self.edgeDictList[0]:', self.edgeDictList[0])
+		self.makeVolumeMask()
+
+	#202001
+	def makeVolumeMask(self):
+		# to embed a small volume in a bigger volume, see:
+		# https://stackoverflow.com/questions/7115437/how-to-embed-a-small-numpy-array-into-a-predefined-block-of-a-large-numpy-arra
+		# for sphere, see:
+		# https://stackoverflow.com/questions/46626267/how-to-generate-a-sphere-in-3d-numpy-array/46626448
+		def sphere(shape, radius, position):
+			# assume shape and position are both a 3-tuple of int or float
+			# the units are pixels / voxels (px for short)
+			# radius is a int or float in px
+			semisizes = (radius,) * 3
+
+			# genereate the grid for the support points
+			# centered at the position indicated by position
+			grid = [slice(-x0, dim - x0) for x0, dim in zip(position, shape)]
+			position = np.ogrid[grid]
+			# calculate the distance of all points from `position` center
+			# scaled by the radius
+			arr = np.zeros(shape, dtype=float)
+			for x_i, semisize in zip(position, semisizes):
+				arr += (np.abs(x_i / semisize) ** 2)
+			# the inner part of the sphere will have distance below 1
+			return arr <= 1.0
+
+		def paste_slices(tup):
+			pos, w, max_w = tup
+			wall_min = max(pos, 0)
+			wall_max = min(pos+w, max_w)
+			block_min = -min(pos, 0)
+			block_max = max_w-max(pos+w, max_w)
+			block_max = block_max if block_max != 0 else None
+			return slice(wall_min, wall_max), slice(block_min, block_max)
+
+		def paste(wall, block, loc):
+			loc_zip = zip(loc, block.shape, wall.shape)
+			wall_slices, block_slices = zip(*map(paste_slices, loc_zip))
+			# was '=', use '+=' assuming we are using binary
+			wall[wall_slices] += block[block_slices]
+
+		#slice:134, width:1981, height:5783
+		#finalVolume = np.zeros([134, 1981, 5783])
+		finalVolume = np.zeros([134, 5783, 1981])
+		# finalVolume = np.zeros([145, 640, 640]) #20191017__0001
+
+		print('bSlabList.makeVolumeMask() ... please wait')
+		for i in range(len(self.edgeDictList)):
+			slabList = self.edgeDictList[i]['slabList']
+			# debug
+			#print('edge:', i)
+			for slab in slabList:
+				#print('x:', self.x[slab], 'y:', self.y[slab], 'z:', self.z[slab], 'd:', self.d[slab])
+				x = int(round(self.x[slab]))
+				y = int(round(self.y[slab]))
+				z = int(round(self.z[slab]))
+				diam = self.d[slab]
+				#diam = int(round(self.d[slab]))
+				diamInt = int(round(diam))
+				myShape = (diamInt+1,diamInt+1,diamInt+1)
+				myRadius = int(round(diam/2)+1)
+				myPosition = (myRadius, myRadius, myRadius)
+
+				# debug
+				#print('   slab:', slab, 'myShape:', myShape, 'myRadius:', myRadius, 'myPosition:', myPosition, 'x:', x, 'y:', y, 'z:', z)
+
+				arr = sphere(myShape, myRadius, myPosition)
+
+				paste(finalVolume, arr, (z,x,y))
+				#paste(finalVolume, arr, (z,y,x))
+
+		finalVolume = finalVolume > 0
+
+		# save results
+		from skimage.external import tifffile as tif
+		finalVolume = finalVolume.astype('int8')
+		print('finalVolume.shape:', finalVolume.shape, type(finalVolume), finalVolume.dtype)
+		tif.imsave('a.tif', finalVolume, bigtiff=True)
 
 	def save(self):
 		"""

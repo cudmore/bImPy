@@ -48,7 +48,8 @@ class bStackBrowser(QtWidgets.QWidget):
 
 			#tmp.mySimpleStack
 			#viewer = napari.view_image(data.astronaut(), rgb=True)
-			tmp2 = bNapari(path)
+			#tmp2 = bNapari(path)
+			tmp2 = bNapari(path='', theStack=tmp.mySimpleStack)
 			# works
 			#print('\nOPENING NAPARI !!!!!!!!!!!!!\n')
 			#viewer = napari.view_image(tmp.mySimpleStack.stack, rgb=False)
@@ -141,8 +142,13 @@ if __name__ == '__main__':
 	app = QtWidgets.QApplication(sys.argv)
 
 	path = '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif'
+
+	# square image: 145, 640, 640
 	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
 	#path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
+
+	# tall image, slice:134, width:1981, height:5783
+	path = '/Users/cudmore/box/data/nathan/vesselucida/tracing_20191217/tracing_20191217.tif'
 
 	myBrowser = bStackBrowser()
 	myBrowser.show()

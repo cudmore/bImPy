@@ -22,14 +22,17 @@ class bNapari:
 	discussion about mouse move/dragging, i can't get it to work???
 	https://github.com/napari/napari/pull/544
 	"""
-	def __init__(self, path):
+	def __init__(self, path='', theStack=None):
 
 		print('=== bNapari.__init__() path:', path)
 
 		filename = os.path.basename(path)
 
 		# todo: this is loading again? just pass data to __init__ if already loaded
-		self.myStack = bimpy.bStack(path)
+		if theStack is not None:
+			self.myStack = theStack
+		else:
+			self.myStack = bimpy.bStack(path)
 
 		#print('   self.myStack.stack.shape:', self.myStack.stack.shape)
 
