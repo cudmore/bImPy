@@ -148,7 +148,7 @@ if __name__ == '__main__':
 	#path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
 
 	# tall image, slice:134, width:1981, height:5783
-	path = '/Users/cudmore/box/data/nathan/vesselucida/tracing_20191217/tracing_20191217.tif'
+	#path = '/Users/cudmore/box/data/nathan/vesselucida/tracing_20191217/tracing_20191217.tif'
 
 	myBrowser = bStackBrowser()
 	myBrowser.show()

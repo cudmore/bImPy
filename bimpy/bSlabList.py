@@ -1,4 +1,4 @@
-import os, math
+import os, math, copy
 import numpy as np
 import pandas as pd
 import statistics # to get median value from a list of numbers
@@ -69,7 +69,7 @@ class bSlabList:
 		self.loadDeepVess()
 		self.loadVesselucida_xml()
 
-		self.analyze()
+		#self.analyze()
 
 	@property
 	def numNodes(self):
@@ -215,7 +215,7 @@ class bSlabList:
 		masterEdgeIdx = 0
 		masterSlabIdx = 0
 		for i, vessel in enumerate(vessels):
-			#print('vessel i:', i, 'name:', vessel.attributes['name'].value)
+			print('vessel i:', i, 'name:', vessel.attributes['name'].value)
 
 			#
 			# nodes
@@ -297,6 +297,7 @@ class bSlabList:
 						thisSlabList.append(masterSlabIdx)
 						masterSlabIdx += 1
 
+					# default
 					edgeDict = {
 						'type': 'edge',
 						'edgeIdx': masterEdgeIdx,
@@ -309,6 +310,11 @@ class bSlabList:
 						'postNode': -1,
 						'Bad': False,
 						'slabList': thisSlabList, # list of slab indices on this edge
+						'popList': [], # cases where we should be popped in joinEdges
+						'editList': [], # cases where we should be edited in joinEdges
+						'otherEdgeIdxList': [],
+						'editPending': False,
+						'popPending': False,
 						}
 
 					self.edgeDictList.append(edgeDict)
@@ -334,26 +340,38 @@ class bSlabList:
 			#print('   found', len(edgeListList), 'edgelists')
 			for j, edgeList in enumerate(edgeListList):
 				# src/dst node are 0 based for given vessel
+				# todo: save original indices from xml in my data structures !
 				id = edgeList.attributes['id'].value # gives us the edge list index in self.x
 				srcNode = int(edgeList.attributes['sourcenode'].value)
 				dstNode = int(edgeList.attributes['targetnode'].value)
 				#print('   srcNode:', srcNode, 'dstNode:', dstNode)
-				self.edgeDictList[j]['preNode'] = srcNode
-				self.edgeDictList[j]['postNode'] = dstNode
+
+				# THIS MIGHT BE WRONG, WE CAN'T ASSUME THE ORDER HERE ???
+				self.edgeDictList[startEdgeIdx+j]['preNode'] = startNodeIdx+srcNode
+				self.edgeDictList[startEdgeIdx+j]['postNode'] = startNodeIdx+dstNode
+
+				# using startNodeIdx is wrong !!!
 				if srcNode != -1:
-					#print('adding srcNode startNodeIdx:', startNodeIdx, 'srcNode:', srcNode, 'startEdgeIdx:', startEdgeIdx)
 					self.nodeDictList[startNodeIdx+srcNode]['edgeList'].append(startEdgeIdx+j)
 					self.nodeDictList[startNodeIdx+srcNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+srcNode]['edgeList'])
-					#print('   edgeList:', self.nodeDictList[startNodeIdx+srcNode]['edgeList'])
-					#print('   nEdges:', self.nodeDictList[startNodeIdx+srcNode]['nEdges'])
 				if dstNode != -1:
-					#print('adding dstNode startNodeIdx:', startNodeIdx, 'dstNode:', dstNode, 'startEdgeIdx:', startEdgeIdx)
 					self.nodeDictList[startNodeIdx+dstNode]['edgeList'].append(startEdgeIdx+j)
 					self.nodeDictList[startNodeIdx+dstNode]['nEdges'] = len(self.nodeDictList[startNodeIdx+dstNode]['edgeList'])
-					#print('   edgeList:', self.nodeDictList[startNodeIdx+dstNode]['edgeList'])
-					#print('   nEdges:', self.nodeDictList[startNodeIdx+dstNode]['nEdges'])
-		# end
+
+			# debug
+			'''
+			for idx, edge in enumerate(self.edgeDictList):
+				print('edge:', idx, 'preNode:', edge['preNode'], 'postNode:', edge['postNode'])
+				print('   edge["slabList"]:', edge["slabList"])
+				if edge['preNode'] != -1:
+					print('   node self.nodeDictList[preNode]:', self.nodeDictList[edge['preNode']])
+				if edge['postNode'] != -1:
+					print('   self.nodeDictList[postNode]:', self.nodeDictList[edge['postNode']])
+			'''
+		#
+		# end vessels
 		# for i, vessel in enumerate(vessels):
+		#
 
 		nPoints = len(self.x)
 		self.id = np.full(nPoints, 0) #Return a new array of given shape and type, filled with fill_value.
@@ -414,7 +432,318 @@ class bSlabList:
 		# debug
 		#print(len(self.edgeDictList))
 		#print('self.edgeDictList[0]:', self.edgeDictList[0])
-		self.makeVolumeMask()
+		for i in range(1):
+			self.joinEdges()
+		# this works
+		#self.makeVolumeMask()
+
+	#202001
+	def joinEdges(self, distThreshold=20):
+		"""
+		Try and join edges that have src/dst near another src dst
+
+		Parameters:
+			distThreshold
+		Algorithm:
+			Four cases
+				1) dist_src_src2
+				2) dist_src_dst2
+				3) dist_dst_src2
+				4) dist_dst_dst2
+		"""
+		distThreshold = 10
+
+		# reset edit
+		for idx, edge in enumerate(self.edgeDictList):
+			edge['popList'] = []
+			edge['editList'] = []
+			edge['editPending'] = False
+			edge['popPending'] = False
+			edge['otherEdgeIdxList'] = []
+
+		numEdits1 = 0
+		numEdits2 = 0
+		numEdits3 = 0
+		numEdits4 = 0
+		for idx, edge in enumerate(self.edgeDictList):
+			preNode = edge['preNode']
+			postNode = edge['postNode']
+			if edge['editPending']:
+				continue
+			if edge['popPending']:
+				continue
+			slabList = edge['slabList']
+			numSlab = len(slabList)
+			#print('joinEdges() idx:', idx, 'numSlab', numSlab)
+			if numSlab<2:
+				continue
+
+			firstSlab = slabList[0]
+			lastSlab = slabList[-1]
+
+			src = (self.x[firstSlab], self.y[firstSlab], self.z[firstSlab])
+			dst = (self.x[lastSlab], self.y[lastSlab], self.z[lastSlab])
+
+			for idx2, edge2 in enumerate(self.edgeDictList):
+				preNode2 = edge2['preNode']
+				postNode2 = edge2['postNode']
+				if idx2 == idx:
+					continue
+				if edge2['editPending']:
+					continue
+				if edge2['popPending']:
+					continue
+				slabList2 = edge2['slabList']
+				numSlab2 = len(slabList2)
+				if numSlab2<2:
+					continue
+				firstSlab2 = slabList2[0]
+				lastSlab2 = slabList2[-1]
+
+				# self.x/y/z have nan between edges
+				src2 = (self.x[firstSlab2], self.y[firstSlab2], self.z[firstSlab2])
+				dst2 = (self.x[lastSlab2], self.y[lastSlab2], self.z[lastSlab2])
+
+				# make 4x comparisons
+				dist_src_src2 = self.euclideanDistance2(src, src2)
+				dist_src_dst2 = self.euclideanDistance2(src, dst2)
+				dist_dst_src2 = self.euclideanDistance2(dst, src2)
+				dist_dst_dst2 = self.euclideanDistance2(dst, dst2)
+				# 1)
+				if dist_src_src2 < distThreshold:
+					# reverse idx, put idx2 after idx, pop idx2
+					if (preNode!=-1) and (preNode == preNode2):
+						# already connected
+						continue
+					numEdits1 += 1
+					edge['editList'].append(1) # reverse
+					edge['otherEdgeIdxList'].append(idx2)
+					edge['editPending'] = True
+					edge2['popList'].append(1)
+					edge2['popPending'] = True
+					#edge2['editPending'] = True
+					#print('   (1) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_src_src2:', dist_src_src2)
+					'''
+					print('   1) dist_src_src2:', dist_src_src2, 'idx:', idx, 'preNode:', preNode, 'idx2:', idx2, 'preNode2:', preNode2)
+					print('         firstSlab:', firstSlab, 'src:', src)
+					print('         firstSlab2:', firstSlab2, 'src2:', src2)
+					print('         self.nodeDictList[preNode]:', self.nodeDictList[preNode])
+					print('         self.nodeDictList[preNode2]:', self.nodeDictList[preNode2])
+					'''
+					continue
+				# 2)
+				if dist_src_dst2 < distThreshold:
+					# put idx after idx2, pop idx
+					if (preNode!=-1) and (preNode == postNode2):
+						# already connected
+						continue
+					numEdits2 += 1
+					edge['popList'].append(2)
+					edge['popPending'] = True
+					#edge['editPending'] = True
+					edge2['editList'].append(2)
+					edge2['otherEdgeIdxList'].append(idx)
+					edge2['editPending'] = True
+					#print('   (2) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_src_dst2:', dist_src_dst2)
+					print('   2) dist_src_dst2:', dist_src_dst2, 'idx:', idx, 'preNode:', preNode, 'idx2:', idx2, 'postNode2:', postNode2)
+					print('         firstSlab:', firstSlab, 'src:', src)
+					print('         lastSlab2:', lastSlab2, 'dst2:', dst2)
+					print('         self.nodeDictList[preNode]:', self.nodeDictList[preNode])
+					print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
+					continue
+				# 3)
+				if dist_dst_src2 < distThreshold:
+					# no change, put idx2 after idx, pop idx2
+					continue
+
+					numEdits3 += 1
+					edge['editList'].append(3)
+					edge['otherEdgeIdxList'].append(idx2)
+					edge['editPending'] = True
+					edge2['popList'].append(3)
+					edge2['popPending'] = True
+					#edge2['editPending'] = True
+					#print('   (3) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_dst_src2:', dist_dst_src2)
+					if postNode != -1 or preNode2 != -1:
+						print('   3) idx:', idx, 'postNode:', postNode, 'idx2:', idx2, 'preNode2:', preNode2)
+						print('      dist_dst_src2:', dist_dst_src2)
+						if postNode == preNode2:
+							# already members of the same node
+							print('      match')
+						# 4 more cases ?
+						if postNode==-1 and preNode2!=-1:
+							# never happens
+							pass
+							#print('      case 3.1) idx1 dst joins src at idx2')
+						elif postNode!=-1 and preNode2==-1:
+							# never happen
+							pass
+							#print('      case 3.2) idx2 src joins dst at idx 1')
+						elif postNode!=-1 and preNode2!=-1:
+							print('      case 3.3) match')
+							# debug, position of postNode and preNode2
+							# this is not correct
+							print('         self.nodeDictList[postNode]:', self.nodeDictList[postNode])
+							print('         self.nodeDictList[preNode2]:', self.nodeDictList[preNode2])
+							#
+							# YES, bingo, my slab indices do not match my preNode/postNode
+							print('         lastSlab  :', self.x[lastSlab], self.y[lastSlab], self.z[lastSlab])
+							print('         firstSlab2:', self.x[firstSlab2], self.y[firstSlab2], self.z[firstSlab2])
+					else:
+						# never happens
+						pass
+						#print('   3.0) both assigned')
+					continue
+				# 4)
+				if dist_dst_dst2 < distThreshold:
+					# reverse idx2, put idx2 after idx, pop idx2
+					if (postNode!=-1) and (postNode == postNode2):
+						# already connected
+						continue
+					numEdits4 += 1
+					edge['editList'].append(4)
+					edge['otherEdgeIdxList'].append(idx2)
+					edge['editPending'] = True
+					edge2['editList'].append(4) # reverse
+					edge2['popList'].append(4)
+					edge2['editPending'] = True
+					edge2['popPending'] = True
+					#print('   (4) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_dst_dst2:', dist_dst_dst2)
+					print('   4) dist_dst_dst2:', dist_dst_dst2, 'idx:', idx, 'postNode:', postNode, 'idx2:', idx2, 'postNode2:', postNode2)
+					print('         self.nodeDictList[postNode]:', self.nodeDictList[postNode])
+					print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
+					continue
+
+		#
+		# done
+		print('*** EDITS joinEdges')
+		print('before joinEdges() numEdges:', len(self.edgeDictList), '1:', numEdits1, '2:', numEdits2, '3:', numEdits3, '4:', numEdits4)
+		totalNumEdits = 0
+		newEdgeIdx = 0 # we will make a new edgeDictList
+		self.edgeDictList2 = []
+		for idx, edge in enumerate(self.edgeDictList):
+			if edge['popPending']:
+				# do nothing, will eventually be removed/merged
+				continue
+			#print('   idx:', idx, 'editList:', edge['editList'], 'otherEdgeIdxList:', edge['otherEdgeIdxList'])
+			totalNumEdits += 1
+
+			currNumEdits = len(edge['editList'])
+			newEdgeDict = copy.deepcopy(edge)
+			if currNumEdits==0:
+				# no edit, just append
+				newEdgeDict['edgeIdx'] = newEdgeIdx
+				newEdgeDict = self.updateEdge(newEdgeDict)
+				self.edgeDictList2.append(newEdgeDict)
+				newEdgeIdx += 1
+			else:
+				firstEdit = edge['editList'][0]
+				firstOtherIdx = edge['otherEdgeIdxList'][0]
+				if firstEdit == 1:
+					# reverse idx, put idx2 after idx, pop idx2
+					newEdgeDict['slabList'].reverse() # reverse() is on place?
+					newEdgeDict['slabList'] += self.edgeDictList[firstOtherIdx]['slabList']
+					newEdgeDict['edgeIdx'] = newEdgeIdx
+					newEdgeDict = self.updateEdge(newEdgeDict)
+					self.edgeDictList2.append(newEdgeDict)
+					newEdgeIdx += 1
+				elif firstEdit == 2:
+					# put idx after idx2, pop idx
+					newEdgeDict2 = copy.deepcopy(self.edgeDictList[firstOtherIdx])
+					newEdgeDict2['slabList'] += newEdgeDict['slabList']
+					newEdgeDict2['edgeIdx'] = newEdgeIdx
+					newEdgeDict2 = self.updateEdge(newEdgeDict2)
+					self.edgeDictList2.append(newEdgeDict2)
+					newEdgeIdx += 1
+				elif firstEdit == 3:
+					# no change, put idx2 after idx, pop idx2
+					newEdgeDict['slabList'] += self.edgeDictList[firstOtherIdx]['slabList']
+					newEdgeDict['edgeIdx'] = newEdgeIdx
+					newEdgeDict = self.updateEdge(newEdgeDict)
+					self.edgeDictList2.append(newEdgeDict)
+					newEdgeIdx += 1
+				elif firstEdit == 4:
+					# reverse idx2, put idx2 after idx, pop idx2
+					otherSlabList = self.edgeDictList[firstOtherIdx]['slabList']
+					otherSlabList.reverse()
+					newEdgeDict['slabList'] += otherSlabList
+					newEdgeDict['edgeIdx'] = newEdgeIdx
+					newEdgeDict = self.updateEdge(newEdgeDict)
+					self.edgeDictList2.append(newEdgeDict)
+					newEdgeIdx += 1
+
+		# done
+		self.edgeDictList = copy.deepcopy(self.edgeDictList2)
+
+		##
+		##
+		# FIX THIS
+		##
+		##
+
+		#
+		# need to update each point with its edge idx
+		# todo: get rid of .id point throuout (including bStackWidget)
+		for idx, edge in enumerate(self.edgeDictList):
+			slabList = edge['slabList']
+			self.id[slabList] = idx
+
+		print('after joinEdges() numEdges:', len(self.edgeDictList), 'totalNumEdits:', totalNumEdits, '1:', numEdits1, '2:', numEdits2, '3:', numEdits3, '4:', numEdits4)
+
+	def updateEdge(self, edgeDict):
+		"""
+		When slabs change, update edge
+		"""
+		n = len(edgeDict['slabList'])
+		edgeDict['n'] = n
+
+		len2d = 0
+		len3d = 0
+		zList = []
+		prevPoint2d = None
+		prevPoint3d = None
+		for slab in edgeDict['slabList']:
+			zList.append(self.z[slab])
+
+			currPnt2d = (self.x[slab], self.y[slab], None)
+			currPnt3d = (self.x[slab], self.y[slab], self.z[slab])
+			if prevPoint3d is not None:
+				len2d += self.euclideanDistance2(prevPoint2d, currPnt2d)
+				len3d += self.euclideanDistance2(prevPoint3d, currPnt3d)
+
+			prevPoint2d = (self.x[slab], self.y[slab], None)
+			prevPoint3d = (self.x[slab], self.y[slab], self.z[slab])
+
+		edgeDict['Len 2D'] = round(len2d,1)
+		edgeDict['Len 3D'] = round(len3d,1)
+
+		z = round(statistics.median(zList),0)
+		edgeDict['z'] = z
+
+		#print('z:', z, type(z))
+
+		return edgeDict
+
+	def ____defaultEdgeDict(self):
+		edgeDict = {
+			'type': 'edge',
+			'edgeIdx': None, #masterEdgeIdx,
+			'n': None, #len(newZList),
+			'Len 3D': None,
+			'Len 2D': None,
+			'Tort': None,
+			'z': None, #round(statistics.median(newZList)),
+			'preNode': -1,
+			'postNode': -1,
+			'Bad': False,
+			'slabList': [], #thisSlabList, # list of slab indices on this edge
+			'popList': [], # cases where we should be popped in joinEdges
+			'editList': [], # cases where we should be edited in joinEdges
+			'otherEdgeIdxList': [],
+			'editPending': False,
+			'popPending': False,
+			}
+		return edgeDict
 
 	#202001
 	def makeVolumeMask(self):
@@ -534,18 +863,31 @@ class bSlabList:
 		"""
 		return a list of slabs in an edge
 		"""
-		theseIndices = np.argwhere(self.id == edgeIdx)
+		# 202001 was this
+		#theseIndices = np.argwhere(self.id == edgeIdx)
+		# now this
+		theseIndices = self.edgeDictList[edgeIdx]['slabList']
 		return theseIndices
 
-	def analyze(self):
+	def euclideanDistance2(self, src, dst):
+		# src and dst are 3 element tuples (x,y,z)
+		return self.euclideanDistance(src[0], src[1], src[2], dst[0], dst[1], dst[2])
+
+	def euclideanDistance(self, x1, y1, z1, x2, y2, z2):
+		if z1 is None and z2 is None:
+			return math.sqrt((x2-x1)**2 + (y2-y1)**2)
+		else:
+			return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+
+	def __analyze(self):
 		"""
 		Fill in derived values in self.edgeDictList
 		"""
-		def euclideanDistance(x1, y1, z1, x2, y2, z2):
-			if z1 is None and z2 is None:
-				return math.sqrt((x2-x1)**2 + (y2-y1)**2)
-			else:
-				return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+
+		'''
+		todo: bSlabList.analyze() needs to step through each edge, not slabs !!!
+		'''
+		return
 
 		edgeIdx = 0
 		n = self.numSlabs
@@ -578,9 +920,9 @@ class bSlabList:
 				continue
 
 			if pointIdx > 0:
-				len3d = len3d + euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
-				len2d = len2d + euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
-				len3d_nathan = len3d_nathan + euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
+				len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
+				len2d = len2d + self.euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
+				len3d_nathan = len3d_nathan + self.euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
 			prev_x1 = x1
 			prev_y1 = y1
 			prev_z1 = z1

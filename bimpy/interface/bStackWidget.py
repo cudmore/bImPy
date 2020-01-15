@@ -748,9 +748,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.repaint() # this is updating the widget !!!!!!!!
 
 	def selectEdge(self, edgeIdx, snapz=False):
-		#print('=== bStackView.selectEdge():', edgeIdx)
+		print('=== bStackView.selectEdge():', edgeIdx, 'snapz:', snapz)
 		if edgeIdx is None:
-			print('bStackView.selectEdge() -->> NONE')
+			print('   bStackView.selectEdge() -->> NONE')
 			#markersize = 10
 			#self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color='c', s=markersize, picker=True)
 			self.mySelectedEdge = None
@@ -761,7 +761,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			if self.mySimpleStack.slabList is not None:
 				theseIndices = self.mySimpleStack.slabList.getEdge(edgeIdx)
 
-				#print('selectEdge() theseIndices:', theseIndices)
+				print('   bStackView.selectEdge() theseIndices:', theseIndices)
 
 				# todo: add option to snap to a z
 				# removed this because it was confusing
@@ -851,7 +851,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				zMasked = np.ma.masked_outside(self.mySimpleStack.slabList.z, upperz, lowerz)
 
 				#todo: this need to be combined list of all slabs AND nodes,
-				#when we click we can look up which was clicked
+				# when we click we can look up which was clicked
 				idMasked = self.mySimpleStack.slabList.id[~zMasked.mask]
 				xMasked = self.mySimpleStack.slabList.y[~zMasked.mask] # swapping
 				yMasked = self.mySimpleStack.slabList.x[~zMasked.mask]
