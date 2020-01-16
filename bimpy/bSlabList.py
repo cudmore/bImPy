@@ -17,7 +17,7 @@ class bSlabList:
 
 		self.tifPath = tifPath
 
-		# nodes
+		# nodes, used by bStackView
 		self.nodex = []
 		self.nodey = []
 		self.nodez = []
@@ -207,6 +207,7 @@ class bSlabList:
 		self.y = []
 		self.z = []
 		self.d = []
+		self.id = []
 		self.orig_x = []
 		self.orig_y = []
 		self.orig_z = []
@@ -244,6 +245,7 @@ class bSlabList:
 						# important so user can scroll through all nodes and
 						# check they have >1 edge !!!
 						nodeDict = {
+							'idx': masterNodeIdx, # used by stack widget table
 							'x': x,
 							'y': y,
 							'z': z,
@@ -288,6 +290,7 @@ class bSlabList:
 						self.y.append(y)
 						self.z.append(z)
 						self.d.append(diam)
+						self.id.append(masterEdgeIdx)
 
 						newZList.append(z)
 						'''
@@ -300,14 +303,15 @@ class bSlabList:
 					# default
 					edgeDict = {
 						'type': 'edge',
+						'idx': masterEdgeIdx, # used by stack widget table
 						'edgeIdx': masterEdgeIdx,
 						'n': len(newZList),
 						'Len 3D': None,
 						'Len 2D': None,
 						'Tort': None,
 						'z': round(statistics.median(newZList)),
-						'preNode': -1,
-						'postNode': -1,
+						'preNode': None,
+						'postNode': None,
 						'Bad': False,
 						'slabList': thisSlabList, # list of slab indices on this edge
 						'popList': [], # cases where we should be popped in joinEdges
@@ -324,6 +328,7 @@ class bSlabList:
 					self.y.append(np.nan)
 					self.z.append(np.nan)
 					self.d.append(np.nan)
+					self.id.append(np.nan)
 					masterSlabIdx += 1
 					'''
 					self.d.append(np.nan)
@@ -346,9 +351,10 @@ class bSlabList:
 				dstNode = int(edgeList.attributes['targetnode'].value)
 				#print('   srcNode:', srcNode, 'dstNode:', dstNode)
 
-				# THIS MIGHT BE WRONG, WE CAN'T ASSUME THE ORDER HERE ???
-				self.edgeDictList[startEdgeIdx+j]['preNode'] = startNodeIdx+srcNode
-				self.edgeDictList[startEdgeIdx+j]['postNode'] = startNodeIdx+dstNode
+				if srcNode != -1:
+					self.edgeDictList[startEdgeIdx+j]['preNode'] = startNodeIdx+srcNode
+				if dstNode != -1:
+					self.edgeDictList[startEdgeIdx+j]['postNode'] = startNodeIdx+dstNode
 
 				# using startNodeIdx is wrong !!!
 				if srcNode != -1:
@@ -363,9 +369,9 @@ class bSlabList:
 			for idx, edge in enumerate(self.edgeDictList):
 				print('edge:', idx, 'preNode:', edge['preNode'], 'postNode:', edge['postNode'])
 				print('   edge["slabList"]:', edge["slabList"])
-				if edge['preNode'] != -1:
+				if edge['preNode'] is not None:
 					print('   node self.nodeDictList[preNode]:', self.nodeDictList[edge['preNode']])
-				if edge['postNode'] != -1:
+				if edge['postNode'] is not None:
 					print('   self.nodeDictList[postNode]:', self.nodeDictList[edge['postNode']])
 			'''
 		#
@@ -373,8 +379,10 @@ class bSlabList:
 		# for i, vessel in enumerate(vessels):
 		#
 
+		'''
 		nPoints = len(self.x)
 		self.id = np.full(nPoints, 0) #Return a new array of given shape and type, filled with fill_value.
+		'''
 
 		#
 		# convert to numpy array
@@ -382,11 +390,13 @@ class bSlabList:
 		self.nodex = np.array(self.nodex, dtype='float32')
 		self.nodey = np.array(self.nodey, dtype='float32')
 		self.nodez = np.array(self.nodez, dtype='float32')
+
 		# edges
 		self.x = np.array(self.x, dtype='float32')
 		self.y = np.array(self.y, dtype='float32')
 		self.z = np.array(self.z, dtype='float32')
 		self.d = np.array(self.d, dtype='float32')
+		self.id = np.array(self.id, dtype='float32')
 
 		#
 		# create dead ends
@@ -394,7 +404,7 @@ class bSlabList:
 		self.deadEndy = []
 		self.deadEndz = []
 		for edgeDict in self.edgeDictList:
-			if edgeDict['preNode'] == -1:
+			if edgeDict['preNode'] is None:
 				firstSlabIdx = edgeDict['slabList'][0]
 				tmpx = self.x[firstSlabIdx]
 				tmpy = self.y[firstSlabIdx]
@@ -402,7 +412,7 @@ class bSlabList:
 				self.deadEndx.append(tmpx)
 				self.deadEndy.append(tmpy)
 				self.deadEndz.append(tmpz)
-			if edgeDict['postNode'] == -1:
+			if edgeDict['postNode'] is None:
 				lastSlabIdx = edgeDict['slabList'][-1]
 				tmpx = self.x[lastSlabIdx]
 				tmpy = self.y[lastSlabIdx]
@@ -466,7 +476,7 @@ class bSlabList:
 		numEdits3 = 0
 		numEdits4 = 0
 		for idx, edge in enumerate(self.edgeDictList):
-			preNode = edge['preNode']
+			preNode = edge['preNode'] # can be None
 			postNode = edge['postNode']
 			if edge['editPending']:
 				continue
@@ -485,7 +495,7 @@ class bSlabList:
 			dst = (self.x[lastSlab], self.y[lastSlab], self.z[lastSlab])
 
 			for idx2, edge2 in enumerate(self.edgeDictList):
-				preNode2 = edge2['preNode']
+				preNode2 = edge2['preNode'] # can be None
 				postNode2 = edge2['postNode']
 				if idx2 == idx:
 					continue
@@ -512,7 +522,7 @@ class bSlabList:
 				# 1)
 				if dist_src_src2 < distThreshold:
 					# reverse idx, put idx2 after idx, pop idx2
-					if (preNode!=-1) and (preNode == preNode2):
+					if (preNode is not None) and (preNode == preNode2):
 						# already connected
 						continue
 					numEdits1 += 1
@@ -534,7 +544,7 @@ class bSlabList:
 				# 2)
 				if dist_src_dst2 < distThreshold:
 					# put idx after idx2, pop idx
-					if (preNode!=-1) and (preNode == postNode2):
+					if (preNode is not None) and (preNode == postNode2):
 						# already connected
 						continue
 					numEdits2 += 1
@@ -546,10 +556,18 @@ class bSlabList:
 					edge2['editPending'] = True
 					#print('   (2) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_src_dst2:', dist_src_dst2)
 					print('   2) dist_src_dst2:', dist_src_dst2, 'idx:', idx, 'preNode:', preNode, 'idx2:', idx2, 'postNode2:', postNode2)
+					#print('         edgeDictList[idx]:', self.edgeDictList[idx])
+					#print('         edgeDictList[idx2]:', self.edgeDictList[idx2])
 					print('         firstSlab:', firstSlab, 'src:', src)
 					print('         lastSlab2:', lastSlab2, 'dst2:', dst2)
-					print('         self.nodeDictList[preNode]:', self.nodeDictList[preNode])
-					print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
+					if preNode is None:
+						print('         preNode=None')
+					else:
+						print('         self.nodeDictList[preNode]:', self.nodeDictList[preNode])
+					if postNode2 is None:
+						print('         postNode2=None')
+					else:
+						print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
 					continue
 				# 3)
 				if dist_dst_src2 < distThreshold:
@@ -564,22 +582,22 @@ class bSlabList:
 					edge2['popPending'] = True
 					#edge2['editPending'] = True
 					#print('   (3) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_dst_src2:', dist_dst_src2)
-					if postNode != -1 or preNode2 != -1:
+					if postNode is not None or preNode2 is not None:
 						print('   3) idx:', idx, 'postNode:', postNode, 'idx2:', idx2, 'preNode2:', preNode2)
 						print('      dist_dst_src2:', dist_dst_src2)
 						if postNode == preNode2:
 							# already members of the same node
 							print('      match')
 						# 4 more cases ?
-						if postNode==-1 and preNode2!=-1:
+						if postNode is None and preNode2 is not None:
 							# never happens
 							pass
 							#print('      case 3.1) idx1 dst joins src at idx2')
-						elif postNode!=-1 and preNode2==-1:
+						elif postNode is not None and preNode2 is None:
 							# never happen
 							pass
 							#print('      case 3.2) idx2 src joins dst at idx 1')
-						elif postNode!=-1 and preNode2!=-1:
+						elif postNode is not None and preNode2 is not None:
 							print('      case 3.3) match')
 							# debug, position of postNode and preNode2
 							# this is not correct
@@ -597,7 +615,7 @@ class bSlabList:
 				# 4)
 				if dist_dst_dst2 < distThreshold:
 					# reverse idx2, put idx2 after idx, pop idx2
-					if (postNode!=-1) and (postNode == postNode2):
+					if (postNode is not None) and (postNode == postNode2):
 						# already connected
 						continue
 					numEdits4 += 1
@@ -610,12 +628,21 @@ class bSlabList:
 					edge2['popPending'] = True
 					#print('   (4) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_dst_dst2:', dist_dst_dst2)
 					print('   4) dist_dst_dst2:', dist_dst_dst2, 'idx:', idx, 'postNode:', postNode, 'idx2:', idx2, 'postNode2:', postNode2)
-					print('         self.nodeDictList[postNode]:', self.nodeDictList[postNode])
-					print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
+					if postNode is None:
+						print('         postNode is None')
+					else:
+						print('         self.nodeDictList[postNode]:', self.nodeDictList[postNode])
+					if postNode2 is None:
+						print('         postNode2 is None')
+					else:
+						print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
 					continue
 
 		#
 		# done
+		print('NOT EDITING ANYTHING FOR NOW')
+		return
+
 		print('*** EDITS joinEdges')
 		print('before joinEdges() numEdges:', len(self.edgeDictList), '1:', numEdits1, '2:', numEdits2, '3:', numEdits3, '4:', numEdits4)
 		totalNumEdits = 0

@@ -106,7 +106,8 @@ class bStackWidget(QtWidgets.QWidget):
 
 		# todo: Need to show/hide annotation table
 		self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
-		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) # stretch=10, not sure on the units???
+		self.myHBoxLayout.addWidget(self.annotationTable, stretch=7) # stretch=10, not sure on the units???
+		#self.myHBoxLayout.addWidget(self.annotationTable) # stretch=10, not sure on the units???
 		#print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
 		if self.mySimpleStack.slabList is None:
 			self.annotationTable.hide()
@@ -115,6 +116,7 @@ class bStackWidget(QtWidgets.QWidget):
 			pass
 			#self.annotationTable.hide()
 
+		# vertical layout for contrast/feedback/image
 		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=7) # stretch=10, not sure on the units???
 
 		'''
@@ -379,7 +381,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.myNodeTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myNodeTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 		self.myNodeTableWidget.cellClicked.connect(self.on_clicked_node)
-		nodeHeaderLabels = ['zSlice', 'nEdges']
+		nodeHeaderLabels = ['idx', 'x', 'y', 'zSlice', 'nEdges', 'edgeList']
 		self.myNodeTableWidget.setColumnCount(len(nodeHeaderLabels))
 		self.myNodeTableWidget.setHorizontalHeaderLabels(nodeHeaderLabels)
 		header = self.myNodeTableWidget.horizontalHeader()
@@ -393,9 +395,12 @@ class bAnnotationTable(QtWidgets.QWidget):
 			for tmpNode in self.slabList.nodeDictList:
 				print('tmpNode:', tmpNode)
 			'''
-			for idx, stat in enumerate(self.slabList.nodeDictList):
+			for idx, nodeDict in enumerate(self.slabList.nodeDictList):
 				for colIdx, header in enumerate(nodeHeaderLabels):
-					myString = str(stat[header])
+					if header in ['x', 'y']:
+						myString = str(round(nodeDict[header],2))
+					else:
+						myString = str(nodeDict[header])
 					'''
 					# special cases
 					if header == 'Bad':
@@ -422,7 +427,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		# figure out how to get this to work
 		#self.myTableWidget.currentCellChanged.connect(self.on_clicked)
 		#headerLabels = ['type', 'n', 'Length 3D', 'Length 2D', 'z', 'preNode', 'postNode', 'Good']
-		headerLabels = ['n', 'Len 3D', 'Len 2D', 'z', 'preNode', 'postNode', 'Bad']
+		headerLabels = ['idx', 'n', 'Len 3D', 'Len 2D', 'z', 'preNode', 'postNode', 'Bad']
 		self.myTableWidget.setColumnCount(len(headerLabels))
 		self.myTableWidget.setHorizontalHeaderLabels(headerLabels)
 		header = self.myTableWidget.horizontalHeader()
@@ -434,9 +439,9 @@ class bAnnotationTable(QtWidgets.QWidget):
 		if self.slabList is None:
 			pass
 		else:
-			for idx, stat in enumerate(self.slabList.edgeDictList):
+			for idx, edgeDict in enumerate(self.slabList.edgeDictList):
 				for colIdx, header in enumerate(headerLabels):
-					myString = str(stat[header])
+					myString = str(edgeDict[header])
 					# special cases
 					if header == 'Bad':
 						myString = 'X' if myString=='True' else ''
@@ -450,6 +455,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 
 		self.myQHBoxLayout.addWidget(self.myNodeTableWidget)
+		#self.myQHBoxLayout.addWidget(self.myTableWidget, stretch=20)
 		self.myQHBoxLayout.addWidget(self.myTableWidget)
 
 	# todo: this is broken
@@ -498,8 +504,8 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 	@QtCore.pyqtSlot()
 	def on_clicked_node(self):
-		print('bAnnotationTable.on_clicked_node')
 		row = self.myNodeTableWidget.currentRow()
+		print('bAnnotationTable.on_clicked_node() row:', row)
 		self.mainWindow.signal('selectNodeFromTable', row, fromTable=True)
 
 	@QtCore.pyqtSlot()
@@ -695,7 +701,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		if numberOfFlashes>0:
 			if self.mySimpleStack.slabList is not None:
 				x, y, z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
-				self.myNodeSelectionFlash.set_offsets(np.c_[x, y])
+				self.myNodeSelectionFlash.set_offsets(np.c_[y, x])
+				#self.myNodeSelectionFlash.set_offsets(np.c_[x, y])
 				#
 				QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes-1))
 		else:
@@ -733,13 +740,23 @@ class bStackView(QtWidgets.QGraphicsView):
 				self.mySelectedNode = nodeIdx
 				x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
 
+				# swap
+				'''
+				tmp = x
+				x = y
+				y = tmp
+				'''
+
 				if snapz:
 					z = self.mySimpleStack.slabList.getNode_zSlice(nodeIdx)
 					self.setSlice(z)
 
-					self.myEdgeSelectionPlot.set_offsets(np.c_[x, y])
+					# flipped
+					self.myEdgeSelectionPlot.set_offsets(np.c_[y,x])
+					#self.myEdgeSelectionPlot.set_offsets(np.c_[x, y])
 
-					self.zoomToPoint(x, y)
+					self.zoomToPoint(y, x)
+					#self.zoomToPoint(x, y)
 
 					numberOfFlashes = 1
 					QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, numberOfFlashes))
@@ -871,7 +888,7 @@ class bStackView(QtWidgets.QGraphicsView):
 					'yMasked': [],
 				}
 				for edgeDict in self.mySimpleStack.slabList.edgeDictList:
-					if edgeDict['preNode'] == -1:
+					if edgeDict['preNode'] is None:
 						# include dead end
 						# get the z of the first slab
 						firstSlabIdx = edgeDict['slabList'][0]
@@ -882,7 +899,7 @@ class bStackView(QtWidgets.QGraphicsView):
 							maskedDeadEndDict['yMasked'].append(tmpx) # swapping
 							maskedDeadEndDict['xMasked'].append(tmpy)
 							maskedDeadEndDict['zMasked'].append(tmpz)
-					if edgeDict['postNode'] == -1:
+					if edgeDict['postNode'] is None:
 						# include dead end
 						# get the z of the last slab
 						lastSlabIdx = edgeDict['slabList'][-1]
@@ -1129,18 +1146,12 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# find the first ind in bSlabList.id
 		firstInd = ind[0]
-		#edgeIdx = self.mySimpleStack.slabList.id[firstInd]
-		#edgeIdx = self.idMasked[firstInd]
+		#print('   firstInd:', firstInd)
 
 		edgeIdx = self.maskedEdges[self.currentSlice]['idMasked'][firstInd]
 		edgeIdx = int(edgeIdx)
+		#print('   edgeIdx:', edgeIdx)
 
-
-		#edgeIdx += 1
-
-		#print('   firstInd:', firstInd, 'edgeIdx:', edgeIdx)
-
-		#self.selectEdge(edgeIdx)
 		print('   edge:', edgeIdx, self.mySimpleStack.slabList.edgeDictList[edgeIdx])
 
 		if self.mainWindow is not None:
