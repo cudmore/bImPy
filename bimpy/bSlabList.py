@@ -446,9 +446,30 @@ class bSlabList:
 		#print('self.edgeDictList[0]:', self.edgeDictList[0])
 		for i in range(1):
 			self.joinEdges()
+		self.findCloseSlabs()
+
 		self.__analyze()
 		# this works
 		#self.makeVolumeMask()
+
+	def findCloseSlabs(self):
+		for idx, edge in enumerate(self.edgeDictList):
+			slabList = edge['slabList']
+			for slab in slabList:
+
+				# get xyz
+
+				# super expensive
+				for idx2, edge2 in enumerate(self.edgeDictList):
+					if idx2 == idx:
+						# don't compare to self
+						continue
+					for slab in slabList:
+
+						# get x2, y2,z2
+
+						#self.euclideanDistance2
+						pass
 
 	#202001
 	def joinEdges(self, distThreshold=20):
