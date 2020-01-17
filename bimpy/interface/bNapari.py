@@ -42,9 +42,10 @@ class bNapari:
 		# napari
 		colormap = 'green'
 		scale = (1,1,1) #(1,0.2,0.2)
+		#scale = (0.49718, 0.49718, 0.6)
 		title = filename
 
-		self.viewer = napari.Viewer(title=title)
+		self.viewer = napari.Viewer(title=title, ndisplay=3)
 
 		#
 		#
@@ -92,6 +93,13 @@ class bNapari:
 			z = self.myStack.slabList.z
 			d = self.myStack.slabList.d
 
+			'''
+			xUmPerPixel = 0.49718
+			yUmPerPixel = 0.49718
+			zUmPerPixel = 0.6
+			'''
+			d /= 300
+
 			# this has nans which I assume will lead to some crashes ...
 			points = np.column_stack((z,x,y,))
 			print('   points.shape:', points.shape)
@@ -137,6 +145,9 @@ class bNapari:
 			z = self.myStack.slabList.nodez
 			#size = 10
 			size = self.myStack.slabList.noded
+			#
+			#size /= 300
+			#
 			face_color = 'red'
 			nodePoints = np.column_stack((z,x,y,))
 			#nodeLayer = self.myNapari.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
@@ -158,7 +169,20 @@ class bNapari:
 
 		#
 		# make a selection layer
-
+		self.nodeSelection = []
+		self.edgeSelection = np.column_stack((np.nan,np.nan,np.nan,))
+		if self.myStack.slabList is not None:
+			slabList = self.myStack.slabList.getEdge(10)
+			x = self.myStack.slabList.x[slabList]
+			y = self.myStack.slabList.y[slabList]
+			z = self.myStack.slabList.z[slabList]
+			d = self.myStack.slabList.d[slabList]
+			self.edgeSelection = np.column_stack((x,y,z,))
+			size = d / 300
+			face_color = 'yellow'
+			self.selectionLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
+			self.selectionLayer.name = 'Edge Selection'
+			#print('nodeLayer.data:', nodeLayer.data)
 		'''
 		#
 		# shapes layer (for drawing lines)
@@ -190,6 +214,19 @@ class bNapari:
 				self.lineShapeChange_callback(layer, event)
 				yield
 		'''
+
+	def selectEdge(self, edgeIdx):
+		slabList = self.myStack.slabList.getEdge(edgeIdx)
+		x = self.myStack.slabList.x[slabList]
+		y = self.myStack.slabList.y[slabList]
+		z = self.myStack.slabList.z[slabList]
+		d = self.myStack.slabList.d[slabList]
+		edgeSelection = np.column_stack((x,y,z,))
+		size = d / 300
+		face_color = 'yellow'
+		#nodeLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
+		#nodeLayer.name = 'Edge Selection'
+		self.selectionLayer.data = edgeSelection
 
 	# this works
 	def myMouseMove_Shape(self, layer, event):

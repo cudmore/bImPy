@@ -44,15 +44,13 @@ class bStackBrowser(QtWidgets.QWidget):
 		else:
 			tmp = bStackWidget(path=path)
 			tmp.show()
+
+			napariViewer = bNapari(path='', theStack=tmp.mySimpleStack)
+
+			tmp.attachNapari(napariViewer)
+
 			self.myStackList.append(tmp)
 
-			#tmp.mySimpleStack
-			#viewer = napari.view_image(data.astronaut(), rgb=True)
-			#tmp2 = bNapari(path)
-			tmp2 = bNapari(path='', theStack=tmp.mySimpleStack)
-			# works
-			#print('\nOPENING NAPARI !!!!!!!!!!!!!\n')
-			#viewer = napari.view_image(tmp.mySimpleStack.stack, rgb=False)
 
 	def appendStack(self, path):
 		fileName = os.path.basename(path)

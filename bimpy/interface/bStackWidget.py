@@ -64,6 +64,7 @@ class bStackWidget(QtWidgets.QWidget):
 			}
 		""")
 
+		self.napariViewer = None
 		#
 		#self.mySimpleStack = bSimpleStack(path) # backend stack
 		self.mySimpleStack = bimpy.bStack(path) # backend stack
@@ -130,6 +131,9 @@ class bStackWidget(QtWidgets.QWidget):
 		self.resize(2000, 1000)
 
 		self.myStackView.setSlice(0)
+
+	def attachNapari(self, napariViewer):
+		self.napariViewer = napariViewer
 
 	def sliceSliderValueChanged(self):
 		theSlice = self.mySliceSlider.value()
@@ -221,6 +225,8 @@ class bStackWidget(QtWidgets.QWidget):
 		print('bStackWidget.selectEdge() edgeIdx:', edgeIdx)
 		self.myStackView.selectEdge(edgeIdx, snapz=snapz)
 		#self.repaint() # this is updating the widget !!!!!!!!
+
+		self.napariViewer.selectEdge(edgeIdx)
 
 	def keyPressEvent(self, event):
 		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
@@ -361,7 +367,7 @@ class bEditTableWidget(QtWidgets.QTableWidget):
 		self.buildUI()
 
 	def buildUI(self):
-		self.headerLabels = ['idx', 'type', 'typeNum', 'edge1', 'pnt1', 'edge2', 'pnt2']
+		self.headerLabels = ['idx', 'type', 'typeNum', 'edge1', 'pnt1', 'len1', 'edge2', 'pnt2', 'len2']
 		self.setRowCount(len(self.editDictList))
 
 		self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -553,7 +559,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		# figure out how to get this to work
 		#self.myTableWidget.currentCellChanged.connect(self.on_clicked)
 		#headerLabels = ['type', 'n', 'Length 3D', 'Length 2D', 'z', 'preNode', 'postNode', 'Good']
-		headerLabels = ['idx', 'z', 'n', 'Len 3D', 'Len 2D', 'preNode', 'postNode', 'Bad']
+		headerLabels = ['idx', 'z', 'n', 'Len 3D', 'Len 2D', 'Diam', 'preNode', 'postNode', 'Bad']
 		self.myTableWidget.setColumnCount(len(headerLabels))
 		self.myTableWidget.setHorizontalHeaderLabels(headerLabels)
 		header = self.myTableWidget.horizontalHeader()

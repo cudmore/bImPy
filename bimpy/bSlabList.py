@@ -308,6 +308,7 @@ class bSlabList:
 						'idx': masterEdgeIdx, # used by stack widget table
 						'edgeIdx': masterEdgeIdx,
 						'n': len(newZList),
+						'Diam': None,
 						'Len 3D': None,
 						'Len 2D': None,
 						'Tort': None,
@@ -441,14 +442,13 @@ class bSlabList:
 
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
 
-		# debug
-		#print(len(self.edgeDictList))
-		#print('self.edgeDictList[0]:', self.edgeDictList[0])
+		#
+		self.__analyze()
+
 		for i in range(1):
 			self.joinEdges()
 		self.findCloseSlabs()
 
-		self.__analyze()
 		# this works
 		#self.makeVolumeMask()
 
@@ -487,14 +487,25 @@ class bSlabList:
 		"""
 		def addEdit(type, typeNum, edge1, pnt1, edge2, pnt2):
 			idx = len(self.editDictList)
+			if edge1 is not None:
+				len1 = self.edgeDictList[edge1]['Len 3D']
+			else:
+				len1 = None
+			if edge2 is not None:
+				len2 = self.edgeDictList[edge2]['Len 3D']
+			else:
+				len2 = None
+
 			editDict = OrderedDict({
 				'idx': idx,
 				'type': type,
 				'typeNum': typeNum,
 				'edge1': edge1,
 				'pnt1': pnt1,
+				'len1': len1,
 				'edge2': edge2,
-				'pnt2': pnt2
+				'pnt2': pnt2,
+				'len2': len2,
 				})
 			self.editDictList.append(editDict)
 
@@ -1125,6 +1136,11 @@ class bSlabList:
 			edge['Len 2D'] = round(len2d,2)
 			edge['Len 3D'] = round(len3d,2)
 			edge['Len 3D Nathan'] = round(len3d_nathan,2)
+
+			# diameter, pyqt does not like to display np.float, cast to float()
+			meanDiameter = round(float(np.nanmean(self.d[edge['slabList']])),2)
+			edge['Diam'] = meanDiameter
+
 
 if __name__ == '__main__':
 	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
