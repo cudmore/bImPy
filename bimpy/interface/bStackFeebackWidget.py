@@ -34,7 +34,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 	def checkbox_statechange(self):
 		#self.slidingz_checkbox.setTristate(False)
-		print('bStackFeedbackWidget.checkbox_statechange() sender:', self.sender().property('bobID'))
+		print('bStackFeedbackWidget.checkbox_statechange() sender bobID:', self.sender().property('bobID'))
 		#self.mainWindow.signal('toggle sliding z', recursion=False)
 		bobID = self.sender().property('bobID')
 		if bobID == 'Sliding Z':

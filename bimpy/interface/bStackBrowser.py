@@ -85,7 +85,7 @@ class bStackBrowser(QtWidgets.QWidget):
 		self.myVBoxLayout.addWidget(self.myTreeWidget)
 
 		self.move(50,50)
-		self.resize(700, 300);
+		self.resize(700, 300)
 
 	def itemDoubleClicked(self, item, col):
 		print('item:', item)

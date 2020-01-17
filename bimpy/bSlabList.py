@@ -1,4 +1,5 @@
 import os, math, copy
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import statistics # to get median value from a list of numbers
@@ -25,6 +26,7 @@ class bSlabList:
 
 		self.nodeDictList = []
 		self.edgeDictList = [] # this should be .annotationList
+		self.editDictList = []
 
 		# slab/edges
 		self.id = None # to count edges
@@ -309,7 +311,7 @@ class bSlabList:
 						'Len 3D': None,
 						'Len 2D': None,
 						'Tort': None,
-						'z': round(statistics.median(newZList)),
+						'z': int(round(statistics.median(newZList))),
 						'preNode': None,
 						'postNode': None,
 						'Bad': False,
@@ -444,6 +446,7 @@ class bSlabList:
 		#print('self.edgeDictList[0]:', self.edgeDictList[0])
 		for i in range(1):
 			self.joinEdges()
+		self.__analyze()
 		# this works
 		#self.makeVolumeMask()
 
@@ -461,7 +464,20 @@ class bSlabList:
 				3) dist_dst_src2
 				4) dist_dst_dst2
 		"""
-		distThreshold = 10
+		def addEdit(type, typeNum, edge1, pnt1, edge2, pnt2):
+			idx = len(self.editDictList)
+			editDict = OrderedDict({
+				'idx': idx,
+				'type': type,
+				'typeNum': typeNum,
+				'edge1': edge1,
+				'pnt1': pnt1,
+				'edge2': edge2,
+				'pnt2': pnt2
+				})
+			self.editDictList.append(editDict)
+
+		distThreshold = 5
 
 		# reset edit
 		for idx, edge in enumerate(self.edgeDictList):
@@ -494,6 +510,15 @@ class bSlabList:
 			src = (self.x[firstSlab], self.y[firstSlab], self.z[firstSlab])
 			dst = (self.x[lastSlab], self.y[lastSlab], self.z[lastSlab])
 
+			editDict = OrderedDict({
+				'type': '',
+				'typeNum': None,
+				'edge1': None,
+				'pnt1': None,
+				'edge2': None,
+				'pnt2': None
+				})
+
 			for idx2, edge2 in enumerate(self.edgeDictList):
 				preNode2 = edge2['preNode'] # can be None
 				postNode2 = edge2['postNode']
@@ -522,9 +547,38 @@ class bSlabList:
 				# 1)
 				if dist_src_src2 < distThreshold:
 					# reverse idx, put idx2 after idx, pop idx2
-					if (preNode is not None) and (preNode == preNode2):
+					dist = dist_src_src2
+					node1 = preNode
+					node2 = preNode2
+					if (node1 is not None) and (node1 == node2):
 						# already connected
+						#print('   1.0) already connected by node')
 						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   1.1) potential join')
+						addEdit('join', 1.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   1.2) both preNode and preNode2 have node but they are different ... nodes should be merged ???')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 1.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   1.3) easy ... connect preNode2 to node at preNode')
+						print('      MAKING EDIT ... edge:', idx, 'edge2["preNode"] is now preNode:', preNode)
+						numEdits1 += 1
+						edge2['preNode'] = preNode
+						preNode2 = preNode
+						addEdit('connect1', 1.3, idx, node1, idx2, preNode2)
+					elif node1 is None and node2 is not None:
+						print('   1.4) easy ... connect preNode to node at preNode2')
+						print('      MAKING EDIT ... edge:', idx, 'edge["preNode"] is now preNode2:', preNode2)
+						numEdits1 += 1
+						edge['preNode'] = preNode2
+						preNode = preNode2
+						addEdit('connect2', 1.4, idx, preNode, idx2, node2)
+					print('      dist_src_src2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+					'''
 					numEdits1 += 1
 					edge['editList'].append(1) # reverse
 					edge['otherEdgeIdxList'].append(idx2)
@@ -533,17 +587,49 @@ class bSlabList:
 					edge2['popPending'] = True
 					#edge2['editPending'] = True
 					#print('   (1) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_src_src2:', dist_src_src2)
-					'''
 					print('   1) dist_src_src2:', dist_src_src2, 'idx:', idx, 'preNode:', preNode, 'idx2:', idx2, 'preNode2:', preNode2)
 					print('         firstSlab:', firstSlab, 'src:', src)
 					print('         firstSlab2:', firstSlab2, 'src2:', src2)
 					print('         self.nodeDictList[preNode]:', self.nodeDictList[preNode])
 					print('         self.nodeDictList[preNode2]:', self.nodeDictList[preNode2])
 					'''
-					continue
+					#continue
 				# 2)
 				if dist_src_dst2 < distThreshold:
 					# put idx after idx2, pop idx
+					dist = dist_src_dst2
+					node1 = preNode
+					node2 = postNode2
+					if (node1 is not None) and (node1 == node2):
+						# already connected
+						#print('   1.0) already connected by node')
+						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   2.1) potential join')
+						addEdit('join', 2.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   2.2) both preNode and postNode2 have node but they are different?')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 2.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   2.3) xxx easy ... connect postNode2 to node at preNode')
+						print('      MAKING EDIT ... edge:', idx, 'edge2["postNode"] is now preNode:', preNode)
+						numEdits2 += 1
+						edge2['postNode'] = preNode
+						postNode2 = preNode
+						addEdit('connect1', 2.3, idx, node1, idx2, postNode2)
+					elif node1 is None and node2 is not None:
+						print('   2.4) xxx easy ... connect preNode to node at postNode2')
+						print('      MAKING EDIT ... edge:', idx, 'edge2["preNode"] is now preNode:', postNode2)
+						numEdits2 += 1
+						edge['preNode'] = postNode2
+						preNode = postNode2
+						addEdit('connect2', 2.4, idx, preNode, idx2, node2)
+					print('      dist_src_dst2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+
+					'''
 					if (preNode is not None) and (preNode == postNode2):
 						# already connected
 						continue
@@ -568,12 +654,44 @@ class bSlabList:
 						print('         postNode2=None')
 					else:
 						print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
-					continue
+					'''
+					#continue
 				# 3)
 				if dist_dst_src2 < distThreshold:
 					# no change, put idx2 after idx, pop idx2
-					continue
+					dist = dist_dst_src2
+					node1 = postNode
+					node2 = preNode2
+					if (node1 is not None) and (node1 == node2):
+						# already connected
+						#print('   1.0) already connected by node')
+						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   3.1) potential join')
+						addEdit('join', 3.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   3.2) both postNode and preNode2 have node but they are different?')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 3.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   3.3) xxx easy ... connect postNode2 to node at preNode')
+						print('      MAKING EDIT ... ')
+						numEdits3 += 1
+						edge2['preNode'] = postNode
+						preNode2 = postNode
+						addEdit('connect1', 3.3, idx, node1, idx2, preNode2)
+					elif node1 is None and node2 is not None:
+						print('   3.4) xxx easy ... connect preNode to node at postNode2')
+						print('      MAKING EDIT ... ')
+						numEdits3 += 1
+						edge['postNode'] = preNode2
+						postNode = preNode2
+						addEdit('connect2', 3.4, idx, node1, idx2, postNode)
+					print('      dist_dst_src2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
 
+					'''
 					numEdits3 += 1
 					edge['editList'].append(3)
 					edge['otherEdgeIdxList'].append(idx2)
@@ -611,10 +729,44 @@ class bSlabList:
 						# never happens
 						pass
 						#print('   3.0) both assigned')
-					continue
+					'''
+					#continue
 				# 4)
 				if dist_dst_dst2 < distThreshold:
 					# reverse idx2, put idx2 after idx, pop idx2
+					dist = dist_dst_dst2
+					node1 = postNode
+					node2 = postNode2
+					if (node1 is not None) and (node1 == node2):
+						# already connected
+						#print('   1.0) already connected by node')
+						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   4.1) potential join')
+						addEdit('join', 4.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   4.2) xxx both postNode and postNode2 have node but they are different?')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 4.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   4.3) xxx easy ... connect postNode2 to node at preNode')
+						print('      MAKING EDIT ... ')
+						numEdits4 += 1
+						edge2['postNode'] = postNode
+						postNode2 = postNode
+						addEdit('connect1', 3.3, idx, node1, idx2, postNode2)
+					elif node1 is None and node2 is not None:
+						print('   4.4) xxx easy ... connect preNode to node at postNode2')
+						print('      MAKING EDIT ... ')
+						numEdits4 += 1
+						edge['postNode'] = postNode2
+						postNode = postNode2
+						addEdit('connect2', 3.4, idx, postNode, idx2, node2)
+					print('      dist_dst_dst2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+
+					'''
 					if (postNode is not None) and (postNode == postNode2):
 						# already connected
 						continue
@@ -636,10 +788,13 @@ class bSlabList:
 						print('         postNode2 is None')
 					else:
 						print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
-					continue
+					'''
+
+					#continue
 
 		#
 		# done
+		print('Number of edits:', numEdits1, numEdits2, numEdits3, numEdits4)
 		print('NOT EDITING ANYTHING FOR NOW')
 		return
 
@@ -914,49 +1069,41 @@ class bSlabList:
 		'''
 		todo: bSlabList.analyze() needs to step through each edge, not slabs !!!
 		'''
-		return
 
-		edgeIdx = 0
-		n = self.numSlabs
-		len2d = 0
-		len3d = 0
-		len3d_nathan = 0
-		for pointIdx in range(n):
-			# todo get rid of this
-			self.id[pointIdx] = edgeIdx
+		for edgeIdx, edge in enumerate(self.edgeDictList):
+			len2d = 0
+			len3d = 0
+			len3d_nathan = 0
 
-			x1 = self.x[pointIdx]
-			y1 = self.y[pointIdx]
-			z1 = self.z[pointIdx]
+			slabList = edge['slabList']
+			for j, slabIdx in enumerate(slabList):
 
-			#print('pointIdx:', pointIdx)
-			orig_x = self.orig_x[pointIdx]
-			orig_y = self.orig_y[pointIdx]
-			orig_z = self.orig_z[pointIdx]
+				x1 = self.x[slabIdx]
+				y1 = self.y[slabIdx]
+				z1 = self.z[slabIdx]
 
-			if np.isnan(z1):
-				# move on to a new edge/vessel
-				self.edgeDictList[edgeIdx]['Len 2D'] = round(len2d,2)
-				self.edgeDictList[edgeIdx]['Len 3D'] = round(len3d,2)
-				self.edgeDictList[edgeIdx]['Len 3D Nathan'] = round(len3d_nathan,2)
-				len2d = 0
-				len3d = 0
-				len3d_nathan = 0
-				orig_x = 0
-				edgeIdx += 1
-				continue
+				#print('pointIdx:', pointIdx)
+				orig_x = self.orig_x[slabIdx]
+				orig_y = self.orig_y[slabIdx]
+				orig_z = self.orig_z[slabIdx]
 
-			if pointIdx > 0:
-				len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
-				len2d = len2d + self.euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
-				len3d_nathan = len3d_nathan + self.euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
-			prev_x1 = x1
-			prev_y1 = y1
-			prev_z1 = z1
+				if j>0:
+					len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
+					len2d = len2d + self.euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
+					len3d_nathan = len3d_nathan + self.euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
 
-			prev_orig_x1 = orig_x
-			prev_orig_y1 = orig_y
-			prev_orig_z1 = orig_z
+				# increment
+				prev_x1 = x1
+				prev_y1 = y1
+				prev_z1 = z1
+
+				prev_orig_x1 = orig_x
+				prev_orig_y1 = orig_y
+				prev_orig_z1 = orig_z
+
+			edge['Len 2D'] = round(len2d,2)
+			edge['Len 3D'] = round(len3d,2)
+			edge['Len 3D Nathan'] = round(len3d_nathan,2)
 
 if __name__ == '__main__':
 	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'

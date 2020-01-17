@@ -137,7 +137,7 @@ class bNapari:
 			z = self.myStack.slabList.nodez
 			#size = 10
 			size = self.myStack.slabList.noded
-			face_color = 'yellow'
+			face_color = 'red'
 			nodePoints = np.column_stack((z,x,y,))
 			#nodeLayer = self.myNapari.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
 			nodeLayer = self.viewer.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
@@ -150,7 +150,7 @@ class bNapari:
 			y = self.myStack.slabList.deadEndy
 			z = self.myStack.slabList.deadEndz
 			size = 10
-			face_color = 'magenta'
+			face_color = 'blue'
 			nodePoints = np.column_stack((z,x,y,))
 			#nodeLayer = self.myNapari.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
 			nodeLayer = self.viewer.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
