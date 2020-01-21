@@ -73,15 +73,15 @@ class bSlabList:
 
 		#self.analyze()
 
-	@property
+	#@property
 	def numNodes(self):
 		return len(self.nodeDictList)
 
-	@property
+	#@property
 	def numSlabs(self):
 		return len(self.x)
 
-	@property
+	#@property
 	def numEdges(self):
 		return len(self.edgeDictList)
 
@@ -1073,7 +1073,7 @@ class bSlabList:
 		z = self.nodeDictList[nodeIdx]['z']
 		return (x,y,z)
 
-	def getEdge(self, edgeIdx):
+	def getEdgeSlabList(self, edgeIdx):
 		"""
 		return a list of slabs in an edge
 		"""

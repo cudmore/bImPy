@@ -137,6 +137,8 @@ class bNapari:
 
 		#
 		# nodes
+		# abb upgrade bSlabList
+		'''
 		if self.myStack.slabList is not None:
 			# nodes are the correct connection points between vessels
 			# e.g. the ones correctly identified in vesselucida xml
@@ -153,9 +155,12 @@ class bNapari:
 			#nodeLayer = self.myNapari.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
 			nodeLayer = self.viewer.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
 			nodeLayer.name = 'Nodes'
+		'''
 
 		#
 		# dead ends
+		# abb upgrade bSlabList
+		'''
 		if self.myStack.slabList is not None:
 			x = self.myStack.slabList.deadEndx
 			y = self.myStack.slabList.deadEndy
@@ -166,13 +171,16 @@ class bNapari:
 			#nodeLayer = self.myNapari.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
 			nodeLayer = self.viewer.add_points(nodePoints, size=size, face_color=face_color, n_dimensional=False)
 			nodeLayer.name = 'Dead Ends'
+		'''
 
 		#
 		# make a selection layer
+		"""
 		self.nodeSelection = []
 		self.edgeSelection = np.column_stack((np.nan,np.nan,np.nan,))
 		if self.myStack.slabList is not None:
-			slabList = self.myStack.slabList.getEdge(10)
+			'''
+			slabList = self.myStack.slabList.getEdgeSlabList(10)
 			x = self.myStack.slabList.x[slabList]
 			y = self.myStack.slabList.y[slabList]
 			z = self.myStack.slabList.z[slabList]
@@ -180,43 +188,16 @@ class bNapari:
 			self.edgeSelection = np.column_stack((x,y,z,))
 			size = d / 300
 			face_color = 'yellow'
+			'''
+			#self.edgeSelection = np.column_stack((myNaN,myNaN,myNaN,))
+			self.edgeSelection = np.column_stack((0,0,0,)) #todo: fix this
 			self.selectionLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
 			self.selectionLayer.name = 'Edge Selection'
 			#print('nodeLayer.data:', nodeLayer.data)
-		'''
-		#
-		# shapes layer (for drawing lines)
-		line1 = np.array([[11, 13], [111, 113]])
-		line2 = np.array([[200, 200], [400, 300]])
-		lines = [line1, line2]
-		self.shapeLayer = self.viewer.add_shapes(lines,
-			shape_type='line',
-			edge_width = 3+2,
-			edge_color = 'coral',
-			face_color = 'royalblue')
-		self.shapeLayer.mode = 'direct' #'select'
-
-		@self.shapeLayer.mouse_move_callbacks.append
-		def shape_mouse_move_callback(layer, event):
-			#print('shape_mouse_move_callback() event.type:', event.type)
-			self.myMouseMove_Shape(layer, event)
-
-		# this decorator cannot point to member function directly because it needs yield
-		# put inline function with yield right after decorator
-		# and then call member functions from within
-		@self.shapeLayer.mouse_drag_callbacks.append
-		def shape_mouse_drag_callback(layer, event):
-			#print('shape_mouse_drag_callback() event.type:', event.type, 'event.pos:', event.pos, '')
-			self.lineShapeChange_callback(layer, event)
-			yield
-
-			while event.type == 'mouse_move':
-				self.lineShapeChange_callback(layer, event)
-				yield
-		'''
-
+		"""
+		
 	def selectEdge(self, edgeIdx):
-		slabList = self.myStack.slabList.getEdge(edgeIdx)
+		slabList = self.myStack.slabList.getEdgeSlabList(edgeIdx)
 		x = self.myStack.slabList.x[slabList]
 		y = self.myStack.slabList.y[slabList]
 		z = self.myStack.slabList.z[slabList]

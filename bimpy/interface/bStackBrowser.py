@@ -45,9 +45,11 @@ class bStackBrowser(QtWidgets.QWidget):
 			tmp = bStackWidget(path=path)
 			tmp.show()
 
+			# this works
+			'''
 			napariViewer = bNapari(path='', theStack=tmp.mySimpleStack)
-
 			tmp.attachNapari(napariViewer)
+			'''
 
 			self.myStackList.append(tmp)
 
@@ -143,6 +145,7 @@ if __name__ == '__main__':
 
 	# square image: 145, 640, 640
 	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
+	#path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
 	#path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
 
 	# tall image, slice:134, width:1981, height:5783

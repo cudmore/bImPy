@@ -62,9 +62,12 @@ class bStack:
 		self.stack = None
 
 		# load vesselucida analysis from .xml file
-		self.slabList = bimpy.bSlabList(self.path)
-		if len(self.slabList.x) == 0:
-			self.slabList = None
+		#self.slabList = bimpy.bSlabList(self.path)
+		self.slabList = bimpy.bVascularTracing(self.path)
+
+		# was for vessel lucida
+		#if len(self.slabList.x) == 0:
+		#	self.slabList = None
 
 		# load image data
 		if loadImages:
