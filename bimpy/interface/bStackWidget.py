@@ -649,9 +649,11 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 	def updateNode(self, nodeIdx, nodeDict):
 		# search for row in table (handles sorted order
+		print('updateNode()')
 		for row in range(self.myNodeTableWidget.rowCount()):
 			idxItem = self.myNodeTableWidget.item(row, 0) # 0 is idx column
 			#myIdx = idxItem.text()
+			#CHECK TYPE !!!!!!!!
 			myIdx = int(idxItem.text())
 			if myIdx == nodeIdx:
 				print('updateNode() nodeIdx:', nodeIdx, nodeDict)
