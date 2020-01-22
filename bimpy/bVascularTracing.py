@@ -2,6 +2,7 @@
 
 import os, sys
 from collections import OrderedDict
+import statistics # to get median value from a list of numbers
 
 import numpy as np
 
@@ -40,7 +41,16 @@ class bVascularTracing:
 		return len(self.edgeDictList)
 
 	def getNode(self, nodeIdx):
-		return self.nodeDictList[nodeIdx]
+		theDict = self.nodeDictList[nodeIdx]
+		theDict['idx'] = int(nodeIdx)
+		theDict['nEdges'] = len(theDict['edgeList'])
+		return theDict
+
+	def getNode_zSlice(self, nodeIdx):
+		"""
+		Return z image slice of a node units are slices
+		"""
+		return int(round(self.nodeDictList[nodeIdx]['z'],2))
 
 	def getNode_xyz(self, nodeIdx):
 		x = self.nodeDictList[nodeIdx]['x']
@@ -55,7 +65,11 @@ class bVascularTracing:
 		return (x, y, z)
 
 	def getEdge(self, edgeIdx):
-		return self.edgeDictList[edgeIdx]
+		theDict = self.edgeDictList[edgeIdx]
+		theDict['idx'] = edgeIdx
+		theDict['slabList'] = self.getEdgeSlabList(edgeIdx)
+		theDict['nSlab'] = len(theDict['slabList'])
+		return theDict
 
 	def getEdgeSlabList(self, edgeIdx):
 		"""
@@ -63,6 +77,9 @@ class bVascularTracing:
 		"""
 		preNode = self.edgeDictList[edgeIdx]['preNode']
 		postNode = self.edgeDictList[edgeIdx]['postNode']
+
+		preSlab = self._getSlabFromNodeIdx(preNode)
+		postSlab = self._getSlabFromNodeIdx(postNode)
 
 		#slabList = self.edgeIdx[self.edgeIdx==edgeIdx]
 		myTuple = np.where(self.edgeIdx == edgeIdx)
@@ -72,10 +89,10 @@ class bVascularTracing:
 		#print('b) getEdgeSlabList() edgeIdx:', edgeIdx, 'slabList:', slabList)
 
 		#build the list, [pre ... slabs ... post]
-		theseIndices = [preNode]
+		theseIndices = [preSlab]
 		for slab in slabList:
 			theseIndices.append(slab)
-		theseIndices.append(postNode)
+		theseIndices.append(postSlab)
 		#print('   theseIndices:', theseIndices)
 
 		return theseIndices
@@ -115,6 +132,13 @@ class bVascularTracing:
 		# not needed
 		#edgeDict['slabList'] = [srcSlab, dstSlab]
 
+		# assign edge z to middle of src z, dst z
+		x1,y1,z1 = self.getSlab_xyz(srcSlab)
+		x2,y2,z2 = self.getSlab_xyz(srcSlab)
+		z = (z1+z2)/2
+		z = int(round(z))
+		edgeDict['z'] = 0
+
 		# append to edge list
 		self.edgeDictList.append(edgeDict)
 
@@ -126,6 +150,17 @@ class bVascularTracing:
 		self._printGraph()
 
 		return newEdgeIdx
+
+	def updateEdge___(self, edgeIdx):
+		"""
+		when slabs change (add, subtract, move)
+		update z (the median z of all slabs
+		"""
+
+		'''
+		slabList = self.getEdgeSlabList(edgeIdx)
+		z = round(statistics.median(newZList))
+		'''
 
 	def newSlab(self, edgeIdx, x, y, z, d=np.nan):
 		"""
@@ -315,12 +350,15 @@ class bVascularTracing:
 		nodeDict = {
 			#'idx': nodeIdx, # index into self.nodeDictList
 			#'slabIdx': slabIdx, # index into self.x/self.y etc
-			'x': x,
-			'y': y,
-			'z': z,
-			'zSlice': None, #todo remember this when I convert to um/pixel !!!
+			#'idx': None,
+			#'slabIdx': None,
+			'x': round(x,2),
+			'y': round(y,2),
+			'z': round(z,2),
+			#'zSlice': None, #todo remember this when I convert to um/pixel !!!
 			'edgeList': [],
 			#'nEdges': 0,
+			'Bad': False,
 			'Note': '',
 		}
 		return nodeDict
@@ -328,7 +366,7 @@ class bVascularTracing:
 	def _defaultEdgeDict(self, edgeIdx, srcNode, dstNode):
 		edgeDict = {
 			#'idx': edgeIdx, # used by stack widget table
-			'n': 0,
+			'n': 0, # umber of slabs
 			'Diam': None,
 			'Len 3D': None,
 			'Len 2D': None,
