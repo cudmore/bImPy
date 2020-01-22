@@ -197,7 +197,7 @@ class bSlabList:
 		xmlFilePath += '.xml'
 		if not os.path.isfile(xmlFilePath):
 			#print('bSlabList.loadVesselucida_xml() warning, did not find', xmlFilePath)
-			return
+			return False
 
 		print('loadVesselucida_xml() file', xmlFilePath)
 		mydoc = minidom.parse(xmlFilePath)
@@ -452,6 +452,8 @@ class bSlabList:
 		# this works
 		#self.makeVolumeMask()
 
+		return True
+		
 	def findCloseSlabs(self):
 		for idx, edge in enumerate(self.edgeDictList):
 			slabList = edge['slabList']
