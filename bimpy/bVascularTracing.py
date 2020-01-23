@@ -71,6 +71,18 @@ class bVascularTracing:
 		z = self.z[slabIdx]
 		return (x, y, z)
 
+	def getSlabEdgeIdx(self, slabIdx):
+		"""
+		Can be nan !
+		"""
+		#print('!!! getSlabEdgeIdx() slabIdx:', slabIdx)
+		#print('   self.edgeIdx[slabIdx]:', self.edgeIdx[slabIdx])
+		edgeIdx = self.edgeIdx[slabIdx]
+		if np.isnan(edgeIdx):
+			return None
+		else:
+			return int(round(self.edgeIdx[slabIdx]))
+
 	def getEdge(self, edgeIdx):
 		theDict = self.edgeDictList[edgeIdx]
 		theDict['idx'] = edgeIdx

@@ -74,6 +74,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.showLeftControlBar = True
 		self.showContrastBar = True
 		self.showFeebackBar = True
+		self.showLineProfileBar = True
 
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
 
@@ -105,6 +106,9 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myVBoxLayout.addWidget(self.bStackFeebackWidget) #, stretch=0.1)
 		#self.myVBoxLayout.addWidget(self.myStackView) #, stretch = 9)
 		self.myVBoxLayout.addLayout(self.myHBoxLayout2) #, stretch = 9)
+
+		self.lineProfileWidget = bimpy.interface.bLineProfileWidget(mainWindow=self)
+		self.myVBoxLayout.addWidget(self.lineProfileWidget)
 
 		self.statusToolbarWidget = myStatusToolbarWidget(parent=self)
 		#self.addToolBar(QtCore.Qt.BottomToolBarArea, self.statusToolbarWidget)
@@ -167,14 +171,17 @@ class bStackWidget(QtWidgets.QWidget):
 			self.bStackFeebackWidget.show()
 		else:
 			self.bStackFeebackWidget.hide()
-
+		if self.showLineProfileBar:
+			self.lineProfileWidget.show()
+		else:
+			self.lineProfileWidget.hide()
 
 	# get rid of this
 	def getStack(self):
 		return self.mySimpleStack
 
 	def signal(self, signal, value=None, fromTable=False, recursion=True):
-		#print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
+		print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
 		if signal == 'newNode':
 			nodeIdx = value['nodeIdx']
 			nodeDict = value['nodeDict']
@@ -201,7 +208,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.selectNode(nodeIdx, snapz=True)
 			'''
 			if not fromTable:
-				self.annotationTable.selectRow(nodeIdx)
+				self.annotationTable.selectNodeRow(nodeIdx)
 			'''
 			#self.myStackView.selectNode(nodeIdx, snapz=True)
 
@@ -212,20 +219,20 @@ class bStackWidget(QtWidgets.QWidget):
 			# would require multiple selection
 			'''
 			if not fromTable:
-				self.annotationTable.selectRow(value)
+				self.annotationTable.selectEdgeRow(value)
 			'''
 
 		if signal == 'selectEdgeFromTable':
 			print('=== bStackWidget.signal() selectEdgeFromTable')
 			self.selectEdge(value, snapz=True)
 			if not fromTable:
-				self.annotationTable.selectRow(value)
+				self.annotationTable.selectEdgeRow(value)
 
 		if signal == 'selectNodeFromImage':
 			print('=== bStackWidget.signal() selectNodeFromImage')
 			self.selectNode(value, snapz=False)
 			if not fromTable:
-				self.annotationTable.selectRow(value)
+				self.annotationTable.selectNodeRow(value, stopSelectionPropogation=True)
 
 		if signal == 'selectEdgeFromImage':
 			print('=== bStackWidget.signal() selectEdgeFromImage')
@@ -234,7 +241,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.selectEdge(edgeIdx, snapz=False)
 			self.selectSlab(slabIdx, snapz=False)
 			if not fromTable:
-				self.annotationTable.selectRow(edgeIdx, stopSelectionPropogation=True)
+				self.annotationTable.selectEdgeRow(edgeIdx, stopSelectionPropogation=True)
 
 		# todo: implement this
 		if signal == 'selectSlabFromImage':
@@ -258,6 +265,9 @@ class bStackWidget(QtWidgets.QWidget):
 		if signal == 'toggle sliding z':
 			self.myStackView._toggleSlidingZ(recursion=recursion)
 
+		if signal == 'update line profile':
+			self.lineProfileWidget.update(value)
+
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()
 
@@ -279,12 +289,32 @@ class bStackWidget(QtWidgets.QWidget):
 
 	def keyPressEvent(self, event):
 		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
+		modifiers = QtWidgets.QApplication.keyboardModifiers()
+		isShift = modifiers == QtCore.Qt.ShiftModifier
+		isControl = modifiers == QtCore.Qt.ControlModifier
+
+		if isControl and event.key() in [QtCore.Qt.Key_L]:
+			self.mySimpleStack.slabList.loadVesselucida_xml()
+
 		if event.key() in [QtCore.Qt.Key_Escape]:
 			self.myStackView.selectNode(None)
 			self.myStackView.selectEdge(None)
 			self.myStackView.selectSlab(None)
-		elif event.key() in [QtCore.Qt.Key_L]:
+		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
+		elif event.text() == '[':
 			self.showLeftControlBar = not self.showLeftControlBar
+			self.updateDisplayedWidgets()
+			'''
+			isVisible = self.annotationTable.isVisible()
+			if isVisible:
+				self.annotationTable.hide()
+				self.showLeftControlBar = False
+			else:
+				self.annotationTable.show()
+				self.showLeftControlBar = True
+			'''
+		elif event.key() in [QtCore.Qt.Key_L]:
+			self.showLineProfileBar = not self.showLineProfileBar
 			self.updateDisplayedWidgets()
 		elif event.key() in [QtCore.Qt.Key_C]:
 			self.showContrastBar = not self.showContrastBar
@@ -302,17 +332,6 @@ class bStackWidget(QtWidgets.QWidget):
 			# force refresh of table, I need to use model/view/controller !!!!
 			self.annotationTable._refreshRow(selectedEdge)
 			'''
-
-		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
-		elif event.text() == '[':
-			isVisible = self.annotationTable.isVisible()
-			if isVisible:
-				self.annotationTable.hide()
-				self.showLeftControlBar = False
-			else:
-				self.annotationTable.show()
-				self.showLeftControlBar = True
-
 		elif event.text() == 'i':
 			self.mySimpleStack.print()
 
@@ -831,14 +850,15 @@ class bAnnotationTable(QtWidgets.QWidget):
 		item = QtWidgets.QTableWidgetItem(myString)
 		self.myTableWidget.setItem(idx, 5, item)
 
-	def selectRow(self, row, stopSelectionPropogation=False):
-		print('bAnnotationTable.selectRow()', row, 'stopSelectionPropogation:', stopSelectionPropogation)
+	def selectEdgeRow(self, row, stopSelectionPropogation=False):
+		print('bAnnotationTable.selectEdgeRow()', row, 'stopSelectionPropogation:', stopSelectionPropogation)
 		self.stopSelectionPropogation = stopSelectionPropogation
 		self.myTableWidget.selectRow(row)
 		self.repaint()
 
-	def selectNode(self, row):
-		print('bAnnotationTable.selectNode()', row)
+	def selectNodeRow(self, row, stopSelectionPropogation=False):
+		print('bAnnotationTable.selectNodeRow()', row, 'stopSelectionPropogation:', stopSelectionPropogation)
+		self.stopSelectionPropogation = stopSelectionPropogation
 		self.myNodeTableWidget.selectRow(row)
 		self.repaint()
 
@@ -853,7 +873,10 @@ class bAnnotationTable(QtWidgets.QWidget):
 			return
 		myIdx = int(myIdx)
 		print('bAnnotationTable.on_clicked_node() row:', row, 'myIdx:', myIdx)
-		self.mainWindow.signal('selectNodeFromTable', myIdx, fromTable=True)
+		if self.stopSelectionPropogation:
+			self.stopSelectionPropogation = False
+		else:
+			self.mainWindow.signal('selectNodeFromTable', myIdx, fromTable=True)
 
 	# this decorator was causing runtime error, click was not calling function with parameter 'col'
 	#@QtCore.pyqtSlot()
@@ -920,6 +943,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		#self.path = path
 		self.options_defaults()
 
+		self.onpick_alreadypicked = False
 		self.onpick_madeNewEdge = False
 		self.keyIsDown = None
 
@@ -1001,14 +1025,20 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.mySlabPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=True)
 		'''
 
+		# draw lines between slabs in each edge
+		zorder = 1
+		self.myEdgePlot, = self.axes.plot([], [],'.c-', zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
+
 		# nodes (put this after slab/point list to be on top, order matter)
+		# this HAS TO BE declared first, so nodes receive onpick_mpl() first
+		# also see self.onpick_alreadypicked to stop double selection (node then edge or edge then node)
+		zorder = 2
 		markersize = self.options['Tracing']['nodePenSize'] #2**2
 		markerColor = self.options['Tracing']['nodeColor'] #2**2
-		self.myNodePlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, edgecolor='none', picker=True)
-		self.myNodePlot.set_clim(3, 5)
+		self.myNodePlot = self.axes.scatter([], [],
+			marker='o', color=markerColor, s=markersize, edgecolor='none', zorder=zorder, picker=True)
+		#self.myNodePlot.set_clim(3, 5)
 
-		# try to draw lines between slabs in each edge
-		self.myEdgePlot, = self.axes.plot([], [], '.g-', picker=True) # Returns a tuple of line objects, thus the comma
 
 		# tracing/slabs that are dead end
 		'''
@@ -1017,34 +1047,41 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.myDeadEndPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=None)
 		'''
 
+		zorder = 3
+
 		# node selection
 		markersize = self.options['Tracing']['nodeSelectionPenSize'] #2**2
 		markerColor = self.options['Tracing']['nodeSelectionColor'] #2**2
-		self.myNodeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=None)
+		self.myNodeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# flash node selection
+		zorder += 1
 		markersize = self.options['Tracing']['nodeSelectionFlashPenSize'] #2**2
 		markerColor = self.options['Tracing']['nodeSelectionFlashColor'] #2**2
-		self.myNodeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=None)
+		self.myNodeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# edge selection
+		zorder += 1
 		markersize = self.options['Tracing']['tracingSelectionPenSize'] #2**2
 		markerColor = self.options['Tracing']['tracingSelectionColor'] #2**2
-		self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=None)
+		self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# slab selection
+		zorder += 1
 		markersize = self.options['Tracing']['tracingSelectionPenSize'] #2**2
 		markersize *= 2
 		markerColor = self.options['Tracing']['tracingSelectionColor'] #2**2
-		self.mySlabSelectionPlot = self.axes.scatter([], [], marker='x', color=markerColor, s=markersize, picker=None)
+		self.mySlabSelectionPlot = self.axes.scatter([], [], marker='x', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# flash edge selection
+		zorder += 1
 		markersize = self.options['Tracing']['tracingSelectionFlashPenSize'] #2**2
 		markerColor = self.options['Tracing']['tracingSelectionFlashColor'] #2**2
-		self.myEdgeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, picker=None)
+		self.myEdgeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
-		# slab line
-		self.mySlabLinePlot, = self.axes.plot([], [], 'og-', picker=None) # Returns a tuple of line objects, thus the comma
+		# slab line (perpendicular to tracing to extract line intensity profile)
+		zorder += 1
+		self.mySlabLinePlot, = self.axes.plot([], [], 'og-', zorder=zorder, picker=None) # Returns a tuple of line objects, thus the comma
 
 		#self.canvas.mpl_connect('key_press_event', self.onkey)
 		#self.canvas.mpl_connect('button_press_event', self.onclick)
@@ -1080,7 +1117,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			dstNode = event['dstNode']
 			print('=== bStackView.myEvent() ... new edge srcNode:', srcNode, 'dstNode:', dstNode)
 			newEdgeIdx = self.mySimpleStack.slabList.newEdge(srcNode,dstNode)
-			self._preComputeAllMasks()
+			self._preComputeAllMasks(fromCurrentSlice=True)
 			self.setSlice() #refresh
 			theRet = newEdgeIdx
 			#
@@ -1110,7 +1147,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			y = event['y']
 			z = event['z']
 			newSlabIdx = self.mySimpleStack.slabList.newSlab(edgeIdx, x, y, z)
-			self._preComputeAllMasks()
+			self._preComputeAllMasks(fromCurrentSlice=True)
+			self.mySelectedSlab = newSlabIdx # self.setSlice() will draw new slab
 			self.setSlice() #refresh
 			theRet = newSlabIdx
 		elif event['type']=='deleteSelection':
@@ -1132,7 +1170,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			print('bStackView.myEvent() not understood event:', event)
 		# finalize
 		if doUpdate:
-			self._preComputeAllMasks()
+			self._preComputeAllMasks(fromCurrentSlice=True)
 			self.setSlice() #refresh
 		return theRet
 
@@ -1264,7 +1302,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			colorIdx += 1
 			if colorIdx==len(colors)-1:
 				colorIdx = 0
-		print('selectEdgeList() slabList:', slabList)
+		#print('selectEdgeList() slabList:', slabList)
 		xMasked = self.mySimpleStack.slabList.x[slabList] # flipped
 		yMasked = self.mySimpleStack.slabList.y[slabList]
 		self.myEdgeSelectionPlot.set_offsets(np.c_[yMasked, xMasked])
@@ -1321,7 +1359,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				colors = ['r', 'g', 'r', 'g']
 				edge = self.mySimpleStack.slabList.edgeDictList[edgeIdx]
 				selectedEdgeList = [edgeIdx] # could be [edgeIdx]
-				colorList = ['c']
+				colorList = ['y']
 				if edge['preNode'] is not None:
 					print('   selectEdge() selecting edges on preNode:', edge['preNode'], 'of edgeIdx:', edgeIdx)
 					edgeList = self.mySimpleStack.slabList.nodeDictList[edge['preNode']]['edgeList']
@@ -1350,7 +1388,14 @@ class bStackView(QtWidgets.QGraphicsView):
 	def selectSlab(self, slabIdx, snapz=False):
 		if self.mySimpleStack.slabList is None:
 			return
-		if slabIdx is None:
+		print('selectSlab() slabIdx:', type(slabIdx), slabIdx)
+		'''
+		if np.isnan(slabIdx):
+			print('warning: selectSlab() got slabIdx:', slabIdx)
+			return
+		'''
+
+		if slabIdx is None or np.isnan(slabIdx):
 			print('   bStackView.selectSlab() slabIdx:', slabIdx, 'snapz:', snapz)
 			#markersize = 10
 			#self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color='c', s=markersize, picker=True)
@@ -1364,9 +1409,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			x,y,z = self.mySimpleStack.slabList.getSlab_xyz(slabIdx)
 			numSlabs = self.mySimpleStack.slabList.numSlabs()
 
-			print('   bStackView.selectSlab() slabIdx:', slabIdx, 'snapz:', snapz, 'x:', x, 'y:', y, 'z:', z)
+			#print('   bStackView.selectSlab() slabIdx:', slabIdx, 'snapz:', snapz, 'x:', x, 'y:', y, 'z:', z)
 			# todo: add option to snap to a z
-			# removed this because it was confusing
 			if snapz:
 				'''
 				z = self.mySimpleStack.slabList.z[theseIndices[0]][0] # not sure why i need trailing [0] ???
@@ -1382,13 +1426,27 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			#QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, True))
 
+			#
 			# draw the line
-			if slabIdx == 0 or (slabIdx == numSlabs-1):
+			#if slabIdx == 0 or (slabIdx == numSlabs-1):
+			if 0:
 				pass
 			else:
 				radius = 30
-				prevSlab = slabIdx - 1
-				nextSlab = slabIdx + 1
+				# todo: could pas edgeIdx as a parameter
+				edgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(slabIdx)
+				if edgeIdx is None:
+					print('warning: bStackView.selectSlab() got bad edgeIdx:', edgeIdx)
+					return
+				edgeSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
+				thisSlabIdx = edgeSlabList.index(slabIdx) # index within edgeSlabList
+				#print('   edgeIdx:', edgeIdx, 'thisSlabIdx:', thisSlabIdx, 'len(edgeSlabList):', len(edgeSlabList))
+				# todo: not sure but pretty sure this will not fail?
+				if thisSlabIdx==0 or thisSlabIdx==len(edgeSlabList)-1:
+					# we were at a slab that was also a node
+					return
+				prevSlab = edgeSlabList[thisSlabIdx - 1]
+				nextSlab = edgeSlabList[thisSlabIdx + 1]
 				this_x, this_y, this_z = self.mySimpleStack.slabList.getSlab_xyz(slabIdx)
 				prev_x, prev_y, prev_z = self.mySimpleStack.slabList.getSlab_xyz(prevSlab)
 				next_x, next_y, next_z = self.mySimpleStack.slabList.getSlab_xyz(nextSlab)
@@ -1407,13 +1465,21 @@ class bStackView(QtWidgets.QGraphicsView):
 				yLine2 = this_y - y_
 				xSlabPlot = [xLine1, xLine2]
 				ySlabPlot = [yLine1, yLine2]
+				'''
 				print('selectSlab() slabIdx:', slabIdx, 'slope:', slope, 'inverseSlope:', inverseSlope)
 				print('   slope:', slope, 'inverseSlope:', inverseSlope)
 				print('   xSlabPlot:', xSlabPlot)
 				print('   ySlabPlot:', ySlabPlot)
+				'''
 				self.mySlabLinePlot.set_xdata(ySlabPlot) # flipped
 				self.mySlabLinePlot.set_ydata(xSlabPlot)
 
+				profileDict = {
+					'ySlabPlot': ySlabPlot,
+					'xSlabPlot': xSlabPlot,
+					'slice': self.currentSlice,
+				}
+				self.mainWindow.signal('update line profile', profileDict)
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
 
@@ -1450,13 +1516,15 @@ class bStackView(QtWidgets.QGraphicsView):
 		return img
 	'''
 
-	def _preComputeAllMasks(self, fromSlice=None):
+	def _preComputeAllMasks(self, fromSlice=None, fromCurrentSlice=False):
 		"""
 		Precompute all masks once. When user scrolls through slices this is WAY faster
 
 		on new/delete node, just compute slices within +/- show tracing
+
+		fromCurrentSlice trumps fromSlice
 		"""
-		if fromSlice is None:
+		if fromSlice is None and not fromCurrentSlice:
 			#recreate all
 			self.maskedNodes = []
 		'''
@@ -1468,8 +1536,10 @@ class bStackView(QtWidgets.QGraphicsView):
 		showTracingBelowSlices = self.options['Tracing']['showTracingBelowSlices']
 
 		sliceRange = range(self.mySimpleStack.numImages)
+		if fromCurrentSlice:
+			fromSlice = self.currentSlice
 		if fromSlice is not None:
-			sliceRange = range(fromSlice-showTracingAboveSlices, showTracingAboveSlices+showTracingBelowSlices)
+			sliceRange = range(fromSlice-showTracingAboveSlices, fromSlice+showTracingBelowSlices)
 		#for i in range(self.mySimpleStack.numImages):
 		print('_preComputeAllMasks() computing masks for slices:', sliceRange)
 		for i in sliceRange:
@@ -1498,31 +1568,43 @@ class bStackView(QtWidgets.QGraphicsView):
 					edgeIdxMasked = self.mySimpleStack.slabList.edgeIdx[~zNodeMasked.mask]
 					slabIdxMasked = self.mySimpleStack.slabList.slabIdx[~zNodeMasked.mask]
 
-					xNodeMasked2 = xNodeMasked[~np.isnan(nodeIdxMasked)]
-					yNodeMasked2 = yNodeMasked[~np.isnan(nodeIdxMasked)]
+					#xNodeMasked2 = xNodeMasked[~np.isnan(nodeIdxMasked)]
+					#yNodeMasked2 = yNodeMasked[~np.isnan(nodeIdxMasked)]
+					nodeMasked_x = xNodeMasked[~np.isnan(nodeIdxMasked)]
+					nodeMasked_y = yNodeMasked[~np.isnan(nodeIdxMasked)]
+					nodeMasked_nodeIdx = nodeIdxMasked[~np.isnan(nodeIdxMasked)]
 
+					'''
 					nodeColor = 3 # 'r'
 					edgeColor = 4 # 'c'
 					colorMasked = np.full(xNodeMasked.shape, nodeColor)
 					colorMasked[~np.isnan(edgeIdxMasked)] = edgeColor
+					'''
 
 					# I don't wan't to do this here, I want my backend to keep a 1d list of points
 					# one row per point, I have no idea how I broke this freaking thing?????????????
-					xNodeMasked = xNodeMasked.ravel() # all slabs
-					yNodeMasked = yNodeMasked.ravel()
-					xNodeMasked2 = xNodeMasked2.ravel() # just nodes
-					yNodeMasked2 = yNodeMasked2.ravel()
-					dMasked = dMasked.ravel()
-					nodeIdxMasked = nodeIdxMasked.ravel().astype(int)
-					edgeIdxMasked = edgeIdxMasked.ravel().astype(int)
-					slabIdxMasked = slabIdxMasked.ravel().astype(int)
-					colorMasked = colorMasked.ravel()
+					#xNodeMasked = xNodeMasked.ravel() # all slabs
+					#yNodeMasked = yNodeMasked.ravel()
+					#xNodeMasked2 = xNodeMasked2.ravel() # just nodes
+					#yNodeMasked2 = yNodeMasked2.ravel()
+					nodeMasked_x = nodeMasked_x.ravel()
+					nodeMasked_y = nodeMasked_y.ravel()
+					nodeMasked_nodeIdx = nodeMasked_nodeIdx.ravel().astype(int)
+					#
+					#dMasked = dMasked.ravel()
+					#nodeIdxMasked = nodeIdxMasked.ravel().astype(int)
+					#edgeIdxMasked = edgeIdxMasked.ravel().astype(int)
+					#slabIdxMasked = slabIdxMasked.ravel().astype(int)
+					#colorMasked = colorMasked.ravel()
 
 					#
 					# to draw lines on edges, make a disjoint list (seperated by nan
 					xEdgeLines = []
 					yEdgeLines = []
+					dEdgeLines = []
 					edgeIdxLines = []
+					slabIdxLines = []
+					nodeIdxLines = [] # to intercept clicks on edge that are also node
 					'''
 					if i<7:
 						print('adding lines i:', i)
@@ -1530,6 +1612,7 @@ class bStackView(QtWidgets.QGraphicsView):
 						print('   edgeIdxMasked:', edgeIdxMasked)
 					'''
 					for edgeIdx, edge in enumerate(self.mySimpleStack.slabList.edgeDictList):
+						# slabList will include srcNode/dstNode as slabs
 						slabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
 						'''
 						if i<7:
@@ -1542,14 +1625,23 @@ class bStackView(QtWidgets.QGraphicsView):
 								# include
 								xEdgeLines.append(self.mySimpleStack.slabList.y[slab]) # flipped
 								yEdgeLines.append(self.mySimpleStack.slabList.x[slab])
+								dEdgeLines.append(self.mySimpleStack.slabList.d[slab])
 								edgeIdxLines.append(edgeIdx)
+								slabIdxLines.append(slab)
+								nodeIdxLines.append(self.mySimpleStack.slabList.nodeIdx[slab])
 							else:
 								xEdgeLines.append(np.nan)
 								yEdgeLines.append(np.nan)
+								dEdgeLines.append(np.nan)
 								edgeIdxLines.append(np.nan)
+								slabIdxLines.append(np.nan)
+								nodeIdxLines.append(np.nan)
 						xEdgeLines.append(np.nan)
 						yEdgeLines.append(np.nan)
+						dEdgeLines.append(np.nan)
 						edgeIdxLines.append(np.nan)
+						slabIdxLines.append(np.nan)
+						nodeIdxLines.append(np.nan)
 
 					# debug
 					'''
@@ -1561,33 +1653,49 @@ class bStackView(QtWidgets.QGraphicsView):
 					'''
 
 				else:
-					xNodeMasked = [] # all slabs
-					yNodeMasked = []
-					xNodeMasked2 = [] #just nodes
-					yNodeMasked2 = []
-					dMasked = []
-					nodeIdxMasked = []
-					edgeIdxMasked = []
-					slabIdxMasked = []
-					colorMasked = []
+					#xNodeMasked = [] # all slabs
+					#yNodeMasked = []
+					#xNodeMasked2 = [] #just nodes
+					#yNodeMasked2 = []
+					nodeMasked_x = []
+					nodeMasked_y = []
+					nodeMasked_nodeIdx = []
+					#
+					#dMasked = []
+					#nodeIdxMasked = []
+					#edgeIdxMasked = []
+					#slabIdxMasked = []
+					#colorMasked = []
+					#
 					xEdgeLines = []
 					yEdgeLines = []
+					dEdgeLines = []
 					edgeIdxLines = []
+					slabIdxLines = []
+					nodeIdxLines = []
 
 				maskedNodeDict = {
 					'zNodeMasked': zNodeMasked,
-					'xNodeMasked': xNodeMasked, # all slabs
-					'yNodeMasked': yNodeMasked,
-					'xNodeMasked2': xNodeMasked2, # just nodes
-					'yNodeMasked2': yNodeMasked2,
-					'dMasked': dMasked,
-					'nodeIdxMasked': nodeIdxMasked,
-					'edgeIdxMasked': edgeIdxMasked,
-					'slabIdxMasked': slabIdxMasked,
-					'colorMasked': colorMasked,
+					#'xNodeMasked': xNodeMasked, # all slabs
+					#'yNodeMasked': yNodeMasked,
+					#'xNodeMasked2': xNodeMasked2, # just nodes
+					#'yNodeMasked2': yNodeMasked2,
+					'nodeMasked_x': nodeMasked_x,
+					'nodeMasked_y': nodeMasked_y,
+					'nodeMasked_nodeIdx': nodeMasked_nodeIdx,
+					#
+					#'dMasked': dMasked, # needs to be associated with xEdgeLine/yEdgeLines
+					#'nodeIdxMasked': nodeIdxMasked,
+					#'edgeIdxMasked': edgeIdxMasked,
+					#'slabIdxMasked': slabIdxMasked,
+					#'colorMasked': colorMasked,
+					#
 					'xEdgeLines': xEdgeLines,
 					'yEdgeLines': yEdgeLines,
+					'dEdgeLines': dEdgeLines,
 					'edgeIdxLines': edgeIdxLines,
+					'slabIdxLines': slabIdxLines,
+					'nodeIdxLines': nodeIdxLines,
 				}
 
 				# update
@@ -1693,17 +1801,22 @@ class bStackView(QtWidgets.QGraphicsView):
 
 				# 202001 fix this !!!
 				if self.showNodes:
-					# xNodeMasked -->> all slabs
-					# xNodeMasked2 -->> just nodes
-					self.myNodePlot.set_offsets(np.c_[self.maskedNodes[index]['xNodeMasked2'], self.maskedNodes[index]['yNodeMasked2']])
-
-					#print('setSlice() index:', index, 'color:', self.maskedNodes[index]['colorMasked'])
-					self.myNodePlot.set_array(self.maskedNodes[index]['colorMasked'])
-					#self.myNodePlot.set_clim(3, 5)
 
 					# lines between slabs of edge
 					self.myEdgePlot.set_xdata(self.maskedNodes[index]['xEdgeLines'])
 					self.myEdgePlot.set_ydata(self.maskedNodes[index]['yEdgeLines'])
+
+					# xNodeMasked -->> all slabs
+					# xNodeMasked2 -->> just nodes
+					self.myNodePlot.set_offsets(np.c_[self.maskedNodes[index]['nodeMasked_x'], self.maskedNodes[index]['nodeMasked_y']])
+
+					#print('setSlice() index:', index, 'color:', self.maskedNodes[index]['colorMasked'])
+					#self.myNodePlot.set_array(self.maskedNodes[index]['colorMasked'])
+					#self.myNodePlot.set_clim(3, 5)
+
+
+				if self.mySelectedSlab is not None:
+					self.selectSlab(self.mySelectedSlab)
 
 				# slabs
 				# 202001 fix this !!!
@@ -1715,9 +1828,9 @@ class bStackView(QtWidgets.QGraphicsView):
 				'''
 
 		else:
-			self.myNodePlot.set_offsets(np.c_[[], []])
 			self.myEdgePlot.set_xdata([])
 			self.myEdgePlot.set_ydata([])
+			self.myNodePlot.set_offsets(np.c_[[], []])
 			#self.mySlabPlot.set_offsets(np.c_[[], []])
 			#self.myDeadEndPlot.set_offsets(np.c_[[], []])
 
@@ -1751,6 +1864,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		#print('=== bStackView.keyPressEvent() event.key():', event.key())
 
 		self.keyIsDown = event.text()
+		key = event.key()
 
 		if event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
 			self.zoom('in')
@@ -1771,6 +1885,24 @@ class bStackView(QtWidgets.QGraphicsView):
 			#self.setSlice() #refresh
 			event = {'type':'deleteSelection'}
 			self.myEvent(event)
+
+		# move to next/prev slab
+		elif key in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
+			if self.mySelectedSlab is not None:
+				tmpEdgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(self.mySelectedSlab)
+				if tmpEdgeIdx is None:
+					print('warning: move to next/prev slab got bad edge idx:', tmpEdgeIdx)
+					return
+				tmpSlabList = self.mySimpleStack.slabList.getEdgeSlabList(tmpEdgeIdx)
+				slabIdxInList = tmpSlabList.index(self.mySelectedSlab)
+				if slabIdxInList==0 or slabIdxInList==len(tmpSlabList)-1:
+					return
+				if key ==QtCore.Qt.Key_Left:
+					slabIdxInList -= 1
+				elif key == QtCore.Qt.Key_Right:
+					slabIdxInList += 1
+				newSlabIdx = tmpSlabList[slabIdxInList]
+				self.selectSlab(newSlabIdx, snapz=True)
 
 		# choose which stack to display
 		elif event.key() == QtCore.Qt.Key_1:
@@ -1810,6 +1942,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			event.setAccepted(False)
 
 	def _toggleSlidingZ(self, recursion=True):
+		print('_toggleSlidingZ() recursion:', recursion, 'self.displaySlidingZ', self.displaySlidingZ)
 		self.displaySlidingZ = not self.displaySlidingZ
 		# todo: don't call this deep
 		if recursion:
@@ -1824,6 +1957,11 @@ class bStackView(QtWidgets.QGraphicsView):
 			scale = 0.8
 		self.scale(scale,scale)
 		#self.zoomToPoint(100,100)
+
+		'''
+		self.canvas.draw()
+		self.repaint() # this is updating the widget !!!!!!!!
+		'''
 
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
@@ -1944,10 +2082,22 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		i want to be able to pick both (nodes, slabs) but need to know which one was clicked?
 		"""
-		thisline = event.artist
+		# stop onpick being called twice for one mouse down
+		if self.onpick_alreadypicked:
+			self.onpick_alreadypicked = False
+			return False
+		else:
+			self.onpick_alreadypicked = True
+
+		selectionType = None
+		thisLine = event.artist
+		if thisLine == self.myNodePlot:
+			selectionType = 'nodeSelection'
+		elif thisLine == self.myEdgePlot:
+			selectionType = 'edgeSelection'
 
 		nKey = self.keyIsDown == 'n'
-		print('\n=== bStackView.onpick() nKey:', nKey, 'thisline:', thisline)
+		print('\n=== bStackView.onpick() nKey:', nKey, 'selectionType:', selectionType)
 		xdata = event.mouseevent.xdata
 		ydata = event.mouseevent.ydata
 		ind = event.ind
@@ -1955,22 +2105,26 @@ class bStackView(QtWidgets.QGraphicsView):
 		# find the first ind in bSlabList.id
 		firstInd = ind[0]
 
-		'''edgeIdx = self.maskedEdges[self.currentSlice]['idMasked'][firstInd]
-		edgeIdx = int(edgeIdx)
-		#print('   edgeIdx:', edgeIdx)
-
-		print('   edge:', edgeIdx, self.mySimpleStack.slabList.edgeDictList[edgeIdx])
+		if selectionType=='nodeSelection':
+			nodeIdx = self.maskedNodes[self.currentSlice]['nodeMasked_nodeIdx'][firstInd]
+			print('   nodeIdx:', nodeIdx)
+		elif selectionType=='edgeSelection':
+			edgeIdx = self.maskedNodes[self.currentSlice]['edgeIdxLines'][firstInd]
+			slabIdx = self.maskedNodes[self.currentSlice]['slabIdxLines'][firstInd]
+			nodeIdx = self.maskedNodes[self.currentSlice]['nodeIdxLines'][firstInd]
+			print('   edgeIdx:', edgeIdx, 'slabIdx:', slabIdx, 'is also nodeIdx:', nodeIdx)
+			if not np.isnan(nodeIdx):
+				print('   converting to node selection')
+				selectionType = 'nodeSelection'
+				nodeIdx = int(round(nodeIdx)) # why is nodeIDx coming in as numpy.float64 ????
+		# was this
+		#slabIdx = self.maskedNodes[self.currentSlice]['slabIdxMasked'][firstInd]
+		#nodeIdx = self.maskedNodes[self.currentSlice]['nodeIdxMasked'][firstInd]
+		#edgeIdx = self.maskedNodes[self.currentSlice]['edgeIdxMasked'][firstInd]
 
 		if self.mainWindow is not None:
-			self.mainWindow.signal('selectEdgeFromImage', edgeIdx)
-		'''
-
-		slabIdx = self.maskedNodes[self.currentSlice]['slabIdxMasked'][firstInd]
-		nodeIdx = self.maskedNodes[self.currentSlice]['nodeIdxMasked'][firstInd]
-		edgeIdx = self.maskedNodes[self.currentSlice]['edgeIdxMasked'][firstInd]
-
-		if self.mainWindow is not None:
-			if nodeIdx >= 0:
+			#if nodeIdx >= 0:
+			if selectionType=='nodeSelection':
 				if nKey and self.mySelectedNode is not None:
 					print('   need to make a new edge to nodeIdx', nodeIdx)
 					self.onpick_madeNewEdge = True
@@ -1982,13 +2136,12 @@ class bStackView(QtWidgets.QGraphicsView):
 					self.selectEdge(newEdgeIdx) # select the new edge
 				else:
 					self.mainWindow.signal('selectNodeFromImage', nodeIdx)
-			elif edgeIdx >= 0:
+			#elif edgeIdx >= 0:
+			elif selectionType=='edgeSelection':
 				selectDict = {'edgeIdx':edgeIdx,'slabIdx':slabIdx}
 				self.mainWindow.signal('selectEdgeFromImage', selectDict)
 				# todo: implement this
 				#self.mainWindow.signal('selectSlabFromImage', selectDict)
-
-		#print('   nodeIdx:', nodeIdx)
 
 	def options_defaults(self):
 		print('options_defaults()')
@@ -2008,18 +2161,18 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
-			'nodePenSize': 100,
+			'nodePenSize': 10,
 			'nodeColor': 'r',
-			'nodeSelectionPenSize': 120,
-			'nodeSelectionColor': 'c',
+			'nodeSelectionPenSize': 20,
+			'nodeSelectionColor': 'y',
 			'nodeSelectionFlashPenSize': 200,
 			'nodeSelectionFlashColor': 'm',
 			'showTracingAboveSlices': 5,
 			'showTracingBelowSlices': 5,
 			'tracingPenSize': 2,
-			'tracingColor': 'y',
+			'tracingColor': 'c',
 			'tracingSelectionPenSize': 4,
-			'tracingSelectionColor': 'c',
+			'tracingSelectionColor': 'y',
 			'tracingSelectionFlashPenSize': 80,
 			'tracingSelectionFlashColor': 'm',
 			'deadEndPenSize': 5,

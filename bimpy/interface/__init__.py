@@ -3,6 +3,7 @@ from .bStackBrowser import bStackBrowser
 from .bStackWidget import bStackWidget
 from .bStackContrastWidget import bStackContrastWidget
 from .bStackFeebackWidget import bStackFeebackWidget
+from .bLineProfileWidget import bLineProfileWidget
 from .bNapari import bNapari
 #from .bShapeAnalysisWidget import bShapeAnalysisWidget
 #from .bMenu import bMenu
