@@ -38,6 +38,31 @@ from bimpy import bStack
 
 ################################################################################
 #class bStackWidget(QtWidgets.QMainWindow):
+class myStackSlider(QtWidgets.QSlider):
+	"""
+	Assuming stack is not going to change slices
+	"""
+
+	# signal/emit
+	updateSliceSignal = QtCore.pyqtSignal(str, object) # object can be a dict
+
+	def __init__(self, numSlices):
+		super(myStackSlider, self).__init__(QtCore.Qt.Vertical)
+		self.setMaximum(numSlices-1)
+		self.setInvertedAppearance(True) # so it goes from top:0 to bottom:numImages
+		self.setMinimum(0)
+		if numSlices < 2:
+			self.setDisabled(True)
+
+		self.sliderMoved.connect(self.updateSlice_Emit)
+		#self.valueChanged.connect(self.sliceSliderValueChanged)
+
+	def updateSlice_Slot(self, signalName, signalValue):
+		print('updateSlice_Slot() signalName:', signalName, 'signalValue:', signalValue)
+
+	def updateSlice_Signal(self):
+		self.updateSliceSignal.emit('set slice', self.value())
+		
 class bStackWidget(QtWidgets.QWidget):
 	"""
 	A widget to display a stack. This includes a bStackView and a bAnnotationTable.
@@ -90,6 +115,8 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
 
 		# a slider to set slice number
+		self.mySliceSlider = myStackSlider(self.mySimpleStack.numImages)
+		'''
 		self.mySliceSlider = QtWidgets.QSlider(QtCore.Qt.Vertical)
 		self.mySliceSlider.setMaximum(self.mySimpleStack.numImages)
 		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numImages
@@ -99,6 +126,7 @@ class bStackWidget(QtWidgets.QWidget):
 		# use this
 		#self.mySliceSlider.sliderReleased.connect
 		#self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
+		'''
 
 		#
 		# signals and slots
