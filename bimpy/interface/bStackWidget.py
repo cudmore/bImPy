@@ -83,7 +83,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myContrastWidget = bimpy.interface.bStackContrastWidget(mainWindow=self)
 
 		self.bStackFeebackWidget = bimpy.interface.bStackFeebackWidget(mainWindow=self)
-		self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numImages)
+		#self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numImages)
 
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
 
@@ -96,7 +96,16 @@ class bStackWidget(QtWidgets.QWidget):
 		self.mySliceSlider.setMinimum(0)
 		if self.mySimpleStack.numImages < 2:
 			self.mySliceSlider.setDisabled(True)
-		self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
+		# use this
+		#self.mySliceSlider.sliderReleased.connect
+		#self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
+
+		#
+		# signals and slots
+		self.myStackView.displayStateChange.connect(self.bStackFeebackWidget.slot_StateChange)
+		self.myStackView.displayStateChange.connect(self.slot_StateChange)
+		self.bStackFeebackWidget.clickStateChange.connect(self.myStackView.slot_StateChange)
+		#self.mySliceSlider.valueChanged.connect(self.myStackView.slot_StateChange)
 
 		self.myHBoxLayout2.addWidget(self.myStackView)
 		self.myHBoxLayout2.addWidget(self.mySliceSlider)
@@ -142,15 +151,25 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.myStackView.setSlice(0)
 
+	def slot_StateChange(self, signalName, signalValue):
+		print('bStackWidget.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
+		if signalName=='set slice':
+			self.mySliceSlider.setValue(signalValue)
+
+	def getFeedbackWidget(self):
+		return self.bStackFeebackWidget
+
 	def attachNapari(self, napariViewer):
 		self.napariViewer = napariViewer
 
 	def getStatusToolbar(self):
 		return self.statusToolbarWidget
 
+	'''
 	def sliceSliderValueChanged(self):
 		theSlice = self.mySliceSlider.value()
 		self.signal('set slice', theSlice)
+	'''
 
 	def updateDisplayedWidgets(self):
 		# left control bar
@@ -256,11 +275,13 @@ class bStackWidget(QtWidgets.QWidget):
 			self.myStackView.maxContrast = maxContrast
 			self.myStackView.setSlice(index=None) # will just refresh current slice
 
+		'''
 		if signal == 'set slice':
 			self.bStackFeebackWidget.setFeedback('set slice', value)
 			if recursion:
 				self.myStackView.setSlice(value, recursion=False)
 			self.mySliceSlider.setValue(value)
+		'''
 
 		if signal == 'toggle sliding z':
 			self.myStackView._toggleSlidingZ(recursion=recursion)
@@ -930,6 +951,9 @@ class myRectItem(QtWidgets.QGraphicsRectItem):
 ################################################################################
 #class bStackView(QtWidgets.QWidget):
 class bStackView(QtWidgets.QGraphicsView):
+
+	displayStateChange = QtCore.pyqtSignal(str, object) # object can be a dict
+
 	def __init__(self, simpleStack, mainWindow=None, parent=None):
 		super(bStackView, self).__init__(parent)
 
@@ -970,7 +994,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.zMasked = None
 		'''
 
-		self.showTracing = True
+		#self.showTracing = True
 		self.showNodes = True
 		self.showEdges = True
 		self.showDeadEnds = True
@@ -979,6 +1003,15 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# for click and drag
 		self.clickPos = None
+
+		self.displayStateDict = {
+			'displayThisStack': 'ch1',
+			'displaySlidingZ': False,
+			'showTracing': True,
+			'showNodes': True,
+			'showEdges': True,
+			'showDeadEnds': True,
+		}
 
 		self._preComputeAllMasks()
 
@@ -1093,6 +1126,11 @@ class bStackView(QtWidgets.QGraphicsView):
 		scene.addWidget(self.canvas)
 
 		self.setScene(scene)
+
+		self.displayStateChange.emit('num slices', self.mySimpleStack.numImages)
+
+	def slot_StateChange(self, signalName, signalDict):
+		print('bStackView.slot_StateChange() signalName:', signalName, signalDict)
 
 	def myEvent(self, event):
 		theRet = None
@@ -1791,7 +1829,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		#
 		# update point annotations
-		if self.showTracing:
+		#if self.showTracing:
+		if self.displayStateDict['showTracing']:
 			if self.mySimpleStack.slabList is None:
 				# no tracing
 				pass
@@ -1836,8 +1875,11 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.currentSlice = index # update slice
 
+		'''
 		if self.mainWindow is not None and recursion:
-			self.mainWindow.signal('set slice', value=index, recursion=False)
+			#self.mainWindow.signal('set slice', value=index, recursion=False)
+			self.displayStateChange.emit('set slice', index)
+		'''
 
 		self.canvas.draw_idle()
 
@@ -1871,8 +1913,17 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event.key() == QtCore.Qt.Key_Minus:
 			self.zoom('out')
 		elif event.key() == QtCore.Qt.Key_T:
-			self.showTracing = not self.showTracing
-			self.setSlice() #refresh
+			print('\ntodo: signal to app feedback bar there is a state change')
+			print(' *this will then receive the change in the slot() we are subscribed to')
+			self.displayStateDict['showTracing'] = not self.displayStateDict['showTracing']
+			self.displayStateChange.emit('tracing', self.displayStateDict['showTracing'])
+			#self.mainWindow.get
+			# create a signal that goes to feedback widget !!!
+
+			# and then do this
+			#self.showTracing = not self.showTracing
+			#self.setSlice() #refresh
+
 		#elif event.key() == QtCore.Qt.Key_N:
 		#	self.showNodes = not self.showNodes
 		#	self.setSlice() #refresh
@@ -1997,6 +2048,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			else:
 				self.currentSlice += 1
 			self.setSlice(self.currentSlice)
+			self.displayStateChange.emit('set slice', self.currentSlice)
 			event.setAccepted(True)
 
 	def mousePressEvent(self, event):

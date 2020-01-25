@@ -4,6 +4,8 @@ from functools import partial
 from PyQt5 import QtGui, QtCore, QtWidgets
 
 class bStackFeebackWidget(QtWidgets.QWidget):
+	clickStateChange = QtCore.pyqtSignal(str, object)
+
 	def __init__(self, mainWindow=None, parent=None):
 		super(bStackFeebackWidget, self).__init__(parent)
 
@@ -15,6 +17,19 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		self.buildUI()
 
+	def slot_StateChange(self, signalName, signalValue):
+		"""
+		signalValue: can be int, str, dict , ...
+		"""
+		print('bStackFeebackWidget.slot_StateChange() signalName:', signalName, signalValue)
+		if signalName == 'num slices':
+			text = str(signalValue)
+			self.numSlices_Label.setText('of ' + text)
+		elif signalName == 'set slice':
+			text = str(signalValue)
+			self.currentSlice_Label.setText('slice ' + text)
+
+	# todo: get rid of this and use slot self.slot_StateChange()
 	def setFeedback(self, this, thisValue):
 		if this == 'num slices':
 			text = str(thisValue)
@@ -37,10 +52,13 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		self.mainWindow.signal('toggle sliding z', recursion=False)
 	'''
 
+	# not used?
+	'''
 	def toggleInterface(event, toThis):
 		if event == 'toggle tracing':
 			tracingCheckboxWidget = self.findBobID('Tracing')
 			tracingCheckboxWidget.setChecked(toThis)
+	'''
 
 	def findBobID(self, bobID):
 		"""
@@ -71,38 +89,48 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				break
 		return theRet
 
-	def checkbox_statechange(self, checkbox):
+	def onClick_Callback(self):
 		"""
 		Called when user clicks the check box
 
 		this does not work? see here for some ideas:
 		https://stackoverflow.com/questions/38437347/qcheckbox-state-change-pyqt4
 		"""
+		sender = self.sender()
+
 		#self.slidingz_checkbox.setTristate(False)
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
-		print('bStackFeedbackWidget.checkbox_statechange() sender bobID:', self.sender().property('bobID'), 'isShift:', isShift)
+		print('bStackFeedbackWidget.onClick_Callback() sender bobID:', self.sender().property('bobID'), 'isShift:', isShift)
 		#self.mainWindow.signal('toggle sliding z', recursion=False)
-		bobID = self.sender().property('bobID')
-		print('bobID:', type(bobID), bobID)
 
+		#bobID = self.sender().property('bobID')
+		#print('bobID:', type(bobID), bobID)
+
+		'''
 		widget = self.findBobID(bobID)
 		if widget == None:
-			print('warning: checkbox_statechange() did not find widget with bobID:', bobID)
+			print('warning: onClick_Callback() did not find widget with bobID:', bobID)
 			return
+		'''
 
 		# get the current state
-		value = widget.isChecked()
-		print('checkbox_statechange() got widget for', bobID, 'and value is:', type(value), value)
+		title = sender.text()
+		value = sender.isChecked()
+		#value = widget.isChecked()
+		#print('!!!***!!!   onClick_Callback() got widget for', bobID, 'and value is:', type(value), value)
+		print('!!!***!!! onClick_Callback() title:', title, 'value:', value)
 
 		#self.mainWindow.signal('toggle tracing', value=value, recursion=False)
 
-		if bobID == 'Sliding Z':
-			self.mainWindow.signal('toggle sliding z', value=value, recursion=False)
-		elif bobID == 'Tracing':
-			self.mainWindow.signal('toggle tracing', value=value, recursion=False)
+		if title == 'Sliding Z':
+			self.clickStateChange.emit('Sliding Z', value)
+			#self.mainWindow.signal('toggle sliding z', value=value, recursion=False)
+		elif title == 'Tracing':
+			self.clickStateChange.emit('Tracing', value)
+			#self.mainWindow.signal('toggle tracing', value=value, recursion=False)
 		else:
-			print('bStackFeedbackWidget.checkbox_statechange() case not taken, bobID:', bobID)
+			print('bStackFeedbackWidget.onClick_Callback() case not taken, title:', title)
 		print('done')
 
 	def buildUI(self):
@@ -117,26 +145,28 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		self.myCheckboxList = []
 
-		checkBoxList = ['Sliding Z', 'Tracing', 'Nodes', 'Edges']
-		idx = 0
-		for checkBoxTitle in checkBoxList:
+		self.checkBoxList = ['Sliding Z', 'Tracing', 'Nodes', 'Edges']
+		#idx = 0
+		for checkBoxTitle in self.checkBoxList:
 			thisCheckBox = QtWidgets.QCheckBox(checkBoxTitle)
 			thisCheckBox.setChecked(False)
 			thisCheckBox.setProperty('bobID', checkBoxTitle)
 
 			self.myCheckboxList.append(thisCheckBox)
 
-			slot = partial(self.checkbox_statechange, self.myCheckboxList[idx])
+			#slot = partial(self.onClick_Callback, self.myCheckboxList[idx])
 
-			thisCheckBox.stateChanged.connect(lambda x: slot())
-			#thisCheckBox.stateChanged.connect(self.checkbox_statechange)
+			thisCheckBox.clicked.connect(self.onClick_Callback)
+			#thisCheckBox.clicked.connect(lambda x: slot())
+			#thisCheckBox.stateChanged.connect(lambda x: slot())
+			#thisCheckBox.stateChanged.connect(self.onClick_Callback)
 
 
 			self.myMainLayout.addWidget(thisCheckBox)
 
-			idx += 1
+			#idx += 1
 
 		self.help_Label = QtWidgets.QLabel("Click image and press keyboard 'h' for help")
 		self.myMainLayout.addWidget(self.help_Label)
 
-		self.findBobID('Nodes')
+		#self.findBobID('Nodes')
