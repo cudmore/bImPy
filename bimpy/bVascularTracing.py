@@ -379,8 +379,8 @@ class bVascularTracing:
 
 			# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
 
-			print('\n\nsrewing everything up\n\n')
-			self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
+			#print('\n\nsrewing everything up\n\n')
+			#self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
 
 		#if nodeIdx is not None:
 		if not np.isnan(nodeIdx):
@@ -393,7 +393,10 @@ class bVascularTracing:
 			print('self.nodeIdx[decrimentIndices]:', self.nodeIdx[decrimentIndices])
 			'''
 			#self.nodeIdx[decrimentIndices] -= 1
-			self.nodeIdx[self.nodeIdx[decrimentIndices]>nodeIdx] -= 1
+
+			# was this
+			#self.nodeIdx[self.nodeIdx[decrimentIndices]>nodeIdx] -= 1
+
 			#self.nodeIdx[(~np.isnan(self.nodeIdx)) & (self.nodeIdx>nodeIdx)] -= 1
 
 	def _getSlabFromNodeIdx(self, nodeIdx):
