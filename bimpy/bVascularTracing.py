@@ -364,14 +364,24 @@ class bVascularTracing:
 		#if edgeIdx is not None:
 		if not np.isnan(edgeIdx):
 			#self.edgeIdx[self.edgeIdx>edgeIdx] -=1
+			'''
 			nonNanIndices = ~np.isnan(self.edgeIdx)
 			print('nonNanIndices:', type(nonNanIndices))
 			decrimentIndices = np.where(self.edgeIdx[nonNanIndices]>edgeIdx)[0]
 			print('decrimentIndices:', type(decrimentIndices))
+			'''
 			#self.edgeIdx[self.edgeIdx>edgeIdx] -= 1
 			#self.edgeIdx[decrimentIndices] -= 1
-			self.edgeIdx[self.edgeIdx[decrimentIndices]>edgeIdx] -= 1
+
+			# was this
+			#self.edgeIdx[self.edgeIdx[decrimentIndices]>edgeIdx] -= 1
 			#self.edgeIdx[(~np.isnan(self.edgeIdx)) & (self.edgeIdx>edgeIdx)] -= 1
+
+			# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
+
+			print('\n\nsrewing everything up\n\n')
+			self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
+
 		#if nodeIdx is not None:
 		if not np.isnan(nodeIdx):
 			nonNanIndices = ~np.isnan(self.nodeIdx)
