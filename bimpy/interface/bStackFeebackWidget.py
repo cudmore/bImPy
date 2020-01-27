@@ -29,62 +29,23 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 			text = str(signalValue)
 			self.currentSlice_Label.setText('slice ' + text)
 
-	# todo: get rid of this and use slot self.slot_StateChange()
-	def setFeedback(self, this, thisValue):
-		if this == 'num slices':
-			text = str(thisValue)
-			self.numSlices_Label.setText('of ' + text)
-		elif this == 'set slice':
-			text = str(thisValue)
-			self.currentSlice_Label.setText('slice ' + text)
-		elif this == 'sliding z':
-			#self.slidingz_checkbox.setChecked(thisValue)
-			#self.slidingz_checkbox.setTristate(False)
+		elif signalName == 'sliding z':
 			thisCheck = self.findBobID('Sliding Z')
-			thisCheck.setChecked(thisValue)
+			if thisCheck is not None:
+				thisCheck.setChecked(thisValue)
 		else:
-			print('WARNING: bStackFeebackWidget.set() not handled', this)
-
-	'''
-	def slidingz_statechange(self):
-		#self.slidingz_checkbox.setTristate(False)
-		print('sender:', self.sender().property('bobID'))
-		self.mainWindow.signal('toggle sliding z', recursion=False)
-	'''
-
-	# not used?
-	'''
-	def toggleInterface(event, toThis):
-		if event == 'toggle tracing':
-			tracingCheckboxWidget = self.findBobID('Tracing')
-			tracingCheckboxWidget.setChecked(toThis)
-	'''
+			print('WARNING: bStackFeebackWidget.set() not handled signalName:', signalName, 'signalValue:', signalValue)
 
 	def findBobID(self, bobID):
 		"""
-
 		Can not use layout.findChild() or layout.children() ... bug in Qt or PyQt
-
 		see: https://stackoverflow.com/questions/3077192/get-a-layouts-widgets-in-pyqt
 		"""
 		theRet = None
-		'''
-		numChildren = self.myMainLayout.count()
-		for childIdx in range(numChildren):
-			item = self.myMainLayout.itemAt(childIdx)
-			widget = item.widget()
-			currentBobID = widget.property('bobID')
-			if currentBobID == bobID:
-				print('bStackFeedbackWidget.findBobID() found bobID:', currentBobID)
-				theRet = widget
-				break
-		return theRet
-		'''
-
 		for checkbox in self.myCheckboxList:
 			currentBobID = checkbox.property('bobID')
 			if currentBobID == bobID:
-				print('bStackFeedbackWidget.findBobID() found bobID:', currentBobID)
+				#print('bStackFeedbackWidget.findBobID() found bobID:', currentBobID)
 				theRet = checkbox
 				break
 		return theRet

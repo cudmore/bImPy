@@ -131,7 +131,7 @@ class bVascularTracing:
 
 		self._appendSlab(x=x, y=y, z=z, nodeIdx=newNodeIdx)
 
-		print('= bVascularTracing.newNode()', newNodeIdx)
+		print('   bVascularTracing.newNode()', newNodeIdx)
 		#self._printGraph()
 
 		return newNodeIdx
@@ -237,7 +237,7 @@ class bVascularTracing:
 		# delete from slabs
 		self._deleteSlab(nodeSlabIdx)
 
-		print('after) bVascularTracing.deleteNode()', nodeIdx)
+		#print('after) bVascularTracing.deleteNode()', nodeIdx)
 		#self._printGraph()
 
 		return True
@@ -359,13 +359,32 @@ class bVascularTracing:
 		self.nodeIdx = np.delete(self.nodeIdx, slabIdx)
 		self.slabIdx = np.delete(self.slabIdx, slabIdx)
 
-		self.slabIdx[self.slabIdx>slabIdx] -=1
+		self.slabIdx[self.slabIdx>slabIdx] -= 1
 		# remember, both self.edgeIdx and self.nodeIdx have nan!
-		if edgeIdx is not None:
+		#if edgeIdx is not None:
+		if not np.isnan(edgeIdx):
 			#self.edgeIdx[self.edgeIdx>edgeIdx] -=1
-			self.edgeIdx[(~np.isnan(self.edgeIdx)) & (self.edgeIdx>edgeIdx)] -=1
-		if nodeIdx is not None:
-			self.nodeIdx[self.nodeIdx>nodeIdx] -=1
+			nonNanIndices = ~np.isnan(self.edgeIdx)
+			print('nonNanIndices:', type(nonNanIndices))
+			decrimentIndices = np.where(self.edgeIdx[nonNanIndices]>edgeIdx)[0]
+			print('decrimentIndices:', type(decrimentIndices))
+			#self.edgeIdx[self.edgeIdx>edgeIdx] -= 1
+			#self.edgeIdx[decrimentIndices] -= 1
+			self.edgeIdx[self.edgeIdx[decrimentIndices]>edgeIdx] -= 1
+			#self.edgeIdx[(~np.isnan(self.edgeIdx)) & (self.edgeIdx>edgeIdx)] -= 1
+		#if nodeIdx is not None:
+		if not np.isnan(nodeIdx):
+			nonNanIndices = ~np.isnan(self.nodeIdx)
+			decrimentIndices = np.where(self.nodeIdx[nonNanIndices]>nodeIdx)
+			'''
+			print('\n', 'slabIdx:', slabIdx, 'nodeIdx:', nodeIdx)
+			print('nonNanIndices:', nonNanIndices)
+			print('decrimentIndices:', decrimentIndices)
+			print('self.nodeIdx[decrimentIndices]:', self.nodeIdx[decrimentIndices])
+			'''
+			#self.nodeIdx[decrimentIndices] -= 1
+			self.nodeIdx[self.nodeIdx[decrimentIndices]>nodeIdx] -= 1
+			#self.nodeIdx[(~np.isnan(self.nodeIdx)) & (self.nodeIdx>nodeIdx)] -= 1
 
 	def _getSlabFromNodeIdx(self, nodeIdx):
 		#print('debug _getSlabFromNodeIdx() nodeIdx:', nodeIdx)
@@ -377,25 +396,25 @@ class bVascularTracing:
 			return theRet
 
 	def _defaultNodeDict(self, x=None, y=None, z=None, nodeIdx=None, slabIdx=None):
-		nodeDict = {
+		nodeDict = OrderedDict({
 			#'idx': nodeIdx, # index into self.nodeDictList
 			#'slabIdx': slabIdx, # index into self.x/self.y etc
-			#'idx': None,
-			#'slabIdx': None,
+			'idx': None,
+			'slabIdx': None,
 			'x': round(x,2),
 			'y': round(y,2),
 			'z': round(z,2),
 			#'zSlice': None, #todo remember this when I convert to um/pixel !!!
 			'edgeList': [],
-			#'nEdges': 0,
+			'nEdges': 0,
 			'Bad': False,
 			'Note': '',
-		}
+		})
 		return nodeDict
 
 	def _defaultEdgeDict(self, edgeIdx, srcNode, dstNode):
-		edgeDict = {
-			#'idx': edgeIdx, # used by stack widget table
+		edgeDict = OrderedDict({
+			'idx': None, # used by stack widget table
 			'n': 0, # umber of slabs
 			'Diam': None,
 			'Len 3D': None,
@@ -405,9 +424,9 @@ class bVascularTracing:
 			'preNode': srcNode,
 			'postNode': dstNode,
 			'Bad': False,
-			#'slabList': [], # list of slab indices on this edge
+			'slabList': [], # list of slab indices on this edge
 			'Note': '',
-			}
+			})
 		return edgeDict
 
 	def _printStats(self):
