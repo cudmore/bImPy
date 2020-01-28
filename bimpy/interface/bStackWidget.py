@@ -690,7 +690,11 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.stopSelectionPropogation = True
 
 		edgeRowIdx = self.findEdgeRow(edgeDict)
-		self.myEdgeTableWidget.removeRow(edgeRowIdx)
+		if edgeRowIdx is None:
+			print('   !!! !!! THIS IS A BUG: bAnnotationTable.deleteEdge() edgeRowIdx', edgeRowIdx)
+			print(' ')
+		else:
+			self.myEdgeTableWidget.removeRow(edgeRowIdx)
 		#
 		# update pre/post nodes (they have different edge list)
 		#preNodeRowIdx = self.findNodeRow(edgeDict)
