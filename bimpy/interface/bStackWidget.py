@@ -313,7 +313,7 @@ class myStackSlider(QtWidgets.QSlider):
 		#self.valueChanged.connect(self.sliceSliderValueChanged)
 
 	def slot_UpdateSlice(self, signalName, signalValue):
-		print('slot_UpdateSlice() signalName:', signalName, 'signalValue:', signalValue)
+		#print('myStackSlider.slot_UpdateSlice() signalName:', signalName, 'signalValue:', signalValue)
 		self.setValue(signalValue)
 
 	def updateSlice_Signal(self):
@@ -1562,7 +1562,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				dMasked = self.mySimpleStack.slabList.d[~zNodeMasked.mask]
 				nodeIdxMasked = self.mySimpleStack.slabList.nodeIdx[~zNodeMasked.mask]
 				edgeIdxMasked = self.mySimpleStack.slabList.edgeIdx[~zNodeMasked.mask]
-				slabIdxMasked = self.mySimpleStack.slabList.slabIdx[~zNodeMasked.mask]
+				#slabIdxMasked = self.mySimpleStack.slabList.slabIdx[~zNodeMasked.mask]
 
 				nodeMasked_x = xNodeMasked[~np.isnan(nodeIdxMasked)]
 				nodeMasked_y = yNodeMasked[~np.isnan(nodeIdxMasked)]

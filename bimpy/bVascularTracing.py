@@ -26,7 +26,7 @@ class bVascularTracing:
 		self.d = np.empty(0)
 		self.edgeIdx = np.empty(0, dtype=np.uint8) # will be nan for nodes
 		self.nodeIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
-		self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
+		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
 
 		loadedVesselucida = self.loadVesselucida_xml()
 
@@ -244,13 +244,15 @@ class bVascularTracing:
 
 	def deleteEdge(self, edgeIdx):
 
+		print('bVascularTracing.deleteEdge() edgeIdx:', edgeIdx)
+
 		# the edge we will delete
 		edge = self.edgeDictList[edgeIdx]
 		# the slabs we will delete
 		edgeSlabList = self.getEdgeSlabList(edgeIdx) #edge['slabList']
 
 		#
-		# delete from nodes
+		# delete from nodes node['edgeList']
 		preNode = edge['preNode']
 		postNode = edge['postNode']
 		if preNode is not None: # will always be true, edges always have pre/post node
@@ -258,30 +260,38 @@ class bVascularTracing:
 			try:
 				edgeListIdx = self.nodeDictList[preNode]['edgeList'].index(edgeIdx)
 				self.nodeDictList[preNode]['edgeList'].pop(edgeListIdx)
+				print('      deleteEdge() popped preNode:', preNode, 'edgeIdx:', 'edgeListIdx:', edgeListIdx)
 			except (ValueError) as e:
-				print('   WARNING: exception:', str(e))
+				print('   !!! WARNING: exception:', str(e))
 		if postNode is not None: # will always be true, edges always have pre/post node
 			print('   postNode:', postNode, self.nodeDictList[postNode])
 			try:
 				edgeListIdx = self.nodeDictList[postNode]['edgeList'].index(edgeIdx)
 				self.nodeDictList[postNode]['edgeList'].pop(edgeListIdx)
+				print('      deleteEdge() popped postNode:', postNode, 'edgeIdx:', edgeIdx, 'edgeListIdx:', edgeListIdx)
 			except (ValueError) as e:
-				print('   WARNING: exception:', str(e))
+				print('   !!! WARNING: exception:', str(e))
+
+		# debug, edgeIDx should no longer be in node['edgeList']
 
 		# decrement remaining node['edgeList']
 		for nodeIdx, node in enumerate(self.nodeDictList):
+			# debug
+			# delete edge 70, causes interface error and is not caught here???
+			try:
+				edgeListIdx = node['edgeList'].index(edgeIdx)
+				print('!!! !!! ERROR: nodeIdx:', nodeIdx, 'still has edgeIdx:', edgeIdx, 'in ["edgeList"]:', node['edgeList'])
+			except (ValueError) as e:
+				pass
+			#
 			for tmpEdgeIdx, nodeEdgeIdx in enumerate(node['edgeList']):
 				if nodeEdgeIdx > edgeIdx:
 					node['edgeList'][tmpEdgeIdx] -= 1
 
 		#
-		# delete from dict
+		# delete edge from dict
 		self.edgeDictList.pop(edgeIdx)
 
-		#
-		# decriment
-		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
-		self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
 
 		#
 		# delete from slabs
@@ -294,7 +304,17 @@ class bVascularTracing:
 			thisSlabList  = edgeSlabList[1:-1] # slabList without first/prenode and last/postnode
 			self._deleteSlabList(thisSlabList)
 
-		print('after) bVascularTracing.deleteEdge()', edgeIdx)
+		# debug
+		# look for remaining slabs with edge Idx
+		for tmpIdx, tmpEdgeIdx in enumerate(self.edgeIdx):
+				if tmpEdgeIdx == edgeIdx:
+					print('\n   !!! !!! ERROR: self.edgeIdx at slab idx:', tmpIdx, 'STILL has edgeIdx==', edgeIdx, '\n')
+		#
+		# decriment remaining self.edgeIdx
+		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
+		self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
+
+		#print('after) bVascularTracing.deleteEdge()', edgeIdx)
 		#self._printGraph()
 
 	'''
@@ -329,7 +349,7 @@ class bVascularTracing:
 		self.d = np.append(self.d, d)
 		self.edgeIdx = np.append(self.edgeIdx, edgeIdx)
 		self.nodeIdx = np.append(self.nodeIdx, nodeIdx)
-		self.slabIdx = np.append(self.slabIdx, newSlabIdx)
+		#self.slabIdx = np.append(self.slabIdx, newSlabIdx)
 		return newSlabIdx
 
 	def _deleteSlabList(self, slabList):
@@ -338,9 +358,7 @@ class bVascularTracing:
 
 		slabList: list of slab to delete
 		"""
-		print('!!! _deleteSlabList:', slabList)
-		# this kinda works
-		#self._deleteSlab(slabList)
+		print('bVascularTracing._deleteSlabList() slabList:', slabList)
 
 		slabListCopy = np.array(slabList)
 
@@ -351,7 +369,10 @@ class bVascularTracing:
 			slabListCopy = slabListCopy - 1 # this is assuming slabs are monotonically increasing
 
 	def _deleteSlab(self, slabIdx):
+		'''
 		print('_deleteSlab() slabIdx:', slabIdx, 'shape:', self.x.shape)
+		self._printSlab(slabIdx)
+		'''
 
 		edgeIdx = self.edgeIdx[slabIdx]
 		nodeIdx = self.nodeIdx[slabIdx]
@@ -362,52 +383,13 @@ class bVascularTracing:
 		self.d = np.delete(self.d, slabIdx)
 		self.edgeIdx = np.delete(self.edgeIdx, slabIdx)
 		self.nodeIdx = np.delete(self.nodeIdx, slabIdx)
-		self.slabIdx = np.delete(self.slabIdx, slabIdx)
+		#self.slabIdx = np.delete(self.slabIdx, slabIdx)
 
-		self.slabIdx[self.slabIdx>slabIdx] -= 1
+		#decriment remaining slabIdx
+		#self.slabIdx[self.slabIdx>slabIdx] -= 1
+
 		# remember, both self.edgeIdx and self.nodeIdx have nan!
 		#if edgeIdx is not None:
-
-		"""
-		if not np.isnan(edgeIdx):
-			#self.edgeIdx[self.edgeIdx>edgeIdx] -=1
-			'''
-			nonNanIndices = ~np.isnan(self.edgeIdx)
-			print('nonNanIndices:', type(nonNanIndices))
-			decrimentIndices = np.where(self.edgeIdx[nonNanIndices]>edgeIdx)[0]
-			print('decrimentIndices:', type(decrimentIndices))
-			'''
-			#self.edgeIdx[self.edgeIdx>edgeIdx] -= 1
-			#self.edgeIdx[decrimentIndices] -= 1
-
-			# was this
-			#self.edgeIdx[self.edgeIdx[decrimentIndices]>edgeIdx] -= 1
-			#self.edgeIdx[(~np.isnan(self.edgeIdx)) & (self.edgeIdx>edgeIdx)] -= 1
-
-			# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
-
-			#print('\n\nsrewing everything up\n\n')
-			#self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
-		"""
-
-		"""
-		#if nodeIdx is not None:
-		if not np.isnan(nodeIdx):
-			nonNanIndices = ~np.isnan(self.nodeIdx)
-			decrimentIndices = np.where(self.nodeIdx[nonNanIndices]>nodeIdx)
-			'''
-			print('\n', 'slabIdx:', slabIdx, 'nodeIdx:', nodeIdx)
-			print('nonNanIndices:', nonNanIndices)
-			print('decrimentIndices:', decrimentIndices)
-			print('self.nodeIdx[decrimentIndices]:', self.nodeIdx[decrimentIndices])
-			'''
-			#self.nodeIdx[decrimentIndices] -= 1
-
-			# was this
-			#self.nodeIdx[self.nodeIdx[decrimentIndices]>nodeIdx] -= 1
-
-			#self.nodeIdx[(~np.isnan(self.nodeIdx)) & (self.nodeIdx>nodeIdx)] -= 1
-		"""
 
 	def _getSlabFromNodeIdx(self, nodeIdx):
 		#print('debug _getSlabFromNodeIdx() nodeIdx:', nodeIdx)
@@ -469,7 +451,10 @@ class bVascularTracing:
 		print('   tracing:')
 		print('    x,    y,    z,    d,  nodeIdx,  edgeIdx shape:', self.x.shape, type(self.x))
 		for idx, x in enumerate(self.x):
-			print('   ', x, self.y[idx], self.z[idx], self.d[idx], 'nodeIdx:', self.nodeIdx[idx], 'edgeIdx:', self.edgeIdx[idx])
+			self._printSlab(idx)
+
+	def _printSlab(self, idx):
+		print('   x:', self.x[idx], 'y:', self.y[idx], 'z:', self.z[idx], 'd:', self.d[idx], 'nodeIdx:', self.nodeIdx[idx], 'edgeIdx:', self.edgeIdx[idx])
 
 	def _printNodes(self):
 		print('   nodeDictList:')

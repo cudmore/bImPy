@@ -21,7 +21,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		"""
 		signalValue: can be int, str, dict , ...
 		"""
-		print('bStackFeebackWidget.slot_StateChange() signalName:', signalName, signalValue)
+		#print('bStackFeebackWidget.slot_StateChange() signalName:', signalName, signalValue)
 		if signalName == 'num slices':
 			text = str(signalValue)
 			self.numSlices_Label.setText('of ' + text)
