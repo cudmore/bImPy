@@ -417,10 +417,14 @@ class bVascularTracing:
 		if nodeIdx is None:
 			return None
 		else:
-			myTuple = np.where(self.nodeIdx==nodeIdx) # The result is a tuple with first all the row indices, then all the column indices.
-			theRet = myTuple[0][0]
-			return theRet
-
+			try:
+				myTuple = np.where(self.nodeIdx==nodeIdx) # The result is a tuple with first all the row indices, then all the column indices.
+				theRet = myTuple[0][0]
+				return theRet
+			except (IndexError) as e:
+				print('_getSlabFromNodeIdx() error finding nodeIdx:', nodeIdx, 'myTuple:', myTuple)
+				raise
+				
 	def _defaultNodeDict(self, x=None, y=None, z=None, nodeIdx=None, slabIdx=None):
 		nodeDict = OrderedDict({
 			#'idx': nodeIdx, # index into self.nodeDictList
