@@ -119,6 +119,22 @@ class bVascularTracing:
 
 		return theseIndices
 
+	def getEdgeSlabList2(self, edgeIdx):
+		"""
+		20200127 error because vesselucida has edges that do not have both pre/post nodes !!!!
+		return a list of slabs in an edge
+		"""
+		myTuple = np.where(self.edgeIdx == edgeIdx)
+		myTuple = myTuple[0]
+		slabList = myTuple
+
+		theseIndices = []
+
+		for slab in slabList:
+			theseIndices.append(slab)
+
+		return theseIndices
+
 	# edits
 	def newNode(self, x, y, z):
 		"""
@@ -248,8 +264,10 @@ class bVascularTracing:
 
 		# the edge we will delete
 		edge = self.edgeDictList[edgeIdx]
+
 		# the slabs we will delete
-		edgeSlabList = self.getEdgeSlabList(edgeIdx) #edge['slabList']
+		# using 2() because vessel lucida has edges with missing pre/post nodes
+		edgeSlabList = self.getEdgeSlabList2(edgeIdx) #edge['slabList']
 
 		#
 		# delete from nodes node['edgeList']
@@ -301,7 +319,10 @@ class bVascularTracing:
 			# it is an edge with no slabs
 			pass
 		else:
-			thisSlabList  = edgeSlabList[1:-1] # slabList without first/prenode and last/postnode
+			# don't do this because some vessellucia don't have both pre/post node !!!
+			# assuming we used getEdgeSlabList2() above
+			#thisSlabList  = edgeSlabList[1:-1] # slabList without first/prenode and last/postnode
+			thisSlabList  = edgeSlabList # slabList without first/prenode and last/postnode
 			self._deleteSlabList(thisSlabList)
 
 		# debug
