@@ -279,6 +279,11 @@ class bVascularTracing:
 		self.edgeDictList.pop(edgeIdx)
 
 		#
+		# decriment
+		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
+		self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
+
+		#
 		# delete from slabs
 		# first/last slabs are nodes, do not delete !!!
 		#edgeSlabList = self.getEdgeSlabList(edgeIdx) #edge['slabList']
@@ -362,6 +367,8 @@ class bVascularTracing:
 		self.slabIdx[self.slabIdx>slabIdx] -= 1
 		# remember, both self.edgeIdx and self.nodeIdx have nan!
 		#if edgeIdx is not None:
+
+		"""
 		if not np.isnan(edgeIdx):
 			#self.edgeIdx[self.edgeIdx>edgeIdx] -=1
 			'''
@@ -381,7 +388,9 @@ class bVascularTracing:
 
 			#print('\n\nsrewing everything up\n\n')
 			#self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
+		"""
 
+		"""
 		#if nodeIdx is not None:
 		if not np.isnan(nodeIdx):
 			nonNanIndices = ~np.isnan(self.nodeIdx)
@@ -398,6 +407,7 @@ class bVascularTracing:
 			#self.nodeIdx[self.nodeIdx[decrimentIndices]>nodeIdx] -= 1
 
 			#self.nodeIdx[(~np.isnan(self.nodeIdx)) & (self.nodeIdx>nodeIdx)] -= 1
+		"""
 
 	def _getSlabFromNodeIdx(self, nodeIdx):
 		#print('debug _getSlabFromNodeIdx() nodeIdx:', nodeIdx)
