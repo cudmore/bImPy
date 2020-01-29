@@ -6,19 +6,21 @@ import statistics # to get median value from a list of numbers
 import math
 
 from xml.dom import minidom # to load vesselucida xml file
+from skimage.external import tifffile as tif
 
 import numpy as np
 
 class bVascularTracing:
-	def __init__(self, path):
+	def __init__(self, parentStack, path):
 		"""
 		path: path to file
 		"""
+		self.parentStack = parentStack
 		self.path = path
 
 		self.nodeDictList = []
 		self.edgeDictList = []
-		self.editDictList = [] # backward compatibility with bSlabList ... remove
+		self.editDictList = [] # created in self.joinEdge() for vesselucida
 
 		self.x = np.empty((0,))
 		self.y = np.empty((0,))
@@ -27,6 +29,8 @@ class bVascularTracing:
 		self.edgeIdx = np.empty(0, dtype=np.uint8) # will be nan for nodes
 		self.nodeIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
 		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
+
+		self._volumeMask = None
 
 		loadedVesselucida = self.loadVesselucida_xml()
 
@@ -46,6 +50,9 @@ class bVascularTracing:
 
 	def numEdges(self):
 		return len(self.edgeDictList)
+
+	def numEdits(self):
+		return len(self.editDictList)
 
 	def getNode(self, nodeIdx):
 		if nodeIdx is None or np.isnan(nodeIdx) or nodeIdx > len(self.nodeDictList)-1:
@@ -477,12 +484,14 @@ class bVascularTracing:
 		return edgeDict
 
 	def _printStats(self):
+		print('file:', self.parentStack)
 		print('   x:', self.x.shape)
 		print('   y:', self.y.shape)
 		print('   z:', self.z.shape)
 		print('   slabs:', self.numSlabs())
 		print('   nodes:', self.numNodes())
 		print('   edges:', self.numEdges())
+		print('   edits:', self.numEdits())
 
 	def _printGraph(self):
 		self._printNodes()
@@ -942,14 +951,529 @@ class bVascularTracing:
 		self._analyze()
 
 		# this sorta works
-		#for i in range(1):
-		#	self.joinEdges()
+		for i in range(1):
+			self.joinEdges()
 
 		# this sorta works
 		#self.findCloseSlabs()
 
 		# this works
 		#self.makeVolumeMask()
+
+	def makeVolumeMask(self):
+		# to embed a small volume in a bigger volume, see:
+		# https://stackoverflow.com/questions/7115437/how-to-embed-a-small-numpy-array-into-a-predefined-block-of-a-large-numpy-arra
+		# for sphere, see:
+		# https://stackoverflow.com/questions/46626267/how-to-generate-a-sphere-in-3d-numpy-array/46626448
+		def sphere(shape, radius, position):
+			# assume shape and position are both a 3-tuple of int or float
+			# the units are pixels / voxels (px for short)
+			# radius is a int or float in px
+			semisizes = (radius,) * 3
+
+			# genereate the grid for the support points
+			# centered at the position indicated by position
+			grid = [slice(-x0, dim - x0) for x0, dim in zip(position, shape)]
+			position = np.ogrid[grid]
+			# calculate the distance of all points from `position` center
+			# scaled by the radius
+			arr = np.zeros(shape, dtype=float)
+			for x_i, semisize in zip(position, semisizes):
+				arr += (np.abs(x_i / semisize) ** 2)
+			# the inner part of the sphere will have distance below 1
+			return arr <= 1.0
+
+		def paste_slices(tup):
+			pos, w, max_w = tup
+			wall_min = max(pos, 0)
+			wall_max = min(pos+w, max_w)
+			block_min = -min(pos, 0)
+			block_max = max_w-max(pos+w, max_w)
+			block_max = block_max if block_max != 0 else None
+			return slice(wall_min, wall_max), slice(block_min, block_max)
+
+		def paste(wall, block, loc):
+			loc_zip = zip(loc, block.shape, wall.shape)
+			wall_slices, block_slices = zip(*map(paste_slices, loc_zip))
+			# was '=', use '+=' assuming we are using binary
+			wall[wall_slices] += block[block_slices]
+
+		#slice:134, width:1981, height:5783
+		#finalVolume = np.zeros([134, 1981, 5783])
+		# was this
+		#finalVolume = np.zeros([134, 5783, 1981])
+		parentSlices = self.parentStack.numSlices
+		pixelsPerLine = self.parentStack.pixelsPerLine
+		linesPerFrame = self.parentStack.linesPerFrame
+		finalVolume = np.zeros([parentSlices, pixelsPerLine, linesPerFrame])
+		# finalVolume = np.zeros([145, 640, 640]) #20191017__0001
+
+		print('bSlabList.makeVolumeMask() ... please wait')
+		for i in range(len(self.edgeDictList)):
+			slabList = self.edgeDictList[i]['slabList']
+			# debug
+			#print('edge:', i)
+			for slab in slabList:
+				#print('x:', self.x[slab], 'y:', self.y[slab], 'z:', self.z[slab], 'd:', self.d[slab])
+				x = int(round(self.x[slab]))
+				y = int(round(self.y[slab]))
+				z = int(round(self.z[slab]))
+				diam = self.d[slab]
+				#diam = int(round(self.d[slab]))
+				diamInt = int(round(diam))
+				myShape = (diamInt+1,diamInt+1,diamInt+1)
+				myRadius = int(round(diam/2)+1)
+				myPosition = (myRadius, myRadius, myRadius)
+
+				# debug
+				#print('   slab:', slab, 'myShape:', myShape, 'myRadius:', myRadius, 'myPosition:', myPosition, 'x:', x, 'y:', y, 'z:', z)
+
+				arr = sphere(myShape, myRadius, myPosition)
+
+				paste(finalVolume, arr, (z,x,y))
+				#paste(finalVolume, arr, (z,y,x))
+
+		finalVolume = finalVolume > 0
+
+		finalVolume = finalVolume.astype('int8')
+
+		self._volumeMask = finalVolume
+		#
+		# save results
+		print('finalVolume.shape:', finalVolume.shape, type(finalVolume), finalVolume.dtype)
+		tif.imsave('a.tif', finalVolume, bigtiff=True)
+
+	def joinEdges(self, distThreshold=20):
+		"""
+		Try and join edges that have src/dst near another src dst
+
+		Parameters:
+			distThreshold
+		Algorithm:
+			Four cases
+				1) dist_src_src2
+				2) dist_src_dst2
+				3) dist_dst_src2
+				4) dist_dst_dst2
+		"""
+		def addEdit(type, typeNum, edge1, pnt1, edge2, pnt2):
+			idx = len(self.editDictList)
+			if edge1 is not None:
+				len1 = self.edgeDictList[edge1]['Len 3D']
+			else:
+				len1 = None
+			if edge2 is not None:
+				len2 = self.edgeDictList[edge2]['Len 3D']
+			else:
+				len2 = None
+
+			editDict = OrderedDict({
+				'idx': idx,
+				'type': type,
+				'typeNum': typeNum,
+				'edge1': edge1,
+				'pnt1': pnt1,
+				'len1': len1,
+				'edge2': edge2,
+				'pnt2': pnt2,
+				'len2': len2,
+				})
+			self.editDictList.append(editDict)
+
+		distThreshold = 5
+
+		# reset edit
+		for idx, edge in enumerate(self.edgeDictList):
+			edge['popList'] = []
+			edge['editList'] = []
+			edge['editPending'] = False
+			edge['popPending'] = False
+			edge['otherEdgeIdxList'] = []
+
+		numEdits1 = 0
+		numEdits2 = 0
+		numEdits3 = 0
+		numEdits4 = 0
+		for idx, edge in enumerate(self.edgeDictList):
+			preNode = edge['preNode'] # can be None
+			postNode = edge['postNode']
+			if edge['editPending']:
+				continue
+			if edge['popPending']:
+				continue
+			slabList = edge['slabList']
+			numSlab = len(slabList)
+			#print('joinEdges() idx:', idx, 'numSlab', numSlab)
+			if numSlab<2:
+				continue
+
+			firstSlab = slabList[0]
+			lastSlab = slabList[-1]
+
+			src = (self.x[firstSlab], self.y[firstSlab], self.z[firstSlab])
+			dst = (self.x[lastSlab], self.y[lastSlab], self.z[lastSlab])
+
+			editDict = OrderedDict({
+				'type': '',
+				'typeNum': None,
+				'edge1': None,
+				'pnt1': None,
+				'edge2': None,
+				'pnt2': None
+				})
+
+			for idx2, edge2 in enumerate(self.edgeDictList):
+				preNode2 = edge2['preNode'] # can be None
+				postNode2 = edge2['postNode']
+				if idx2 == idx:
+					continue
+				if edge2['editPending']:
+					continue
+				if edge2['popPending']:
+					continue
+				slabList2 = edge2['slabList']
+				numSlab2 = len(slabList2)
+				if numSlab2<2:
+					continue
+				firstSlab2 = slabList2[0]
+				lastSlab2 = slabList2[-1]
+
+				# self.x/y/z have nan between edges
+				src2 = (self.x[firstSlab2], self.y[firstSlab2], self.z[firstSlab2])
+				dst2 = (self.x[lastSlab2], self.y[lastSlab2], self.z[lastSlab2])
+
+				# make 4x comparisons
+				dist_src_src2 = self.euclideanDistance2(src, src2)
+				dist_src_dst2 = self.euclideanDistance2(src, dst2)
+				dist_dst_src2 = self.euclideanDistance2(dst, src2)
+				dist_dst_dst2 = self.euclideanDistance2(dst, dst2)
+				# 1)
+				if dist_src_src2 < distThreshold:
+					# reverse idx, put idx2 after idx, pop idx2
+					dist = dist_src_src2
+					node1 = preNode
+					node2 = preNode2
+					if (node1 is not None) and (node1 == node2):
+						# already connected
+						#print('   1.0) already connected by node')
+						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   1.1) potential join')
+						addEdit('join', 1.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   1.2) both preNode and preNode2 have node but they are different ... nodes should be merged ???')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 1.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   1.3) easy ... connect preNode2 to node at preNode')
+						print('      MAKING EDIT ... edge:', idx, 'edge2["preNode"] is now preNode:', preNode)
+						numEdits1 += 1
+						edge2['preNode'] = preNode
+						preNode2 = preNode
+						addEdit('connect1', 1.3, idx, node1, idx2, preNode2)
+					elif node1 is None and node2 is not None:
+						print('   1.4) easy ... connect preNode to node at preNode2')
+						print('      MAKING EDIT ... edge:', idx, 'edge["preNode"] is now preNode2:', preNode2)
+						numEdits1 += 1
+						edge['preNode'] = preNode2
+						preNode = preNode2
+						addEdit('connect2', 1.4, idx, preNode, idx2, node2)
+					print('      dist_src_src2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+					'''
+					numEdits1 += 1
+					edge['editList'].append(1) # reverse
+					edge['otherEdgeIdxList'].append(idx2)
+					edge['editPending'] = True
+					edge2['popList'].append(1)
+					edge2['popPending'] = True
+					#edge2['editPending'] = True
+					#print('   (1) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_src_src2:', dist_src_src2)
+					print('   1) dist_src_src2:', dist_src_src2, 'idx:', idx, 'preNode:', preNode, 'idx2:', idx2, 'preNode2:', preNode2)
+					print('         firstSlab:', firstSlab, 'src:', src)
+					print('         firstSlab2:', firstSlab2, 'src2:', src2)
+					print('         self.nodeDictList[preNode]:', self.nodeDictList[preNode])
+					print('         self.nodeDictList[preNode2]:', self.nodeDictList[preNode2])
+					'''
+					#continue
+				# 2)
+				if dist_src_dst2 < distThreshold:
+					# put idx after idx2, pop idx
+					dist = dist_src_dst2
+					node1 = preNode
+					node2 = postNode2
+					if (node1 is not None) and (node1 == node2):
+						# already connected
+						#print('   1.0) already connected by node')
+						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   2.1) potential join')
+						addEdit('join', 2.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   2.2) both preNode and postNode2 have node but they are different?')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 2.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   2.3) xxx easy ... connect postNode2 to node at preNode')
+						print('      MAKING EDIT ... edge:', idx, 'edge2["postNode"] is now preNode:', preNode)
+						numEdits2 += 1
+						edge2['postNode'] = preNode
+						postNode2 = preNode
+						addEdit('connect1', 2.3, idx, node1, idx2, postNode2)
+					elif node1 is None and node2 is not None:
+						print('   2.4) xxx easy ... connect preNode to node at postNode2')
+						print('      MAKING EDIT ... edge:', idx, 'edge2["preNode"] is now preNode:', postNode2)
+						numEdits2 += 1
+						edge['preNode'] = postNode2
+						preNode = postNode2
+						addEdit('connect2', 2.4, idx, preNode, idx2, node2)
+					print('      dist_src_dst2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+
+					'''
+					if (preNode is not None) and (preNode == postNode2):
+						# already connected
+						continue
+					numEdits2 += 1
+					edge['popList'].append(2)
+					edge['popPending'] = True
+					#edge['editPending'] = True
+					edge2['editList'].append(2)
+					edge2['otherEdgeIdxList'].append(idx)
+					edge2['editPending'] = True
+					#print('   (2) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_src_dst2:', dist_src_dst2)
+					print('   2) dist_src_dst2:', dist_src_dst2, 'idx:', idx, 'preNode:', preNode, 'idx2:', idx2, 'postNode2:', postNode2)
+					#print('         edgeDictList[idx]:', self.edgeDictList[idx])
+					#print('         edgeDictList[idx2]:', self.edgeDictList[idx2])
+					print('         firstSlab:', firstSlab, 'src:', src)
+					print('         lastSlab2:', lastSlab2, 'dst2:', dst2)
+					if preNode is None:
+						print('         preNode=None')
+					else:
+						print('         self.nodeDictList[preNode]:', self.nodeDictList[preNode])
+					if postNode2 is None:
+						print('         postNode2=None')
+					else:
+						print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
+					'''
+					#continue
+				# 3)
+				if dist_dst_src2 < distThreshold:
+					# no change, put idx2 after idx, pop idx2
+					dist = dist_dst_src2
+					node1 = postNode
+					node2 = preNode2
+					if (node1 is not None) and (node1 == node2):
+						# already connected
+						#print('   1.0) already connected by node')
+						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   3.1) potential join')
+						addEdit('join', 3.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   3.2) both postNode and preNode2 have node but they are different?')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 3.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   3.3) xxx easy ... connect postNode2 to node at preNode')
+						print('      MAKING EDIT ... ')
+						numEdits3 += 1
+						edge2['preNode'] = postNode
+						preNode2 = postNode
+						addEdit('connect1', 3.3, idx, node1, idx2, preNode2)
+					elif node1 is None and node2 is not None:
+						print('   3.4) xxx easy ... connect preNode to node at postNode2')
+						print('      MAKING EDIT ... ')
+						numEdits3 += 1
+						edge['postNode'] = preNode2
+						postNode = preNode2
+						addEdit('connect2', 3.4, idx, node1, idx2, postNode)
+					print('      dist_dst_src2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+
+					'''
+					numEdits3 += 1
+					edge['editList'].append(3)
+					edge['otherEdgeIdxList'].append(idx2)
+					edge['editPending'] = True
+					edge2['popList'].append(3)
+					edge2['popPending'] = True
+					#edge2['editPending'] = True
+					#print('   (3) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_dst_src2:', dist_dst_src2)
+					if postNode is not None or preNode2 is not None:
+						print('   3) idx:', idx, 'postNode:', postNode, 'idx2:', idx2, 'preNode2:', preNode2)
+						print('      dist_dst_src2:', dist_dst_src2)
+						if postNode == preNode2:
+							# already members of the same node
+							print('      match')
+						# 4 more cases ?
+						if postNode is None and preNode2 is not None:
+							# never happens
+							pass
+							#print('      case 3.1) idx1 dst joins src at idx2')
+						elif postNode is not None and preNode2 is None:
+							# never happen
+							pass
+							#print('      case 3.2) idx2 src joins dst at idx 1')
+						elif postNode is not None and preNode2 is not None:
+							print('      case 3.3) match')
+							# debug, position of postNode and preNode2
+							# this is not correct
+							print('         self.nodeDictList[postNode]:', self.nodeDictList[postNode])
+							print('         self.nodeDictList[preNode2]:', self.nodeDictList[preNode2])
+							#
+							# YES, bingo, my slab indices do not match my preNode/postNode
+							print('         lastSlab  :', self.x[lastSlab], self.y[lastSlab], self.z[lastSlab])
+							print('         firstSlab2:', self.x[firstSlab2], self.y[firstSlab2], self.z[firstSlab2])
+					else:
+						# never happens
+						pass
+						#print('   3.0) both assigned')
+					'''
+					#continue
+				# 4)
+				if dist_dst_dst2 < distThreshold:
+					# reverse idx2, put idx2 after idx, pop idx2
+					dist = dist_dst_dst2
+					node1 = postNode
+					node2 = postNode2
+					if (node1 is not None) and (node1 == node2):
+						# already connected
+						#print('   1.0) already connected by node')
+						continue
+					elif node1 is None and node2 is None:
+						# potential join
+						print('   4.1) potential join')
+						addEdit('join', 4.1, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is not None and (node1 != node2):
+						print('   4.2) xxx both postNode and postNode2 have node but they are different?')
+						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
+						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						addEdit('merge', 4.2, idx, node1, idx2, node2)
+					elif node1 is not None and node2 is None:
+						print('   4.3) xxx easy ... connect postNode2 to node at preNode')
+						print('      MAKING EDIT ... ')
+						numEdits4 += 1
+						edge2['postNode'] = postNode
+						postNode2 = postNode
+						addEdit('connect1', 3.3, idx, node1, idx2, postNode2)
+					elif node1 is None and node2 is not None:
+						print('   4.4) xxx easy ... connect preNode to node at postNode2')
+						print('      MAKING EDIT ... ')
+						numEdits4 += 1
+						edge['postNode'] = postNode2
+						postNode = postNode2
+						addEdit('connect2', 3.4, idx, postNode, idx2, node2)
+					print('      dist_dst_dst2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+
+					'''
+					if (postNode is not None) and (postNode == postNode2):
+						# already connected
+						continue
+					numEdits4 += 1
+					edge['editList'].append(4)
+					edge['otherEdgeIdxList'].append(idx2)
+					edge['editPending'] = True
+					edge2['editList'].append(4) # reverse
+					edge2['popList'].append(4)
+					edge2['editPending'] = True
+					edge2['popPending'] = True
+					#print('   (4) idx2:', idx2, 'numSlab2:', numSlab2, 'dist_dst_dst2:', dist_dst_dst2)
+					print('   4) dist_dst_dst2:', dist_dst_dst2, 'idx:', idx, 'postNode:', postNode, 'idx2:', idx2, 'postNode2:', postNode2)
+					if postNode is None:
+						print('         postNode is None')
+					else:
+						print('         self.nodeDictList[postNode]:', self.nodeDictList[postNode])
+					if postNode2 is None:
+						print('         postNode2 is None')
+					else:
+						print('         self.nodeDictList[postNode2]:', self.nodeDictList[postNode2])
+					'''
+
+					#continue
+
+		#
+		# done
+		print('Number of edits:', numEdits1, numEdits2, numEdits3, numEdits4)
+		print('NOT EDITING ANYTHING FOR NOW')
+		return
+
+		print('*** EDITS joinEdges')
+		print('before joinEdges() numEdges:', len(self.edgeDictList), '1:', numEdits1, '2:', numEdits2, '3:', numEdits3, '4:', numEdits4)
+		totalNumEdits = 0
+		newEdgeIdx = 0 # we will make a new edgeDictList
+		self.edgeDictList2 = []
+		for idx, edge in enumerate(self.edgeDictList):
+			if edge['popPending']:
+				# do nothing, will eventually be removed/merged
+				continue
+			#print('   idx:', idx, 'editList:', edge['editList'], 'otherEdgeIdxList:', edge['otherEdgeIdxList'])
+			totalNumEdits += 1
+
+			currNumEdits = len(edge['editList'])
+			newEdgeDict = copy.deepcopy(edge)
+			if currNumEdits==0:
+				# no edit, just append
+				newEdgeDict['edgeIdx'] = newEdgeIdx
+				newEdgeDict = self.updateEdge(newEdgeDict)
+				self.edgeDictList2.append(newEdgeDict)
+				newEdgeIdx += 1
+			else:
+				firstEdit = edge['editList'][0]
+				firstOtherIdx = edge['otherEdgeIdxList'][0]
+				if firstEdit == 1:
+					# reverse idx, put idx2 after idx, pop idx2
+					newEdgeDict['slabList'].reverse() # reverse() is on place?
+					newEdgeDict['slabList'] += self.edgeDictList[firstOtherIdx]['slabList']
+					newEdgeDict['edgeIdx'] = newEdgeIdx
+					newEdgeDict = self.updateEdge(newEdgeDict)
+					self.edgeDictList2.append(newEdgeDict)
+					newEdgeIdx += 1
+				elif firstEdit == 2:
+					# put idx after idx2, pop idx
+					newEdgeDict2 = copy.deepcopy(self.edgeDictList[firstOtherIdx])
+					newEdgeDict2['slabList'] += newEdgeDict['slabList']
+					newEdgeDict2['edgeIdx'] = newEdgeIdx
+					newEdgeDict2 = self.updateEdge(newEdgeDict2)
+					self.edgeDictList2.append(newEdgeDict2)
+					newEdgeIdx += 1
+				elif firstEdit == 3:
+					# no change, put idx2 after idx, pop idx2
+					newEdgeDict['slabList'] += self.edgeDictList[firstOtherIdx]['slabList']
+					newEdgeDict['edgeIdx'] = newEdgeIdx
+					newEdgeDict = self.updateEdge(newEdgeDict)
+					self.edgeDictList2.append(newEdgeDict)
+					newEdgeIdx += 1
+				elif firstEdit == 4:
+					# reverse idx2, put idx2 after idx, pop idx2
+					otherSlabList = self.edgeDictList[firstOtherIdx]['slabList']
+					otherSlabList.reverse()
+					newEdgeDict['slabList'] += otherSlabList
+					newEdgeDict['edgeIdx'] = newEdgeIdx
+					newEdgeDict = self.updateEdge(newEdgeDict)
+					self.edgeDictList2.append(newEdgeDict)
+					newEdgeIdx += 1
+
+		# done
+		self.edgeDictList = copy.deepcopy(self.edgeDictList2)
+
+		##
+		##
+		# FIX THIS
+		##
+		##
+
+		#
+		# need to update each point with its edge idx
+		# todo: get rid of .id point throuout (including bStackWidget)
+		for idx, edge in enumerate(self.edgeDictList):
+			slabList = edge['slabList']
+			self.id[slabList] = idx
+
+		print('after joinEdges() numEdges:', len(self.edgeDictList), 'totalNumEdits:', totalNumEdits, '1:', numEdits1, '2:', numEdits2, '3:', numEdits3, '4:', numEdits4)
 
 	def save(self):
 		"""

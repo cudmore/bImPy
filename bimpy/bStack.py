@@ -50,6 +50,8 @@ class bStack:
 
 		self.currentSlice = 0
 
+		self._imagesMask = None # create with self.slabList.makeVolumeMask()
+
 		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
 		'''
 		self.fileNameWithoutExtension = ''
@@ -61,9 +63,6 @@ class bStack:
 		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
 		self.stack = None
 
-		# load vesselucida analysis from .xml file
-		#self.slabList = bimpy.bSlabList(self.path)
-		self.slabList = bimpy.bVascularTracing(self.path)
 
 		# was for vessel lucida
 		#if len(self.slabList.x) == 0:
@@ -72,6 +71,10 @@ class bStack:
 		# load image data
 		if loadImages:
 			self.loadStack()
+
+		# load vesselucida analysis from .xml file
+		#self.slabList = bimpy.bSlabList(self.path)
+		self.slabList = bimpy.bVascularTracing(self, self.path)
 
 		self.analysis = bimpy.bAnalysis(self)
 
@@ -124,7 +127,12 @@ class bStack:
 	def numChannels(self):
 		return self.header.numChannels
 	@property
+	def numSlices(self):
+		# see also numImages
+		return self.header.numImages
+	@property
 	def numImages(self):
+		# see also numSLices
 		return self.header.numImages
 	@property
 	def pixelsPerLine(self):
@@ -190,6 +198,11 @@ class bStack:
 		else:
 			print('   error: bStack.getImage() got bad stack shape:', self.stack.shape)
 
+	def getMaskVolume(self):
+		if self.slabList._volumeMask is None:
+			self.slabList.makeVolumeMask()
+		return self.slabList._volumeMask
+
 	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
 
 		if self.numImages>1:
@@ -203,7 +216,7 @@ class bStack:
 			if thisStack == 'ch1':
 				img = self.stack[0, startSlice:stopSlice, :, :].copy()
 			elif thisStack == 'mask':
-				img = self._imagesMask[startSlice:stopSlice, :, :].copy()
+				img = self.getMaskVolume()[startSlice:stopSlice, :, :].copy()
 			elif thisStack == 'skel':
 				img = self._imagesSkel[startSlice:stopSlice, :, :].copy()
 			else:
@@ -236,7 +249,7 @@ class bStack:
 				else:
 					img = self.stack[0, sliceNumber, :, :].copy()
 			elif thisStack == 'mask':
-				img = self._imagesMask[sliceNumber, :, :].copy()
+				img = self.getMaskVolume()[sliceNumber, :, :].copy()
 			elif thisStack == 'skel':
 				img = self._imagesSkel[sliceNumber, :, :].copy()
 			else:

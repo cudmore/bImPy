@@ -21,7 +21,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		"""
 		signalValue: can be int, str, dict , ...
 		"""
-		#print('bStackFeebackWidget.slot_StateChange() signalName:', signalName, signalValue)
+		print('bStackFeebackWidget.slot_StateChange() signalName:', signalName, signalValue)
 		if signalName == 'num slices':
 			text = str(signalValue)
 			self.numSlices_Label.setText('of ' + text)
@@ -29,10 +29,22 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 			text = str(signalValue)
 			self.currentSlice_Label.setText('slice ' + text)
 
-		elif signalName == 'sliding z':
-			thisCheck = self.findBobID('Sliding Z')
+		elif signalName == 'bSignal Sliding Z':
+			#title = self.titleFromSignal(signalName)
+			#thisCheck = self.findBobID(title)
+			thisCheck = self.findBobID(signalName)
 			if thisCheck is not None:
-				thisCheck.setChecked(thisValue)
+				thisCheck.setChecked(signalValue['displaySlidingZ'])
+			else:
+				print('slot_StateChange() did not find check with BobID title:', title)
+		elif signalName == 'bSignal Tracing':
+			#title = self.titleFromSignal(signalName)
+			#thisCheck = self.findBobID(title)
+			thisCheck = self.findBobID(signalName)
+			if thisCheck is not None:
+				thisCheck.setChecked(signalValue['showTracing'])
+			else:
+				print('slot_StateChange() did not find check with BobID title:', title)
 		else:
 			print('WARNING: bStackFeebackWidget.set() not handled signalName:', signalName, 'signalValue:', signalValue)
 
@@ -59,40 +71,31 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		"""
 		sender = self.sender()
 
+		'''
 		#self.slidingz_checkbox.setTristate(False)
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
 		print('bStackFeedbackWidget.onClick_Callback() sender bobID:', self.sender().property('bobID'), 'isShift:', isShift)
-		#self.mainWindow.signal('toggle sliding z', recursion=False)
-
-		#bobID = self.sender().property('bobID')
-		#print('bobID:', type(bobID), bobID)
-
-		'''
-		widget = self.findBobID(bobID)
-		if widget == None:
-			print('warning: onClick_Callback() did not find widget with bobID:', bobID)
-			return
 		'''
 
-		# get the current state
 		title = sender.text()
 		value = sender.isChecked()
-		#value = widget.isChecked()
-		#print('!!!***!!!   onClick_Callback() got widget for', bobID, 'and value is:', type(value), value)
-		print('!!!***!!! onClick_Callback() title:', title, 'value:', value)
+		print('=== bStackFeedbackWidget.onClick_Callback() title:', title, 'value:', value)
 
-		#self.mainWindow.signal('toggle tracing', value=value, recursion=False)
+		signal = self.signalFromTitle(title)
 
-		if title == 'Sliding Z':
-			self.clickStateChange.emit('Sliding Z', value)
-			#self.mainWindow.signal('toggle sliding z', value=value, recursion=False)
-		elif title == 'Tracing':
-			self.clickStateChange.emit('Tracing', value)
-			#self.mainWindow.signal('toggle tracing', value=value, recursion=False)
-		else:
-			print('bStackFeedbackWidget.onClick_Callback() case not taken, title:', title)
-		print('done')
+		# no matter what is click, we will emit a signal with 'bSignal ' + title
+		self.clickStateChange.emit(signal, value)
+
+	def signalFromTitle(self, title):
+		""" prepend 'bSignal ' """
+		signal = 'bSignal ' + title
+		return signal
+
+	def titleFromSignal(self, signal):
+		""" remove prepended 'bSignal ' """
+		title = signal.replace('bSignal ', '')
+		return title
 
 	def buildUI(self):
 
@@ -106,26 +109,25 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		self.myCheckboxList = []
 
-		self.checkBoxList = ['Sliding Z', 'Tracing', 'Nodes', 'Edges']
-		#idx = 0
-		for checkBoxTitle in self.checkBoxList:
+		# titles of the check boxes, commands for signal/slot will be 'bCommand <title>'
+		#self.checkBoxList = ['Sliding Z', 'Tracing', 'Nodes', 'Edges']
+		self.checkBoxList = ['Sliding Z', 'Tracing']
+		defaultValues = [False, True]
+
+		for idx, checkBoxTitle in enumerate(self.checkBoxList):
 			thisCheckBox = QtWidgets.QCheckBox(checkBoxTitle)
-			thisCheckBox.setChecked(False)
-			thisCheckBox.setProperty('bobID', checkBoxTitle)
+
+			defaultValue = defaultValues[idx]
+			thisCheckBox.setChecked(defaultValue)
+
+			# bobID is the title prepended with 'bCommand '
+			thisCheckBox.setProperty('bobID', self.signalFromTitle(checkBoxTitle))
 
 			self.myCheckboxList.append(thisCheckBox)
 
-			#slot = partial(self.onClick_Callback, self.myCheckboxList[idx])
-
 			thisCheckBox.clicked.connect(self.onClick_Callback)
-			#thisCheckBox.clicked.connect(lambda x: slot())
-			#thisCheckBox.stateChanged.connect(lambda x: slot())
-			#thisCheckBox.stateChanged.connect(self.onClick_Callback)
-
 
 			self.myMainLayout.addWidget(thisCheckBox)
-
-			#idx += 1
 
 		self.help_Label = QtWidgets.QLabel("Click image and press keyboard 'h' for help")
 		self.myMainLayout.addWidget(self.help_Label)

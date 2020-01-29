@@ -4,6 +4,7 @@ from PyQt5 import QtCore
 
 class bEvent(QtCore.QObject):
 	def __init__(self, eventType, nodeIdx=None, edgeIdx=None, slabIdx=None,
+			edgeList=[],
 			nodeDict=None, edgeDict=None, snapz=False, isShift=False):
 		super(bEvent, self).__init__()
 		self._eventType = eventType
@@ -17,8 +18,19 @@ class bEvent(QtCore.QObject):
 		self._srcNodeDict = None
 		self._dstNodeDict = None
 
+		self._edgeList = edgeList # list of int of edges
+
 		self._snapz = snapz
 		self._isShift = isShift
+
+	def __str__(self):
+		print('   bEvent instance has')
+		print('   eventType:', self.eventType)
+		print('   nodeIdx:', self.nodeIdx)
+		print('   edgeIdx:', self.edgeIdx)
+		print('   slabIdx:', self.slabIdx)
+		print('   edgeList:', self.edgeList)
+		return " "
 
 	@property
 	def eventType(self):
@@ -35,6 +47,10 @@ class bEvent(QtCore.QObject):
 	@property
 	def slabIdx(self):
 		return self._slabIdx
+
+	@property
+	def edgeList(self):
+		return self._edgeList
 
 	@property
 	def nodeDict(self):
