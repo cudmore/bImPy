@@ -683,6 +683,16 @@ class bAnnotationTable(QtWidgets.QWidget):
 		for colIdx, item in enumerate(rowItems):
 			self.myNodeTableWidget.setItem(rowIdx, colIdx, item)
 
+	def deleteNode(self, nodeDict):
+		print('bAnnotationTable.deleteNode() nodeDict:', nodeDict)
+		self.stopSelectionPropogation = True
+		nodeRowIdx = self.findNodeRow(nodeDict)
+		if nodeRowIdx is None:
+			print('   !!! !!! THIS IS A BUG: bAnnotationTable.deleteNode() nodeRowIdx', nodeRowIdx)
+			print(' ')
+		else:
+			self.myNodeTableWidget.removeRow(nodeRowIdx)
+
 	def deleteEdge(self, edgeDict):
 		# remove edge from table
 		print('bAnnotationTable.deleteEdge() edgeDict:', edgeDict)
@@ -763,6 +773,17 @@ class bAnnotationTable(QtWidgets.QWidget):
 		item = QtWidgets.QTableWidgetItem(myString)
 		self.myEdgeTableWidget.setItem(idx, 5, item)
 
+	def findNodeRow(self, nodeDict):
+		theRet = None
+		nodeIdx = nodeDict['idx']
+		for row in range(self.myNodeTableWidget.rowCount()):
+			idxItem = self.myNodeTableWidget.item(row, 0) # 0 is idx column
+			myIdxStr = idxItem.text()
+			if myIdxStr == str(nodeIdx):
+				theRet = row
+				break
+		return theRet
+
 	def findEdgeRow(self, edgeDict):
 		theRet = None
 		edgeIdx = edgeDict['idx']
@@ -780,7 +801,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		print('bAnnotationTable.slot_selectEdge() edgeIdx:', edgeIdx)
 		self.stopSelectionPropogation = True
 		self.myEdgeTableWidget.selectRow(edgeIdx)
-		self.repaint()
+		#self.repaint()
 
 	# todo: need to search for nodeIdx in case we are sorted
 	def slot_selectNode(self, myEvent):
@@ -788,16 +809,20 @@ class bAnnotationTable(QtWidgets.QWidget):
 		print('bAnnotationTable.slot_selectNode() nodeIdx:', nodeIdx)
 		self.stopSelectionPropogation = True
 		self.myNodeTableWidget.selectRow(nodeIdx)
-		self.repaint()
+		#self.repaint()
 
 	def slot_updateTracing(self, myEvent):
-		print('bAnnotationTable.slot_updateTracing() eventType:', myEvent.eventType)
+		#print('bAnnotationTable.slot_updateTracing() eventType:', myEvent.eventType)
+
+		updateNodes = False
+		updateEdges = False
 		if myEvent.eventType == 'newNode':
-			print('   myEvent.nodeDict:', myEvent.nodeDict)
+			#print('   myEvent.nodeDict:', myEvent.nodeDict)
 			self.addNode(myEvent.nodeIdx, myEvent.nodeDict)
+			updateNodes = True
 
 		elif myEvent.eventType == 'newEdge':
-			print('   myEvent.edgeDict:', myEvent.edgeDict)
+			#print('   myEvent.edgeDict:', myEvent.edgeDict)
 			self.addEdge(myEvent.edgeIdx, myEvent.edgeDict)
 			# nodes
 			srcNodeDict = myEvent.srcNodeDict
@@ -806,11 +831,21 @@ class bAnnotationTable(QtWidgets.QWidget):
 			dstNodeDict = myEvent.dstNodeDict
 			#print('   dstNodeDict:', dstNodeDict)
 			self.updateNode(dstNodeDict)
+			updateEdges = True
+
+		elif myEvent.eventType == 'deleteNode':
+			self.deleteNode(myEvent.nodeDict)
+			updateNodes = True
 
 		elif myEvent.eventType == 'deleteEdge':
 			self.deleteEdge(myEvent.edgeDict)
+			updateEdges = True
 
-		self.repaint()
+		#self.repaint()
+		if updateNodes:
+			self.myNodeTableWidget.update()
+		if updateEdges:
+			self.myEdgeTableWidget.update()
 
 	#@QtCore.pyqtSlot()
 	def on_clicked_node(self):
@@ -1137,12 +1172,18 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event['type']=='deleteSelection':
 			if self.mySelectedNode is not None:
 				#delete node, only if it does not have edges !!!
-				node = self.mySimpleStack.slabList.getNode(self.mySelectedNode)
-				print('\n=== bStackView.myEvent() ... delete node:', self.mySelectedNode, node)
-				wasDeleted = self.mySimpleStack.slabList.deleteNode(self.mySelectedNode)
+				deleteNodeIdx = self.mySelectedNode
+				deleteNodeDict = self.mySimpleStack.slabList.getNode(self.mySelectedNode)
+				print('\n=== bStackView.myEvent() ... delete node:', deleteNodeIdx, deleteNodeDict)
+				wasDeleted = self.mySimpleStack.slabList.deleteNode(deleteNodeIdx)
 				if wasDeleted:
+					# only here if node is not connected to edges
 					self.selectNode(None)
-				doUpdate = True
+					doUpdate = True
+					#
+					myEvent = bimpy.interface.bEvent('deleteNode', nodeIdx=deleteNodeIdx, nodeDict=deleteNodeDict)
+					self.tracingEditSignal.emit(myEvent)
+
 			elif self.mySelectedEdge is not None:
 				deleteEdgeIdx = self.mySelectedEdge
 				deleteEdgeDict = self.mySimpleStack.slabList.getEdge(self.mySelectedEdge)

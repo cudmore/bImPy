@@ -48,6 +48,9 @@ class bVascularTracing:
 		return len(self.edgeDictList)
 
 	def getNode(self, nodeIdx):
+		if nodeIdx is None or np.isnan(nodeIdx) or nodeIdx > len(self.nodeDictList)-1:
+			print('ERROR: getNode() nodeIdx:', nodeIdx, 'len(self.nodeDictList):', len(self.nodeDictList))
+			return None
 		theDict = self.nodeDictList[nodeIdx]
 		theDict['idx'] = int(nodeIdx)
 		theDict['nEdges'] = len(theDict['edgeList'])
@@ -147,8 +150,7 @@ class bVascularTracing:
 
 		self._appendSlab(x=x, y=y, z=z, nodeIdx=newNodeIdx)
 
-		print('   bVascularTracing.newNode()', newNodeIdx)
-		#self._printGraph()
+		print('   bVascularTracing.newNode() newNodeIdx:', newNodeIdx, 'newSlabIdx:', newSlabIdx)
 
 		return newNodeIdx
 
@@ -242,9 +244,11 @@ class bVascularTracing:
 			postNode = edge['postNode']
 			if preNode is not None and (preNode > nodeIdx):
 				#self.edgeDictList[edgeIdx]['preNode'] = preNode - 1
+				print('ERROR: deleteNode() should not be here ... preNode')
 				edge['preNode'] -= 1
 			if postNode is not None and (postNode > nodeIdx):
 				#self.edgeDictList[edgeIdx]['postNode'] = postNode - 1
+				print('ERROR: deleteNode() should not be here ... postNode')
 				edge['postNode'] -= 1
 
 		# delete from dict
@@ -253,8 +257,10 @@ class bVascularTracing:
 		# delete from slabs
 		self._deleteSlab(nodeSlabIdx)
 
-		#print('after) bVascularTracing.deleteNode()', nodeIdx)
-		#self._printGraph()
+		#
+		# decriment remaining self.nodeIdx
+		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
+		self.nodeIdx[np.greater(self.nodeIdx, nodeIdx, where=~np.isnan(self.nodeIdx))] -= 1
 
 		return True
 
@@ -421,6 +427,15 @@ class bVascularTracing:
 				myTuple = np.where(self.nodeIdx==nodeIdx) # The result is a tuple with first all the row indices, then all the column indices.
 				# list of rows myTuple[0]
 				# first element in list of rows myTuple[0][0]
+				# debug
+				rowHits = myTuple[0]
+				if len(myTuple[0])==0:
+					print('ERROR: _getSlabFromNodeIdx() did not find any nodeIdx:', nodeIdx)
+				elif len(myTuple[0]) == 1:
+					pass
+				else:
+					print('ERROR: _getSlabFromNodeIdx() too many nodeIdx:', nodeIdx, myTuple[0])
+				#
 				theRet = myTuple[0][0]
 				return theRet
 			except (IndexError) as e:
