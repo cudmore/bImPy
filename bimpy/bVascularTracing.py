@@ -479,6 +479,7 @@ class bVascularTracing:
 			'postNode': dstNode,
 			'Bad': False,
 			'slabList': [], # list of slab indices on this edge
+			'color': None,
 			'Note': '',
 			})
 		return edgeDict
@@ -959,6 +960,8 @@ class bVascularTracing:
 
 		# this works
 		#self.makeVolumeMask()
+
+		self.colorize()
 
 	def makeVolumeMask(self):
 		# to embed a small volume in a bigger volume, see:
@@ -1474,6 +1477,49 @@ class bVascularTracing:
 			self.id[slabList] = idx
 
 		print('after joinEdges() numEdges:', len(self.edgeDictList), 'totalNumEdits:', totalNumEdits, '1:', numEdits1, '2:', numEdits2, '3:', numEdits3, '4:', numEdits4)
+
+	def colorize(self):
+		"""
+		color each edge with color different from other ajoining edges
+		Will not work well for edges that do not have both pre/post node
+		"""
+
+		colors = set(['r', 'g', 'b', 'c', 'm'])
+
+		# clear all color
+		for idx, edge in enumerate(self.edgeDictList):
+			edge['color'] = None
+
+		for edgeIdx, edge in enumerate(self.edgeDictList):
+			preNode = edge['preNode']
+			postNode = edge['postNode']
+
+			potentialColors = set(colors) # use set() to make a copy
+
+			if preNode is not None:
+				preNodeDict = self.getNode(preNode)
+				preEdgeList = preNodeDict['edgeList']
+				for preEdgeIdx in preEdgeList:
+					preEdgeColor = self.edgeDictList[preEdgeIdx]['color'] # can be None
+					if preEdgeColor is not None:
+						# remove from possible colors
+						potentialColors -= set([preEdgeColor])
+			if postNode is not None:
+				postNodeDict = self.getNode(postNode)
+				postEdgeList = postNodeDict['edgeList']
+				for postEdgeIdx in postEdgeList:
+					postEdgeColor = self.edgeDictList[postEdgeIdx]['color'] # can be None
+					if postEdgeColor is not None:
+						# remove from possible colors
+						potentialColors -= set([postEdgeColor])
+
+			# debug
+			print('edgeIdx:', edgeIdx, 'potentialColors:', potentialColors)
+			numPotentialColors = len(potentialColors)
+			if numPotentialColors==0:
+				print('   error: ran out out colors')
+			else:
+				edge['color'] = list(potentialColors)[0] # first available color
 
 	def save(self):
 		"""

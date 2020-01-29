@@ -1078,7 +1078,9 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# draw lines between slabs in each edge
 		zorder = 1
-		self.myEdgePlot, = self.axes.plot([], [],'.c-', zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
+		#self.myEdgePlot, = self.axes.plot([], [],'.c-', zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
+		colors = 'c'
+		self.myEdgePlot, = self.axes.plot([], [],'.-', color=colors, zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
 
 		# nodes (put this after slab/point list to be on top, order matter)
 		# this HAS TO BE declared first, so nodes receive onpick_mpl() first
