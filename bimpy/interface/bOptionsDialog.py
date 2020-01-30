@@ -19,6 +19,8 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 		self.parentStackView = parentStackView
 
+		self.require_preComputeAllMasks = False
+
 		print('myTracingDialog.__init__()')
 
 		#self.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -30,9 +32,13 @@ class bOptionsDialog(QtWidgets.QDialog):
 		self.formGroupBox = QtWidgets.QGroupBox("Form layout")
 		layout = QtWidgets.QFormLayout()
 
+		# requires _preComputeAllMasks()
 		showTracingAboveSlices = self.localOptions['Tracing']['showTracingAboveSlices']
 		self.showTracingAboveSlices_spinbox = QtWidgets.QSpinBox()
 		self.showTracingAboveSlices_spinbox.setValue(showTracingAboveSlices)
+		self.showTracingAboveSlices_spinbox.setProperty('bobID_1', 'Tracing')
+		self.showTracingAboveSlices_spinbox.setProperty('bobID_2', 'showTracingAboveSlices')
+		self.showTracingAboveSlices_spinbox.valueChanged.connect(self.valueChanged)
 
 		tracingPenSize = self.localOptions['Tracing']['tracingPenSize']
 		self.tracingPenSize_spinbox = QtWidgets.QSpinBox()
@@ -97,25 +103,17 @@ class bOptionsDialog(QtWidgets.QDialog):
 		except (KeyError) as e:
 			print('error in valueChanged() e:', e)
 
+		if bobID_1=='Tracing' and bobID_2=='showTracingAboveSlices':
+			self.require_preComputeAllMasks = True
+			print('require_preComputeAllMasks:', self.require_preComputeAllMasks)
+
 	def myAccept(self):
 		"""
 		copy our localOptions back into parentStackView.options
 		"""
 		print('myTracingDialog.myAccept()')
 
-		showTracingAboveSlices = self.showTracingAboveSlices_spinbox.value()
-		tracingPenSize = self.tracingPenSize_spinbox.value()
-
-		'''
-		print('   showTracingAboveSlices:', showTracingAboveSlices)
-		print('   tracingPenSize:', tracingPenSize)
-		'''
-
-		self.parentStackView.options['Tracing']['showTracingAboveSlices'] = showTracingAboveSlices
-		self.parentStackView.options['Tracing']['tracingPenSize'] = tracingPenSize
-
-		# this will not work once we are showing diameter?
-		#self.parentStackView.myEdgePlot.set_markersize(tracingPenSize)
+		self.parentStackView.options = self.localOptions
 
 		self.parentStackView.setSlice() # refresh
 

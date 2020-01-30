@@ -138,7 +138,8 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		optionsButton.clicked.connect(self.optionsButton_Callback)
 		self.myMainLayout.addWidget(optionsButton)
 
+		'''
 		self.help_Label = QtWidgets.QLabel("Click image and press keyboard 'h' for help")
 		self.myMainLayout.addWidget(self.help_Label)
-
-		#self.findBobID('Nodes')
+		'''
+		
