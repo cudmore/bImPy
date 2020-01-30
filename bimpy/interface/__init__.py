@@ -5,6 +5,7 @@ from .bStackContrastWidget import bStackContrastWidget
 from .bStackFeebackWidget import bStackFeebackWidget
 from .bLineProfileWidget import bLineProfileWidget
 from .bEvent import bEvent
+from .bOptionsDialog import bOptionsDialog
 from .bNapari import bNapari
 #from .bShapeAnalysisWidget import bShapeAnalysisWidget
 #from .bMenu import bMenu

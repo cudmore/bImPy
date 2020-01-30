@@ -3,6 +3,8 @@ from functools import partial
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 
+import bimpy
+
 class bStackFeebackWidget(QtWidgets.QWidget):
 	clickStateChange = QtCore.pyqtSignal(str, object)
 
@@ -97,6 +99,9 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		title = signal.replace('bSignal ', '')
 		return title
 
+	def optionsButton_Callback(self):
+		optionsDialog = bimpy.interface.bOptionsDialog(self, self.mainWindow.myStackView)
+
 	def buildUI(self):
 
 		self.myMainLayout = QtWidgets.QHBoxLayout(self)
@@ -128,6 +133,10 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 			thisCheckBox.clicked.connect(self.onClick_Callback)
 
 			self.myMainLayout.addWidget(thisCheckBox)
+
+		optionsButton = QtWidgets.QPushButton('Options')
+		optionsButton.clicked.connect(self.optionsButton_Callback)
+		self.myMainLayout.addWidget(optionsButton)
 
 		self.help_Label = QtWidgets.QLabel("Click image and press keyboard 'h' for help")
 		self.myMainLayout.addWidget(self.help_Label)
