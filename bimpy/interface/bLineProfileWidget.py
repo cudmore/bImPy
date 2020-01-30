@@ -62,6 +62,10 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.myHBoxLayout.addWidget(self.canvas)
 
 	def update(self, updateDict):
+		"""
+		Update the line profile
+		We need too much info here ???
+		"""
 		xSlabPlot = updateDict['xSlabPlot']
 		ySlabPlot = updateDict['ySlabPlot']
 		slice = updateDict['slice']

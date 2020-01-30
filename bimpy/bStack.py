@@ -245,7 +245,7 @@ class bStack:
 			#print(thisStack, self.stack.shape)
 			if thisStack == 'ch1':
 				if len(self.stack.shape)==3:
-					img = self.stack[0, :, :].copy()
+					img = self.stack[sliceNumber, :, :].copy()
 				else:
 					img = self.stack[0, sliceNumber, :, :].copy()
 			elif thisStack == 'mask':
@@ -259,6 +259,8 @@ class bStack:
 
 		# this works, removing it does not anything faster !!!
 		maxInt = 2 ** self.bitDepth - 1
+
+		#print('   setSliceContrast() maxInt:', maxInt, type(maxInt), 'self.bitDepth:', self.bitDepth)
 
 		if minContrast is None:
 			minContrast = 0

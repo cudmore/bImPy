@@ -1514,7 +1514,7 @@ class bVascularTracing:
 						potentialColors -= set([postEdgeColor])
 
 			# debug
-			print('edgeIdx:', edgeIdx, 'potentialColors:', potentialColors)
+			#print('edgeIdx:', edgeIdx, 'potentialColors:', potentialColors)
 			numPotentialColors = len(potentialColors)
 			if numPotentialColors==0:
 				print('   error: ran out out colors')

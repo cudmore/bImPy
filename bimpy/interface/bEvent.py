@@ -20,6 +20,9 @@ class bEvent(QtCore.QObject):
 
 		self._edgeList = edgeList # list of int of edges
 
+		self._minContrast = None
+		self._maxContrast = None
+
 		self._snapz = snapz
 		self._isShift = isShift
 
@@ -67,6 +70,14 @@ class bEvent(QtCore.QObject):
 	@property
 	def dstNodeDict(self):
 		return self._dstNodeDict
+
+	@property
+	def minContrast(self):
+		return self._minContrast
+
+	@property
+	def maxContrast(self):
+		return self._maxContrast
 
 	@property
 	def snapz(self):

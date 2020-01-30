@@ -135,6 +135,8 @@ class bStackWidget(QtWidgets.QWidget):
 		# listen to edit table, self.
 		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.myStackView.slot_selectEdge)
 		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
+		# listen to bStackContrastWidget
+		self.myContrastWidget.contrastChangeSignal.connect(self.myStackView.slot_contrastChange)
 
 		self.updateDisplayedWidgets()
 
@@ -201,12 +203,14 @@ class bStackWidget(QtWidgets.QWidget):
 				self.annotationTable.selectEdgeRow(value)
 			'''
 
+		'''
 		if signal == 'contrast change':
 			minContrast = value['minContrast']
 			maxContrast = value['maxContrast']
 			self.myStackView.minContrast = minContrast
 			self.myStackView.maxContrast = maxContrast
 			self.myStackView.setSlice(index=None) # will just refresh current slice
+		'''
 
 		'''
 		if signal == 'toggle sliding z':
@@ -834,7 +838,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 			# select a single edge
 			edgeIdx = myEvent.edgeIdx
 			print('bAnnotationTable.slot_selectEdge() edgeIdx:', edgeIdx)
-			#self.stopSelectionPropogation = True
+			self.stopSelectionPropogation = True
 			self.myEdgeTableWidget.selectRow(edgeIdx)
 			#self.repaint()
 
@@ -970,6 +974,7 @@ class bStackView(QtWidgets.QGraphicsView):
 	setSliceSignal = QtCore.pyqtSignal(str, object)
 	selectNodeSignal = QtCore.pyqtSignal(object)
 	selectEdgeSignal = QtCore.pyqtSignal(object)
+	selectSlabSignal = QtCore.pyqtSignal(object)
 	tracingEditSignal = QtCore.pyqtSignal(object) # on new/delete/edit of node, edge, slab
 
 	def __init__(self, simpleStack, mainWindow=None, parent=None):
@@ -1080,7 +1085,10 @@ class bStackView(QtWidgets.QGraphicsView):
 		zorder = 1
 		#self.myEdgePlot, = self.axes.plot([], [],'.c-', zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
 		colors = 'c'
-		self.myEdgePlot, = self.axes.plot([], [],'.-', color=colors, zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
+		tracingPenSize = self.options['Tracing']['tracingPenSize']
+		self.myEdgePlot, = self.axes.plot([], [],'.-',
+			color=colors, markersize=tracingPenSize,
+			zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
 
 		# nodes (put this after slab/point list to be on top, order matter)
 		# this HAS TO BE declared first, so nodes receive onpick_mpl() first
@@ -1188,6 +1196,17 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.selectEdge(edgeIdx, snapz=snapz, isShift=isShift)
 
 		self.selectSlab(myEvent.slabIdx)
+
+	def slot_contrastChange(self, myEvent):
+		minContrast = myEvent.minContrast
+		maxContrast = myEvent.maxContrast
+
+		if minContrast is not None and maxContrast is not None:
+			#print('   minContrast:', minContrast, type(minContrast))
+			#print('   maxContrast:', maxContrast, type(maxContrast))
+			self.minContrast = minContrast
+			self.maxContrast = maxContrast
+			self.setSlice() # refresh
 
 	def myEvent(self, event):
 		theRet = None
@@ -1571,8 +1590,14 @@ class bStackView(QtWidgets.QGraphicsView):
 			'xSlabPlot': xSlabPlot,
 			'slice': self.currentSlice,
 		}
-		self.mainWindow.signal('update line profile', profileDict)
 
+		self.mainWindow.signal('update line profile', profileDict)
+		# todo: implement this
+		'''
+		myEvent = bimpy.interface.bEvent(slabIdx=slabIdx)
+		self.selectSlabSignal.emit(myEvent)
+		'''
+		
 	def _preComputeAllMasks(self, fromSlice=None, fromCurrentSlice=False):
 		"""
 		Precompute all masks once. When user scrolls through slices this is WAY faster
@@ -1874,13 +1899,32 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		elif event.key() == QtCore.Qt.Key_T:
 			if isShift:
+				myDialog = myTracingDialog(self)
+				result = myDialog.exec_() # show it
+				if result == 1:
+					showTracingAboveSlices = myDialog.get_showTracingAboveSlices()
+
+					'''
+					tracingPenSize = myDialog.get_tracingPenSize()
+					print('after dialog showTracingAboveSlices:', showTracingAboveSlices, 'tracingPenSize:', tracingPenSize)
+					'''
+				else:
+					# was canceled
+					pass
+
+				'''
 				# set up/down sliding z
 				currentValue = self.options['Tracing']['showTracingAboveSlices']
+				tracingPenSize = self.options['Tracing']['tracingPenSize']
+
+				#layout = QFormLayout()
+
 				num,ok = QtWidgets.QInputDialog.getInt(self,"Set Tracing Mask", "Number of slices above and below", value=currentValue)
 				if ok:
 					self.options['Tracing']['showTracingAboveSlices'] = num
 					self.options['Tracing']['showTracingBelowSlices'] = num
 					self._preComputeAllMasks()
+				'''
 
 			self.displayStateDict['showTracing'] = not self.displayStateDict['showTracing']
 			self.setSlice() #refresh
@@ -2199,6 +2243,86 @@ class bStackView(QtWidgets.QGraphicsView):
 			'deadEndPenSize': 5,
 			'deadEndColor': 'b',
 			})
+
+class myTracingDialog(QtWidgets.QDialog):
+	"""
+	General purpose dialog to set tracing display options.
+	For now it is hard coded with pen size and masking
+
+	todo: extend this to handle all options !!!
+	"""
+	def __init__(self, parentStackView):
+		super(myTracingDialog, self).__init__()
+
+		self.parentStackView = parentStackView
+
+		print('myTracingDialog.__init__()')
+
+		self.setWindowModality(QtCore.Qt.ApplicationModal)
+
+		# make a copy of options to modify
+		self.options = dict(self.parentStackView.options)
+
+		showTracingAboveSlices = self.options['Tracing']['showTracingAboveSlices']
+		tracingPenSize = self.options['Tracing']['tracingPenSize']
+
+		self.formGroupBox = QtWidgets.QGroupBox("Form layout")
+		layout = QtWidgets.QFormLayout()
+
+		self.showTracingAboveSlices_spinbox = QtWidgets.QSpinBox()
+		self.showTracingAboveSlices_spinbox.setValue(showTracingAboveSlices)
+
+		self.tracingPenSize_spinbox = QtWidgets.QSpinBox()
+		self.tracingPenSize_spinbox.setMaximum(100)
+		self.tracingPenSize_spinbox.setValue(tracingPenSize)
+
+		layout.addRow(QtWidgets.QLabel("+/- Slices:"), self.showTracingAboveSlices_spinbox)
+		layout.addRow(QtWidgets.QLabel("Pen Size:"), self.tracingPenSize_spinbox)
+
+		self.formGroupBox.setLayout(layout)
+
+		#
+		buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+		#buttonBox.accepted.connect(self.accept)
+		buttonBox.accepted.connect(self.myAccept)
+		buttonBox.rejected.connect(self.reject)
+
+		#
+		mainLayout = QtWidgets.QVBoxLayout()
+		mainLayout.addWidget(self.formGroupBox)
+		mainLayout.addWidget(buttonBox)
+		self.setLayout(mainLayout)
+
+		self.setWindowTitle('Tracing Display Options')
+
+		# this is called from calling function and its return tells us accept/reject, 1/0
+		#self.exec_()
+
+	def myAccept(self):
+		print('myTracingDialog.myAccept()')
+		showTracingAboveSlices = self.showTracingAboveSlices_spinbox.value()
+		tracingPenSize = self.tracingPenSize_spinbox.value()
+
+		'''
+		print('   showTracingAboveSlices:', showTracingAboveSlices)
+		print('   tracingPenSize:', tracingPenSize)
+		'''
+
+		self.parentStackView.options['Tracing']['showTracingAboveSlices'] = showTracingAboveSlices
+		self.parentStackView.options['Tracing']['tracingPenSize'] = tracingPenSize
+
+		# this will not work once we are showing diameter?
+		self.parentStackView.myEdgePlot.set_markersize(tracingPenSize)
+
+		self.parentStackView.setSlice() # refresh
+
+		self.accept() # close the dialog
+
+	# get current date and time from the dialog
+	def get_showTracingAboveSlices(self):
+		return self.showTracingAboveSlices_spinbox.value()
+	def get_tracingPenSize(self):
+		return self.tracingPenSize_spinbox.value()
 
 #class myStatusToolbarWidget(QtWidgets.QWidget):
 class myStatusToolbarWidget(QtWidgets.QToolBar):

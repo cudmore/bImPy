@@ -154,8 +154,11 @@ if __name__ == '__main__':
 	myBrowser = bStackBrowser()
 	myBrowser.show()
 
-	myBrowser.appendStack(path)
-	myBrowser.showStackWindow(path)
+	if os.path.isfile(path):
+		myBrowser.appendStack(path)
+		myBrowser.showStackWindow(path)
+	else:
+		print('__main__ did not find path:', path)
 	#tmp = myBrowser.loadStack(path)
 	#print('tmp:', tmp)
 

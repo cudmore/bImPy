@@ -2,7 +2,11 @@
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 
+import bimpy
+
 class bStackContrastWidget(QtWidgets.QWidget):
+	contrastChangeSignal = QtCore.pyqtSignal(object) # object can be a dict
+
 	def __init__(self, mainWindow=None, parent=None):
 		super(bStackContrastWidget, self).__init__(parent)
 
@@ -10,7 +14,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.bitDepth = mainWindow.getStack().getHeaderVal('bitDepth')
 		if type(self.bitDepth) == str:
-			print('\n\nFIX THIS FUCKING bit Depth BUG !!!!!!!!!! GOD FUCKING DAMMIT')
+			print('\n\n\tFIX THIS bit Depth BUG !!!!!!!!!!', 'self.bitDepth:', self.bitDepth, type(self.bitDepth), '\n\n')
 			self.bitDepth = int(self.bitDepth)
 
 		print('bStackContrastWidget.__init__() self.bitDepth:', self.bitDepth, type(self.bitDepth))
@@ -25,7 +29,12 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.maxSpinBox.setValue(theMax)
 
 		if self.mainWindow is not None:
-			self.mainWindow.signal('contrast change', {'minContrast':theMin, 'maxContrast':theMax})
+			#self.mainWindow.signal('contrast change', {'minContrast':theMin, 'maxContrast':theMax})
+			#
+			myEvent = bimpy.interface.bEvent('contrast change')
+			myEvent._minContrast = theMin
+			myEvent._maxContrast = theMax
+			self.contrastChangeSignal.emit(myEvent)
 
 	def spinBoxValueChanged(self):
 		theMin = self.minSpinBox.value()
@@ -37,8 +46,8 @@ class bStackContrastWidget(QtWidgets.QWidget):
 	def buildUI(self):
 		minVal = 0
 		if self.bitDepth is None:
-			print('FIX THIS FUCKING ERROR IN BITDEPTH WTF self.bitDepth:', self.bitDepth)
-			self.bitDepth = 8
+			print('FIX THIS  ERROR IN BITDEPTH WTF self.bitDepth:', self.bitDepth)
+			self.bitDepth = 16 #8
 		maxVal = 2**self.bitDepth
 
 		self.myQVBoxLayout = QtWidgets.QVBoxLayout(self)
