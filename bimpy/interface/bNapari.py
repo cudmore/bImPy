@@ -22,19 +22,21 @@ class bNapari:
 	discussion about mouse move/dragging, i can't get it to work???
 	https://github.com/napari/napari/pull/544
 	"""
-	def __init__(self, path='', theStack=None):
+	def __init__(self, path='', theStack=None, myStackWidget=None):
 
 		print('=== bNapari.__init__() path:', path)
+
+		self.myStackWidget = myStackWidget
 
 		filename = os.path.basename(path)
 
 		# todo: this is loading again? just pass data to __init__ if already loaded
 		if theStack is not None:
-			self.myStack = theStack
+			self.mySimpleStack = theStack
 		else:
-			self.myStack = bimpy.bStack(path)
+			self.mySimpleStack = bimpy.bStack(path)
 
-		#print('   self.myStack.stack.shape:', self.myStack.stack.shape)
+		#print('   self.mySimpleStack.stack.shape:', self.mySimpleStack.stack.shape)
 
 		self.sliceNum = 0
 
@@ -52,7 +54,7 @@ class bNapari:
 		# replace all the above with this !!!
 		# abb 20191216 removed
 		self.bShapeAnalysisWidget = None
-		#self.bShapeAnalysisWidget = bShapeAnalysisWidget(self.viewer, self.myStack)
+		#self.bShapeAnalysisWidget = bShapeAnalysisWidget(self.viewer, self.mySimpleStack)
 		#
 		#
 
@@ -71,7 +73,7 @@ class bNapari:
 
 		#self.myNapari = napari.view_image(
 		self.myNapari = self.viewer.add_image(
-			self.myStack.stack[0,:,:,:],
+			self.mySimpleStack.stack[0,:,:,:],
 			colormap=colormap,
 			scale=scale)#,
 			#title=title)
@@ -87,22 +89,23 @@ class bNapari:
 		# callback for user changing slices
 		self.myNapari.dims.events.axis.connect(self.my_update_slider)
 
-		if self.myStack.slabList is not None:
-			x = self.myStack.slabList.x
-			y = self.myStack.slabList.y
-			z = self.myStack.slabList.z
-			d = self.myStack.slabList.d
+		if self.mySimpleStack.slabList is not None:
+			x = self.mySimpleStack.slabList.x
+			y = self.mySimpleStack.slabList.y
+			z = self.mySimpleStack.slabList.z
+			d = self.mySimpleStack.slabList.d
 
 			'''
 			xUmPerPixel = 0.49718
 			yUmPerPixel = 0.49718
 			zUmPerPixel = 0.6
 			'''
-			d /= 300
+
+			#d /= 300
 
 			# this has nans which I assume will lead to some crashes ...
 			points = np.column_stack((z,x,y,))
-			print('   points.shape:', points.shape)
+			print('   bNapari.__init__() points.shape:', points.shape)
 
 			# all points will be one size
 			#size = 10
@@ -135,18 +138,20 @@ class bNapari:
 			pointLayer = self.viewer.add_points(points, size=size, face_color=face_color, n_dimensional=False)
 			pointLayer.name = 'All Points'
 
+		self.connectNapari()
+
 		#
 		# nodes
 		# abb upgrade bSlabList
 		'''
-		if self.myStack.slabList is not None:
+		if self.mySimpleStack.slabList is not None:
 			# nodes are the correct connection points between vessels
 			# e.g. the ones correctly identified in vesselucida xml
-			x = self.myStack.slabList.nodex
-			y = self.myStack.slabList.nodey
-			z = self.myStack.slabList.nodez
+			x = self.mySimpleStack.slabList.nodex
+			y = self.mySimpleStack.slabList.nodey
+			z = self.mySimpleStack.slabList.nodez
 			#size = 10
-			size = self.myStack.slabList.noded
+			size = self.mySimpleStack.slabList.noded
 			#
 			#size /= 300
 			#
@@ -161,10 +166,10 @@ class bNapari:
 		# dead ends
 		# abb upgrade bSlabList
 		'''
-		if self.myStack.slabList is not None:
-			x = self.myStack.slabList.deadEndx
-			y = self.myStack.slabList.deadEndy
-			z = self.myStack.slabList.deadEndz
+		if self.mySimpleStack.slabList is not None:
+			x = self.mySimpleStack.slabList.deadEndx
+			y = self.mySimpleStack.slabList.deadEndy
+			z = self.mySimpleStack.slabList.deadEndz
 			size = 10
 			face_color = 'blue'
 			nodePoints = np.column_stack((z,x,y,))
@@ -175,39 +180,133 @@ class bNapari:
 
 		#
 		# make a selection layer
-		"""
 		self.nodeSelection = []
 		self.edgeSelection = np.column_stack((np.nan,np.nan,np.nan,))
-		if self.myStack.slabList is not None:
+		if self.mySimpleStack.slabList is not None:
 			'''
-			slabList = self.myStack.slabList.getEdgeSlabList(10)
-			x = self.myStack.slabList.x[slabList]
-			y = self.myStack.slabList.y[slabList]
-			z = self.myStack.slabList.z[slabList]
-			d = self.myStack.slabList.d[slabList]
+			slabList = self.mySimpleStack.slabList.getEdgeSlabList(10)
+			x = self.mySimpleStack.slabList.x[slabList]
+			y = self.mySimpleStack.slabList.y[slabList]
+			z = self.mySimpleStack.slabList.z[slabList]
+			d = self.mySimpleStack.slabList.d[slabList]
 			self.edgeSelection = np.column_stack((x,y,z,))
 			size = d / 300
-			face_color = 'yellow'
 			'''
+			size = np.column_stack((10,10,10,))
+			face_color = 'yellow'
+			face_color = [1,1,1]
 			#self.edgeSelection = np.column_stack((myNaN,myNaN,myNaN,))
 			self.edgeSelection = np.column_stack((0,0,0,)) #todo: fix this
 			self.selectionLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
 			self.selectionLayer.name = 'Edge Selection'
 			#print('nodeLayer.data:', nodeLayer.data)
+
+	def connectNapari(self):
 		"""
-		
-	def selectEdge(self, edgeIdx):
-		slabList = self.myStack.slabList.getEdgeSlabList(edgeIdx)
-		x = self.myStack.slabList.x[slabList]
-		y = self.myStack.slabList.y[slabList]
-		z = self.myStack.slabList.z[slabList]
-		d = self.myStack.slabList.d[slabList]
-		edgeSelection = np.column_stack((x,y,z,))
-		size = d / 300
+		connect to signal/slots
+		"""
+		self.myStackWidget.myStackView.selectNodeSignal.connect(self.slot_selectNode)
+		self.myStackWidget.myStackView.selectEdgeSignal.connect(self.slot_selectEdge)
+		# listen to self.annotationTable
+		self.myStackWidget.annotationTable.selectNodeSignal.connect(self.slot_selectNode) # change to slot_selectNode ???
+		self.myStackWidget.annotationTable.selectEdgeSignal.connect(self.slot_selectEdge) # change to slot_selectNode ???
+		# listen to edit table, self.
+		self.myStackWidget.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.slot_selectEdge)
+
+	def slot_selectNode(Self, myEvent):
+		print('bNapari.slot_selectNode()')
+
+	def slot_selectEdge(self, myEvent):
+		"""
+		20200130, this is super messy ...
+		todo: fix it
+		"""
+		#print('bNapari.slot_selectEdge() myEvent:', myEvent)
+
+		isShift = myEvent.isShift
+		edgeIdx = myEvent.edgeIdx
+		edgeList = myEvent.edgeList
+
+		if len(edgeList)>0:
+			#print('   selecting edge list:', edgeList)
+			# select a list of edges
+			slabList = []
+			for edgeIdx in edgeList:
+				slabs = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
+				slabList += slabs
+			x = self.mySimpleStack.slabList.x[slabList] # flipped
+			y = self.mySimpleStack.slabList.y[slabList]
+			z = self.mySimpleStack.slabList.z[slabList]
+			d = self.mySimpleStack.slabList.d[slabList]
+
+		else:
+			#print('   selecting single edge:', myEvent.edgeIdx)
+			slabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
+			x = self.mySimpleStack.slabList.x[slabList]
+			y = self.mySimpleStack.slabList.y[slabList]
+			z = self.mySimpleStack.slabList.z[slabList]
+			d = self.mySimpleStack.slabList.d[slabList]
+
+		edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
+		size = d #/ 300
 		face_color = 'yellow'
 		#nodeLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
 		#nodeLayer.name = 'Edge Selection'
+		#print('1) edgeSelection:', edgeSelection)
 		self.selectionLayer.data = edgeSelection
+		#self.selectionLayer.face_color = ['magenta']
+
+		if edgeIdx is not None:
+			if isShift:
+				colors = ['r', 'g', 'r', 'g']
+				edge = self.mySimpleStack.slabList.edgeDictList[edgeIdx]
+				selectedEdgeList = [edgeIdx] # could be [edgeIdx]
+				colorList = ['y']
+				if edge['preNode'] is not None:
+					#print('   selectEdge() selecting edges on preNode:', edge['preNode'], 'of edgeIdx:', edgeIdx)
+					edgeList = self.mySimpleStack.slabList.nodeDictList[edge['preNode']]['edgeList']
+					edgeList = list(edgeList) # make a copy
+					try:
+						repeatIdx = edgeList.index(edgeIdx) # find the index of our original edgeIdx and remove it
+						edgeList.pop(repeatIdx)
+					except (ValueError) as e:
+						print('WARNING: selectEdge() pre node:', edge['preNode'], 'edgeList:', edgeList, 'does not contain:', edgeIdx)
+					selectedEdgeList += edgeList
+					colorList += [colors[colorIdx] for colorIdx in range(len(edgeList))]
+				if edge['postNode'] is not None:
+					#print('   selectEdge() selecting edges on postNode:', edge['postNode'], 'of edgeIdx:', edgeIdx)
+					edgeList = self.mySimpleStack.slabList.nodeDictList[edge['postNode']]['edgeList']
+					edgeList = list(edgeList) # make a copy
+					try:
+						repeatIdx = edgeList.index(edgeIdx) # find the index of our original edgeIdx and remove it
+						edgeList.pop(repeatIdx)
+					except (ValueError) as e:
+						print('WARNING: selectEdge() post node:', edge['postNode'], 'edgeList:', edgeList, 'does not contain:', edgeIdx)
+					selectedEdgeList += edgeList
+					colorList += [colors[colorIdx] for colorIdx in range(len(edgeList))]
+				#print('edgeList:', edgeList)
+				#self.selectEdgeList(selectedEdgeList, thisColorList=colorList)
+
+				#print('   selecting edge list:', selectedEdgeList)
+				# select a list of edges
+				#self.selectEdgeList(edgeList, snapz=True)
+				slabList = []
+				for tmpEdgeIdx in selectedEdgeList:
+					slabs = self.mySimpleStack.slabList.getEdgeSlabList(tmpEdgeIdx)
+					slabList += slabs
+
+				x = self.mySimpleStack.slabList.x[slabList] # flipped
+				y = self.mySimpleStack.slabList.y[slabList]
+				z = self.mySimpleStack.slabList.z[slabList]
+				d = self.mySimpleStack.slabList.d[slabList]
+
+				edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
+				size = d #/ 300
+				face_color = 'yellow'
+				#nodeLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
+				#nodeLayer.name = 'Edge Selection'
+				#print('2) edgeSelection:', edgeSelection)
+				self.selectionLayer.data = edgeSelection
 
 	# this works
 	def myMouseMove_Shape(self, layer, event):

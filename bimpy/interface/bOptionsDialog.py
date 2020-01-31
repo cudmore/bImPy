@@ -14,25 +14,54 @@ class bOptionsDialog(QtWidgets.QDialog):
 	def __init__(self, parent, parentStackView):
 		"""
 		parent is needed, otherwise self.show() does nothing
+
+		to make modal, use
+			self.setWindowModality(QtCore.Qt.ApplicationModal)
 		"""
 		super(bOptionsDialog, self).__init__(parent)
 
 		self.parentStackView = parentStackView
 
-		self.require_preComputeAllMasks = False
+		self.require_preComputeAllMasks = False #some changes require masks to be regenerated
 
 		print('myTracingDialog.__init__()')
-
-		#self.setWindowModality(QtCore.Qt.ApplicationModal)
 
 		# make a copy of options to modify
 		self.localOptions = dict(self.parentStackView.options)
 
+		self.setWindowTitle('bImPy Options')
+
+		mainLayout = QtWidgets.QVBoxLayout()
+
+		print('building bOptionsDialog !!!!!!!!')
+		for key1 in self.localOptions.keys():
+			groupBox = QtWidgets.QGroupBox(key1)
+			layout = QtWidgets.QFormLayout()
+			for key2 in self.localOptions[key1].keys():
+				print(key1, key2)
+				value = self.localOptions[key1][key2]
+				theType = type(value)
+				#print('   ', value, theType)
+				if isinstance(value, int):
+					print('      is int')
+					aSpinBox = QtWidgets.QSpinBox()
+					aSpinBox.setValue(value)
+					aSpinBox.setProperty('bobID_1', key1)
+					aSpinBox.setProperty('bobID_2', key2)
+					aSpinBox.valueChanged.connect(self.valueChanged)
+
+					layout.addRow(QtWidgets.QLabel(key2), aSpinBox)
+				elif isinstance(value, str):
+					print('todo: add strings for key2:', key2)
+
+			groupBox.setLayout(layout)
+			mainLayout.addWidget(groupBox)
 
 		self.formGroupBox = QtWidgets.QGroupBox("Form layout")
 		layout = QtWidgets.QFormLayout()
 
 		# requires _preComputeAllMasks()
+		'''
 		showTracingAboveSlices = self.localOptions['Tracing']['showTracingAboveSlices']
 		self.showTracingAboveSlices_spinbox = QtWidgets.QSpinBox()
 		self.showTracingAboveSlices_spinbox.setValue(showTracingAboveSlices)
@@ -52,6 +81,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 		layout.addRow(QtWidgets.QLabel("Pen Size:"), self.tracingPenSize_spinbox)
 
 		self.formGroupBox.setLayout(layout)
+		'''
 
 		self.buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Apply |
 			QtWidgets.QDialogButtonBox.Reset |
@@ -64,12 +94,10 @@ class bOptionsDialog(QtWidgets.QDialog):
 		self.buttonBox.rejected.connect(self.reject)
 
 		#
-		mainLayout = QtWidgets.QVBoxLayout()
+		#mainLayout = QtWidgets.QVBoxLayout()
 		mainLayout.addWidget(self.formGroupBox)
 		mainLayout.addWidget(self.buttonBox)
 		self.setLayout(mainLayout)
-
-		self.setWindowTitle('Tracing Display Options')
 
 		# this is called from calling function and its return tells us accept/reject, 1/0
 		#self.exec_()

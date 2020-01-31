@@ -102,6 +102,9 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 	def optionsButton_Callback(self):
 		optionsDialog = bimpy.interface.bOptionsDialog(self, self.mainWindow.myStackView)
 
+	def napariButton_Callback(self):
+		self.mainWindow.openNapari()
+
 	def buildUI(self):
 
 		self.myMainLayout = QtWidgets.QHBoxLayout(self)
@@ -138,8 +141,11 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		optionsButton.clicked.connect(self.optionsButton_Callback)
 		self.myMainLayout.addWidget(optionsButton)
 
+		napariButton = QtWidgets.QPushButton('Napari')
+		napariButton.clicked.connect(self.napariButton_Callback)
+		self.myMainLayout.addWidget(napariButton)
+
 		'''
 		self.help_Label = QtWidgets.QLabel("Click image and press keyboard 'h' for help")
 		self.myMainLayout.addWidget(self.help_Label)
 		'''
-		

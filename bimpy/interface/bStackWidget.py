@@ -45,11 +45,12 @@ class bStackWidget(QtWidgets.QWidget):
 			}
 		""")
 
-		self.napariViewer = None
 		#
 		#self.mySimpleStack = bSimpleStack(path) # backend stack
 		self.mySimpleStack = bimpy.bStack(path) # backend stack
 		#
+
+		self.napariViewer = None
 
 		self.showLeftControlBar = True
 		self.showContrastBar = True
@@ -155,8 +156,12 @@ class bStackWidget(QtWidgets.QWidget):
 	def getFeedbackWidget(self):
 		return self.bStackFeebackWidget
 
-	def attachNapari(self, napariViewer):
-		self.napariViewer = napariViewer
+	#def attachNapari(self, napariViewer):
+	#	self.napariViewer = napariViewer
+
+	def openNapari(self):
+		if self.napariViewer is None:
+			self.napariViewer = bimpy.interface.bNapari(path='', theStack=self.mySimpleStack, myStackWidget=self)
 
 	def getStatusToolbar(self):
 		return self.statusToolbarWidget
@@ -989,6 +994,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		#self.path = path
 		self.options_defaults()
+
+		#self.napariViewer = None
 
 		self.onpick_alreadypicked = False
 		self.onpick_madeNewEdge = False
