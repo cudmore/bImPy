@@ -199,7 +199,7 @@ class bNapari:
 			'''
 			size = np.column_stack((10,10,10,))
 			face_color = 'yellow'
-			face_color = [1,1,1]
+			#face_color = [1,1,1]
 			#self.edgeSelection = np.column_stack((myNaN,myNaN,myNaN,))
 			self.edgeSelection = np.column_stack((0,0,0,)) #todo: fix this
 			self.selectionLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
@@ -231,6 +231,8 @@ class bNapari:
 		isShift = myEvent.isShift
 		edgeIdx = myEvent.edgeIdx
 		edgeList = myEvent.edgeList
+
+		print('bNapari.slot_selectEdge() edgeIdx:', edgeIdx)
 
 		if len(edgeList)>0:
 			#print('   selecting edge list:', edgeList)

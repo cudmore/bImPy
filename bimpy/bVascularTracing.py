@@ -8,7 +8,11 @@ import math
 from xml.dom import minidom # to load vesselucida xml file
 from skimage.external import tifffile as tif
 
+import json
+
 import numpy as np
+
+import h5py
 
 class bVascularTracing:
 	def __init__(self, parentStack, path):
@@ -26,8 +30,8 @@ class bVascularTracing:
 		self.y = np.empty((0,))
 		self.z = np.empty((0,))
 		self.d = np.empty(0)
-		self.edgeIdx = np.empty(0, dtype=np.uint8) # will be nan for nodes
-		self.nodeIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
+		self.edgeIdx = np.empty(0, dtype=np.float) # will be nan for nodes
+		self.nodeIdx = np.empty(0, dtype=np.float) # will be nan for slabs
 		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
 
 		self._volumeMask = None
@@ -341,8 +345,8 @@ class bVascularTracing:
 		# debug
 		# look for remaining slabs with edge Idx
 		for tmpIdx, tmpEdgeIdx in enumerate(self.edgeIdx):
-				if tmpEdgeIdx == edgeIdx:
-					print('\n   !!! !!! ERROR: self.edgeIdx at slab idx:', tmpIdx, 'STILL has edgeIdx==', edgeIdx, '\n')
+			if tmpEdgeIdx == edgeIdx:
+				print('\n   !!! !!! ERROR: self.edgeIdx at slab idx:', tmpIdx, 'STILL has edgeIdx==', edgeIdx, '\n')
 		#
 		# decriment remaining self.edgeIdx
 		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
@@ -1529,29 +1533,117 @@ class bVascularTracing:
 			else:
 				edge['color'] = list(potentialColors)[0] # first available color
 
+	def _getSavePath(self):
+		"""
+		return full path to filename without extension
+		"""
+		path, filename = os.path.split(self.path)
+		savePath = os.path.join(path, os.path.splitext(filename)[0])
+		return savePath
+
 	def save(self):
 		"""
-		save a dist of
+		save a h5f file
 		"""
-		# nodeDictList
-		# edgeDictList
-		# maybe x/y/z/d or just extract on load?
+		print('=== save()')
+		h5FilePath = self._getSavePath() + '.h5f'
+		print('   h5FilePath:', h5FilePath)
+
 		saveDict = OrderedDict()
 		saveDict['nodeDictList'] = self.nodeDictList
 		saveDict['edgeDictList'] = self.edgeDictList
 
-		savePath = ''
+		with h5py.File(h5FilePath, "w") as f:
+			for idx, node in enumerate(self.nodeDictList):
+				node = self.getNode(idx)
+				#print('   idx:', idx, 'shape:', shape)
+				# each node will have a group
+				nodeGroup = f.create_group('node' + str(idx))
+				# each node group will have a node dict with all parameters
+				nodeDict_json = json.dumps(node)
+				nodeGroup.attrs['nodeDict'] = nodeDict_json
+
+			for idx, edge in enumerate(self.edgeDictList):
+				edge = self.getEdge(idx)
+				#print('idx:', idx, 'edge:', edge)
+
+				# convert numpy int64 to int
+				edge['slabList'] = [int(tmpSlab) for tmpSlab in edge['slabList']]
+
+				# each edge will have a group
+				edgeGroup = f.create_group('edge' + str(idx))
+				# each edge group will have a  dict with all parameters
+				edgeDict_json = json.dumps(edge)
+				edgeGroup.attrs['edgeDict'] = edgeDict_json
+
+			# slabs are in a dataset
+			slabData = np.column_stack((self.x, self.y, self.z, self.d, self.edgeIdx, self.nodeIdx,))
+			#print('slabData:', slabData.shape)
+			f.create_dataset('slabs', data=slabData)
 
 		# save dict using json
 
 	def load(self):
 		"""
 		Load from file
+		This works but all entries are out of order. For example (edge,node)
+		Need to order them correctly
 		"""
-		filePath = ''
+		h5FilePath = self._getSavePath() + '.h5f'
 
-		# load json into self.nodeDictList and self.edgeDictList
+		print('=== load()', h5FilePath)
 
+		if not os.path.isfile(h5FilePath):
+			print('   file not found:', h5FilePath)
+			return
+
+		maxNodeIdx = -1
+		maxEdgeIdx = -1
+
+		# needed because (nodes, slabs) come in in the wrong order,
+		# we file them away using 'idx' after loaded
+		tmpNodeDictList = []
+		tmpEdgeDictList = []
+
+		with h5py.File(h5FilePath, "r") as f:
+			for name in f:
+				#print('   loading name:', name)
+				# The order of groups in h5f file is not same as saved?
+				# I guess this is ok, it is structured so we need to check what we are loading?
+				# both (nodes,edges) are coming in in a string sort ordr, we can't simply append()
+				if name.startswith('node'):
+					json_str = f[name].attrs['nodeDict']
+					json_dict = json.loads(json_str) # convert from string to dict
+					#print('json_dict:', json_dict)
+					if json_dict['idx'] > maxNodeIdx:
+						maxNodeIdx = json_dict['idx']
+					tmpNodeDictList.append(json_dict)
+				elif name.startswith('edge'):
+					#print('loading:', name)
+					json_str = f[name].attrs['edgeDict']
+					json_dict = json.loads(json_str) # convert from string to dict
+					#print('json_dict:', json_dict)
+					if json_dict['idx'] > maxEdgeIdx:
+						maxEdgeIdx = json_dict['idx']
+					tmpEdgeDictList.append(json_dict)
+				elif name == 'slabs':
+					b = f['slabs'][:]
+					#print('b:', type(b), b.shape)
+					self.x = b[:,0]
+					self.y = b[:,1]
+					self.z = b[:,2]
+					self.d = b[:,3]
+					self.edgeIdx = b[:,4]
+					self.nodeIdx = b[:,5]
+
+		#
+		# go through what we loaded and sort them into the correct position based on ['idx']
+		self.nodeDictList = [None] * (maxNodeIdx+1) # make an empy list with correct length
+		for node in tmpNodeDictList:
+			self.nodeDictList[node['idx']] = node
+		self.edgeDictList = [None] * (maxEdgeIdx+1) # make an empy list with correct length
+		for edge in tmpEdgeDictList:
+			self.edgeDictList[edge['idx']] = edge
 
 if __name__ == '__main__':
 	path = ''

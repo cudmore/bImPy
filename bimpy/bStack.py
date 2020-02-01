@@ -575,6 +575,10 @@ class bStack:
 		if self.slabList is not None:
 			self.slabList.save()
 
+	def loadAnnotations(self):
+		if self.slabList is not None:
+			self.slabList.load()
+
 	#
 	# File name utilities
 	#
