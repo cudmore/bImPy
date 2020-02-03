@@ -8,28 +8,42 @@ import bimpy
 class bStackFeebackWidget(QtWidgets.QWidget):
 	clickStateChange = QtCore.pyqtSignal(str, object)
 
-	def __init__(self, mainWindow=None, parent=None):
+	def __init__(self, mainWindow=None, parent=None, numSlices=0):
 		super(bStackFeebackWidget, self).__init__(parent)
 
 		self.mainWindow = mainWindow
 
-		self.currentSlice = None
-		self.numSlices = None
-		self.currentIntensity = None
+		self.currentSlice = 0
+		self.numSlices = numSlices
+		#self.currentIntensity = None
 
 		self.buildUI()
+
+	def slot_StateChange2(self, myEvent):
+		eventType = myEvent.eventType
+		'''
+		if eventType == 'select node':
+			sliceIdx = myEvent.sliceIdx
+			currentSliceStr = 'Slice ' + str(sliceIdx) + '/' + str(self.numSlices)
+			self.currentSlice_Label.setText(currentSliceStr)
+		'''
+		if eventType in ['select node', 'select edge']:
+			sliceIdx = myEvent.sliceIdx
+			currentSliceStr = 'Slice ' + str(sliceIdx) + '/' + str(self.numSlices)
+			self.currentSlice_Label.setText(currentSliceStr)
 
 	def slot_StateChange(self, signalName, signalValue):
 		"""
 		signalValue: can be int, str, dict , ...
 		"""
 		#print('bStackFeebackWidget.slot_StateChange() signalName:', signalName, signalValue)
-		if signalName == 'num slices':
+		#if signalName == 'num slices':
+		#	text = str(signalValue)
+		#	self.numSlices_Label.setText('of ' + text)
+		if signalName == 'set slice':
 			text = str(signalValue)
-			self.numSlices_Label.setText('of ' + text)
-		elif signalName == 'set slice':
-			text = str(signalValue)
-			self.currentSlice_Label.setText('slice ' + text)
+			currentSliceStr = 'Slice ' + text + '/' + str(self.numSlices)
+			self.currentSlice_Label.setText(currentSliceStr)
 
 		elif signalName == 'bSignal Sliding Z':
 			#title = self.titleFromSignal(signalName)
@@ -39,12 +53,20 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				thisCheck.setChecked(signalValue['displaySlidingZ'])
 			else:
 				print('slot_StateChange() did not find check with BobID title:', title)
-		elif signalName == 'bSignal Tracing':
+		elif signalName == 'bSignal Nodes':
 			#title = self.titleFromSignal(signalName)
 			#thisCheck = self.findBobID(title)
 			thisCheck = self.findBobID(signalName)
 			if thisCheck is not None:
-				thisCheck.setChecked(signalValue['showTracing'])
+				thisCheck.setChecked(signalValue['showNodes'])
+			else:
+				print('slot_StateChange() did not find check with BobID title:', title)
+		elif signalName == 'bSignal Edges':
+			#title = self.titleFromSignal(signalName)
+			#thisCheck = self.findBobID(title)
+			thisCheck = self.findBobID(signalName)
+			if thisCheck is not None:
+				thisCheck.setChecked(signalValue['showEdges'])
 			else:
 				print('slot_StateChange() did not find check with BobID title:', title)
 		else:
@@ -109,18 +131,19 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		self.myMainLayout = QtWidgets.QHBoxLayout(self)
 
-		self.currentSlice_Label = QtWidgets.QLabel("current slice:")
+		currentSliceStr = 'Slice 0 /' + str(self.numSlices)
+		self.currentSlice_Label = QtWidgets.QLabel(currentSliceStr)
 		self.myMainLayout.addWidget(self.currentSlice_Label)
 
-		self.numSlices_Label = QtWidgets.QLabel("number of slices label:")
-		self.myMainLayout.addWidget(self.numSlices_Label)
+		#self.numSlices_Label = QtWidgets.QLabel("of")
+		#self.myMainLayout.addWidget(self.numSlices_Label)
 
 		self.myCheckboxList = []
 
 		# titles of the check boxes, commands for signal/slot will be 'bCommand <title>'
 		#self.checkBoxList = ['Sliding Z', 'Tracing', 'Nodes', 'Edges']
-		self.checkBoxList = ['Sliding Z', 'Tracing']
-		defaultValues = [False, True]
+		self.checkBoxList = ['Image', 'Sliding Z', 'Nodes', 'Edges']
+		defaultValues = [True, False, True, True]
 
 		for idx, checkBoxTitle in enumerate(self.checkBoxList):
 			thisCheckBox = QtWidgets.QCheckBox(checkBoxTitle)

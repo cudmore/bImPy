@@ -23,17 +23,14 @@ class bEvent(QtCore.QObject):
 		self._minContrast = None
 		self._maxContrast = None
 
+		self._sliceIdx = None
+
 		self._snapz = snapz
 		self._isShift = isShift
 
 	def __str__(self):
-		print('   bEvent instance has')
-		print('   eventType:', self.eventType)
-		print('   nodeIdx:', self.nodeIdx)
-		print('   edgeIdx:', self.edgeIdx)
-		print('   slabIdx:', self.slabIdx)
-		print('   edgeList:', self.edgeList)
-		return " "
+		retStr = 'bEvent eventType:' + str(self.eventType) + ' nodeIdx:' + str(self.nodeIdx) + ' edgeIdx:' + str(self.edgeIdx) + ' slabIdx:' + str(self.slabIdx) + ' edgeList:' + str(self.edgeList)
+		return retStr
 
 	@property
 	def eventType(self):
@@ -78,6 +75,10 @@ class bEvent(QtCore.QObject):
 	@property
 	def maxContrast(self):
 		return self._maxContrast
+
+	@property
+	def sliceIdx(self):
+		return self._sliceIdx
 
 	@property
 	def snapz(self):

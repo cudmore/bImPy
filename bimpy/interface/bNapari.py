@@ -47,8 +47,8 @@ class bNapari:
 		#scale = (0.49718, 0.49718, 0.6)
 		title = filename
 
-		#self.viewer = napari.Viewer(title=title, ndisplay=3)
-		self.viewer = napari.Viewer(title=title)
+		self.viewer = napari.Viewer(title=title, ndisplay=3)
+		#self.viewer = napari.Viewer(title=title)
 
 		#
 		#
@@ -106,17 +106,8 @@ class bNapari:
 
 			# this has nans which I assume will lead to some crashes ...
 			points = np.column_stack((z,x,y,))
-			print('   points.shape:', points.shape)
 
-			# all points will be one size
-			#size = 10
 			size = d
-
-			# this allows us to color different points with different colors
-			#use this to label: ('nodes')
-			# we can also change the size of different points
-			#slabSize = 5
-			#nodeSize = 9
 
 			size = []
 			face_color = []
@@ -136,11 +127,14 @@ class bNapari:
 					#print('point', i, 'is nan')
 
 			# remember, (size, face_color), etc. Can be a scalar to set one value
-			print('   points:', points.shape)
-			print('   len(size)', len(size))
-			print('   len(face_color)', len(face_color))
-			#pointLayer = self.viewer.add_points(points, size=size, face_color=face_color, n_dimensional=False)
-			pointLayer = self.viewer.add_points(points, n_dimensional=True)
+			# debug
+			if 0:
+				print('   points:', points.shape)
+				print('   len(size)', len(size))
+				print('   len(face_color)', len(face_color))
+
+			pointLayer = self.viewer.add_points(points, size=size, face_color=face_color, n_dimensional=False)
+			#pointLayer = self.viewer.add_points(points, n_dimensional=True)
 			pointLayer.name = 'All Points'
 
 		self.connectNapari() # connect signals and slots

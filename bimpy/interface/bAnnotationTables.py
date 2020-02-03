@@ -1,5 +1,9 @@
 # copied here on 20200121
 
+"""
+Tables to display (nodes, edges, edits)
+"""
+
 from PyQt5 import QtGui, QtCore, QtWidgets
 
 import bimpy
@@ -155,14 +159,32 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 		#
 		# buttons
-		mySaveButton = QtWidgets.QPushButton('Save')
+		buttonsHBoxLayout = QtWidgets.QHBoxLayout(self)
+
+		mySaveButton = QtWidgets.QPushButton('Save h5f')
 		mySaveButton.clicked.connect(self.saveButton_Callback)
-		self.myQVBoxLayout.addWidget(mySaveButton)
+		buttonsHBoxLayout.addWidget(mySaveButton)
 
-		myLoadButton = QtWidgets.QPushButton('Load')
+		myLoadButton = QtWidgets.QPushButton('Load h5f')
 		myLoadButton.clicked.connect(self.loadButton_Callback)
-		self.myQVBoxLayout.addWidget(myLoadButton)
+		buttonsHBoxLayout.addWidget(myLoadButton)
 
+		myLoadButton = QtWidgets.QPushButton('Load xml')
+		myLoadButton.clicked.connect(self.loadButton_xml_Callback)
+		buttonsHBoxLayout.addWidget(myLoadButton)
+
+		# check boxes
+		checkBoxNames = ['Nodes', 'Edges', 'Edits']
+		for checkboxName in checkBoxNames:
+			thisCheckBox = QtWidgets.QCheckBox(checkboxName)
+			thisCheckBox.setChecked(True)
+			thisCheckBox.clicked.connect(self.onCheckbox_Callback)
+			buttonsHBoxLayout.addWidget(thisCheckBox)
+
+		self.myQVBoxLayout.addLayout(buttonsHBoxLayout)
+
+		#
+		# tables
 		self.myQHBoxLayout = QtWidgets.QHBoxLayout(self) # to hold nodes and edges
 		self.myQVBoxLayout.addLayout(self.myQHBoxLayout)
 
@@ -180,10 +202,12 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.myNodeTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 		self.myNodeTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myNodeTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+
 		# signals/slots
 		#self.myNodeTableWidget.cellClicked.connect(self.on_clicked_node)
 		self.myNodeTableWidget.itemSelectionChanged.connect(self.on_clicked_node)
 		self.myNodeTableWidget.itemPressed.connect(self.on_clicked_node)
+
 		self.nodeHeaderLabels = ['idx', 'x', 'y', 'z', 'nEdges', 'edgeList']
 		self.myNodeTableWidget.setColumnCount(len(self.nodeHeaderLabels))
 		self.myNodeTableWidget.setHorizontalHeaderLabels(self.nodeHeaderLabels)
@@ -193,42 +217,6 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 		for idx, label in enumerate(self.nodeHeaderLabels):
 			header.setSectionResizeMode(idx, QtWidgets.QHeaderView.ResizeToContents)
-		"""
-		if self.slabList is None:
-			pass
-		else:
-			print('bAnnotationTable num nodes:', len(self.slabList.nodeDictList))
-			'''
-			for tmpNode in self.slabList.nodeDictList:
-				print('tmpNode:', tmpNode)
-			'''
-			for idx, nodeDict in enumerate(self.slabList.nodeDictList):
-				nodeDict = self.slabList.getNode(idx) # todo: fix this
-				for colIdx, header in enumerate(self.nodeHeaderLabels):
-					if header in ['x', 'y']:
-						myString = str(round(nodeDict[header],2))
-					else:
-						myString = str(nodeDict[header])
-					'''
-					# special cases
-					if header == 'Bad':
-						myString = 'X' if myString=='True' else ''
-					'''
-					#assign
-					#item = QtWidgets.QTableWidgetItem(myString)
-					# so we can sort
-					item = QtWidgets.QTableWidgetItem()
-					#item.setData(QtCore.Qt.EditRole, QtCore.QVariant(myString))
-					if header in ['edgeList']:
-						item.setText(str(nodeDict[header]))
-					elif header == 'nEdges':
-						# special case
-						nEdges = len(nodeDict['edgeList'])
-						item.setData(QtCore.Qt.EditRole, nEdges)
-					else:
-						item.setData(QtCore.Qt.EditRole, nodeDict[header])
-					self.myNodeTableWidget.setItem(idx, colIdx, item)
-		"""
 
 		#
 		# table of edge annotations
@@ -242,9 +230,9 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.myEdgeTableWidget.setRowCount(numEdges)
 		'''
 		self.myEdgeTableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-		self.myEdgeTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 
-		# abb removed, can't get multiple selections programatically (works with user clicks?)
+		# can't get multiple selections programatically (works with user clicks?)
+		self.myEdgeTableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
 		self.myEdgeTableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
 		# QtGui.QAbstractItemView.MultiSelection
 		# QtGui.QAbstractItemView.ExtendedSelection
@@ -265,46 +253,14 @@ class bAnnotationTable(QtWidgets.QWidget):
 		header.sectionClicked.connect(self.on_click_edge_header)
 		for idx, label in enumerate(self.edgeHeaderLabels):
 			header.setSectionResizeMode(idx, QtWidgets.QHeaderView.ResizeToContents)
-			'''
-			if label == 'z':
-				header.setSectionResizeMode(idx, QtWidgets.QHeaderView.Fixed)
-				header.resizeSection(idx, 100)
-			else:
-				header.setSectionResizeMode(idx, QtWidgets.QHeaderView.ResizeToContents)
-			'''
+
 		# QHeaderView will automatically resize the section to fill the available space.
 		# The size cannot be changed by the user or programmatically.
 		#header.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
 
-		# abb replaced by populate
-		"""
-		if self.slabList is None:
-			pass
-		else:
-			for idx, edgeDict in enumerate(self.slabList.edgeDictList):
-				for colIdx, headerStr in enumerate(self.edgeHeaderLabels):
-					myString = str(edgeDict[headerStr])
-					# special cases
-					if headerStr == 'Bad':
-						myString = 'X' if myString=='True' else ''
-					elif headerStr == 'preNode':
-						myString = '' if myString=='None' else myString
-					elif headerStr == 'postNode':
-						myString = '' if myString=='None' else myString
-					#assign
-					item = QtWidgets.QTableWidgetItem()
-					if headerStr in ['Bad']:
-						item.setText(myString)
-					else:
-						item.setData(QtCore.Qt.EditRole, edgeDict[headerStr])
-					self.myEdgeTableWidget.setItem(idx, colIdx, item)
-
-					# debug
-					#if headerStr == 'z':
-					#	print('idx:', idx, 'z:', edgeDict[headerStr])
-		"""
 
 		#
+		# populate node and edge list
 		self.populate()
 		#
 
@@ -317,6 +273,32 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.myEditTableWidget = bEditTableWidget(mainWindow=mainWindow)
 		self.myEditTableWidget.populate(self.mainWindow.mySimpleStack.slabList.editDictList)
 		self.myQHBoxLayout.addWidget(self.myEditTableWidget)
+
+	def onCheckbox_Callback(self):
+		"""
+		Check boxes to toggle show/hide of (nodes, edges, edits)
+		"""
+		sender = self.sender()
+		title = sender.text()
+		isChecked = sender.isChecked()
+		print('bAnnotationTable.onCheckbox_Callback() sender title:', title, 'isChecked:', isChecked)
+		if title=='Nodes':
+			if isChecked:
+				self.myNodeTableWidget.show()
+			else:
+				self.myNodeTableWidget.hide()
+		if title=='Edges':
+			if isChecked:
+				self.myEdgeTableWidget.show()
+			else:
+				self.myEdgeTableWidget.hide()
+		if title=='Edits':
+			if isChecked:
+				self.myEditTableWidget.show()
+			else:
+				self.myEditTableWidget.hide()
+
+		self.repaint()
 
 	def populate(self):
 		"""
@@ -337,15 +319,17 @@ class bAnnotationTable(QtWidgets.QWidget):
 			for idx, nodeDict in enumerate(self.mainWindow.mySimpleStack.slabList.nodeDictList):
 				nodeDict = self.mainWindow.mySimpleStack.slabList.getNode(idx) # todo: fix this
 				for colIdx, header in enumerate(self.nodeHeaderLabels):
+
+					# debug
+					#print('nodeDictList idx:', idx, 'header:', header, nodeDict[header], type(nodeDict[header]))
+
 					if header in ['x', 'y']:
 						myString = str(round(nodeDict[header],2))
+					elif header == 'z':
+						myString = str(int(round(nodeDict[header],0)))
+						#print('header:', header, 'myString:', myString)
 					else:
 						myString = str(nodeDict[header])
-					'''
-					# special cases
-					if header == 'Bad':
-						myString = 'X' if myString=='True' else ''
-					'''
 					#assign
 					# so we can sort
 					item = QtWidgets.QTableWidgetItem()
@@ -356,7 +340,8 @@ class bAnnotationTable(QtWidgets.QWidget):
 						nEdges = len(nodeDict['edgeList'])
 						item.setData(QtCore.Qt.EditRole, nEdges)
 					else:
-						item.setData(QtCore.Qt.EditRole, nodeDict[header])
+						#item.setData(QtCore.Qt.EditRole, nodeDict[header])
+						item.setData(QtCore.Qt.EditRole, myString)
 					self.myNodeTableWidget.setItem(idx, colIdx, item)
 
 			for idx, edgeDict in enumerate(self.mainWindow.mySimpleStack.slabList.edgeDictList):
@@ -380,6 +365,22 @@ class bAnnotationTable(QtWidgets.QWidget):
 					# debug
 					#if headerStr == 'z':
 					#	print('idx:', idx, 'z:', edgeDict[headerStr])
+
+	def _getEdgeColumnIdx(self, colStr):
+		colIdx = None
+		try:
+			colIdx = self.edgeHeaderLabels.index(colStr)
+		except (ValueError) as e:
+			print('error: bAnnotationTable._getEdgeColumnIdx() did not find col:', colStr, 'in self.edgeHeaderLabels')
+		return colIdx
+
+	def _getNodeColumnIdx(self, colStr):
+		colIdx = None
+		try:
+			colIdx = self.nodeHeaderLabels.index(colStr)
+		except (ValueError) as e:
+			print('error: bAnnotationTable._getNodeColumnIdx() did not find col:', colStr, 'in self.nodeHeaderLabels')
+		return colIdx
 
 	def updateNode(self, nodeDict):
 		# search for row in table (handles sorted order
@@ -417,11 +418,14 @@ class bAnnotationTable(QtWidgets.QWidget):
 			#	myString = str(round(nodeDict[header],2))
 			if header == 'idx':
 				myString = str(nodeIdx)
+			elif header == 'Bad':
+				myString = 'X' if myString=='True' else ''
+			elif header in ['x', 'y']:
+				myString = str(round(nodeDict[header],2))
+			elif header == 'z':
+				myString = str(round(nodeDict[header],0))
 			else:
 				myString = str(nodeDict[header])
-			# special cases
-			if header == 'Bad':
-				myString = 'X' if myString=='True' else ''
 			#assign
 			#item = QtWidgets.QTableWidgetItem(myString)
 			# so we can sort
@@ -436,7 +440,8 @@ class bAnnotationTable(QtWidgets.QWidget):
 			elif header == 'idx':
 				item.setData(QtCore.Qt.EditRole, nodeIdx)
 			else:
-				item.setData(QtCore.Qt.EditRole, nodeDict[header])
+				#item.setData(QtCore.Qt.EditRole, nodeDict[header])
+				item.setData(QtCore.Qt.EditRole, myString)
 			rowItems.append(item)
 		return rowItems
 
@@ -507,13 +512,13 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 	def on_keypress_node(self, event):
 		key = event.key()
-		print('on_keypress_node() key:', event.text())
+		print('=== on_keypress_node() key:', event.text())
 		if key in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
 			# reselect node
 			self.on_clicked_node()
 
 	def on_keypress_edge(self, event):
-		print('on_keypress_edge()')
+		print('=== on_keypress_edge()')
 		key = event.key()
 		if key in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
 			# reselect edge
@@ -541,6 +546,13 @@ class bAnnotationTable(QtWidgets.QWidget):
 		"""
 		print('bAnnotationTable.loadButton_Callback()')
 		self.mainWindow.signal('load')
+
+	def loadButton_xml_Callback(self):
+		"""
+		Load the current annotation list from raw Vesselucida xml
+		"""
+		print('bAnnotationTable.loadButton_xml_Callback()')
+		self.mainWindow.signal('load_xml')
 
 	'''
 	def _refreshRow(self, idx):
@@ -604,7 +616,6 @@ class bAnnotationTable(QtWidgets.QWidget):
 	def slot_selectEdge(self, myEvent):
 		print('bAnnotationTable.slot_selectEdge() myEvent:', myEvent)
 		edgeList = myEvent.edgeList
-		print('edgeList:', edgeList)
 		if len(edgeList)>0:
 			# select a list of edges
 			for edge in edgeList:
@@ -614,12 +625,13 @@ class bAnnotationTable(QtWidgets.QWidget):
 		else:
 			# select a single edge
 			edgeIdx = myEvent.edgeIdx
-			print('bAnnotationTable.slot_selectEdge() edgeIdx:', edgeIdx)
+			#print('bAnnotationTable.slot_selectEdge() edgeIdx:', edgeIdx)
 			self.stopSelectionPropogation = True
 			self.myEdgeTableWidget.selectRow(edgeIdx)
 			#self.repaint()
 
-		self.myEdgeTableWidget.update()
+		#self.myEdgeTableWidget.update()
+		self.myEdgeTableWidget.repaint()
 
 	# todo: need to search for nodeIdx in case we are sorted
 	def slot_selectNode(self, myEvent):
@@ -628,7 +640,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.stopSelectionPropogation = True
 		self.myNodeTableWidget.selectRow(nodeIdx)
 
-		self.myNodeTableWidget.update()
+		self.myNodeTableWidget.repaint()
 
 	def slot_updateTracing(self, myEvent):
 		#print('bAnnotationTable.slot_updateTracing() eventType:', myEvent.eventType)
@@ -662,9 +674,9 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 		#self.repaint()
 		if updateNodes:
-			self.myNodeTableWidget.update()
+			self.myNodeTableWidget.repaint()
 		if updateEdges:
-			self.myEdgeTableWidget.update()
+			self.myEdgeTableWidget.repaint()
 
 	#@QtCore.pyqtSlot()
 	def on_clicked_node(self):
@@ -685,8 +697,10 @@ class bAnnotationTable(QtWidgets.QWidget):
 		else:
 			print('\nbAnnotationTable.on_clicked_node() row:', row, 'myIdx:', myIdx, isShift)
 			myEvent = bimpy.interface.bEvent('select node', nodeIdx=myIdx, snapz=True, isShift=isShift)
+			colIdx = self._getNodeColumnIdx('z')
+			myItem = self.myNodeTableWidget.item(row, colIdx)
+			myEvent._sliceIdx = int(float(myItem.text()))
 			self.selectNodeSignal.emit(myEvent)
-			#self.mainWindow.signal('selectNodeFromTable', myIdx, fromTable=True)
 
 	# this decorator was causing runtime error, click was not calling function with parameter 'col'
 	#@QtCore.pyqtSlot()
@@ -710,7 +724,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 	#@QtCore.pyqtSlot()
 	def on_clicked_edge(self):
-		#print('bAnnotationTable.on_clicked_edge')
+		#print('bAnnotationTable.on_clicked_edge()')
 		row = self.myEdgeTableWidget.currentRow()
 		if row == -1 or row is None:
 			return
@@ -726,8 +740,12 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 		if self.stopSelectionPropogation:
 			self.stopSelectionPropogation = False
+			print('\n=== DEFFERED bAnnotationTable.on_clicked_edge() row:', row, 'myIdx:', myIdx, isShift)
 		else:
-			print('\nbAnnotationTable.on_clicked_edge() row:', row, 'myIdx:', myIdx, isShift)
+			print('\n=== bAnnotationTable.on_clicked_edge() row:', row, 'myIdx:', myIdx, isShift)
 			#self.mainWindow.signal('selectEdgeFromTable', myIdx, fromTable=True)
 			myEvent = bimpy.interface.bEvent('select edge', edgeIdx=myIdx, snapz=True, isShift=isShift)
+			colIdx = self._getEdgeColumnIdx('z')
+			myItem = self.myEdgeTableWidget.item(row, colIdx)
+			myEvent._sliceIdx = int(myItem.text())
 			self.selectEdgeSignal.emit(myEvent)

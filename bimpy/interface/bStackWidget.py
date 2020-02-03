@@ -61,14 +61,14 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
 
+		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
+
 		self.myContrastWidget = bimpy.interface.bStackContrastWidget(mainWindow=self)
 
-		self.bStackFeebackWidget = bimpy.interface.bStackFeebackWidget(mainWindow=self)
+		self.bStackFeebackWidget = bimpy.interface.bStackFeebackWidget(mainWindow=self, numSlices=self.mySimpleStack.numSlices)
 		#self.bStackFeebackWidget.setFeedback('num slices', self.mySimpleStack.numImages)
 
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
-
-		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
 
 		# a slider to set slice number
 		self.mySliceSlider = myStackSlider(self.mySimpleStack.numImages)
@@ -96,7 +96,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.lineProfileWidget = bimpy.interface.bLineProfileWidget(mainWindow=self)
 		self.myVBoxLayout.addWidget(self.lineProfileWidget)
 
-		self.statusToolbarWidget = myStatusToolbarWidget(parent=self)
+		self.statusToolbarWidget = myStatusToolbarWidget(mainWindow=self)
 		#self.addToolBar(QtCore.Qt.BottomToolBarArea, self.statusToolbarWidget)
 		self.myVBoxLayout.addWidget(self.statusToolbarWidget) #, stretch = 9)
 
@@ -128,12 +128,20 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myStackView.selectNodeSignal.connect(self.annotationTable.slot_selectNode)
 		self.myStackView.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
 		self.myStackView.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
+		self.myStackView.setSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		# listen to self.mySliceSlider
 		self.mySliceSlider.updateSliceSignal.connect(self.myStackView.slot_StateChange)
 		self.mySliceSlider.updateSliceSignal.connect(self.bStackFeebackWidget.slot_StateChange)
+		self.mySliceSlider.updateSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		# listen to self.annotationTable
 		self.annotationTable.selectNodeSignal.connect(self.myStackView.slot_selectNode) # change to slot_selectNode ???
 		self.annotationTable.selectEdgeSignal.connect(self.myStackView.slot_selectEdge) # change to slot_selectNode ???
+		self.annotationTable.selectEdgeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
+		self.annotationTable.selectNodeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
+		self.annotationTable.selectEdgeSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
+		self.annotationTable.selectNodeSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
+		self.annotationTable.selectNodeSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
+		self.annotationTable.selectEdgeSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		# listen to edit table, self.
 		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.myStackView.slot_selectEdge)
 		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
@@ -176,29 +184,37 @@ class bStackWidget(QtWidgets.QWidget):
 		else:
 			if self.annotationTable is not None:
 				self.annotationTable.hide()
+
 		# contrast bar
 		if self.showContrastBar:
 			self.myContrastWidget.show()
+			self.myContrastWidget.doUpdates = True
 		else:
 			self.myContrastWidget.hide()
+			self.myContrastWidget.doUpdates = False
+
 		# feedback bar
 		if self.showFeebackBar:
 			self.bStackFeebackWidget.show()
 		else:
 			self.bStackFeebackWidget.hide()
+
 		if self.showLineProfileBar:
 			self.lineProfileWidget.show()
+			self.lineProfileWidget.doUpdate = True
 		else:
 			self.lineProfileWidget.hide()
+			self.lineProfileWidget.doUpdate = False
 
 	# get rid of this
 	def getStack(self):
 		return self.mySimpleStack
 
-	def signal(self, signal, value=None, fromTable=False, recursion=True):
-		print('=== bStackWidget.signal()', 'signal:', signal, 'value:', value, 'fromTable:', fromTable)
+	def signal(self, signal, value=None):
+		print('   === bStackWidget.signal()', 'signal:', signal, 'value:', value)
 
 		# used for my vesselucida edit list
+		"""
 		if signal == 'selectEdgeListFromTable':
 			print('=== bStackWidget.signal() selectEdgeListFromTable value:', value)
 			self.myStackView.selectEdgeList(value, snapz=True)
@@ -208,28 +224,25 @@ class bStackWidget(QtWidgets.QWidget):
 			if not fromTable:
 				self.annotationTable.selectEdgeRow(value)
 			'''
-
-		'''
-		if signal == 'contrast change':
-			minContrast = value['minContrast']
-			maxContrast = value['maxContrast']
-			self.myStackView.minContrast = minContrast
-			self.myStackView.maxContrast = maxContrast
-			self.myStackView.setSlice(index=None) # will just refresh current slice
-		'''
-
-		'''
-		if signal == 'toggle sliding z':
-			self.myStackView._toggleSlidingZ()
-		'''
+		"""
 
 		if signal == 'update line profile':
+			# value is profileDIct
+			'''
+				profileDict = {
+					'ySlabPlot': ySlabPlot,
+					'xSlabPlot': xSlabPlot,
+					'slice': self.currentSlice,
+				}
+			'''
 			self.lineProfileWidget.update(value)
 
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()
 		if signal == 'load':
 			self.mySimpleStack.loadAnnotations()
+		if signal == 'load_xml':
+			self.mySimpleStack.loadAnnotations_xml()
 
 	def keyPressEvent(self, event):
 		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
@@ -237,8 +250,10 @@ class bStackWidget(QtWidgets.QWidget):
 		isShift = modifiers == QtCore.Qt.ShiftModifier
 		isControl = modifiers == QtCore.Qt.ControlModifier
 
+		'''
 		if isControl and event.key() in [QtCore.Qt.Key_L]:
 			self.mySimpleStack.slabList.loadVesselucida_xml()
+		'''
 
 		if event.key() in [QtCore.Qt.Key_Escape]:
 			self.myStackView.selectNode(None)
@@ -329,6 +344,13 @@ class myStackSlider(QtWidgets.QSlider):
 		self.sliderMoved.connect(self.updateSlice_Signal)
 		#self.valueChanged.connect(self.sliceSliderValueChanged)
 
+	def slot_UpdateSlice2(self, myEvent):
+		#print('myStackSlider.slot_UpdateSlice() signalName:', signalName, 'signalValue:', signalValue)
+		eventType = myEvent.eventType
+		if eventType in ['select node', 'select edge']:
+			sliceIdx = myEvent.sliceIdx
+			self.setValue(sliceIdx)
+
 	def slot_UpdateSlice(self, signalName, signalValue):
 		#print('myStackSlider.slot_UpdateSlice() signalName:', signalName, 'signalValue:', signalValue)
 		self.setValue(signalValue)
@@ -374,25 +396,12 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.mySelectedSlab = None # slab index of selected slab
 
 		self.displayThisStack = 'ch1'
-		#self.displaySlidingZ = False
 
 		self.currentSlice = 0
 		self.minContrast = 0
 		#self.maxContrast = 2 ** self.mySimpleStack.getHeaderVal('bitDepth')
 		print('   bStackView.__init__ got stack bit depth of:', self.mySimpleStack.bitDepth, 'type:', type(self.mySimpleStack.bitDepth))
 		self.maxContrast = 2 ** self.mySimpleStack.bitDepth
-
-		'''
-		self.idMasked = None
-		self.xMasked = None
-		self.yMasked = None
-		self.zMasked = None
-		'''
-
-		#self.showTracing = True
-		self.showNodes = True
-		self.showEdges = True
-		self.showDeadEnds = True
 
 		self.imgplot = None
 
@@ -402,7 +411,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.displayStateDict = {
 			'displayThisStack': 'ch1',
 			'displaySlidingZ': False,
-			'showTracing': True,
+			'showImage': True,
+			#'showTracing': True,
 			'showNodes': True,
 			'showEdges': True,
 			'showDeadEnds': True,
@@ -466,8 +476,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		# this HAS TO BE declared first, so nodes receive onpick_mpl() first
 		# also see self.onpick_alreadypicked to stop double selection (node then edge or edge then node)
 		zorder = 2
-		markersize = self.options['Tracing']['nodePenSize'] #2**2
-		markerColor = self.options['Tracing']['nodeColor'] #2**2
+		markersize = self.options['Tracing']['nodePenSize'] **2
+		markerColor = self.options['Tracing']['nodeColor']
 		self.myNodePlot = self.axes.scatter([], [],
 			marker='o', color=markerColor, s=markersize, edgecolor='none', zorder=zorder, picker=True)
 		#self.myNodePlot.set_clim(3, 5)
@@ -483,38 +493,42 @@ class bStackView(QtWidgets.QGraphicsView):
 		zorder = 3
 
 		# node selection
-		markersize = self.options['Tracing']['nodeSelectionPenSize'] #2**2
-		markerColor = self.options['Tracing']['nodeSelectionColor'] #2**2
+		markersize = self.options['Tracing']['nodeSelectionPenSize'] **2
+		markerColor = self.options['Tracing']['nodeSelectionColor']
 		self.myNodeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# flash node selection
 		zorder += 1
-		markersize = self.options['Tracing']['nodeSelectionFlashPenSize'] #2**2
-		markerColor = self.options['Tracing']['nodeSelectionFlashColor'] #2**2
+		markersize = self.options['Tracing']['nodeSelectionFlashPenSize'] **2
+		markerColor = self.options['Tracing']['nodeSelectionFlashColor']
 		self.myNodeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# edge selection
 		zorder += 1
-		markersize = self.options['Tracing']['tracingSelectionPenSize'] #2**2
-		markerColor = self.options['Tracing']['tracingSelectionColor'] #2**2
+		markersize = self.options['Tracing']['tracingSelectionPenSize'] **2
+		markerColor = self.options['Tracing']['tracingSelectionColor']
 		self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# slab selection
 		zorder += 1
-		markersize = self.options['Tracing']['tracingSelectionPenSize'] #2**2
+		markersize = self.options['Tracing']['tracingSelectionPenSize'] **2
 		markersize *= 2
 		markerColor = self.options['Tracing']['tracingSelectionColor'] #2**2
 		self.mySlabSelectionPlot = self.axes.scatter([], [], marker='x', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# flash edge selection
 		zorder += 1
-		markersize = self.options['Tracing']['tracingSelectionFlashPenSize'] #2**2
+		markersize = self.options['Tracing']['tracingSelectionFlashPenSize'] **2
 		markerColor = self.options['Tracing']['tracingSelectionFlashColor'] #2**2
 		self.myEdgeSelectionFlash = self.axes.scatter([], [], marker='o', color=markerColor, s=markersize, zorder=zorder, picker=None)
 
 		# slab line (perpendicular to tracing to extract line intensity profile)
 		zorder += 1
-		self.mySlabLinePlot, = self.axes.plot([], [], 'og-', zorder=zorder, picker=None) # Returns a tuple of line objects, thus the comma
+		linewidth = self.options['Tracing']['lineProfileLineSize']
+		markersize = self.options['Tracing']['lineProfileMarkerSize']
+		c = self.options['Tracing']['lineProfileColor']
+		self.mySlabLinePlot, = self.axes.plot([], [], 'o-', color=c, zorder=zorder,
+			linewidth=linewidth, markersize=markersize, picker=None) # Returns a tuple of line objects, thus the comma
 
 		#self.canvas.mpl_connect('key_press_event', self.onkey)
 		#self.canvas.mpl_connect('button_press_event', self.onclick)
@@ -530,19 +544,26 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.displayStateChange.emit('num slices', self.mySimpleStack.numImages)
 
 	def slot_StateChange(self, signalName, signalValue):
-		print(' bStackView.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
+		#print(' bStackView.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
 
 		# not sure?
 		if signalName == 'set slice':
 			self.setSlice(signalValue)
 
-		# working
+		elif signalName == 'bSignal Image':
+			self.displayStateDict['showImage'] = signalValue
+			self.setSlice() # just refresh
+
 		elif signalName == 'bSignal Sliding Z':
-			#self._toggleSlidingZ(isChecked=signalValue)
 			self.displayStateDict['displaySlidingZ'] = signalValue
 			self.setSlice() # just refresh
-		elif signalName == 'bSignal Tracing':
-			self.displayStateDict['showTracing'] = signalValue
+
+		elif signalName == 'bSignal Nodes':
+			self.displayStateDict['showNodes'] = signalValue
+			self.setSlice() # just refresh
+
+		elif signalName == 'bSignal Edges':
+			self.displayStateDict['showEdges'] = signalValue
 			self.setSlice() # just refresh
 
 		else:
@@ -735,7 +756,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.myNodeSelectionPlot.set_offsets(np.c_[[], []])
 		else:
 			if self.mySimpleStack.slabList is not None:
-				print('bStackView.selectNode() nodeIdx:', nodeIdx, self.mySimpleStack.slabList.getNode(nodeIdx))
+				print('   bStackView.selectNode() nodeIdx:', nodeIdx, self.mySimpleStack.slabList.getNode(nodeIdx))
 				self.mySelectedNode = nodeIdx
 
 				x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
@@ -749,8 +770,11 @@ class bStackView(QtWidgets.QGraphicsView):
 
 				self.myNodeSelectionPlot.set_offsets(np.c_[y,x]) # flipped
 
-				markerColor = self.options['Tracing']['tracingSelectionColor']
+				markerColor = self.options['Tracing']['nodeSelectionColor']
+				markerSize = self.options['Tracing']['nodeSelectionPenSize'] **2
+				markerSizes = [markerSize] # set_sizes expects a list, one size per marker
 				self.myNodeSelectionPlot.set_color(markerColor)
+				self.myNodeSelectionPlot.set_sizes(markerSizes)
 
 				QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, 2))
 
@@ -806,7 +830,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 	def selectEdge(self, edgeIdx, snapz=False, isShift=False):
 		if edgeIdx is None:
-			print('   bStackView.selectEdge() edgeIdx:', edgeIdx, 'snapz:', snapz)
+			print('bStackView.selectEdge() edgeIdx:', edgeIdx, 'snapz:', snapz)
 			#markersize = 10
 			#self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color='c', s=markersize, picker=True)
 			self.mySelectedEdge = None
@@ -818,7 +842,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			if self.mySimpleStack.slabList is not None:
 				theseIndices = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
 
-				print('   bStackView.selectEdge() edgeIdx:', edgeIdx, 'snapz:', snapz, self.mySimpleStack.slabList.getEdge(edgeIdx))
+				print('bStackView.selectEdge() edgeIdx:', edgeIdx, 'snapz:', snapz, self.mySimpleStack.slabList.getEdge(edgeIdx))
 				#print('      theseIndices:', theseIndices)
 				# todo: add option to snap to a z
 				# removed this because it was confusing
@@ -836,7 +860,10 @@ class bStackView(QtWidgets.QGraphicsView):
 				self.myEdgeSelectionPlot.set_offsets(np.c_[yMasked, xMasked])
 
 				markerColor = self.options['Tracing']['tracingSelectionColor']
+				markerSize = self.options['Tracing']['tracingSelectionPenSize'] **2
+				markerSizes = [markerSize] # set_sizes expects a list, one size per marker
 				self.myEdgeSelectionPlot.set_color(markerColor)
+				self.myEdgeSelectionPlot.set_sizes(markerSizes)
 
 				QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, True))
 
@@ -904,8 +931,13 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			self.mySlabSelectionPlot.set_offsets(np.c_[y, x]) # flipped
 
-			markerColor = self.options['Tracing']['tracingSelectionColor']
-			self.mySlabSelectionPlot.set_color(markerColor)
+			linewidth = self.options['Tracing']['lineProfileLineSize']
+			markersize = self.options['Tracing']['lineProfileMarkerSize']
+			c = self.options['Tracing']['lineProfileColor']
+
+			self.mySlabLinePlot.set_linewidth(linewidth)
+			self.mySlabLinePlot.set_markersize(markersize)
+			self.mySlabLinePlot.set_color(c)
 
 			#
 			# draw the orthogonal line
@@ -914,8 +946,15 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
 
-	def drawSlab(self, slabIdx):
-		radius = 30
+	def drawSlab(self, slabIdx=None, radius=None):
+		if radius is None:
+			radius = 30 # pixels
+
+		if slabIdx is None:
+			slabIdx = self.mySelectedSlab
+		if slabIdx is None:
+			return
+
 		# todo: could pas edgeIdx as a parameter
 		edgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(slabIdx)
 		if edgeIdx is None:
@@ -992,6 +1031,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		showTracingAboveSlices = self.options['Tracing']['showTracingAboveSlices']
 		showTracingBelowSlices = self.options['Tracing']['showTracingBelowSlices']
 
+		markersize = self.options['Tracing']['nodePenSize'] **2
+
 		sliceRange = range(self.mySimpleStack.numImages)
 		if fromCurrentSlice:
 			fromSlice = self.currentSlice
@@ -1022,6 +1063,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				nodeMasked_x = xNodeMasked[~np.isnan(nodeIdxMasked)]
 				nodeMasked_y = yNodeMasked[~np.isnan(nodeIdxMasked)]
 				nodeMasked_nodeIdx = nodeIdxMasked[~np.isnan(nodeIdxMasked)]
+				nodeMasked_size = [markersize for tmpx in xNodeMasked]
 
 				nodeMasked_x = nodeMasked_x.ravel()
 				nodeMasked_y = nodeMasked_y.ravel()
@@ -1069,6 +1111,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				nodeMasked_x = []
 				nodeMasked_y = []
 				nodeMasked_nodeIdx = []
+				nodeMasked_size = []
 
 				xEdgeLines = []
 				yEdgeLines = []
@@ -1082,6 +1125,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				'nodeMasked_x': nodeMasked_x,
 				'nodeMasked_y': nodeMasked_y,
 				'nodeMasked_nodeIdx': nodeMasked_nodeIdx,
+				'nodeMasked_size': nodeMasked_size,
 
 				'xEdgeLines': xEdgeLines,
 				'yEdgeLines': yEdgeLines,
@@ -1149,9 +1193,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		if index > self.mySimpleStack.numImages-1:
 			index = self.mySimpleStack.numImages -1
 
-		showImage = True
+		#showImage = True
 
-		if showImage:
+		if self.displayStateDict['showImage']:
 			#if self.displaySlidingZ:
 			if self.displayStateDict['displaySlidingZ']:
 				upSlices = self.options['Stack']['upSlidingZSlices']
@@ -1167,57 +1211,50 @@ class bStackView(QtWidgets.QGraphicsView):
 			else:
 				self.imgplot.set_data(image)
 		else:
-			pass
+			if self.imgplot is not None:
+				#image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
+				self.imgplot.set_data(np.zeros((1,1)))
 
 		#
 		# update point annotations
-		#if self.showTracing:
-		if self.displayStateDict['showTracing']:
-			if self.mySimpleStack.slabList is None:
-				# no tracing
-				pass
-			else:
-				# nodes
-				# abb upgrade bSlabList
 
-				# 202001 fix this !!!
-				if self.showNodes:
+		# there should always be a tracing, it might just have no points?
+		'''
+		if self.mySimpleStack.slabList is None:
+			# no tracing
+			pass
+		'''
 
-					# lines between slabs of edge
-					self.myEdgePlot.set_xdata(self.maskedNodes[index]['xEdgeLines'])
-					self.myEdgePlot.set_ydata(self.maskedNodes[index]['yEdgeLines'])
+		if self.displayStateDict['showEdges']:
+			# lines between slabs of edge
+			self.myEdgePlot.set_xdata(self.maskedNodes[index]['xEdgeLines'])
+			self.myEdgePlot.set_ydata(self.maskedNodes[index]['yEdgeLines'])
 
-					# does not handle slab diameter
-					tracingPenSize = self.options['Tracing']['tracingPenSize']
-					self.myEdgePlot.set_markersize(tracingPenSize)
-
-					# xNodeMasked -->> all slabs
-					# xNodeMasked2 -->> just nodes
-					self.myNodePlot.set_offsets(np.c_[self.maskedNodes[index]['nodeMasked_x'], self.maskedNodes[index]['nodeMasked_y']])
-
-					#print('setSlice() index:', index, 'color:', self.maskedNodes[index]['colorMasked'])
-					#self.myNodePlot.set_array(self.maskedNodes[index]['colorMasked'])
-					#self.myNodePlot.set_clim(3, 5)
-
-
-				if self.mySelectedSlab is not None:
-					self.selectSlab(self.mySelectedSlab)
-
-				# slabs
-				# 202001 fix this !!!
-				'''
-				if self.showEdges:
-					self.mySlabPlot.set_offsets(np.c_[self.maskedEdges[index]['xMasked'], self.maskedEdges[index]['yMasked']])
-				if self.showDeadEnds:
-					self.myDeadEndPlot.set_offsets(np.c_[self.maskedDeadEnds[index]['xMasked'], self.maskedDeadEnds[index]['yMasked']])
-				'''
-
+			# does not handle slab diameter
+			tracingPenSize = self.options['Tracing']['tracingPenSize']
+			self.myEdgePlot.set_markersize(tracingPenSize)
 		else:
 			self.myEdgePlot.set_xdata([])
 			self.myEdgePlot.set_ydata([])
+
+		if self.displayStateDict['showNodes']:
+
+
+			markersizes = self.maskedNodes[index]['nodeMasked_size'] # list of size
+			markerColor = self.options['Tracing']['nodeColor']
+			self.myNodePlot.set_color(markerColor)
+			self.myNodePlot.set_sizes(markersizes)
+
+			self.myNodePlot.set_offsets(np.c_[self.maskedNodes[index]['nodeMasked_x'], self.maskedNodes[index]['nodeMasked_y']])
+			#print('setSlice() index:', index, 'color:', self.maskedNodes[index]['colorMasked'])
+			#self.myNodePlot.set_array(self.maskedNodes[index]['colorMasked'])
+			#self.myNodePlot.set_clim(3, 5)
+		else:
 			self.myNodePlot.set_offsets(np.c_[[], []])
-			#self.mySlabPlot.set_offsets(np.c_[[], []])
-			#self.myDeadEndPlot.set_offsets(np.c_[[], []])
+
+
+		if self.mySelectedSlab is not None:
+			self.selectSlab(self.mySelectedSlab)
 
 		self.currentSlice = index # update slice
 
@@ -1284,17 +1321,21 @@ class bStackView(QtWidgets.QGraphicsView):
 					# was canceled
 					pass
 			'''
-			self.displayStateDict['showTracing'] = not self.displayStateDict['showTracing']
+			self.displayStateDict['showNodes'] = not self.displayStateDict['showNodes']
+			self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
 			self.setSlice() #refresh
 			#
-			self.displayStateChange.emit('bSignal Tracing', self.displayStateDict)
+			self.displayStateChange.emit('bSignal Nodes', self.displayStateDict)
+			self.displayStateChange.emit('bSignal Edges', self.displayStateDict)
 
+		# ''' block quotes not allowed here '''
 		#elif event.key() == QtCore.Qt.Key_N:
 		#	self.showNodes = not self.showNodes
 		#	self.setSlice() #refresh
-		elif event.key() == QtCore.Qt.Key_E:
-			self.showEdges = not self.showEdges
-			self.setSlice() #refresh
+
+		#elif event.key() == QtCore.Qt.Key_E:
+		#	self.showEdges = not self.showEdges
+		#	self.setSlice() #refresh
 
 		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			#self.showDeadEnds = not self.showDeadEnds
@@ -1584,42 +1625,45 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
-			'nodePenSize': 10,
+			'nodePenSize': 5, #**2,
 			'nodeColor': 'r',
-			'nodeSelectionPenSize': 20,
+			'nodeSelectionPenSize': 7, #**2,
 			'nodeSelectionColor': 'y',
-			'nodeSelectionFlashPenSize': 200,
+			'nodeSelectionFlashPenSize': 15, #**2,
 			'nodeSelectionFlashColor': 'm',
 			'showTracingAboveSlices': 5,
 			'showTracingBelowSlices': 5,
 			'tracingPenSize': 2,
 			'tracingColor': 'c',
-			'tracingSelectionPenSize': 4,
+			'tracingSelectionPenSize': 2,
 			'tracingSelectionColor': 'y',
-			'tracingSelectionFlashPenSize': 80,
+			'tracingSelectionFlashPenSize': 15,
 			'tracingSelectionFlashColor': 'm',
+			'lineProfileLineSize': 2,
+			'lineProfileMarkerSize': 3,
+			'lineProfileColor': 'm',
 			'deadEndPenSize': 5,
 			'deadEndColor': 'b',
 			})
 
 
-#class myStatusToolbarWidget(QtWidgets.QWidget):
-class myStatusToolbarWidget(QtWidgets.QToolBar):
-	def __init__(self, parent):
+#class myStatusToolbarWidget(QtWidgets.QToolBar):
+class myStatusToolbarWidget(QtWidgets.QWidget):
+	def __init__(self, mainWindow):
 		print('myStatusToolbarWidget.__init__')
 		#super(QtWidgets.QToolBar, self).__init__(parent)
-		super(myStatusToolbarWidget, self).__init__(parent)
-		self.myCanvasWidget = parent
+		super(myStatusToolbarWidget, self).__init__()
 
-		self.setMovable(False)
+		self.mainWindow = mainWindow
 
-		myGroupBox = QtWidgets.QGroupBox()
+		#self.setMovable(False)
+
+		'''
+		myGroupBox = QtWidgets.QGroupBox(self)
 		myGroupBox.setTitle('')
-
-		hBoxLayout = QtWidgets.QHBoxLayout()
-
-		self.lastActionLabel = QtWidgets.QLabel("Last Action: None")
-		hBoxLayout.addWidget(self.lastActionLabel)
+		'''
+		
+		hBoxLayout = QtWidgets.QHBoxLayout(self)
 
 		xMousePosition_ = QtWidgets.QLabel("X (pixel)")
 		self.xMousePosition = QtWidgets.QLabel("None")
@@ -1631,15 +1675,33 @@ class myStatusToolbarWidget(QtWidgets.QToolBar):
 		hBoxLayout.addWidget(yMousePosition_)
 		hBoxLayout.addWidget(self.yMousePosition)
 
+		pixelIntensity_ = QtWidgets.QLabel("Intensity")
+		self.pixelIntensity = QtWidgets.QLabel("None")
+		hBoxLayout.addWidget(pixelIntensity_)
+		hBoxLayout.addWidget(self.pixelIntensity)
+
+		self.lastActionLabel = QtWidgets.QLabel("Last Action: None")
+		hBoxLayout.addWidget(self.lastActionLabel)
+
 		# finish
-		myGroupBox.setLayout(hBoxLayout)
-		self.addWidget(myGroupBox)
+		#myGroupBox.setLayout(hBoxLayout)
+		#self.addWidget(myGroupBox)
 
 	def setMousePosition(self, point):
-		self.xMousePosition.setText(str(round(point.x(),1)))
+		x = round(point.x(),0)
+		y = round(point.y(),0)
+		self.xMousePosition.setText(str(x))
 		self.xMousePosition.repaint()
-		self.yMousePosition.setText(str(round(point.y(),1)))
+		self.yMousePosition.setText(str(y))
 		self.yMousePosition.repaint()
+
+		# todo: update pixel intensity
+		# self.mainWindow.myStackView
+		channel = 0
+		slice = self.mainWindow.myStackView.currentSlice
+		pixelIntensity = self.mainWindow.myStackView.mySimpleStack.stack[channel, slice, x, y] # NOT swapped
+		self.pixelIntensity.setText(str(pixelIntensity))
+		self.pixelIntensity.repaint()
 
 if __name__ == '__main__':
 	import sys

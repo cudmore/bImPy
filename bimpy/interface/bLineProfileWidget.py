@@ -17,7 +17,14 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		self.mainWindow = mainWindow
 
+		self.updateDict = None
+
+		self.lineLength = 10
 		self.lineWidth = 3
+		self.medianFilter = 5
+		self.halfHeight = 0.5
+
+		self.doUpdate = True # set to false to not update on signal/slot
 
 		self.setMaximumHeight(200)
 
@@ -25,18 +32,81 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		#
 		# to hold control panel
-		self.leftVBoxLayout = QtWidgets.QVBoxLayout(self)
+		self.leftGridLayout = QtWidgets.QGridLayout(self)
+
+		myRow = 0
 
 		# nudge up button
 		nudgeUpButton = QtWidgets.QPushButton('Nudge Up')
 		nudgeUpButton.clicked.connect(self.nudgeUp_Callback)
-		self.leftVBoxLayout.addWidget(nudgeUpButton)
+		self.leftGridLayout.addWidget(nudgeUpButton, myRow, 0)
 		# nudge down button
 		nudgeUpButton = QtWidgets.QPushButton('Nudge Down')
 		nudgeUpButton.clicked.connect(self.nudgeDown_Callback)
-		self.leftVBoxLayout.addWidget(nudgeUpButton)
+		self.leftGridLayout.addWidget(nudgeUpButton, myRow, 1)
 
-		self.myHBoxLayout.addLayout(self.leftVBoxLayout)
+		myRow += 1
+
+		# line length for intensity profile
+		myLabel = QtWidgets.QLabel('Line Length (pixels)')
+		lineWidthSpinBox = QtWidgets.QSpinBox()
+		lineWidthSpinBox.setMinimum(1)
+		lineWidthSpinBox.setValue(self.lineLength)
+		lineWidthSpinBox.valueChanged.connect(self.lineLength_Callback)
+		self.leftGridLayout.addWidget(myLabel, myRow, 0)
+		self.leftGridLayout.addWidget(lineWidthSpinBox, myRow, 1)
+
+		myRow += 1
+
+		# line width for intensity profile
+		myLabel = QtWidgets.QLabel('Line Width')
+		lineWidthSpinBox = QtWidgets.QSpinBox()
+		lineWidthSpinBox.setMinimum(1)
+		lineWidthSpinBox.setValue(self.lineWidth)
+		lineWidthSpinBox.valueChanged.connect(self.lineWidth_Callback)
+		self.leftGridLayout.addWidget(myLabel, myRow, 0)
+		self.leftGridLayout.addWidget(lineWidthSpinBox, myRow, 1)
+
+		myRow += 1
+
+		# size (pixels) of median filter
+		myLabel = QtWidgets.QLabel('Median Filter')
+		medianFilterSpinbox = QtWidgets.QSpinBox()
+		medianFilterSpinbox.setMinimum(0)
+		medianFilterSpinbox.setValue(self.medianFilter)
+		medianFilterSpinbox.valueChanged.connect(self.medianFilter_Callback)
+		self.leftGridLayout.addWidget(myLabel, myRow, 0)
+		self.leftGridLayout.addWidget(medianFilterSpinbox, myRow, 1)
+
+		myRow += 1
+
+		# half height b/w 0.0 and 1.0
+		myLabel = QtWidgets.QLabel('Half Height')
+		halfHeightSpinbox = QtWidgets.QDoubleSpinBox()
+		halfHeightSpinbox.setMinimum(0.0)
+		halfHeightSpinbox.setMaximum(1.0)
+		halfHeightSpinbox.setSingleStep(0.05)
+		halfHeightSpinbox.setValue(self.halfHeight)
+		halfHeightSpinbox.valueChanged.connect(self.halfHeight_Callback)
+		self.leftGridLayout.addWidget(myLabel, myRow, 0)
+		self.leftGridLayout.addWidget(halfHeightSpinbox, myRow, 1)
+
+		myRow += 1
+
+		# report results
+		self.myMin = QtWidgets.QLabel('Min:None')
+		self.myMax = QtWidgets.QLabel('Max:None')
+		self.mySNR = QtWidgets.QLabel('SNR:None')
+		self.myDiameter = QtWidgets.QLabel('Diameter:None')
+		self.leftGridLayout.addWidget(self.myMin, myRow, 0)
+		self.leftGridLayout.addWidget(self.myMax, myRow, 1)
+
+		myRow += 1
+
+		self.leftGridLayout.addWidget(self.mySNR, myRow, 0)
+		self.leftGridLayout.addWidget(self.myDiameter, myRow, 1)
+
+		self.myHBoxLayout.addLayout(self.leftGridLayout)
 
 		#
 		# to hold plot
@@ -48,24 +118,38 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		self.figure.set_facecolor("black")
 
-		'''
-		xFake = np.asarray([1,2,3])
-		yFake = np.asarray([0,100,40])
-		xPntFake = [1.5, 2.5]
-		yPntFake = [5, 5]
-		zorder = 1
-		#self.myIntensityPlot, = self.axes.plot(xFake, yFake,'.c-', zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
-		self.axes.plot(xFake, yFake,'.c-', zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
-		self.axes.plot(xPntFake, yPntFake,'ob-', zorder=zorder, picker=5) # Returns a tuple of line objects, thus the comma
-		'''
-
 		self.myHBoxLayout.addWidget(self.canvas)
+
+	def lineLength_Callback(self, value):
+		print('lineLength_Callback() value:', value)
+		self.lineLength = value
+		self.mainWindow.myStackView.drawSlab(radius=value)
+
+	def lineWidth_Callback(self, value):
+		self.lineWidth = value
+		if self.updateDict is not None:
+			self.update(self.updateDict)
+
+	def medianFilter_Callback(self, value):
+		self.medianFilter = value
+		if self.updateDict is not None:
+			self.update(self.updateDict)
+
+	def halfHeight_Callback(self, value):
+		self.halfHeight = value
+		if self.updateDict is not None:
+			self.update(self.updateDict)
 
 	def update(self, updateDict):
 		"""
 		Update the line profile
 		We need too much info here ???
 		"""
+		if not self.doUpdate:
+			return
+
+		self.updateDict = updateDict
+
 		xSlabPlot = updateDict['xSlabPlot']
 		ySlabPlot = updateDict['ySlabPlot']
 		slice = updateDict['slice']
@@ -76,6 +160,11 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])
 		intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=self.lineWidth)
+
+		# smooth it
+		if self.medianFilter > 0:
+			intensityProfile = scipy.ndimage.median_filter(intensityProfile, self.medianFilter)
+
 		x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
 
 		if np.isnan(intensityProfile[0]):
@@ -98,8 +187,25 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			right_y = left_y
 			xPnt = [leftIdx, rightIdx]
 			yPnt = [left_y, right_y]
+
+			# interface
+			minVal = round(np.nanmin(intensityProfile),2)
+			maxVal = round(np.nanmax(intensityProfile),2)
+			snrVal = round(maxVal - minVal,2)
+			minStr = 'Min:' + str(minVal)
+			self.myMin.setText(minStr)
+			maxStr = 'Max:' + str(maxVal)
+			self.myMax.setText(maxStr)
+			snrStr = 'SNR:' + str(snrVal)
+			self.mySNR.setText(snrStr)
+			diamStr = 'Diameter:' + str(int(rightIdx-leftIdx)) # points !!!
+			self.myDiameter.setText(diamStr) # points !!!
 		else:
 			print('warning: fit failed')
+			self.myDiameter.setText('Min:None')
+			self.myDiameter.setText('Max:None')
+			self.myDiameter.setText('SNR:None')
+			self.myDiameter.setText('Diameter:None')
 
 		# clear entire axes
 		self.axes.clear()
@@ -112,7 +218,8 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.axes.tick_params(axis='y', colors='white')
 
 		zorder = 1
-		self.axes.plot(x, intensityProfile,'oc-', zorder=zorder) # Returns a tuple of line objects, thus the comma
+		c = self.mainWindow.myStackView.options['Tracing']['lineProfileColor']
+		self.axes.plot(x, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
 		if goodFit:
 			zorder = 2
 			self.axes.plot(x, yFit,'r-', zorder=zorder) # gaussian
@@ -172,9 +279,9 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		# see: https://stackoverflow.com/questions/10582795/finding-the-full-width-half-maximum-of-a-peak
 		def FWHM(X,Y):
-			Y = scipy.signal.medfilt(Y, 3)
-			half_max = max(Y) / 2.
-			half_max = max(Y) * 0.7
+			#Y = scipy.signal.medfilt(Y, 3)
+			#half_max = max(Y) / 2.
+			half_max = max(Y) * self.halfHeight
 
 			# for explanation of this wierd syntax
 			# see: https://docs.scipy.org/doc/numpy/reference/generated/numpy.where.html

@@ -22,6 +22,9 @@ class bVascularTracing:
 		self.parentStack = parentStack
 		self.path = path
 
+		self._initTracing()
+
+		'''
 		self.nodeDictList = []
 		self.edgeDictList = []
 		self.editDictList = [] # created in self.joinEdge() for vesselucida
@@ -35,9 +38,27 @@ class bVascularTracing:
 		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
 
 		self._volumeMask = None
+		'''
 
-		loadedVesselucida = self.loadVesselucida_xml()
+		loaded_h5f = self.load()
+		if not loaded_h5f:
+			loadedVesselucida = self.loadVesselucida_xml()
 
+
+	def _initTracing(self):
+		self.nodeDictList = []
+		self.edgeDictList = []
+		self.editDictList = [] # created in self.joinEdge() for vesselucida
+
+		self.x = np.empty((0,))
+		self.y = np.empty((0,))
+		self.z = np.empty((0,))
+		self.d = np.empty(0)
+		self.edgeIdx = np.empty(0, dtype=np.float) # will be nan for nodes
+		self.nodeIdx = np.empty(0, dtype=np.float) # will be nan for slabs
+		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
+
+		self._volumeMask = None
 
 	# todo: remove
 	@property
@@ -441,11 +462,11 @@ class bVascularTracing:
 				# debug
 				rowHits = myTuple[0]
 				if len(myTuple[0])==0:
-					print('ERROR: _getSlabFromNodeIdx() did not find any nodeIdx:', nodeIdx)
+					print('ERROR: bVascularTracing._getSlabFromNodeIdx() did not find any nodeIdx:', nodeIdx)
 				elif len(myTuple[0]) == 1:
 					pass
 				else:
-					print('ERROR: _getSlabFromNodeIdx() too many nodeIdx:', nodeIdx, myTuple[0])
+					print('ERROR: bVascularTracing._getSlabFromNodeIdx() too many nodeIdx:', nodeIdx, myTuple[0])
 				#
 				theRet = myTuple[0][0]
 				return theRet
@@ -599,7 +620,9 @@ class bVascularTracing:
 		zUmPerSlice = 1 #0.5 #0.6 # Olympus .txt is telling us 0.4 ???
 
 		# z can never be negative
-		z = np.absolute(z)
+		#don't use this because np.abs return np.float64 which is not compatible with pyqt (tables in particular)
+		#z = np.absolute(z)
+		z = abs(z)
 
 		zOffset = 0
 
@@ -658,21 +681,13 @@ class bVascularTracing:
 			return
 
 		print('loadVesselucida_xml() file', xmlFilePath)
+
+		self._initTracing()
+
 		mydoc = minidom.parse(xmlFilePath)
 
 		vessels = mydoc.getElementsByTagName('vessel')
 		#print('found', len(vessels), 'vessels')
-
-		'''
-		self.x = []
-		self.y = []
-		self.z = []
-		self.d = []
-		#self.id = []
-		self.orig_x = []
-		self.orig_y = []
-		self.orig_z = []
-		'''
 
 		masterNodeIdx = 0
 		masterEdgeIdx = 0
@@ -700,39 +715,12 @@ class bVascularTracing:
 
 						numSlabs = self.numSlabs()
 
-						'''
-						self.nodex.append(x)
-						self.nodey.append(y)
-						self.nodez.append(z)
-						self.noded.append(diam)
-						'''
-
 						self._appendSlab(x, y, z, d=diam, edgeIdx=np.nan, nodeIdx=masterNodeIdx)
-						'''
-						self.x.append(x)
-						self.y.append(y)
-						self.z.append(z)
-						self.d.append(diam)
-						self.nodeIdx.append(masterNodeIdx)
-						self.edgeIdx.append(np.nan)
-						self.slabIdx.append(masterNodeIdx)
-						'''
 
 						# todo: somehow assign edge list
 						# important so user can scroll through all nodes and
 						# check they have >1 edge !!!
 						nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=masterNodeIdx)
-						'''
-						nodeDict = {
-							'idx': masterNodeIdx, # used by stack widget table
-							'x': x,
-							'y': y,
-							'z': z,
-							'zSlice': int(z), #todo remember this when I convert to um/pixel !!!
-							'edgeList':[],
-							'nEdges':0,
-						}
-						'''
 						self.nodeDictList.append(nodeDict)
 
 					masterNodeIdx += 1
@@ -760,33 +748,13 @@ class bVascularTracing:
 						z = float(point.attributes['z'].value)
 						diam = float(point.attributes['d'].value)
 
-						'''
-						self.orig_x.append(x)
-						self.orig_y.append(y)
-						self.orig_z.append(z)
-						'''
-
 						x,y,z,diam = self._massage_xyz(x,y,z,diam)
 
 						numSlabs = self.numSlabs()
 
 						self._appendSlab(x, y, z, d=diam, edgeIdx=masterEdgeIdx, nodeIdx=np.nan)
-						'''
-						self.x.append(x)
-						self.y.append(y)
-						self.z.append(z)
-						self.d.append(diam)
-						#self.id.append(masterEdgeIdx) ###
-						self.nodeIdx.append(np.nan)
-						self.edgeIdx.append(masterEdgeIdx)
-						self.slabIdx.append(numSlabs)
-						'''
 
 						newZList.append(z)
-						'''
-						self.d.append(diam)
-						self.edgeIdx.append(masterEdgeIdx)
-						'''
 						thisSlabList.append(masterSlabIdx)
 						masterSlabIdx += 1
 
@@ -794,47 +762,9 @@ class bVascularTracing:
 					# fill in srcNode/dstNode below
 					edgeDict = self._defaultEdgeDict(edgeIdx=masterEdgeIdx, srcNode=None, dstNode=None)
 					edgeDict['z'] = int(round(statistics.median(newZList)))
-					'''
-					edgeDict = {
-						'type': 'edge',
-						'idx': masterEdgeIdx, # used by stack widget table
-						'edgeIdx': masterEdgeIdx,
-						'n': len(newZList),
-						'Diam': None,
-						'Len 3D': None,
-						'Len 2D': None,
-						'Tort': None,
-						'z': int(round(statistics.median(newZList))),
-						'preNode': None,
-						'postNode': None,
-						'Bad': False,
-						'slabList': thisSlabList, # list of slab indices on this edge
-						'popList': [], # cases where we should be popped in joinEdges
-						'editList': [], # cases where we should be edited in joinEdges
-						'otherEdgeIdxList': [],
-						'editPending': False,
-						'popPending': False,
-						}
-					'''
 
 					self.edgeDictList.append(edgeDict)
 
-					# add nan
-					"""
-					self.x.append(np.nan)
-					self.y.append(np.nan)
-					self.z.append(np.nan)
-					self.d.append(np.nan)
-					self.id.append(np.nan)
-					masterSlabIdx += 1
-					'''
-					self.d.append(np.nan)
-					self.edgeIdx.append(np.nan)
-					'''
-					self.orig_x.append(np.nan)
-					self.orig_y.append(np.nan)
-					self.orig_z.append(np.nan)
-					"""
 					# important, leave here
 					masterEdgeIdx += 1
 
@@ -897,24 +827,6 @@ class bVascularTracing:
 		'''
 
 		#
-		# convert to numpy array
-		# nodes
-		'''
-		self.nodex = np.array(self.nodex, dtype='float32')
-		self.nodey = np.array(self.nodey, dtype='float32')
-		self.nodez = np.array(self.nodez, dtype='float32')
-		'''
-
-		# edges
-		'''
-		self.x = np.array(self.x, dtype='float32')
-		self.y = np.array(self.y, dtype='float32')
-		self.z = np.array(self.z, dtype='float32')
-		self.d = np.array(self.d, dtype='float32')
-		#self.id = np.array(self.id, dtype='float32')
-		'''
-
-		#
 		# create dead ends
 		'''
 		self.deadEndx = []
@@ -957,8 +869,6 @@ class bVascularTracing:
 			self.nodez = np.absolute(self.nodez)
 
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
-
-		#self._printGraph()
 
 		#
 		self._analyze()
@@ -1595,7 +1505,7 @@ class bVascularTracing:
 
 		if not os.path.isfile(h5FilePath):
 			print('   file not found:', h5FilePath)
-			return
+			return False
 
 		maxNodeIdx = -1
 		maxEdgeIdx = -1
@@ -1644,6 +1554,8 @@ class bVascularTracing:
 		self.edgeDictList = [None] * (maxEdgeIdx+1) # make an empy list with correct length
 		for edge in tmpEdgeDictList:
 			self.edgeDictList[edge['idx']] = edge
+
+		return True
 
 if __name__ == '__main__':
 	path = ''

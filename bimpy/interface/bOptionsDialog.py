@@ -33,55 +33,41 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 		mainLayout = QtWidgets.QVBoxLayout()
 
-		print('building bOptionsDialog !!!!!!!!')
+		#print('building bOptionsDialog')
 		for key1 in self.localOptions.keys():
 			groupBox = QtWidgets.QGroupBox(key1)
 			layout = QtWidgets.QFormLayout()
 			for key2 in self.localOptions[key1].keys():
-				print(key1, key2)
+				#print(key1, key2)
 				value = self.localOptions[key1][key2]
 				theType = type(value)
 				#print('   ', value, theType)
 				if isinstance(value, int):
-					print('      is int')
+					#print('      is int')
 					aSpinBox = QtWidgets.QSpinBox()
 					aSpinBox.setValue(value)
 					aSpinBox.setProperty('bobID_1', key1)
 					aSpinBox.setProperty('bobID_2', key2)
 					aSpinBox.valueChanged.connect(self.valueChanged)
-
 					layout.addRow(QtWidgets.QLabel(key2), aSpinBox)
-				elif isinstance(value, str):
-					print('todo: add strings for key2:', key2)
 
+				elif isinstance(value, str):
+					#print('      is str')
+					aLineEdit = QtWidgets.QLineEdit()
+					aLineEdit.setText(value)
+					aLineEdit.setProperty('bobID_1', key1)
+					aLineEdit.setProperty('bobID_2', key2)
+					aLineEdit.textEdited.connect(self.valueChanged)
+					layout.addRow(QtWidgets.QLabel(key2), aLineEdit)
+
+				elif isinstance(value, bool):
+					print('*** todo: implement bool in options')
+					
 			groupBox.setLayout(layout)
 			mainLayout.addWidget(groupBox)
 
 		self.formGroupBox = QtWidgets.QGroupBox("Form layout")
 		layout = QtWidgets.QFormLayout()
-
-		# requires _preComputeAllMasks()
-		'''
-		showTracingAboveSlices = self.localOptions['Tracing']['showTracingAboveSlices']
-		self.showTracingAboveSlices_spinbox = QtWidgets.QSpinBox()
-		self.showTracingAboveSlices_spinbox.setValue(showTracingAboveSlices)
-		self.showTracingAboveSlices_spinbox.setProperty('bobID_1', 'Tracing')
-		self.showTracingAboveSlices_spinbox.setProperty('bobID_2', 'showTracingAboveSlices')
-		self.showTracingAboveSlices_spinbox.valueChanged.connect(self.valueChanged)
-
-		tracingPenSize = self.localOptions['Tracing']['tracingPenSize']
-		self.tracingPenSize_spinbox = QtWidgets.QSpinBox()
-		self.tracingPenSize_spinbox.setMaximum(100)
-		self.tracingPenSize_spinbox.setValue(tracingPenSize)
-		self.tracingPenSize_spinbox.setProperty('bobID_1', 'Tracing')
-		self.tracingPenSize_spinbox.setProperty('bobID_2', 'tracingPenSize')
-		self.tracingPenSize_spinbox.valueChanged.connect(self.valueChanged)
-
-		layout.addRow(QtWidgets.QLabel("+/- Slices:"), self.showTracingAboveSlices_spinbox)
-		layout.addRow(QtWidgets.QLabel("Pen Size:"), self.tracingPenSize_spinbox)
-
-		self.formGroupBox.setLayout(layout)
-		'''
 
 		self.buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Apply |
 			QtWidgets.QDialogButtonBox.Reset |
@@ -119,21 +105,30 @@ class bOptionsDialog(QtWidgets.QDialog):
 		elif buttonRole == QtWidgets.QDialogButtonBox.ResetRole:
 			print('   reset clicked')
 
-	def valueChanged(self, int):
+	def valueChanged(self, value):
 		"""
 		Set value in our local copy of options, self.localOptions
 		"""
-		print('valueChanged() int:', int, self.sender().property('bobID_1'), self.sender().property('bobID_2'))
+		if isinstance(value, int):
+			pass
+		elif isinstance(value, str):
+			pass
+
+		print('valueChanged() value:', value, self.sender().property('bobID_1'), self.sender().property('bobID_2'))
 		bobID_1 = self.sender().property('bobID_1')
 		bobID_2 = self.sender().property('bobID_2')
 		try:
-			self.localOptions[bobID_1][bobID_2] = int
+			self.localOptions[bobID_1][bobID_2] = value
 		except (KeyError) as e:
 			print('error in valueChanged() e:', e)
 
 		if bobID_1=='Tracing' and bobID_2=='showTracingAboveSlices':
 			self.require_preComputeAllMasks = True
-			print('require_preComputeAllMasks:', self.require_preComputeAllMasks)
+		if bobID_1=='Tracing' and bobID_2=='nodePenSize':
+			self.require_preComputeAllMasks = True
+
+		if self.require_preComputeAllMasks:
+			print('   require_preComputeAllMasks:', self.require_preComputeAllMasks)
 
 	def myAccept(self):
 		"""

@@ -310,7 +310,7 @@ class bStack:
 		"""
 		#lut = np.arange(2**16, dtype='uint16')
 		lut = np.arange(2**self.bitDepth, dtype='uint8')
-		lut = self._display0(lut, display_min, display_max)
+		lut = self._display0(lut, display_min, display_max) # get a copy of the image
 		if useMaxProject:
 			# need to specify channel !!!!!!
 			#print('self.maxProjectImage.shape:', self.maxProjectImage.shape, 'max:', np.max(self.maxProjectImage))
@@ -574,10 +574,19 @@ class bStack:
 	def saveAnnotations(self):
 		if self.slabList is not None:
 			self.slabList.save()
+		else:
+			print('WARNING: bStack.saveAnnotations() did not save as annotation slabList is None')
 
 	def loadAnnotations(self):
+		#todo: this is wrong
 		if self.slabList is not None:
 			self.slabList.load()
+		else:
+			print('WARNING: bStack.loadAnnotations() did not load as annotation slabList is not None')
+
+	def loadAnnotations_xml(self):
+		if self.slabList is not None:
+			self.slabList.loadVesselucida_xml()
 
 	#
 	# File name utilities
