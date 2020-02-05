@@ -1,12 +1,10 @@
 numpy
-pandas
 matplotlib
 tifffile
-PyQt5 # version >=5.13 has 16bit indexed image !!!
+PyQt5
 PyQtChart
 scikit-image
 javabridge
 python-bioformats
 napari
 h5py
-#pyserial #for canvas

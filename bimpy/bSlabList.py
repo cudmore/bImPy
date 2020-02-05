@@ -1,7 +1,7 @@
 import os, math, copy
 from collections import OrderedDict
 import numpy as np
-import pandas as pd
+#import pandas as pd
 import statistics # to get median value from a list of numbers
 from xml.dom import minidom # to load vesselucida xml file
 
@@ -127,6 +127,9 @@ class bSlabList:
 		return x,y,z, diam
 
 	def loadDeepVess(self):
+		# removed because uses pandas, eventually put back in without pandas
+		pass
+		"""
 		# todo: change this to _slabs.txt
 		slabFilePath, ext = os.path.splitext(self.tifPath)
 		slabFilePath += '_slabs.txt'
@@ -187,6 +190,7 @@ class bSlabList:
 				else:
 					newZList.append(self.z[idx])
 					thisSlabList.append(idx)
+		"""
 
 	def loadVesselucida_xml(self):
 		"""
@@ -453,7 +457,7 @@ class bSlabList:
 		#self.makeVolumeMask()
 
 		return True
-		
+
 	def findCloseSlabs(self):
 		for idx, edge in enumerate(self.edgeDictList):
 			slabList = edge['slabList']

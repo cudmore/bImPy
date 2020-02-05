@@ -4,8 +4,8 @@
 import os, sys, math, time
 import numpy as np
 
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
+#import pyqtgraph as pg
+#from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 
 import bimpy
 #from bimpy.interface import bShapeAnalysisWidget
@@ -413,6 +413,7 @@ if __name__ == '__main__':
 	# octa
 	#path = '/Users/cudmore/box/data/OCTa/vesselucida/PV_Crop_Reslice.tif'
 
-	app = QtWidgets.QApplication(sys.argv)
-	mn = bNapari(path)
-	sys.exit(app.exec_())
+	#app = QtWidgets.QApplication(sys.argv)
+	with napari.gui_qt():
+		mn = bNapari(path)
+	#sys.exit(app.exec_())

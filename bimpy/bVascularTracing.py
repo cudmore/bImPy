@@ -629,17 +629,17 @@ class bVascularTracing:
 		if self.path.endswith('20191017__0001.tif'):
 			#print('!!! scaling tiff file 20191017__0001.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
-			xUmPerPixel = 0.49718
+			xUmPerPixel = 0.49718 #0.4971845
 			yUmPerPixel = 0.49718
-			zUmPerPixel = 0.6
-			zOffset = 25
+			zUmPerPixel = 0.4 # 0.6
+			zOffset = 0 #25
 		if self.path.endswith('20200127__A01_G001_0011_croped.tif'):
 			#print('!!! scaling tiff file 20200127__A01_G001_0011_croped.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
 			xUmPerPixel = 0.3977476
 			yUmPerPixel = 0.3977476
 			zUmPerPixel = 0.51
-			zOffset = 25
+			#zOffset = 25
 
 
 		if self.path.endswith('tracing_20191217.tif'):
@@ -921,19 +921,21 @@ class bVascularTracing:
 			loc_zip = zip(loc, block.shape, wall.shape)
 			wall_slices, block_slices = zip(*map(paste_slices, loc_zip))
 			# was '=', use '+=' assuming we are using binary
-			wall[wall_slices] += block[block_slices]
+			#print('   wall_slices:', wall_slices)
+			#print('   block_slices:', block_slices)
 
-		#slice:134, width:1981, height:5783
-		#finalVolume = np.zeros([134, 1981, 5783])
-		# was this
-		#finalVolume = np.zeros([134, 5783, 1981])
+			try:
+				wall[wall_slices] += block[block_slices]
+			except (ValueError) as e:
+				print('paste() error in wall[wall_slices] ... fix this later')
+
+		print('bSlabList.makeVolumeMask() ... please wait')
 		parentSlices = self.parentStack.numSlices
 		pixelsPerLine = self.parentStack.pixelsPerLine
 		linesPerFrame = self.parentStack.linesPerFrame
 		finalVolume = np.zeros([parentSlices, pixelsPerLine, linesPerFrame])
-		# finalVolume = np.zeros([145, 640, 640]) #20191017__0001
+		print('   finalVolume.shape:', finalVolume.shape)
 
-		print('bSlabList.makeVolumeMask() ... please wait')
 		for i in range(len(self.edgeDictList)):
 			slabList = self.edgeDictList[i]['slabList']
 			# debug
@@ -951,7 +953,7 @@ class bVascularTracing:
 				myPosition = (myRadius, myRadius, myRadius)
 
 				# debug
-				#print('   slab:', slab, 'myShape:', myShape, 'myRadius:', myRadius, 'myPosition:', myPosition, 'x:', x, 'y:', y, 'z:', z)
+				#print('   edge:', i, 'slab:', slab, 'myShape:', myShape, 'myRadius:', myRadius, 'myPosition:', myPosition, 'x:', x, 'y:', y, 'z:', z)
 
 				arr = sphere(myShape, myRadius, myPosition)
 
@@ -965,8 +967,10 @@ class bVascularTracing:
 		self._volumeMask = finalVolume
 		#
 		# save results
-		print('finalVolume.shape:', finalVolume.shape, type(finalVolume), finalVolume.dtype)
-		tif.imsave('a.tif', finalVolume, bigtiff=True)
+		maskTiffPath = self._getSavePath() + '_mask.tif'
+		print('   saving:', maskTiffPath)
+		print('   finalVolume.shape:', finalVolume.shape, type(finalVolume), finalVolume.dtype)
+		tif.imsave(maskTiffPath, finalVolume, bigtiff=True)
 
 	def joinEdges(self, distThreshold=20):
 		"""

@@ -151,6 +151,8 @@ if __name__ == '__main__':
 	# tall image, slice:134, width:1981, height:5783
 	#path = '/Users/cudmore/box/data/nathan/vesselucida/tracing_20191217/tracing_20191217.tif'
 
+	path = '/Users/cudmore/box/data/nathan/20200127_gelatin/vesselucida2/20200127__A01_G001_0011_croped.tif'
+
 	myBrowser = bStackBrowser()
 	myBrowser.show()
 

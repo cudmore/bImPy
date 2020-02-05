@@ -1204,6 +1204,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			else:
 				# works
 				image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
+				#print('image.shape:', image.shape)
 
 			if self.imgplot is None:
 				cmap = self.options['Stack']['colorLut'] #2**2
@@ -1662,7 +1663,7 @@ class myStatusToolbarWidget(QtWidgets.QWidget):
 		myGroupBox = QtWidgets.QGroupBox(self)
 		myGroupBox.setTitle('')
 		'''
-		
+
 		hBoxLayout = QtWidgets.QHBoxLayout(self)
 
 		xMousePosition_ = QtWidgets.QLabel("X (pixel)")

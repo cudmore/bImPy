@@ -18,7 +18,6 @@ setup(
     #],
     install_requires=[
         'numpy',
-        'pandas',
         'matplotlib',
         'tifffile',
         'PyQt5',

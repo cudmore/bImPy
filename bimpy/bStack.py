@@ -249,6 +249,7 @@ class bStack:
 				else:
 					img = self.stack[0, sliceNumber, :, :].copy()
 			elif thisStack == 'mask':
+				#print('tmp self.getMaskVolume():', self.getMaskVolume().shape)
 				img = self.getMaskVolume()[sliceNumber, :, :].copy()
 			elif thisStack == 'skel':
 				img = self._imagesSkel[sliceNumber, :, :].copy()

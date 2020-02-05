@@ -20,11 +20,15 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.setMaximumHeight(200)
 
 		self.doUpdate = True # set to false to not update on signal/slot
+		self.mySlice = 0
 
 		self.bitDepth = mainWindow.getStack().getHeaderVal('bitDepth')
 		if type(self.bitDepth) == str:
 			print('\n\n\tFIX THIS bit Depth BUG !!!!!!!!!!', 'self.bitDepth:', self.bitDepth, type(self.bitDepth), '\n\n')
 			self.bitDepth = int(self.bitDepth)
+		elif self.bitDepth is None:
+			print('ERROR: bStackContrastWidget() got None bitDepth -->> setting to 12')
+			self.bitDepth = 12
 
 		print('bStackContrastWidget.__init__() self.bitDepth:', self.bitDepth, type(self.bitDepth))
 
@@ -35,6 +39,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		myEvent: 'set slice'
 		"""
 		print('bStackContrastWidget.slot_setSlice() myEvent:', myEvent, 'myValue:', myValue)
+		self.mySlice = myValue
 		self.setSlice(myValue)
 
 	def slot_UpdateSlice2(self, myEvent):
@@ -42,15 +47,19 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		eventType = myEvent.eventType
 		if eventType in ['select node', 'select edge']:
 			sliceIdx = myEvent.sliceIdx
+			self.mySlice = sliceIdx
 			self.setSlice(sliceIdx)
 
-	def setSlice(self, sliceNumber):
+	def setSlice(self, sliceNumber = None):
 		if not self.doUpdate:
 			return
+		if sliceNumber is None:
+			sliceNumber = self.mySlice
+
 		channel = 0
 		data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
 		data = data.ravel() # returns a copy
-		print('data:', type(data), data.shape)
+		#print('data:', type(data), data.shape)
 		'''
 		hist, bin_edges = np.histogram(data, bins=1024)
 		print('hist:', type(hist), 'len:', len(hist))
@@ -59,8 +68,8 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		#self.axes.plot(x, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
 		# see: https://stackoverflow.com/questions/35738199/matplotlib-pyplot-hist-very-slow
 		#num_bins = 2 ** 13
-		num_bins = 2 ** 12 #self.mainWindow.myStackView.mySimpleStack.bitDepth
-		print('num_bins:', num_bins)
+		num_bins = 2 ** self.bitDepth #self.mainWindow.myStackView.mySimpleStack.bitDepth
+		print('bStackContrastWidget.setSlice() num_bins:', num_bins)
 		doLog = True
 
 		# clear entire axes
@@ -122,9 +131,20 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# inverse checkbox
 		# color table
 
+		self._myBitDepths = [1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32]
+		bitDepthIdx = self._myBitDepths.index(self.bitDepth) # will sometimes fail
+		bitDepthLabel = QtWidgets.QLabel("Bit Depth")
+		myBitDepth = QtWidgets.QComboBox()
+		for depth in self._myBitDepths:
+			myBitDepth.addItem(str(depth))
+		myBitDepth.setCurrentIndex(bitDepthIdx)
+		myBitDepth.currentIndexChanged.connect(self.bitDepth_Callback)
+
 		self.upperHBoxLayout.addWidget(self.minLabel)
 		self.upperHBoxLayout.addWidget(self.minSpinBox)
 		self.upperHBoxLayout.addWidget(self.minContrastSlider)
+		self.upperHBoxLayout.addWidget(bitDepthLabel)
+		self.upperHBoxLayout.addWidget(myBitDepth)
 		self.myQVBoxLayout.addLayout(self.upperHBoxLayout) # triggering non trace warning
 
 		#
@@ -154,13 +174,32 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		#
 		# histograph
-		self.figure = Figure(constrained_layout=True) # need size otherwise square image gets squished in y?
+		self.figure = Figure() # need size otherwise square image gets squished in y?
 		self.canvas = backend_qt5agg.FigureCanvas(self.figure)
 		self.axes = self.figure.add_subplot(111)
 		self.axes.patch.set_facecolor("black")
 		self.figure.set_facecolor("black")
-		self.myQVBoxLayout.addWidget(self.canvas)
+
+		histHBoxLayout = QtWidgets.QHBoxLayout()
+		logCheckbox = QtWidgets.QCheckBox("Log")
+		histHBoxLayout.addWidget(logCheckbox)
+		histHBoxLayout.addWidget(self.canvas)
+
+		#
+		self.myQVBoxLayout.addLayout(histHBoxLayout)
 
 		self.setSlice(0)
 
 		#self.setLayout(self.myQVBoxLayout)
+
+	def bitDepth_Callback(self, idx):
+		newBitDepth = self._myBitDepths[idx]
+		print('bitDepth_Callback() newBitDepth:', newBitDepth)
+		self.bitDepth = newBitDepth
+
+		# update range sliders
+		self.minContrastSlider.setMaximum(pow(2,newBitDepth))
+		self.maxContrastSlider.setMaximum(pow(2,newBitDepth))
+
+		# update histogram
+		self.setSlice()
