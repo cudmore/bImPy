@@ -107,19 +107,20 @@ class bNapari:
 			# this has nans which I assume will lead to some crashes ...
 			points = np.column_stack((z,x,y,))
 
-			size = d
+			print('warning: bNapari is scaling diameters ... d = d * 0.5')
+			dCopy = d * 0.5
 
 			size = []
 			face_color = []
 			foundNan = False
 			for i, idx in enumerate(range(len(x))):
 				if foundNan:
-					nodeSize = d[idx] # might not be good idea
+					nodeSize = dCopy[idx] # might not be good idea
 					size.append(nodeSize)
 					face_color.append('red')
 					foundNan = False
 				else:
-					slabSize = d[idx] # might not be good idea
+					slabSize = dCopy[idx] # might not be good idea
 					size.append(slabSize)
 					face_color.append('cyan')
 				if math.isnan(x[i]):
@@ -133,9 +134,9 @@ class bNapari:
 				print('   len(size)', len(size))
 				print('   len(face_color)', len(face_color))
 
-			pointLayer = self.viewer.add_points(points, size=size, face_color=face_color, n_dimensional=False)
+			pointLayer = self.viewer.add_points(points, size=size, face_color=face_color) #, n_dimensional=False)
 			#pointLayer = self.viewer.add_points(points, n_dimensional=True)
-			pointLayer.name = 'All Points'
+			pointLayer.name = 'Vascular Tracing'
 
 		self.connectNapari() # connect signals and slots
 

@@ -8,5 +8,6 @@ from .bEvent import bEvent
 from .bOptionsDialog import bOptionsDialog
 from .bNapari import bNapari
 from .bAnnotationTables import bEditTableWidget, bTableWidget, bAnnotationTable
+from .bStatusToolbarWidget import bStatusToolbarWidget
 #from .bShapeAnalysisWidget import bShapeAnalysisWidget
 #from .bMenu import bMenu

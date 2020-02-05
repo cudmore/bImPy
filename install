@@ -53,6 +53,8 @@ echo "=== install bImPy: Installing required python libraries with 'pip install 
 echo '==='
 pip install -r requirements.txt
 
+pip install -e .
+
 deactivate
 
 echo -e "${GREEN}Install successful${NC}. Run the Analysis app with './run'"

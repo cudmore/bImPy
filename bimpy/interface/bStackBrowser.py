@@ -131,8 +131,11 @@ class bStackBrowser(QtWidgets.QWidget):
 		if event.mimeData().hasUrls:
 			for url in event.mimeData().urls():
 				path = url.toLocalFile()
-				print('   ', path)
-				self.appendStack(path)
+				print('bStackBrowser.dropEvent() path:', path)
+				if path.endswith('.tif'):
+					self.appendStack(path)
+				else:
+					print('error: can only drop .tif files')
 		else:
 			event.ignore()
 
@@ -153,6 +156,9 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/box/data/nathan/20200127_gelatin/vesselucida2/20200127__A01_G001_0011_croped.tif'
 
+	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
+	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
+	
 	myBrowser = bStackBrowser()
 	myBrowser.show()
 

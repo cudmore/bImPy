@@ -59,7 +59,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		myRow += 1
 
 		# line width for intensity profile
-		myLabel = QtWidgets.QLabel('Line Width')
+		myLabel = QtWidgets.QLabel('Line Width (pixels)')
 		lineWidthSpinBox = QtWidgets.QSpinBox()
 		lineWidthSpinBox.setMinimum(1)
 		lineWidthSpinBox.setValue(self.lineWidth)
@@ -70,7 +70,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		myRow += 1
 
 		# size (pixels) of median filter
-		myLabel = QtWidgets.QLabel('Median Filter')
+		myLabel = QtWidgets.QLabel('Median Filter (pixels)')
 		medianFilterSpinbox = QtWidgets.QSpinBox()
 		medianFilterSpinbox.setMinimum(0)
 		medianFilterSpinbox.setValue(self.medianFilter)
@@ -94,10 +94,10 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		myRow += 1
 
 		# report results
-		self.myMin = QtWidgets.QLabel('Min:None')
-		self.myMax = QtWidgets.QLabel('Max:None')
-		self.mySNR = QtWidgets.QLabel('SNR:None')
-		self.myDiameter = QtWidgets.QLabel('Diameter:None')
+		self.myMin = QtWidgets.QLabel('Min: None')
+		self.myMax = QtWidgets.QLabel('Max: None')
+		self.mySNR = QtWidgets.QLabel('SNR: None')
+		self.myDiameter = QtWidgets.QLabel('Diameter (pixels): None')
 		self.leftGridLayout.addWidget(self.myMin, myRow, 0)
 		self.leftGridLayout.addWidget(self.myMax, myRow, 1)
 
@@ -180,6 +180,16 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		goodFit = not np.isnan(leftIdx)
 
+		minVal = round(np.nanmin(intensityProfile),2)
+		maxVal = round(np.nanmax(intensityProfile),2)
+		snrVal = round(maxVal - minVal, 2)
+		minStr = 'Min: ' + str(minVal)
+		self.myMin.setText(minStr)
+		maxStr = 'Max: ' + str(maxVal)
+		self.myMax.setText(maxStr)
+		snrStr = 'SNR: ' + str(snrVal)
+		self.mySNR.setText(snrStr)
+
 		if goodFit:
 			left_y = intensityProfile[leftIdx]
 			# cludge because left/right threshold detection has different y ...
@@ -189,23 +199,11 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			yPnt = [left_y, right_y]
 
 			# interface
-			minVal = round(np.nanmin(intensityProfile),2)
-			maxVal = round(np.nanmax(intensityProfile),2)
-			snrVal = round(maxVal - minVal,2)
-			minStr = 'Min:' + str(minVal)
-			self.myMin.setText(minStr)
-			maxStr = 'Max:' + str(maxVal)
-			self.myMax.setText(maxStr)
-			snrStr = 'SNR:' + str(snrVal)
-			self.mySNR.setText(snrStr)
-			diamStr = 'Diameter:' + str(int(rightIdx-leftIdx)) # points !!!
+			diamStr = 'Diameter (pixels): ' + str(int(rightIdx-leftIdx)) # points !!!
 			self.myDiameter.setText(diamStr) # points !!!
 		else:
 			print('warning: fit failed')
-			self.myDiameter.setText('Min:None')
-			self.myDiameter.setText('Max:None')
-			self.myDiameter.setText('SNR:None')
-			self.myDiameter.setText('Diameter:None')
+			self.myDiameter.setText('Diameter (pixels): None')
 
 		# clear entire axes
 		self.axes.clear()

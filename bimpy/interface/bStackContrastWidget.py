@@ -9,6 +9,59 @@ from matplotlib.backends import backend_qt5agg
 
 import bimpy
 
+############################################################################
+# see: https://www.mfitzp.com/article/qcolorbutton-a-color-selector-tool-for-pyqt/
+class myColorButton(QtWidgets.QPushButton):
+	'''
+	Custom Qt Widget to show a chosen color.
+
+	Left-clicking the button shows the color-chooser, while
+	right-clicking resets the color to None (no-color).
+	'''
+
+	#colorChanged = pyqtSignal()
+
+	def __init__(self, *args, **kwargs):
+		super(myColorButton, self).__init__(*args, **kwargs)
+
+		self._color = None
+		self.setMaximumWidth(32)
+		self.pressed.connect(self.onColorPicker)
+
+	def setColor(self, color):
+		if color != self._color:
+			self._color = color
+			#self.colorChanged.emit()
+
+		if self._color:
+			self.setStyleSheet("background-color: %s;" % self._color)
+		else:
+			self.setStyleSheet("")
+
+	def getColor(self):
+		return self._color
+
+	def onColorPicker(self):
+		'''
+		Show color-picker dialog to select color.
+		'''
+		dlg = QtWidgets.QColorDialog(self)
+		if self._color:
+			dlg.setCurrentColor(QtGui.QColor(self._color))
+
+		if dlg.exec_():
+			self.setColor(dlg.currentColor().name())
+
+	"""
+	def mousePressEvent(self, e):
+		'''
+		if e.button() == QtCore.Qt.RightButton:
+			self.setColor(None)
+		'''
+		return super(myColorButton, self).mousePressEvent(e)
+	"""
+
+############################################################################
 class bStackContrastWidget(QtWidgets.QWidget):
 	contrastChangeSignal = QtCore.pyqtSignal(object) # object can be a dict
 
@@ -21,6 +74,9 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.doUpdate = True # set to false to not update on signal/slot
 		self.mySlice = 0
+
+		self._minColor = None
+		self._maxColor = None
 
 		self.bitDepth = mainWindow.getStack().getHeaderVal('bitDepth')
 		if type(self.bitDepth) == str:
@@ -103,6 +159,23 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.minContrastSlider.setValue(theMin)
 		self.maxContrastSlider.setValue(theMax)
 
+	def bitDepth_Callback(self, idx):
+		newBitDepth = self._myBitDepths[idx]
+		print('bitDepth_Callback() newBitDepth:', newBitDepth)
+		self.bitDepth = newBitDepth
+
+		# update range sliders
+		self.minContrastSlider.setMaximum(pow(2,newBitDepth))
+		self.maxContrastSlider.setMaximum(pow(2,newBitDepth))
+
+		# update histogram
+		self.setSlice()
+
+	def color_Callback(self, idx):
+		newColor = self._myColors[idx]
+		print('color_Callback() newColor:', newColor)
+		self.color = newColor
+
 	def buildUI(self):
 		minVal = 0
 		if self.bitDepth is None:
@@ -110,14 +183,18 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			self.bitDepth = 16 #8
 		maxVal = 2**self.bitDepth
 
-		self.myQVBoxLayout = QtWidgets.QVBoxLayout(self)
+		#self.myQVBoxLayout = QtWidgets.QVBoxLayout(self)
+		self.myGridLayout = QtWidgets.QGridLayout(self)
 
 		#
 		# upper/min
-		self.upperHBoxLayout = QtWidgets.QHBoxLayout() # don't use self
+		#self.upperHBoxLayout = QtWidgets.QHBoxLayout() # don't use self
+
+		spinBoxWidth = 128
 
 		self.minLabel = QtWidgets.QLabel("Min")
 		self.minSpinBox = QtWidgets.QSpinBox()
+		self.minSpinBox.setMaximumWidth(spinBoxWidth)
 		self.minSpinBox.setMinimum(-1e6) # si user can specify whatever they want
 		self.minSpinBox.setMaximum(1e6)
 		self.minSpinBox.setValue(minVal)
@@ -131,28 +208,51 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# inverse checkbox
 		# color table
 
+		# min color
+		self.minColorButton = myColorButton() # use *self so we can .getColor()
+
+		#
+		# bit depth
 		self._myBitDepths = [1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32]
 		bitDepthIdx = self._myBitDepths.index(self.bitDepth) # will sometimes fail
-		bitDepthLabel = QtWidgets.QLabel("Bit Depth")
-		myBitDepth = QtWidgets.QComboBox()
+		bitDepthLabel = QtWidgets.QLabel('Bit Depth')
+		bitDepthComboBox = QtWidgets.QComboBox()
 		for depth in self._myBitDepths:
-			myBitDepth.addItem(str(depth))
-		myBitDepth.setCurrentIndex(bitDepthIdx)
-		myBitDepth.currentIndexChanged.connect(self.bitDepth_Callback)
+			bitDepthComboBox.addItem(str(depth))
+		bitDepthComboBox.setCurrentIndex(bitDepthIdx)
+		bitDepthComboBox.currentIndexChanged.connect(self.bitDepth_Callback)
 
+		row = 0
+		col = 0
+		self.myGridLayout.addWidget(self.minLabel, row, col)
+		col += 1
+		self.myGridLayout.addWidget(self.minSpinBox, row, col)
+		col += 1
+		self.myGridLayout.addWidget(self.minContrastSlider, row, col)
+		col += 1
+		self.myGridLayout.addWidget(self.minColorButton, row, col)
+		col += 1
+		self.myGridLayout.addWidget(bitDepthLabel, row, col)
+		col += 1
+		self.myGridLayout.addWidget(bitDepthComboBox, row, col)
+		col += 1
+		'''
 		self.upperHBoxLayout.addWidget(self.minLabel)
 		self.upperHBoxLayout.addWidget(self.minSpinBox)
 		self.upperHBoxLayout.addWidget(self.minContrastSlider)
+		self.upperHBoxLayout.addWidget(self.minColorButton)
 		self.upperHBoxLayout.addWidget(bitDepthLabel)
-		self.upperHBoxLayout.addWidget(myBitDepth)
+		self.upperHBoxLayout.addWidget(bitDepthComboBox)
 		self.myQVBoxLayout.addLayout(self.upperHBoxLayout) # triggering non trace warning
+		'''
 
 		#
 		# lower/max
-		self.lowerHBoxLayout = QtWidgets.QHBoxLayout() # don't use self
+		#self.lowerHBoxLayout = QtWidgets.QHBoxLayout() # don't use self
 
 		self.maxLabel = QtWidgets.QLabel("Max")
 		self.maxSpinBox = QtWidgets.QSpinBox()
+		self.maxSpinBox.setMaximumWidth(spinBoxWidth)
 		self.maxSpinBox.setMinimum(-1e6) # si user can specify whatever they want
 		self.maxSpinBox.setMaximum(1e6)
 		self.maxSpinBox.setValue(maxVal)
@@ -166,40 +266,76 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# inverse checkbox
 		# color table
 
+		# max color
+		self.maxColorButton = myColorButton() # use *self so we can .getColor()
+
+		# popup for color LUT for image
+		self.myColor = 'gray'
+		self._myColors = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'gray']
+		colorIdx = self._myColors.index(self.myColor) # will sometimes fail
+		colorLabel = QtWidgets.QLabel('LUT')
+		colorComboBox = QtWidgets.QComboBox()
+		for color in self._myColors:
+			colorComboBox.addItem(color)
+		colorComboBox.setCurrentIndex(colorIdx)
+		colorComboBox.currentIndexChanged.connect(self.color_Callback)
+
+		histCheckbox = QtWidgets.QCheckBox("Hist")
+
+		row += 1
+		col = 0
+		self.myGridLayout.addWidget(self.maxLabel, row, col)
+		col += 1
+		self.myGridLayout.addWidget(self.maxSpinBox, row, col)
+		col += 1
+		self.myGridLayout.addWidget(self.maxContrastSlider, row, col)
+		col += 1
+		self.myGridLayout.addWidget(self.maxColorButton, row, col)
+		col += 1
+		self.myGridLayout.addWidget(colorLabel, row, col)
+		col += 1
+		self.myGridLayout.addWidget(colorComboBox, row, col)
+		col += 1
+		self.myGridLayout.addWidget(histCheckbox, row, col)
+		col += 1
+		'''
 		self.lowerHBoxLayout.addWidget(self.maxLabel)
 		self.lowerHBoxLayout.addWidget(self.maxSpinBox)
 		self.lowerHBoxLayout.addWidget(self.maxContrastSlider)
+		self.lowerHBoxLayout.addWidget(self.maxColorButton)
+		self.lowerHBoxLayout.addWidget(colorLabel)
+		self.lowerHBoxLayout.addWidget(colorComboBox)
 
 		self.myQVBoxLayout.addLayout(self.lowerHBoxLayout) # triggering non trace warning
+		'''
 
 		#
 		# histograph
 		self.figure = Figure() # need size otherwise square image gets squished in y?
 		self.canvas = backend_qt5agg.FigureCanvas(self.figure)
-		self.axes = self.figure.add_subplot(111)
+		#self.axes = self.figure.add_subplot(111)
+		self.axes = self.figure.add_axes([0, 0, 1, 1]) #remove white border
 		self.axes.patch.set_facecolor("black")
 		self.figure.set_facecolor("black")
 
-		histHBoxLayout = QtWidgets.QHBoxLayout()
+		#histHBoxLayout = QtWidgets.QHBoxLayout()
 		logCheckbox = QtWidgets.QCheckBox("Log")
+
+		row += 1
+		col = 0
+		self.myGridLayout.addWidget(logCheckbox, row, col)
+		col += 1
+		specialCol = 2
+		self.myGridLayout.addWidget(self.canvas, row, specialCol)
+		col += 1
+		'''
 		histHBoxLayout.addWidget(logCheckbox)
 		histHBoxLayout.addWidget(self.canvas)
+		'''
 
 		#
-		self.myQVBoxLayout.addLayout(histHBoxLayout)
+		#self.myQVBoxLayout.addLayout(histHBoxLayout)
 
 		self.setSlice(0)
 
 		#self.setLayout(self.myQVBoxLayout)
-
-	def bitDepth_Callback(self, idx):
-		newBitDepth = self._myBitDepths[idx]
-		print('bitDepth_Callback() newBitDepth:', newBitDepth)
-		self.bitDepth = newBitDepth
-
-		# update range sliders
-		self.minContrastSlider.setMaximum(pow(2,newBitDepth))
-		self.maxContrastSlider.setMaximum(pow(2,newBitDepth))
-
-		# update histogram
-		self.setSlice()
