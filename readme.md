@@ -25,7 +25,7 @@ We are developing **bImPy** in the open but the project is still in an early alp
 
 <IMG WIDTH=600 SRC="docs/img/napari-example.png">
 
-**Figure 3. Stack window using interactive and sortable annotation lists.** Because tracings usually get large with more than 10,000 individual points and many hundreds of vessel segments, it is often useful to have a list of annotation objects. In this screenshot, we have a list of branch points (1st list) and vessel segments (2nd list). Either selecting an object from a list or in the image will highlight that annotaiton in all other views. Each annotation in the lists is analyzed and the list can be sorted by, for example, vessel length. Here, we have selected a longer vessel with length of 314.26 in the list and it is slected in the image (yellow).
+**Figure 3. Stack window using interactive and sortable annotation lists.** Because tracings usually get large with more than 10,000 individual points and many hundreds of vessel segments, it is often useful to have a list of annotation objects. In this screenshot, we have a list of branch points (1st list) and vessel segments (2nd list). Selecting an annotation from a list or in the image will highlight that annotation in all other views. Each annotation in the lists is analyzed and the list can be sorted by, for example, vessel length. Here, we have selected a longer vessel with length of 314.26 (Len 3D) in the list and it is selected in the image (yellow).
 
 <IMG WIDTH=700 SRC="docs/img/bimpy-annotation-tables.png">
 
