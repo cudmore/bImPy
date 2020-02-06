@@ -1,4 +1,0 @@
-# might work for windows?
-
-source bImPy_env/bin/activate
-python bimpy/interface/bStackBrowser.py
