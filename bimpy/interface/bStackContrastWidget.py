@@ -190,7 +190,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# upper/min
 		#self.upperHBoxLayout = QtWidgets.QHBoxLayout() # don't use self
 
-		spinBoxWidth = 128
+		spinBoxWidth = 64
 
 		self.minLabel = QtWidgets.QLabel("Min")
 		self.minSpinBox = QtWidgets.QSpinBox()
@@ -217,6 +217,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		bitDepthIdx = self._myBitDepths.index(self.bitDepth) # will sometimes fail
 		bitDepthLabel = QtWidgets.QLabel('Bit Depth')
 		bitDepthComboBox = QtWidgets.QComboBox()
+		bitDepthComboBox.setMaximumWidth(spinBoxWidth)
 		for depth in self._myBitDepths:
 			bitDepthComboBox.addItem(str(depth))
 		bitDepthComboBox.setCurrentIndex(bitDepthIdx)
@@ -275,6 +276,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		colorIdx = self._myColors.index(self.myColor) # will sometimes fail
 		colorLabel = QtWidgets.QLabel('LUT')
 		colorComboBox = QtWidgets.QComboBox()
+		#colorComboBox.setMaximumWidth(spinBoxWidth)
 		for color in self._myColors:
 			colorComboBox.addItem(color)
 		colorComboBox.setCurrentIndex(colorIdx)

@@ -42,7 +42,15 @@ class bOptionsDialog(QtWidgets.QDialog):
 				value = self.localOptions[key1][key2]
 				theType = type(value)
 				#print('   ', value, theType)
-				if isinstance(value, int):
+				if isinstance(value, bool):
+					aCheckbox = QtWidgets.QCheckBox(key2)
+					aCheckbox.setChecked(value)
+					aCheckbox.setProperty('bobID_1', key1)
+					aCheckbox.setProperty('bobID_2', key2)
+					aCheckbox.stateChanged.connect(self.checkChanged)
+					#layout.addRow(QtWidgets.QLabel(key2), aCheckbox)
+					layout.addRow(aCheckbox)
+				elif isinstance(value, int):
 					#print('      is int')
 					aSpinBox = QtWidgets.QSpinBox()
 					aSpinBox.setValue(value)
@@ -60,14 +68,11 @@ class bOptionsDialog(QtWidgets.QDialog):
 					aLineEdit.textEdited.connect(self.valueChanged)
 					layout.addRow(QtWidgets.QLabel(key2), aLineEdit)
 
-				elif isinstance(value, bool):
-					print('*** todo: implement bool in options')
-					
 			groupBox.setLayout(layout)
 			mainLayout.addWidget(groupBox)
 
-		self.formGroupBox = QtWidgets.QGroupBox("Form layout")
-		layout = QtWidgets.QFormLayout()
+		#self.formGroupBox = QtWidgets.QGroupBox("")
+		#layout = QtWidgets.QFormLayout()
 
 		self.buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Apply |
 			QtWidgets.QDialogButtonBox.Reset |
@@ -81,7 +86,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 		#
 		#mainLayout = QtWidgets.QVBoxLayout()
-		mainLayout.addWidget(self.formGroupBox)
+		#mainLayout.addWidget(self.formGroupBox)
 		mainLayout.addWidget(self.buttonBox)
 		self.setLayout(mainLayout)
 
@@ -105,6 +110,26 @@ class bOptionsDialog(QtWidgets.QDialog):
 		elif buttonRole == QtWidgets.QDialogButtonBox.ResetRole:
 			print('   reset clicked')
 
+	def checkChanged(self, value):
+		"""
+		value 0: unchecked
+		value 2: checked
+		"""
+		print('checkChanged() value:', value, type(value))
+		if value == 0:
+			value = False
+		elif value == 2:
+			value = True
+		else:
+			print('error in checkChanged')
+			return
+		bobID_1 = self.sender().property('bobID_1')
+		bobID_2 = self.sender().property('bobID_2')
+		try:
+			self.localOptions[bobID_1][bobID_2] = value
+		except (KeyError) as e:
+			print('error in valueChanged() e:', e)
+
 	def valueChanged(self, value):
 		"""
 		Set value in our local copy of options, self.localOptions
@@ -114,7 +139,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 		elif isinstance(value, str):
 			pass
 
-		print('valueChanged() value:', value, self.sender().property('bobID_1'), self.sender().property('bobID_2'))
+		print('valueChanged() value:', value, type(value), self.sender().property('bobID_1'), self.sender().property('bobID_2'))
 		bobID_1 = self.sender().property('bobID_1')
 		bobID_2 = self.sender().property('bobID_2')
 		try:
