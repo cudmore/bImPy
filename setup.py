@@ -17,11 +17,14 @@ setup(
     #    'pymapmanager.mmio'
     #],
     install_requires=[
+        'napari',
         'numpy',
         'matplotlib',
         'tifffile',
-        'PyQt5',
-        'PyQtChart',
+        #'PyQt5',
+        #'PyQtChart',
+        'pyside2',
+        'qtpy',
         'scikit-image',
         'javabridge',
         'python-bioformats',
