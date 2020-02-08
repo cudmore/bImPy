@@ -8,7 +8,8 @@ import math
 
 import numpy as np
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -331,7 +332,8 @@ class myStackSlider(QtWidgets.QSlider):
 	"""
 
 	# signal/emit
-	updateSliceSignal = QtCore.pyqtSignal(str, object) # object can be a dict
+	#updateSliceSignal = QtCore.pyqtSignal(str, object) # object can be a dict
+	updateSliceSignal = QtCore.Signal(str, object) # object can be a dict
 
 	def __init__(self, numSlices):
 		super(myStackSlider, self).__init__(QtCore.Qt.Vertical)
@@ -362,12 +364,21 @@ class myStackSlider(QtWidgets.QSlider):
 #class bStackView(QtWidgets.QWidget):
 class bStackView(QtWidgets.QGraphicsView):
 
+	'''
 	displayStateChange = QtCore.pyqtSignal(str, object) # object can be a dict
 	setSliceSignal = QtCore.pyqtSignal(str, object)
 	selectNodeSignal = QtCore.pyqtSignal(object)
 	selectEdgeSignal = QtCore.pyqtSignal(object)
 	selectSlabSignal = QtCore.pyqtSignal(object)
 	tracingEditSignal = QtCore.pyqtSignal(object) # on new/delete/edit of node, edge, slab
+	'''
+	
+	displayStateChange = QtCore.Signal(str, object) # object can be a dict
+	setSliceSignal = QtCore.Signal(str, object)
+	selectNodeSignal = QtCore.Signal(object)
+	selectEdgeSignal = QtCore.Signal(object)
+	selectSlabSignal = QtCore.Signal(object)
+	tracingEditSignal = QtCore.Signal(object) # on new/delete/edit of node, edge, slab
 
 	def __init__(self, simpleStack, mainWindow=None, parent=None):
 		super(bStackView, self).__init__(parent)

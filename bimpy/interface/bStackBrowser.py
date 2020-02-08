@@ -3,12 +3,12 @@
 import os
 from collections import OrderedDict
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
-#import napari
-
+#import bimpy
 from bimpy.interface import bStackWidget
-from bimpy.interface import bNapari
+#from bimpy.interface import bNapari
 
 import logging
 logger = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ class bStackBrowser(QtWidgets.QWidget):
 			stack.activateWindow()
 			stack.raise_()
 		else:
+			#tmp = bimpy.interface.bStackWidget(path=path)
 			tmp = bStackWidget(path=path)
 			tmp.show()
 
@@ -158,7 +159,7 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
-	
+
 	myBrowser = bStackBrowser()
 	myBrowser.show()
 

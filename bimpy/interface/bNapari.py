@@ -406,6 +406,7 @@ class bNapari:
 
 if __name__ == '__main__':
 	#from PyQt5 import QtGui, QtCore, QtWidgets
+	#from qtpy import QtGui, QtCore, QtWidgets
 	# stack of vessel staining
 	#path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
 	# video of sa node artery, this file s too big, 1.2 GB, keep slices 4166, 9416

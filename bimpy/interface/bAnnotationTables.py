@@ -4,14 +4,16 @@
 Tables to display (nodes, edges, edits)
 """
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
 import bimpy
 
 ################################################################################
 class bEditTableWidget(QtWidgets.QTableWidget):
 	# signals/slots
-	selectEdgeSignal = QtCore.pyqtSignal(object) # object can be a dict
+	#selectEdgeSignal = QtCore.pyqtSignal(object) # object can be a dict
+	selectEdgeSignal = QtCore.Signal(object) # object can be a dict
 
 	#def __init__(self, mainWindow, editDictList, parent=None):
 	def __init__(self, mainWindow, parent=None):
@@ -130,8 +132,10 @@ class bTableWidget(QtWidgets.QTableWidget):
 class bAnnotationTable(QtWidgets.QWidget):
 
 	# signals/emit
-	selectNodeSignal = QtCore.pyqtSignal(object) # object can be a dict
-	selectEdgeSignal = QtCore.pyqtSignal(object)
+	#selectNodeSignal = QtCore.pyqtSignal(object) # object can be a dict
+	#selectEdgeSignal = QtCore.pyqtSignal(object)
+	selectNodeSignal = QtCore.Signal(object) # object can be a dict
+	selectEdgeSignal = QtCore.Signal(object)
 
 	#def __init__(self, mainWindow=None, parent=None, slabList=None):
 	def __init__(self, mainWindow=None, parent=None):

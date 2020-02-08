@@ -4,25 +4,10 @@ from .bSlabList import bSlabList # this is not working?
 from .bVascularTracing import bVascularTracing # this is not working?
 from .bFileUtil import bFileUtil
 from .bStackHeader import bStackHeader # this is not working?
-from .bJavaBridge import bJavaBridge
-#from .bCanvas import bCanvas
-#from .bWatchFolder import bWatchFolder
-#from .bMotor import bPrior
 
-# for napari plugin
-#from .bShapeAnalysis import bShapeAnalysis
+# 20200207, for now we do not support this, it is too unrealiable
+#from .bJavaBridge import bJavaBridge
 
 from .interface.bStackContrastWidget import bStackContrastWidget
 
-'''
-from .interface.bStackFeebackWidget import bStackFeebackWidget
-from .interface.bStackWidget import bStackWidget
-from .interface.bCanvasApp import bCanvasApp
-'''
-
-'''
-from .bCanvas import bCanvas
-from .bCanvasApp import bCanvasApp
-from .bStackBrowser import bStackBrowser
-from .bStackList import bStackList
-'''
+#from .interface import interface

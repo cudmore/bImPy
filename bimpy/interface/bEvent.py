@@ -1,6 +1,7 @@
 #20200125
 
-from PyQt5 import QtCore
+#from PyQt5 import QtCore
+from qtpy import QtCore
 
 class bEvent(QtCore.QObject):
 	def __init__(self, eventType, nodeIdx=None, edgeIdx=None, slabIdx=None,

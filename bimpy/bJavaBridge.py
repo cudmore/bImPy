@@ -7,7 +7,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 import skimage # this is needed or else javabridge fails to import ???
-import javabridge
+
+try:
+	import javabridge
+except (ImportError) as e:
+	print('bException: bJavaBridge failed to import javabridge e:', e)
+	print('end bException')
+	
 import bioformats
 
 class bJavaBridge:

@@ -1,6 +1,7 @@
 # 20200122
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
 from skimage.measure import profile
 import scipy

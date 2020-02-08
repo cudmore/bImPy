@@ -1,12 +1,14 @@
 # 20190806
 from functools import partial
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
 import bimpy
 
 class bStackFeebackWidget(QtWidgets.QWidget):
-	clickStateChange = QtCore.pyqtSignal(str, object)
+	#clickStateChange = QtCore.pyqtSignal(str, object)
+	clickStateChange = QtCore.Signal(str, object)
 
 	def __init__(self, mainWindow=None, parent=None, numSlices=0):
 		super(bStackFeebackWidget, self).__init__(parent)

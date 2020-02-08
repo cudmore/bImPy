@@ -3,7 +3,8 @@
 Display x/y and intensity as mouse moves over bStackView
 """
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
 #class bStatusToolbarWidget(QtWidgets.QToolBar):
 class bStatusToolbarWidget(QtWidgets.QWidget):

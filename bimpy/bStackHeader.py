@@ -50,7 +50,7 @@ import os, sys, json
 from collections import OrderedDict
 
 #import javabridge
-import bioformats
+#import bioformats
 
 import xml
 import xml.dom.minidom # to pretty print

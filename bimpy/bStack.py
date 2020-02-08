@@ -6,11 +6,10 @@ from collections import OrderedDict
 import numpy as np
 import skimage
 
-#import javabridge
-#import bioformats
-
 import tifffile
 
+'''
+# not sure in which file we want to log? maybe log in the /interface files?
 import logging
 logLevel = 'DEBUG' #('ERROR, WARNING', 'INFO', 'DEBUG')
 filename = 'bimpy.log'
@@ -18,6 +17,7 @@ logging.basicConfig(filename=filename,
 	filemode='w',
 	level=logLevel,
 	format='%(levelname)s - %(module)s.%(funcName)s() line %(lineno)d - %(message)s')
+'''
 
 import bimpy
 
@@ -42,7 +42,7 @@ class bStack:
 	Image data is in self.stack
 	"""
 	def __init__(self, path='', loadImages=True):
-		logging.info('constructor')
+		#logging.info('constructor')
 		self.path = path # path to file
 
 		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
@@ -60,9 +60,16 @@ class bStack:
 			self.fileNameWithoutExtension, tmpExtension = fileName.split('.')
 		'''
 
+		# header
 		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
 		self.stack = None
 
+		# pixel data, each channel is element in list
+		self._maxNumChannels = 4
+		#self.stack = None
+		self._stackList = [None for tmp in range(self._maxNumChannels)]
+
+		self.maxProjectImage = None
 
 		# was for vessel lucida
 		#if len(self.slabList.x) == 0:
@@ -92,33 +99,38 @@ class bStack:
 			return 'NOT FOUND ???'
 
 	def print(self):
-		shape = None
-		pixelType = None
-		if self.stack is not None:
-			shape = self.stack.shape
-			pixelType = self.stack.dtype
-		""" print basic properties of a stack """
-		print('   === bStack.print() fileName:', self.fileName)
-		print('      numChannels:', self.numChannels,
-			'numImages:', self.numImages,
-			'pixelsPerLine:', self.pixelsPerLine,
-			'linesPerFrame:', self.linesPerFrame,
-			'shape:', shape,
-			)
-		print('      zoom:', self.getHeaderVal('zoom'),
-			'umWidth:', self.getHeaderVal('umWidth'),
-			'umHeight:', self.getHeaderVal('umHeight'),
-			)
-		print('      xVoxel', self.xVoxel,
-			'yVoxel:', self.yVoxel,
-			'zVoxel:', self.zVoxel,
-			)
-		print('      bitDepth:', self.bitDepth,
-			'pixel type:', pixelType,
-			)
-		print('      xMotor:', self.header.xMotor,
-			'yMotor:', self.header.yMotor,
-			)
+		'''
+		for idx, channel in enumerate(self._stackList):
+			if channel is None:
+				continue
+			else:
+		'''
+		if 1:
+			if 1:
+				shape = self.stack.shape #channel.shape
+				pixelType = type(self.stack.shape) #channel.dtype
+				""" print basic properties of a stack """
+				print('   === bStack.print() fileName:', self.fileName)
+				print('      numChannels:', self.numChannels,
+					'numImages:', self.numImages,
+					'pixelsPerLine:', self.pixelsPerLine,
+					'linesPerFrame:', self.linesPerFrame,
+					'shape:', shape,
+					)
+				print('      zoom:', self.getHeaderVal('zoom'),
+					'umWidth:', self.getHeaderVal('umWidth'),
+					'umHeight:', self.getHeaderVal('umHeight'),
+					)
+				print('      xVoxel', self.xVoxel,
+					'yVoxel:', self.yVoxel,
+					'zVoxel:', self.zVoxel,
+					)
+				print('      bitDepth:', self.bitDepth,
+					'pixel type:', pixelType,
+					)
+				print('      xMotor:', self.header.xMotor,
+					'yMotor:', self.header.yMotor,
+					)
 
 	@property
 	def fileName(self):
@@ -202,6 +214,18 @@ class bStack:
 		if self.slabList._volumeMask is None:
 			self.slabList.makeVolumeMask()
 		return self.slabList._volumeMask
+
+	def getStack(self, thisStack):
+		stack = None
+		if thisStack == 'ch1':
+			stack = self.stack[0, startSlice:stopSlice, :, :]
+		elif thisStack == 'mask':
+			stack = self.getMaskVolume()[startSlice:stopSlice, :, :]
+		elif thisStack == 'skel':
+			stack = self._imagesSkel[startSlice:stopSlice, :, :]
+		else:
+			print('error: getStack() got bad thisStack:', thisStack)
+		return stack
 
 	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
 
@@ -349,25 +373,25 @@ class bStack:
 			# need to specify channel !!!!!!
 			print('   theArray.shape', theArray.shape, np.max(theArray))
 			self.maxProjectImage = theArray
-			return theArray
+			#return theArray
 		else:
 			print('loadMax() ERROR max file in:', maxFile, 'path:', self.path)
 			self.maxProjectImage = self.makeMaxProject()
 			return None
 
 	def makeMaxProject(self):
+		maxProject = None
 		if self.stack is None:
 			print('   makeMaxProject() found self.stack is None')
-			return None
 		else:
-			print('   makeMaxProject() taking max from self.data.size:', self.data.size)
-			size = self.stack.size
+			print('   makeMaxProject() taking max from self.data.size:', self.stack.size)
+			size = self.stack.shape
 			lenSize = len(size)
-			'''
 			if lenSize == 2:
-				return self.stack
-			'''
-			return None
+				maxProject = self.stack.copy
+			else:
+				maxProject = np.max(self.stack, axis=0)
+		return maxProject
 
 	def loadStack(self, verbose=False):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
@@ -391,10 +415,6 @@ class bStack:
 		if channels is None:
 			channels = 1
 			#print('error: bStack.loadStack() -->> None channels -->> set channels = 1')
-
-		#self.stack = np.zeros((channels, slices, rows, cols), dtype=np.int16)
-
-		#todo: this will only work for one channel
 
 		# if it is a Tiff file use tifffile, otherwise, use bioformats
 		if self.path.endswith('.tif'):
@@ -653,8 +673,13 @@ if __name__ == '__main__':
 		path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
 		#path = '/Users/cudmore/box/data/nathan/vesselucida/vesselucida_tif/20191017__0001_ch1.tif'
 
-		print('--- bstack main is constructing stack')
+		path = '/Users/cudmore/box/data/bImpy-Data/rr30a/raw/rr30a_s1_ch1.tif'
+
+		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
+
+		print('--- bstack __main__ is printing stack')
+		myStack.print()
 
 		print('--- bstack main is loading max')
 		myStack.loadMax()

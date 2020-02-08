@@ -2,7 +2,8 @@
 
 import numpy as np
 
-from PyQt5 import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
 from matplotlib.figure import Figure
 from matplotlib.backends import backend_qt5agg
@@ -63,7 +64,8 @@ class myColorButton(QtWidgets.QPushButton):
 
 ############################################################################
 class bStackContrastWidget(QtWidgets.QWidget):
-	contrastChangeSignal = QtCore.pyqtSignal(object) # object can be a dict
+	#contrastChangeSignal = QtCore.pyqtSignal(object) # object can be a dict
+	contrastChangeSignal = QtCore.Signal(object) # object can be a dict
 
 	def __init__(self, mainWindow=None, parent=None):
 		super(bStackContrastWidget, self).__init__(parent)
