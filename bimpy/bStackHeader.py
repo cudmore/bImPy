@@ -50,7 +50,7 @@ import os, sys, json
 from collections import OrderedDict
 
 #import javabridge
-#import bioformats
+import bioformats
 
 import xml
 import xml.dom.minidom # to pretty print
@@ -77,7 +77,7 @@ class bStackHeader:
 			# lead from converted stack header .txt file
 			self._loadHeaderFromConverted(convertedStackHeaderPath)
 		elif path.endswith('.oir'):
-				self.readOirHeader()
+			self.readOirHeader()
 		else:
 			#print('warning: bStackHeader.__init__() did not load header')
 			pass
@@ -335,7 +335,8 @@ class bStackHeader:
 		"""
 		Read header information from xml. This is not pretty.
 		"""
-		#print('bStackHeader.readOirHeader()')
+		print('bStackHeader.readOirHeader() self.path:', self.path)
+
 		def _qn(namespace, tag_name):
 			'''
 			xml helper. Return the qualified name for a given namespace and tag name
@@ -348,8 +349,18 @@ class bStackHeader:
 			#print('=== StackHeader.readOirHeader() log errors will be here')
 			#
 			print('readOirHeader() self.path:', self.path)
+
+			'''
+			mjb = bimpy.bJavaBridge()
+			mjb.start()
+			'''
+
 			metaData = bioformats.get_omexml_metadata(path=self.path)
 			omeXml = bioformats.OMEXML(metaData)
+
+			'''
+			mjb.stop()
+			'''
 
 			# leave this here, will extract ome-xml as pretty printed string
 			#print('omeXml:', omeXml.prettyprintxml())

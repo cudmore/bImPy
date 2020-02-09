@@ -1,17 +1,18 @@
 #20190809
 
 import os
-from collections import OrderedDict
 
 #from PyQt5 import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
 #import bimpy
+from bimpy import bJavaBridge
 from bimpy.interface import bStackWidget
-#from bimpy.interface import bNapari
 
+'''
 import logging
 logger = logging.getLogger(__name__)
+'''
 
 class bStackBrowser(QtWidgets.QWidget):
 	"""
@@ -20,7 +21,9 @@ class bStackBrowser(QtWidgets.QWidget):
 	Double-click to open a stack in a stack window.
 	"""
 	def __init__(self, parent=None):
+		'''
 		logger.info('constructor')
+		'''
 
 		super(bStackBrowser, self).__init__(parent)
 
@@ -133,10 +136,18 @@ class bStackBrowser(QtWidgets.QWidget):
 			for url in event.mimeData().urls():
 				path = url.toLocalFile()
 				print('bStackBrowser.dropEvent() path:', path)
+
+				acceptedExtensions = ['.tif', '.oir']
+
+				filename, extension = os.path.splitext(path)
+				if extension in acceptedExtensions:
+					self.appendStack(path)
+				'''
 				if path.endswith('.tif'):
 					self.appendStack(path)
 				else:
 					print('error: can only drop .tif files')
+				'''
 		else:
 			event.ignore()
 
@@ -160,6 +171,12 @@ if __name__ == '__main__':
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
 
+	path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
+
+	print('bStackBrowser __main__ starting bJavabridge')
+	mjb = bJavaBridge()
+	mjb.start()
+
 	myBrowser = bStackBrowser()
 	myBrowser.show()
 
@@ -178,5 +195,8 @@ if __name__ == '__main__':
 	#with napari.gui_qt():
 	viewer = napari.view_image(data.astronaut(), rgb=True)
 	'''
+
+	print('bStackBrowser __main__ stopping bJavabridge')
+	mjb.stop()
 
 	sys.exit(app.exec_())

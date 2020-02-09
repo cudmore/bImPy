@@ -7,6 +7,7 @@ import numpy as np
 import skimage
 
 import tifffile
+import bioformats
 
 '''
 # not sure in which file we want to log? maybe log in the /interface files?
@@ -419,6 +420,7 @@ class bStack:
 		# if it is a Tiff file use tifffile, otherwise, use bioformats
 		if self.path.endswith('.tif'):
 			if verbose: print('   bStack.loadStack() is using tifffile...')
+
 			with tifffile.TiffFile(self.path) as tif:
 				xVoxel = 1
 				yVoxel = 1
@@ -467,7 +469,14 @@ class bStack:
 				self.header.assignToShape(self.stack)
 				#print('      after load tiff, self.stack.shape:', self.stack.shape)
 		else:
-			if verbose: print('   bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
+			verbose = True
+			if verbose: print('bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
+
+			'''
+			mjb = bimpy.bJavaBridge()
+			mjb.start()
+			'''
+
 			#with bioformats.GetImageReader(self.path) as reader:
 			with bioformats.ImageReader(self.path) as reader:
 				for channelIdx in range(self.numChannels):
@@ -497,6 +506,10 @@ class bStack:
 						# assign
 						self.stack[channelIdx,imageIdx,:,:] = image
 			self.header.assignToShape(self.stack)
+
+			'''
+			mjb.stop()
+			'''
 
 	#
 	# Saving

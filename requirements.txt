@@ -1,12 +1,15 @@
 napari
 
 #PySide2
+#QtPy
 
 numpy
 matplotlib
 tifffile
+
 #PyQt5
 #PyQtChart
+
 scikit-image
 javabridge
 python-bioformats
