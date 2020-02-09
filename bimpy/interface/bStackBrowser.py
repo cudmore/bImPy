@@ -171,32 +171,36 @@ if __name__ == '__main__':
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
 
-	path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
+	#path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
 
 	print('bStackBrowser __main__ starting bJavabridge')
-	mjb = bJavaBridge()
-	mjb.start()
+	try:
+		mjb = bJavaBridge()
+		mjb.start()
 
-	myBrowser = bStackBrowser()
-	myBrowser.show()
+		myBrowser = bStackBrowser()
+		myBrowser.show()
 
-	if os.path.isfile(path):
-		myBrowser.appendStack(path)
-		myBrowser.showStackWindow(path)
-	else:
-		print('__main__ did not find path:', path)
-	#tmp = myBrowser.loadStack(path)
-	#print('tmp:', tmp)
+		if os.path.isfile(path):
+			myBrowser.appendStack(path)
+			myBrowser.showStackWindow(path)
+		else:
+			print('__main__ did not find path:', path)
+		#tmp = myBrowser.loadStack(path)
+		#print('tmp:', tmp)
 
-	'''
-	from skimage import data
-	import napari
+		'''
+		from skimage import data
+		import napari
 
-	#with napari.gui_qt():
-	viewer = napari.view_image(data.astronaut(), rgb=True)
-	'''
+		#with napari.gui_qt():
+		viewer = napari.view_image(data.astronaut(), rgb=True)
+		'''
 
-	print('bStackBrowser __main__ stopping bJavabridge')
-	mjb.stop()
+		print('bStackBrowser __main__ stopping bJavabridge')
+		mjb.stop()
+
+	except:
+		mjb.stop()
 
 	sys.exit(app.exec_())

@@ -372,7 +372,7 @@ class bStackView(QtWidgets.QGraphicsView):
 	selectSlabSignal = QtCore.pyqtSignal(object)
 	tracingEditSignal = QtCore.pyqtSignal(object) # on new/delete/edit of node, edge, slab
 	'''
-	
+
 	displayStateChange = QtCore.Signal(str, object) # object can be a dict
 	setSliceSignal = QtCore.Signal(str, object)
 	selectNodeSignal = QtCore.Signal(object)

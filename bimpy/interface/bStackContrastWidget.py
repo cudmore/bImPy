@@ -96,7 +96,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		"""
 		myEvent: 'set slice'
 		"""
-		print('bStackContrastWidget.slot_setSlice() myEvent:', myEvent, 'myValue:', myValue)
+		#print('bStackContrastWidget.slot_setSlice() myEvent:', myEvent, 'myValue:', myValue)
 		self.mySlice = myValue
 		self.setSlice(myValue)
 
@@ -115,7 +115,9 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			sliceNumber = self.mySlice
 
 		channel = 0
-		data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
+		#data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
+		data = self.mainWindow.myStackView.mySimpleStack.getImage(channel=channel, sliceNum=sliceNumber)
+
 		data = data.ravel() # returns a copy
 		#print('data:', type(data), data.shape)
 		'''
@@ -127,7 +129,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# see: https://stackoverflow.com/questions/35738199/matplotlib-pyplot-hist-very-slow
 		#num_bins = 2 ** 13
 		num_bins = 2 ** self.bitDepth #self.mainWindow.myStackView.mySimpleStack.bitDepth
-		print('bStackContrastWidget.setSlice() num_bins:', num_bins)
+		#print('bStackContrastWidget.setSlice() num_bins:', num_bins)
 		doLog = True
 
 		# clear entire axes
