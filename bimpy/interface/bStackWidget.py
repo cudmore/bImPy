@@ -5,6 +5,7 @@
 import os, time
 from collections import OrderedDict
 import math
+import json
 
 import numpy as np
 
@@ -26,9 +27,12 @@ class bStackWidget(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None, parent=None, path=''):
 		super(bStackWidget, self).__init__()
 
-		#self.options_defaults()
+		if not self.optionsLoad():
+			self.options_defaults()
 
 		self.path = path
+
+		#self.options_defaults()
 
 		basename = os.path.basename(self.path)
 		self.setWindowTitle(basename)
@@ -52,11 +56,6 @@ class bStackWidget(QtWidgets.QWidget):
 		#
 
 		self.napariViewer = None
-
-		self.showLeftControlBar = True
-		self.showContrastBar = True
-		self.showFeebackBar = True
-		self.showLineProfileBar = True
 
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
 
@@ -107,12 +106,16 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myHBoxLayout.addWidget(self.annotationTable, stretch=7) # stretch=10, not sure on the units???
 		#self.myHBoxLayout.addWidget(self.annotationTable) # stretch=10, not sure on the units???
 		#print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
+
+		'''
+		# 20200211
 		if self.mySimpleStack.slabList is None:
 			self.annotationTable.hide()
 			self.showLeftControlBar = False
 		else:
 			pass
 			#self.annotationTable.hide()
+		'''
 
 		# vertical layout for contrast/feedback/image
 		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=7) # stretch=10, not sure on the units???
@@ -157,14 +160,17 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.myStackView.setSlice(0)
 
+	def getStackView(self):
+		return self.myStackView
+
+	def getFeedbackWidget(self):
+		return self.bStackFeebackWidget
+
 	# todo: remove
 	def slot_StateChange_(self, signalName, signalValue):
 		print('bStackWidget.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
 		#if signalName=='set slice':
 		#	self.mySliceSlider.setValue(signalValue)
-
-	def getFeedbackWidget(self):
-		return self.bStackFeebackWidget
 
 	#def attachNapari(self, napariViewer):
 	#	self.napariViewer = napariViewer
@@ -178,16 +184,13 @@ class bStackWidget(QtWidgets.QWidget):
 
 	def updateDisplayedWidgets(self):
 		# left control bar
-		if self.showLeftControlBar:
-			# todo: fix this
-			if self.annotationTable is not None:
-				self.annotationTable.show()
+		if self.options['Panels']['showAnnotations']:
+			self.annotationTable.show()
 		else:
-			if self.annotationTable is not None:
-				self.annotationTable.hide()
+			self.annotationTable.hide()
 
 		# contrast bar
-		if self.showContrastBar:
+		if self.options['Panels']['showContrast']:
 			self.myContrastWidget.show()
 			self.myContrastWidget.doUpdates = True
 		else:
@@ -195,12 +198,12 @@ class bStackWidget(QtWidgets.QWidget):
 			self.myContrastWidget.doUpdates = False
 
 		# feedback bar
-		if self.showFeebackBar:
+		if self.options['Panels']['showFeedback']:
 			self.bStackFeebackWidget.show()
 		else:
 			self.bStackFeebackWidget.hide()
 
-		if self.showLineProfileBar:
+		if self.options['Panels']['showLineProfile']:
 			self.lineProfileWidget.show()
 			self.lineProfileWidget.doUpdate = True
 		else:
@@ -260,30 +263,29 @@ class bStackWidget(QtWidgets.QWidget):
 			self.myStackView.selectNode(None)
 			self.myStackView.selectEdge(None)
 			self.myStackView.selectSlab(None)
+
+			# todo: pass to parent so we can escape out of macOS full screen
+
 		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
 		elif event.text() == '[':
-			self.showLeftControlBar = not self.showLeftControlBar
+			self.options['Panels']['showAnnotations'] = not self.options['Panels']['showAnnotations']
 			self.updateDisplayedWidgets()
-			'''
-			isVisible = self.annotationTable.isVisible()
-			if isVisible:
-				self.annotationTable.hide()
-				self.showLeftControlBar = False
-			else:
-				self.annotationTable.show()
-				self.showLeftControlBar = True
-			'''
+
 		elif event.key() in [QtCore.Qt.Key_L]:
-			self.showLineProfileBar = not self.showLineProfileBar
+			self.options['Panels']['showLineProfile'] = not self.options['Panels']['showLineProfile']
 			self.updateDisplayedWidgets()
+
 		elif event.key() in [QtCore.Qt.Key_C]:
-			self.showContrastBar = not self.showContrastBar
+			self.options['Panels']['showContrast'] = not self.options['Panels']['showContrast']
 			self.updateDisplayedWidgets()
+
 		elif event.key() in [QtCore.Qt.Key_F]:
-			self.showFeebackBar = not self.showFeebackBar
+			self.options['Panels']['showFeedback'] = not self.options['Panels']['showFeedback']
 			self.updateDisplayedWidgets()
+
 		elif event.key() in [QtCore.Qt.Key_H]:
 			self.printHelp()
+
 		elif event.key() in [QtCore.Qt.Key_B]:
 			print('set selected edge to bad ... need to implement this')
 			'''
@@ -292,6 +294,7 @@ class bStackWidget(QtWidgets.QWidget):
 			# force refresh of table, I need to use model/view/controller !!!!
 			self.annotationTable._refreshRow(selectedEdge)
 			'''
+
 		elif event.text() == 'i':
 			self.mySimpleStack.print()
 
@@ -324,6 +327,77 @@ class bStackWidget(QtWidgets.QWidget):
 		print(' Sliding Z-Projection')
 		print('   z: toggle sliding z-projection on/off, will apply to all "Stacks To Display"')
 		print(' ' )
+
+	def options_defaults(self):
+		print('bStackWidget.options_defaults()')
+
+		self.options = OrderedDict()
+
+		"""
+		Possible values are: Accent, Accent_r, Blues, Blues_r, BrBG, BrBG_r, BuGn, BuGn_r, BuPu, BuPu_r, CMRmap, CMRmap_r, Dark2, Dark2_r, GnBu, GnBu_r, Greens, Greens_r, Greys, Greys_r, OrRd, OrRd_r, Oranges, Oranges_r, PRGn, PRGn_r, Paired, Paired_r, Pastel1, Pastel1_r, Pastel2, Pastel2_r, PiYG, PiYG_r, PuBu, PuBuGn, PuBuGn_r, PuBu_r, PuOr, PuOr_r, PuRd, PuRd_r, Purples, Purples_r, RdBu, RdBu_r, RdGy, RdGy_r, RdPu, RdPu_r, RdYlBu, RdYlBu_r, RdYlGn, RdYlGn_r, Reds, Reds_r, Set1, Set1_r, Set2, Set2_r, Set3, Set3_r, Spectral, Spectral_r, Wistia, Wistia_r, YlGn, YlGnBu, YlGnBu_r, YlGn_r, YlOrBr, YlOrBr_r, YlOrRd, YlOrRd_r, afmhot, afmhot_r, autumn, autumn_r, binary, binary_r, bone, bone_r, brg, brg_r, bwr, bwr_r, cividis, cividis_r, cool, cool_r, coolwarm, coolwarm_r, copper, copper_r, cubehelix, cubehelix_r, flag, flag_r, gist_earth, gist_earth_r, gist_gray, gist_gray_r, gist_heat, gist_heat_r, gist_ncar, gist_ncar_r, gist_rainbow, gist_rainbow_r, gist_stern, gist_stern_r, gist_yarg, gist_yarg_r, gnuplot, gnuplot2, gnuplot2_r, gnuplot_r, gray, gray_r, hot, hot_r, hsv, hsv_r, inferno, inferno_r, jet, jet_r, magma, magma_r, nipy_spectral, nipy_spectral_r, ocean, ocean_r, pink, pink_r, plasma, plasma_r, prism, prism_r, rainbow, rainbow_r, seismic, seismic_r, spring, spring_r, summer, summer_r, tab10, tab10_r, tab20, tab20_r, tab20b, tab20b_r, tab20c, tab20c_r, terrain, terrain_r, twilight, twilight_r, twilight_shifted, twilight_shifted_r, viridis, viridis_r, winter, winter_r
+		"""
+
+		self.options['Stack'] = OrderedDict()
+		self.options['Stack'] = OrderedDict({
+			'colorLut': 'gray',
+			'upSlidingZSlices': 5,
+			'downSlidingZSlices': 5,
+			})
+
+		self.options['Tracing'] = OrderedDict()
+		self.options['Tracing'] = OrderedDict({
+			'nodePenSize': 5, #**2,
+			'nodeColor': 'r',
+			'nodeSelectionPenSize': 7, #**2,
+			'nodeSelectionColor': 'y',
+			'nodeSelectionFlashPenSize': 15, #**2,
+			'nodeSelectionFlashColor': 'm',
+			'showTracingAboveSlices': 5,
+			'showTracingBelowSlices': 5,
+			'tracingPenSize': 2,
+			'tracingColor': 'c',
+			'tracingSelectionPenSize': 2,
+			'tracingSelectionColor': 'y',
+			'tracingSelectionFlashPenSize': 15,
+			'tracingSelectionFlashColor': 'm',
+			'lineProfileLineSize': 2,
+			'lineProfileMarkerSize': 3,
+			'lineProfileColor': 'm',
+			'deadEndPenSize': 5,
+			'deadEndColor': 'b',
+			})
+		# hide and show various interface widgets
+		self.options['Panels'] = OrderedDict({
+			'showAnnotations': False,
+			'showContrast': False,
+			'showFeedback': False,
+			'showStatusToolbar': True,
+			'showLineProfile': False,
+			})
+
+	def optionsSave(self):
+		optionsFilePath = self.optionsFile()
+		print('optionsSave()', optionsFilePath)
+		with open(optionsFilePath, 'w') as f:
+			json.dump(self.options, f, indent=4)
+
+	def optionsLoad(self):
+		optionsFilePath = self.optionsFile()
+		if os.path.exists(optionsFilePath):
+			print('optionsLoad()', optionsFilePath)
+			with open(optionsFilePath) as f:
+				self.options = json.load(f)
+			print(self.options)
+			#self.options = tmp
+			#print(json.dumps(self.options, indent=4))
+			return True
+		else:
+			return False
+
+	def optionsFile(self):
+		myPath = os.path.dirname(os.path.abspath(__file__))
+		optionsFilePath = os.path.join(myPath,'options.json')
+		return optionsFilePath
 
 ################################################################################
 class myStackSlider(QtWidgets.QSlider):
@@ -391,7 +465,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		""")
 
 		#self.path = path
-		self.options_defaults()
+		#self.options_defaults()
 
 		#self.napariViewer = None
 
@@ -555,6 +629,10 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.setScene(scene)
 
 		self.displayStateChange.emit('num slices', self.mySimpleStack.numImages)
+
+	@property
+	def options(self):
+		return self.mainWindow.options
 
 	def slot_StateChange(self, signalName, signalValue):
 		#print(' bStackView.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
@@ -1232,7 +1310,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				'''
 
 				# no scale
-				self.imgplot = self.axes.imshow(image, extent=extent, cmap=cmap)
+				self.imgplot = self.axes.imshow(image, cmap=cmap)
 			else:
 				self.imgplot.set_data(image)
 		else:
@@ -1631,61 +1709,6 @@ class bStackView(QtWidgets.QGraphicsView):
 				self.selectSlab(slabIdx)
 				myEvent = bimpy.interface.bEvent('select edge', edgeIdx=edgeIdx, slabIdx=slabIdx)
 				self.selectEdgeSignal.emit(myEvent)
-
-	def options_defaults(self):
-		print('options_defaults()')
-
-		self.options = OrderedDict()
-
-		"""
-		Possible values are: Accent, Accent_r, Blues, Blues_r, BrBG, BrBG_r, BuGn, BuGn_r, BuPu, BuPu_r, CMRmap, CMRmap_r, Dark2, Dark2_r, GnBu, GnBu_r, Greens, Greens_r, Greys, Greys_r, OrRd, OrRd_r, Oranges, Oranges_r, PRGn, PRGn_r, Paired, Paired_r, Pastel1, Pastel1_r, Pastel2, Pastel2_r, PiYG, PiYG_r, PuBu, PuBuGn, PuBuGn_r, PuBu_r, PuOr, PuOr_r, PuRd, PuRd_r, Purples, Purples_r, RdBu, RdBu_r, RdGy, RdGy_r, RdPu, RdPu_r, RdYlBu, RdYlBu_r, RdYlGn, RdYlGn_r, Reds, Reds_r, Set1, Set1_r, Set2, Set2_r, Set3, Set3_r, Spectral, Spectral_r, Wistia, Wistia_r, YlGn, YlGnBu, YlGnBu_r, YlGn_r, YlOrBr, YlOrBr_r, YlOrRd, YlOrRd_r, afmhot, afmhot_r, autumn, autumn_r, binary, binary_r, bone, bone_r, brg, brg_r, bwr, bwr_r, cividis, cividis_r, cool, cool_r, coolwarm, coolwarm_r, copper, copper_r, cubehelix, cubehelix_r, flag, flag_r, gist_earth, gist_earth_r, gist_gray, gist_gray_r, gist_heat, gist_heat_r, gist_ncar, gist_ncar_r, gist_rainbow, gist_rainbow_r, gist_stern, gist_stern_r, gist_yarg, gist_yarg_r, gnuplot, gnuplot2, gnuplot2_r, gnuplot_r, gray, gray_r, hot, hot_r, hsv, hsv_r, inferno, inferno_r, jet, jet_r, magma, magma_r, nipy_spectral, nipy_spectral_r, ocean, ocean_r, pink, pink_r, plasma, plasma_r, prism, prism_r, rainbow, rainbow_r, seismic, seismic_r, spring, spring_r, summer, summer_r, tab10, tab10_r, tab20, tab20_r, tab20b, tab20b_r, tab20c, tab20c_r, terrain, terrain_r, twilight, twilight_r, twilight_shifted, twilight_shifted_r, viridis, viridis_r, winter, winter_r
-		"""
-
-		self.options['Stack'] = OrderedDict()
-		self.options['Stack'] = OrderedDict({
-			'colorLut': 'gray',
-			'upSlidingZSlices': 5,
-			'downSlidingZSlices': 5,
-			})
-
-		self.options['Tracing'] = OrderedDict()
-		self.options['Tracing'] = OrderedDict({
-			'nodePenSize': 5, #**2,
-			'nodeColor': 'r',
-			'nodeSelectionPenSize': 7, #**2,
-			'nodeSelectionColor': 'y',
-			'nodeSelectionFlashPenSize': 15, #**2,
-			'nodeSelectionFlashColor': 'm',
-			'showTracingAboveSlices': 5,
-			'showTracingBelowSlices': 5,
-			'tracingPenSize': 2,
-			'tracingColor': 'c',
-			'tracingSelectionPenSize': 2,
-			'tracingSelectionColor': 'y',
-			'tracingSelectionFlashPenSize': 15,
-			'tracingSelectionFlashColor': 'm',
-			'lineProfileLineSize': 2,
-			'lineProfileMarkerSize': 3,
-			'lineProfileColor': 'm',
-			'deadEndPenSize': 5,
-			'deadEndColor': 'b',
-			})
-		# hide and show various interface widgets
-		self.options['Panels'] = OrderedDict({
-			'showAnnotations': True,
-			'showContrast': True,
-			'showFeedback': True,
-			'showStatusToolbar': True,
-			'showLineProfile': True,
-			})
-
-	def optionsSave(self):
-		pass
-
-	def optionsLoad(self):
-		pass
-
-
 
 if __name__ == '__main__':
 	import sys

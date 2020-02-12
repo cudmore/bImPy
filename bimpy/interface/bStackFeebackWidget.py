@@ -124,7 +124,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		return title
 
 	def optionsButton_Callback(self):
-		optionsDialog = bimpy.interface.bOptionsDialog(self, self.mainWindow.myStackView)
+		optionsDialog = bimpy.interface.bOptionsDialog(self, self.mainWindow)
 
 	def napariButton_Callback(self):
 		self.mainWindow.openNapari()

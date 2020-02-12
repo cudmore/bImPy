@@ -396,6 +396,7 @@ class bStack:
 
 	def loadStack(self, verbose=False):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
+		#verbose = True
 		if verbose: print('   bStack.loadStack()', self.path)
 
 		self.loadHeader()
@@ -432,7 +433,7 @@ class bStack:
 					else:
 						#print('   error, got zero tag value?')
 						xVoxel = 1
-						if verbose: print('   xVoxel from XResolutions:', xVoxel)
+					if verbose: print('   bStack.loadStack() xVoxel from TIFF XResolutions:', xVoxel)
 
 					tag = tif.pages[0].tags['YResolution']
 					#print('   YResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
@@ -441,7 +442,17 @@ class bStack:
 					else:
 						#print('   error, got zero tag value?')
 						yVoxel = 1
-						if verbose: print('   yVoxel from YResolutions:', yVoxel)
+					if verbose: print('   bStack.loadStack() yVoxel from TIFF YResolutions:', yVoxel)
+
+					'''
+					for tmpKey in tif.pages[0].tags.keys():
+						tmpTag = tif.pages[0].tags[tmpKey]
+						print('   tmpKey:', tmpKey, 'tmpTag:', tmpTag)
+						if tmpKey == 'PageName':
+							tmpTag2 = tif.pages[1].tags[tmpKey]
+							print('      tmpTag2:', tmpTag2)
+					'''
+
 				except (KeyError) as e:
 					if verbose: print('KeyError exception reading XResolution/YResolution from TIff')
 

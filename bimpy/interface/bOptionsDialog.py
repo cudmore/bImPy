@@ -12,7 +12,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 	todo: extend this to handle all options !!!
 	"""
-	def __init__(self, parent, parentStackView):
+	def __init__(self, parent, mainWindow):
 		"""
 		parent is needed, otherwise self.show() does nothing
 
@@ -21,14 +21,14 @@ class bOptionsDialog(QtWidgets.QDialog):
 		"""
 		super(bOptionsDialog, self).__init__(parent)
 
-		self.parentStackView = parentStackView
+		self.mainWindow = mainWindow
 
 		self.require_preComputeAllMasks = False #some changes require masks to be regenerated
 
 		print('myTracingDialog.__init__()')
 
 		# make a copy of options to modify
-		self.localOptions = dict(self.parentStackView.options)
+		self.localOptions = dict(self.mainWindow.options)
 
 		self.setWindowTitle('bImPy Options')
 
@@ -105,8 +105,8 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 		if buttonRole == QtWidgets.QDialogButtonBox.ApplyRole:
 			print('   apply clicked')
-			self.parentStackView.options = self.localOptions
-			self.parentStackView.setSlice() # refresh
+			self.mainWindow.options = self.localOptions
+			self.mainWindow.getStackView().setSlice() # refresh
 
 		elif buttonRole == QtWidgets.QDialogButtonBox.ResetRole:
 			print('   reset clicked')
@@ -158,12 +158,14 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 	def myAccept(self):
 		"""
-		copy our localOptions back into parentStackView.options
+		copy our localOptions back into mainWindow.options
 		"""
 		print('myTracingDialog.myAccept()')
 
-		self.parentStackView.options = self.localOptions
+		self.mainWindow.options = self.localOptions
 
-		self.parentStackView.setSlice() # refresh
+		self.mainWindow.optionsSave()
+
+		self.mainWindow.getStackView().setSlice() # refresh
 
 		self.accept() # close the dialog
