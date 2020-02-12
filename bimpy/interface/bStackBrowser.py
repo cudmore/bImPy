@@ -1,6 +1,7 @@
 #20190809
 
 import os
+import traceback
 
 #from PyQt5 import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
@@ -14,24 +15,70 @@ import logging
 logger = logging.getLogger(__name__)
 '''
 
-class bStackBrowser(QtWidgets.QWidget):
+
+#class bStackBrowser(QtWidgets.QWidget):
+class bStackBrowser(QtWidgets.QMainWindow):
 	"""
 	A window that displays a list of stacks.
 	Drag and drop to add a stack.
 	Double-click to open a stack in a stack window.
 	"""
 	def __init__(self, parent=None):
-		'''
-		logger.info('constructor')
-		'''
-
-		super(bStackBrowser, self).__init__(parent)
+		super(bStackBrowser, self).__init__()
 
 		self.myStackList = []
 
 		self.setAcceptDrops(True)
 
 		self.buildUI()
+
+		myMenubar = self.menuBar()
+		viewMenu = myMenubar.addMenu("View")
+
+		# use setChecked()
+		feedbackAction = QtWidgets.QAction("Feedback", self, checkable=True)
+		feedbackAction.triggered.connect(self.feedbackMenu_Callback)
+		viewMenu.addAction(feedbackAction)
+
+	def feedbackMenu_Callback(self):
+		print('feedbackMenu_Callback()')
+
+	def buildUI(self):
+
+		self.setWindowTitle('Stack Browser')
+
+		print('0 buildUI')
+		centralWidget = QtWidgets.QWidget()
+		self.setCentralWidget(centralWidget)
+
+		print('1 buildUI')
+		self.myVBoxLayout = QtWidgets.QVBoxLayout()
+		centralWidget.setLayout(self.myVBoxLayout)
+
+		print('2 buildUI')
+		# tree
+		self.myColumnNames = ['Folder', 'Path', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels']
+
+		self.myTreeWidget = QtWidgets.QTreeWidget()
+		self.myTreeWidget.setHeaderLabels(self.myColumnNames)
+
+		'''
+		cg = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['Drag and Drop'])
+		cg.setExpanded(True)
+		'''
+
+		'''
+		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['', '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif', 'mytest.tif', '512', '512', '100'])
+		c1.setText(6, 'xxx')
+		'''
+
+		self.myTreeWidget.itemDoubleClicked.connect(self.itemDoubleClicked)
+
+		self.myVBoxLayout.addWidget(self.myTreeWidget)
+
+		self.move(50,50)
+		self.resize(700, 300)
+
 
 	def showStackWindow(self, path):
 		alreadyOpen = False
@@ -61,35 +108,6 @@ class bStackBrowser(QtWidgets.QWidget):
 	def appendStack(self, path):
 		fileName = os.path.basename(path)
 		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['', path, fileName, 'xxx', 'yyy', 'zzz'])
-
-	def buildUI(self):
-
-		self.setWindowTitle('Stack Browser')
-
-		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
-
-		# tree
-		self.myColumnNames = ['Folder', 'Path', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels']
-
-		self.myTreeWidget = QtWidgets.QTreeWidget()
-		self.myTreeWidget.setHeaderLabels(self.myColumnNames)
-
-		'''
-		cg = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['Drag and Drop'])
-		cg.setExpanded(True)
-		'''
-
-		'''
-		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['', '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif', 'mytest.tif', '512', '512', '100'])
-		c1.setText(6, 'xxx')
-		'''
-
-		self.myTreeWidget.itemDoubleClicked.connect(self.itemDoubleClicked)
-
-		self.myVBoxLayout.addWidget(self.myTreeWidget)
-
-		self.move(50,50)
-		self.resize(700, 300)
 
 	def itemDoubleClicked(self, item, col):
 		print('item:', item)
@@ -174,10 +192,12 @@ if __name__ == '__main__':
 	#path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
 
 
+	doJavabridge = False
 	try:
-		print('bStackBrowser __main__ starting bJavabridge')
-		mjb = bJavaBridge()
-		mjb.start()
+		if doJavabridge:
+			print('bStackBrowser __main__ starting bJavabridge')
+			mjb = bJavaBridge()
+			mjb.start()
 
 		myBrowser = bStackBrowser()
 		myBrowser.show()
@@ -198,10 +218,17 @@ if __name__ == '__main__':
 		viewer = napari.view_image(data.astronaut(), rgb=True)
 		'''
 
-		print('bStackBrowser __main__ stopping bJavabridge')
-		mjb.stop()
+		if doJavabridge:
+			print('bStackBrowser __main__ stopping bJavabridge')
+			mjb.stop()
 
-	except:
-		mjb.stop()
+	except (Exception) as e:
+		print('exception:', e)
+		print(traceback.format_exc())
+
+		if doJavabridge:
+			mjb.stop()
+
+		raise
 
 	sys.exit(app.exec_())
