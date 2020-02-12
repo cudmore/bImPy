@@ -460,7 +460,9 @@ class bStackView(QtWidgets.QGraphicsView):
 		#self.figure = Figure(figsize=(width, height), dpi=dpi)
 		self.figure = Figure(figsize=(5,5)) # need size otherwise square image gets squished in y?
 		self.canvas = backend_qt5agg.FigureCanvas(self.figure)
-		self.axes = self.figure.add_axes([0, 0, 1, 1], aspect=1) #remove white border
+		#self.canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+		#self.axes = self.figure.add_axes([0, 0, 1, 1], aspect=1) #remove white border
+		self.axes = self.figure.add_axes([0, 0, 1, 1]) #remove white border
 		#self.axes.set_aspect('equal')
 		self.axes.axis('off') #turn off axis labels
 
@@ -1219,7 +1221,17 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			if self.imgplot is None:
 				cmap = self.options['Stack']['colorLut'] #2**2
-				self.imgplot = self.axes.imshow(image, cmap=cmap)
+				'''
+				# this generally works but we need to scale all the tracing?
+				iLeft = 0
+				iTop = 0
+				iRight = 600 * 0.2
+				iBottom = 600 * 0.2
+				extent=[iLeft, iRight, iBottom, iTop]
+				self.imgplot = self.axes.imshow(image, extent=extent, cmap=cmap)
+				'''
+				# no scale
+				#self.imgplot = self.axes.imshow(image, extent=extent, cmap=cmap)
 			else:
 				self.imgplot.set_data(image)
 		else:
