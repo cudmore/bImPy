@@ -1221,7 +1221,6 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			if self.imgplot is None:
 				cmap = self.options['Stack']['colorLut'] #2**2
-				'''
 				# this generally works but we need to scale all the tracing?
 				iLeft = 0
 				iTop = 0
@@ -1229,7 +1228,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				iBottom = 600 * 0.2
 				extent=[iLeft, iRight, iBottom, iTop]
 				self.imgplot = self.axes.imshow(image, extent=extent, cmap=cmap)
-				'''
+
 				# no scale
 				#self.imgplot = self.axes.imshow(image, extent=extent, cmap=cmap)
 			else:
