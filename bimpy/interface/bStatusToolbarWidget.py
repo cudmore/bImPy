@@ -8,13 +8,13 @@ from qtpy import QtGui, QtCore, QtWidgets
 
 #class bStatusToolbarWidget(QtWidgets.QToolBar):
 class bStatusToolbarWidget(QtWidgets.QWidget):
-	def __init__(self, mainWindow):
+	def __init__(self, mainWindow, numSlices):
 		print('bStatusToolbarWidget.__init__')
 		#super(QtWidgets.QToolBar, self).__init__(parent)
 		super(bStatusToolbarWidget, self).__init__()
 
 		self.mainWindow = mainWindow
-
+		self.numSlices = numSlices
 		#self.setMovable(False)
 
 		'''
@@ -23,6 +23,10 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		'''
 
 		hBoxLayout = QtWidgets.QHBoxLayout(self)
+
+		currentSliceStr = 'Slice 0 /' + str(self.numSlices)
+		self.currentSliceLabel = QtWidgets.QLabel(currentSliceStr)
+		hBoxLayout.addWidget(self.currentSliceLabel)
 
 		xMousePosition_ = QtWidgets.QLabel("X (pixel)")
 		self.xMousePosition = QtWidgets.QLabel("None")
@@ -39,12 +43,30 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		hBoxLayout.addWidget(pixelIntensity_)
 		hBoxLayout.addWidget(self.pixelIntensity)
 
+		'''
 		self.lastActionLabel = QtWidgets.QLabel("Last Action: None")
 		hBoxLayout.addWidget(self.lastActionLabel)
+		'''
 
 		# finish
 		#myGroupBox.setLayout(hBoxLayout)
 		#self.addWidget(myGroupBox)
+
+	def slot_StateChange(self, signalName, signalValue):
+		"""
+		signalValue: can be int, str, dict , ...
+		"""
+		if signalName == 'set slice':
+			text = str(signalValue)
+			currentSliceStr = 'Slice ' + text + '/' + str(self.numSlices)
+			self.currentSliceLabel.setText(currentSliceStr)
+
+	def slot_StateChange2(self, myEvent):
+		eventType = myEvent.eventType
+		if eventType in ['select node', 'select edge']:
+			sliceIdx = myEvent.sliceIdx
+			currentSliceStr = 'Slice ' + str(sliceIdx) + '/' + str(self.numSlices)
+			self.currentSliceLabel.setText(currentSliceStr)
 
 	def setMousePosition(self, point):
 		x = round(point.x(),0)
