@@ -501,7 +501,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.mySelectedEdge = None # edge index of selected edge
 		self.mySelectedSlab = None # slab index of selected slab
 
-		self.displayThisStack = 'ch1'
+		#self.displayThisStack = 'ch1'
 
 		self.currentSlice = 0
 		self.minContrast = 0
@@ -662,6 +662,35 @@ class bStackView(QtWidgets.QGraphicsView):
 		todo: building and then responding to menu is too hard coded here, should generalize???
 		"""
 		menu = QtWidgets.QMenu()
+
+		#self.displayThisStack
+		numChannels = self.mySimpleStack.numChannels
+		actions = ['Channel 1', 'Channel 2', 'Channel 3', 'RGB']
+		for actionStr in actions:
+			# make an action
+			currentAction = QtWidgets.QAction(actionStr, self, checkable=True)
+			# decide if it is checked
+			isEnabled = False
+			isChecked = False
+			if actionStr == 'Channel 1':
+				isEnabled = numChannels > 0
+				isChecked = self.displayStateDict['displayThisStack'] == 'ch1'
+			elif actionStr == 'Channel 2':
+				isEnabled = numChannels > 1
+				isChecked = self.displayStateDict['displayThisStack'] == 'ch2'
+			elif actionStr == 'Channel 3':
+				isEnabled = numChannels > 2
+				isChecked = self.displayStateDict['displayThisStack'] == 'ch3'
+			elif actionStr == 'RGB':
+				isEnabled = numChannels > 1
+				isChecked = self.displayStateDict['displayThisStack'] == 'rgb'
+			currentAction.setEnabled(isEnabled)
+			currentAction.setChecked(isEnabled)
+			# add to menu
+			menuAction = menu.addAction(currentAction)
+
+		menu.addSeparator()
+
 		#actions = ['Image', 'Sliding Z', 'Tracing', 'Nodes', 'Edges']
 		actions = ['Image', 'Sliding Z', 'Nodes', 'Edges']
 		for actionStr in actions:
@@ -728,6 +757,16 @@ class bStackView(QtWidgets.QGraphicsView):
 		print('=== bStackView.showRightClickMenu() userActionStr:', userActionStr)
 		signalName = 'bSignal ' + userActionStr
 		userSelectedMenu = True
+
+		# image
+		if userActionStr == 'Channel 1':
+			self.displayStateDict['displayThisStack'] = 'ch1'
+		elif userActionStr == 'Channel 2':
+			self.displayStateDict['displayThisStack'] = 'ch2'
+		elif userActionStr == 'Channel 3':
+			self.displayStateDict['displayThisStack'] = 'ch3'
+		elif userActionStr == 'RGB':
+			self.displayStateDict['displayThisStack'] = 'rgb'
 
 		# view of tracing
 		if userActionStr == 'Image':
@@ -1425,13 +1464,14 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		if self.displayStateDict['showImage']:
 			#if self.displaySlidingZ:
+			displayThisStack = self.displayStateDict['displayThisStack']
 			if self.displayStateDict['displaySlidingZ']:
 				upSlices = self.options['Stack']['upSlidingZSlices']
 				downSlices = self.options['Stack']['downSlidingZSlices']
-				image = self.mySimpleStack.getSlidingZ(index, self.displayThisStack, upSlices, downSlices, self.minContrast, self.maxContrast)
+				image = self.mySimpleStack.getSlidingZ(index, displayThisStack, upSlices, downSlices, self.minContrast, self.maxContrast)
 			else:
 				# works
-				image = self.mySimpleStack.setSliceContrast(index, thisStack=self.displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
+				image = self.mySimpleStack.setSliceContrast(index, thisStack=displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
 				#print('image.shape:', image.shape)
 
 			if self.imgplot is None:
@@ -1602,19 +1642,22 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# choose which stack to display
 		elif event.key() == QtCore.Qt.Key_1:
-			self.displayThisStack = 'ch1'
+			#self.displayThisStack = 'ch1'
+			self.displayStateDict['displayThisStack'] = 'ch1'
 			self.setSlice() # just refresh
 		elif event.key() == QtCore.Qt.Key_2:
 			numChannels = self.mySimpleStack.numChannels
 			if numChannels > 1:
-				self.displayThisStack = 'ch2'
+				#self.displayThisStack = 'ch2'
+				self.displayStateDict['displayThisStack'] = 'ch2'
 				self.setSlice() # just refresh
 			else:
 				print('warning: stack only has', numChannels, 'channel(s)')
 		elif event.key() == QtCore.Qt.Key_3:
 			numChannels = self.mySimpleStack.numChannels
 			if numChannels > 2:
-				self.displayThisStack = 'ch3'
+				#self.displayThisStack = 'ch3'
+				self.displayStateDict['displayThisStack'] = 'ch3'
 				self.setSlice() # just refresh
 			else:
 				print('warning: stack only has', numChannels, 'channel(s)')
@@ -1622,12 +1665,14 @@ class bStackView(QtWidgets.QGraphicsView):
 		# not implemented (was for deepvess)
 		elif event.key() == QtCore.Qt.Key_9:
 			if self.mySimpleStack._imagesSkel is not None:
-				self.displayThisStack = 'skel'
+				#self.displayThisStack = 'skel'
+				self.displayStateDict['displayThisStack'] = 'skel'
 				self.setSlice() # just refresh
 		# should work, creates a mask from vesselucida tracing
 		elif event.key() == QtCore.Qt.Key_0:
 			if 1: #self.mySimpleStack._imagesMask is not None:
-				self.displayThisStack = 'mask'
+				#self.displayThisStack = 'mask'
+				self.displayStateDict['displayThisStack'] = 'mask'
 				self.setSlice() # just refresh
 
 		elif event.key() == QtCore.Qt.Key_P:
