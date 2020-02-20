@@ -79,9 +79,8 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		# todo: update pixel intensity
 		# self.mainWindow.myStackView
 		channel = 1
-		#slice = self.mainWindow.myStackView.currentSlice
-		#pixelIntensity = self.mainWindow.myStackView.mySimpleStack.stack[channel, slice, x, y] # NOT swapped
 		image = self.mainWindow.myStackView.mySimpleStack.getImage(channel=channel)
-		pixelIntensity = image[y, x] # NOT swapped
+		pixelIntensity = image[x, y] # NOT swapped
+		#print('image.shape:', image.shape, image[x, y], image[y, x])
 		self.pixelIntensity.setText(str(pixelIntensity))
 		self.pixelIntensity.repaint()

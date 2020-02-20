@@ -50,7 +50,11 @@ import os, sys, json
 from collections import OrderedDict
 
 #import javabridge
-import bioformats
+try:
+	import bioformats
+except (ImportError) as e:
+	print('Exception: bStackHeader failed to import bioformats e:', e)
+	bioformats = None
 
 import xml
 import xml.dom.minidom # to pretty print
@@ -77,7 +81,10 @@ class bStackHeader:
 			# lead from converted stack header .txt file
 			self._loadHeaderFromConverted(convertedStackHeaderPath)
 		elif path.endswith('.oir'):
-			self.readOirHeader()
+			if bioformats is None:
+				print('error: bioformats was not imported, will not open .oir file')
+			else:
+				self.readOirHeader()
 		else:
 			#print('warning: bStackHeader.__init__() did not load header')
 			pass
@@ -354,6 +361,9 @@ class bStackHeader:
 			mjb = bimpy.bJavaBridge()
 			mjb.start()
 			'''
+
+			if bioformats is None:
+				return
 
 			metaData = bioformats.get_omexml_metadata(path=self.path)
 			omeXml = bioformats.OMEXML(metaData)

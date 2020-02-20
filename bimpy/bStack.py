@@ -7,7 +7,11 @@ import numpy as np
 import skimage
 
 import tifffile
-import bioformats
+
+try:
+	import bioformats
+except (ImportError) as e:
+	bioformats = None
 
 '''
 # not sure in which file we want to log? maybe log in the /interface files?
@@ -199,10 +203,19 @@ class bStack:
 		else:
 			print('warning bStack.setSlice()', sliceNum, 'but stack only has', self.header.numImages)
 
+	def getStackData(self, channel=1):
+		channelIdx = channel - 1
+		if len(self.stack.shape)==3:
+			# single plane image
+			return self.stack[channelIdx,:,:]
+		elif len(self.stack.shape)==4:
+			return self.stack[channelIdx,:,:,:]
+
 	def getImage(self, channel=1, sliceNum=None):
 		channelIdx = channel - 1
 		if sliceNum is None:
 			sliceNum = self.currentSlice
+		#print('getImage() returning sliceNum:', sliceNum, 'from shape:', self.stack.shape)
 		if len(self.stack.shape)==3:
 			# single plane image
 			return self.stack[channelIdx,:,:]
@@ -480,6 +493,10 @@ class bStack:
 				self.header.assignToShape(self.stack)
 				#print('      after load tiff, self.stack.shape:', self.stack.shape)
 		else:
+			if bioformats is None:
+				print('error: bStack.loadStack() bioformats was not imported, can only open .tif files.')
+				return False
+
 			verbose = True
 			if verbose: print('bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
 
@@ -521,6 +538,7 @@ class bStack:
 			'''
 			mjb.stop()
 			'''
+		return True
 
 	#
 	# Saving

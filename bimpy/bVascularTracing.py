@@ -1482,12 +1482,12 @@ class bVascularTracing:
 				#print('idx:', idx, 'edge:', edge)
 
 				# convert numpy int64 to int
-				edge['slabList'] = [int(tmpSlab) for tmpSlab in edge['slabList']]
+				tmpSLabList = [int(tmpSlab) for tmpSlab in edge['slabList']]
 
 				# each edge will have a group
 				edgeGroup = f.create_group('edge' + str(idx))
 				# each edge group will have a  dict with all parameters
-				edgeDict_json = json.dumps(edge)
+				edgeDict_json = json.dumps(tmpSLabList)
 				edgeGroup.attrs['edgeDict'] = edgeDict_json
 
 			# slabs are in a dataset

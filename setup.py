@@ -10,7 +10,7 @@ setup(
     author='Robert H Cudmore',
     author_email='robert.cudmore@gmail.com',
     license='GNU GPLv3',
-    packages = find_packages(),
+    #packages = find_packages(),
     #packages = find_packages(exclude=['version']),
     #packages=[
     #    'pymapmanager',
@@ -18,15 +18,14 @@ setup(
     #],
     install_requires=[
         'napari',
+        'pyside2',
+        'qtpy',
         'numpy',
         'matplotlib',
         'tifffile',
-        #'PyQt5',
-        #'PyQtChart',
-        'pyside2',
-        'qtpy',
         'scikit-image',
-        'javabridge',
-        'python-bioformats',
+        'h5py',
+        #'javabridge',
+        #'python-bioformats',
     ]
 )

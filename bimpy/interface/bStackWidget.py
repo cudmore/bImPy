@@ -59,6 +59,13 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
 
+		#
+		#
+		myFeedbackWidget = bimpy.interface.bStackFeebackWidget(self)
+		self.myHBoxLayout.addWidget(myFeedbackWidget, stretch=2)
+		#
+		#
+
 		self.myVBoxLayout = QtWidgets.QVBoxLayout(self)
 
 		self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
@@ -101,7 +108,7 @@ class bStackWidget(QtWidgets.QWidget):
 		# todo: Need to show/hide annotation table
 		#self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
 		self.annotationTable = bimpy.interface.bAnnotationTable(mainWindow=self, parent=None)
-		self.myHBoxLayout.addWidget(self.annotationTable, stretch=7) # stretch=10, not sure on the units???
+		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
 		#self.myHBoxLayout.addWidget(self.annotationTable) # stretch=10, not sure on the units???
 		#print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
 
@@ -116,7 +123,7 @@ class bStackWidget(QtWidgets.QWidget):
 		'''
 
 		# vertical layout for contrast/feedback/image
-		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=7) # stretch=10, not sure on the units???
+		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=5) #, stretch=7) # stretch=10, not sure on the units???
 
 		#
 		# signals and slots
@@ -132,6 +139,8 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myStackView.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
 		self.myStackView.selectNodeSignal.connect(self.annotationTable.slot_selectNode)
 		self.myStackView.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
+		self.myStackView.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode)
+		self.myStackView.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge)
 		self.myStackView.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
 		self.myStackView.setSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		#
@@ -144,6 +153,8 @@ class bStackWidget(QtWidgets.QWidget):
 		# listen to self.annotationTable
 		self.annotationTable.selectNodeSignal.connect(self.myStackView.slot_selectNode) # change to slot_selectNode ???
 		self.annotationTable.selectEdgeSignal.connect(self.myStackView.slot_selectEdge) # change to slot_selectNode ???
+		self.annotationTable.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode) # change to slot_selectNode ???
+		self.annotationTable.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge) # change to slot_selectNode ???
 		#self.annotationTable.selectEdgeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
 		#self.annotationTable.selectNodeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
 		self.annotationTable.selectEdgeSignal.connect(self.statusToolbarWidget.slot_StateChange2)
@@ -162,10 +173,10 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.updateDisplayedWidgets()
 
-		self.move(1000,100)
+		self.move(750,100)
 		#self.resize(2000, 1000)
 		#self.resize(2000, 1000)
-		self.resize(512, 512)
+		self.resize(1024, 512)
 
 		self.myStackView.setSlice(0)
 
@@ -277,15 +288,8 @@ class bStackWidget(QtWidgets.QWidget):
 			self.mySimpleStack.slabList.loadVesselucida_xml()
 		'''
 
-		if event.key() in [QtCore.Qt.Key_Escape]:
-			self.myStackView.selectNode(None)
-			self.myStackView.selectEdge(None)
-			self.myStackView.selectSlab(None)
-
-			# todo: pass to parent so we can escape out of macOS full screen
-
 		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
-		elif event.text() == '[':
+		if event.text() == '[':
 			self.options['Panels']['showAnnotations'] = not self.options['Panels']['showAnnotations']
 			self.updateDisplayedWidgets()
 
@@ -307,7 +311,7 @@ class bStackWidget(QtWidgets.QWidget):
 		elif event.key() in [QtCore.Qt.Key_B]:
 			print('set selected edge to bad ... need to implement this')
 			'''
-			selectedEdge = self.myStackView.mySelectedEdge
+			selectedEdge = self.myStackView.selectedEdge()
 			self.mySimpleStack.setAnnotation('toggle bad edge', selectedEdge)
 			# force refresh of table, I need to use model/view/controller !!!!
 			self.annotationTable._refreshRow(selectedEdge)
@@ -402,12 +406,10 @@ class bStackWidget(QtWidgets.QWidget):
 	def optionsLoad(self):
 		optionsFilePath = self.optionsFile()
 		if os.path.exists(optionsFilePath):
-			print('optionsLoad()', optionsFilePath)
+			print('bStackWidget.optionsLoad()', optionsFilePath)
 			with open(optionsFilePath) as f:
 				self.options = json.load(f)
-			print(self.options)
-			#self.options = tmp
-			#print(json.dumps(self.options, indent=4))
+			#print(self.options)
 			return True
 		else:
 			return False
@@ -497,9 +499,11 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.mySimpleStack = simpleStack #bSimpleStack(path)
 		self.mainWindow = mainWindow
 
+		'''
 		self.mySelectedNode = None # node index of selected node
 		self.mySelectedEdge = None # edge index of selected edge
 		self.mySelectedSlab = None # slab index of selected slab
+		'''
 
 		#self.displayThisStack = 'ch1'
 
@@ -522,6 +526,10 @@ class bStackView(QtWidgets.QGraphicsView):
 			'showNodes': True,
 			'showEdges': True,
 			'showDeadEnds': True,
+
+			'mySelectedNode': None,
+			'mySelectedEdge': None,
+			'mySelectedSlab': None,
 		}
 
 		self._preComputeAllMasks()
@@ -531,7 +539,6 @@ class bStackView(QtWidgets.QGraphicsView):
 		# this works
 		#scene.setBackgroundBrush(QtCore.Qt.blue);
 
-		# was this
 		# visually turn off scroll bars
 		self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -651,6 +658,22 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.displayStateChange.emit('num slices', self.mySimpleStack.numImages)
 
+	#@property
+	def selectedNode(self, nodeIdx=-1):
+		if nodeIdx is not -1:
+			self.displayStateDict['mySelectedNode'] = nodeIdx
+		return self.displayStateDict['mySelectedNode']
+
+	def selectedEdge(self, edgeIdx=-1):
+		if edgeIdx is not -1:
+			self.displayStateDict['mySelectedEdge'] = edgeIdx
+		return self.displayStateDict['mySelectedEdge']
+
+	def selectedSlab(self, slabIdx=-1):
+		if slabIdx is not -1:
+			self.displayStateDict['mySelectedSlab'] = slabIdx
+		return self.displayStateDict['mySelectedSlab']
+
 	@property
 	def options(self):
 		return self.mainWindow.options
@@ -748,6 +771,10 @@ class bStackView(QtWidgets.QGraphicsView):
 		tmpMenuAction = menu.addAction(refeshAction)
 
 		#
+		# edits
+		self.addEditMenu(menu)
+
+		#
 		# get the action selection from user
 		userAction = menu.exec_(self.mapToGlobal(pos))
 		if userAction is None:
@@ -809,6 +836,26 @@ class bStackView(QtWidgets.QGraphicsView):
 		if userSelectedMenu:
 			self.setSlice() # update
 			self.displayStateChange.emit(signalName, self.displayStateDict)
+
+	def addEditMenu(self, menu):
+		editMenus = ['Delete Node', 'Delete Edge', 'Delete Slab', '---', 'Slab To Node']
+
+		menu.addSeparator()
+		for menuStr in editMenus:
+			if menuStr == '---':
+				menu.addSeparator()
+			else:
+				isEnabled = False
+				if menuStr == 'Delete Node':
+					isEnabled = self.selectedNode() is not None
+				if menuStr == 'Delete Edge':
+					isEnabled = self.selectedEdge() is not None
+				elif menuStr in ['Delete Slab', 'Slab To Node']:
+					isEnabled = self.selectedSlab() is not None # if we have a node selection
+
+				myAction = QtWidgets.QAction(menuStr, self)
+				myAction.setEnabled(isEnabled)
+				menu.addAction(myAction)
 
 	def slot_StateChange(self, signalName, signalValue):
 		#print(' bStackView.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
@@ -877,6 +924,9 @@ class bStackView(QtWidgets.QGraphicsView):
 			z = event['z']
 			print('=== bStackView.myEvent() ... new node x:', x, 'y:', y, 'z:', z)
 			newNodeIdx = self.mySimpleStack.slabList.newNode(x,y,z)
+
+			# todo: slect new node
+
 			self._preComputeAllMasks(fromSlice=z)
 			self.setSlice() #refresh
 			theRet = newNodeIdx
@@ -894,6 +944,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.setSlice() #refresh
 			theRet = newEdgeIdx
 
+			# todo: cancel node selection
+
 			edgeDict = self.mySimpleStack.slabList.getEdge(newEdgeIdx)
 			myEvent = bimpy.interface.bEvent('newEdge', edgeIdx=newEdgeIdx, edgeDict=edgeDict)
 			myEvent._srcNodeDict = self.mySimpleStack.slabList.getNode(srcNode)
@@ -907,15 +959,17 @@ class bStackView(QtWidgets.QGraphicsView):
 			z = event['z']
 			newSlabIdx = self.mySimpleStack.slabList.newSlab(edgeIdx, x, y, z)
 			self._preComputeAllMasks(fromCurrentSlice=True)
-			self.mySelectedSlab = newSlabIdx # self.setSlice() will draw new slab
+			self.selectedSlab(newSlabIdx) # self.setSlice() will draw new slab
 			self.setSlice() #refresh
 			theRet = newSlabIdx
 
+			# todo: emit slab selection
+
 		elif event['type']=='deleteSelection':
-			if self.mySelectedNode is not None:
+			if self.selectedNode() is not None:
 				#delete node, only if it does not have edges !!!
-				deleteNodeIdx = self.mySelectedNode
-				deleteNodeDict = self.mySimpleStack.slabList.getNode(self.mySelectedNode)
+				deleteNodeIdx = self.selectedNode()
+				deleteNodeDict = self.mySimpleStack.slabList.getNode(self.selectedNode())
 				print('\n=== bStackView.myEvent() ... delete node:', deleteNodeIdx, deleteNodeDict)
 				wasDeleted = self.mySimpleStack.slabList.deleteNode(deleteNodeIdx)
 				if wasDeleted:
@@ -925,18 +979,24 @@ class bStackView(QtWidgets.QGraphicsView):
 					#
 					myEvent = bimpy.interface.bEvent('deleteNode', nodeIdx=deleteNodeIdx, nodeDict=deleteNodeDict)
 					self.tracingEditSignal.emit(myEvent)
+					#
+					myEvent = bimpy.interface.bEvent('select node', nodeIdx=None)
+					self.selectNodeSignal.emit(myEvent)
 
-			elif self.mySelectedEdge is not None:
-				deleteEdgeIdx = self.mySelectedEdge
-				deleteEdgeDict = self.mySimpleStack.slabList.getEdge(self.mySelectedEdge)
-				print('\n=== bStackView.myEvent() ... delete edge:', self.mySelectedEdge, deleteEdgeDict)
-				self.mySimpleStack.slabList.deleteEdge(self.mySelectedEdge)
+			elif self.selectedEdge() is not None:
+				deleteEdgeIdx = self.selectedEdge()
+				deleteEdgeDict = self.mySimpleStack.slabList.getEdge(self.selectedEdge())
+				print('\n=== bStackView.myEvent() ... delete edge:', self.selectedEdge(), deleteEdgeDict)
+				self.mySimpleStack.slabList.deleteEdge(self.selectedEdge())
 				self.selectEdge(None)
 				self.selectSlab(None)
 				doUpdate = True
 				#
 				myEvent = bimpy.interface.bEvent('deleteEdge', edgeIdx=deleteEdgeIdx, edgeDict=deleteEdgeDict)
 				self.tracingEditSignal.emit(myEvent)
+				#
+				myEvent = bimpy.interface.bEvent('select selectEdge', edgeIdx=None, slabIdx=None)
+				self.selectEdgeSignal.emit(myEvent)
 		else:
 			print('bStackView.myEvent() not understood event:', event)
 		# finalize
@@ -1005,26 +1065,26 @@ class bStackView(QtWidgets.QGraphicsView):
 
 	def setSelection(nodeIdx=None, edgeIdx=None, slabIdx=None, clearAll=False):
 		if nodeIdx is not None:
-			self.mySelectedNode = nodeIdx
+			self.selectedNode(nodeIdx)
 		if edgeIdx is not None:
-			self.mySelectedEdge = edgeIdx
+			self.selectedEdge(edgeIdx)
 		if slabIdx is not None:
-			self.mySelectedSlab = slabIdx
+			self.selectedSlab(slabIdx)
 		if clearAll:
-			self.mySelectedNode = None
-			self.mySelectedEdge = None
-			self.mySelectedSlab = None
+			self.selectedNode(None)
+			self.selectedEdge(None)
+			self.selectedSlab(None)
 
 	def selectNode(self, nodeIdx, snapz=False, isShift=False):
 		print('bStackView.selectNode() nodeIdx:', nodeIdx, type(nodeIdx))
 		if nodeIdx is None:
 			print('bStackView.selectNode() nodeIdx:', nodeIdx)
-			self.mySelectedNode = None
+			self.selectedNode(None)
 			self.myNodeSelectionPlot.set_offsets(np.c_[[], []])
 		else:
 			if self.mySimpleStack.slabList is not None:
 				print('   bStackView.selectNode() nodeIdx:', nodeIdx, self.mySimpleStack.slabList.getNode(nodeIdx))
-				self.mySelectedNode = nodeIdx
+				self.selectedNode(nodeIdx)
 
 				x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
 
@@ -1042,6 +1102,8 @@ class bStackView(QtWidgets.QGraphicsView):
 				markerSizes = [markerSize] # set_sizes expects a list, one size per marker
 				self.myNodeSelectionPlot.set_color(markerColor)
 				self.myNodeSelectionPlot.set_sizes(markerSizes)
+
+				#self.zoomToPoint(x,y)
 
 				QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, 2))
 
@@ -1100,16 +1162,16 @@ class bStackView(QtWidgets.QGraphicsView):
 			print('bStackView.selectEdge() edgeIdx:', edgeIdx, 'snapz:', snapz)
 			#markersize = 10
 			#self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color='c', s=markersize, picker=True)
-			self.mySelectedEdge = None
-			#self.mySelectedSlab = None
+			self.selectedEdge(None)
+			#self.selectedSlab(None)
 			self.myEdgeSelectionPlot.set_offsets(np.c_[[], []])
 		else:
-			self.mySelectedEdge = edgeIdx
+			self.selectedEdge(edgeIdx)
 
 			if self.mySimpleStack.slabList is not None:
 				theseIndices = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
 
-				print('bStackView.selectEdge() edgeIdx:', edgeIdx, 'snapz:', snapz, self.mySimpleStack.slabList.getEdge(edgeIdx))
+				print('bStackView.selectEdge() edgeIdx:', edgeIdx, 'snapz:', snapz, 'edgeDIct:', self.mySimpleStack.slabList.getEdge(edgeIdx))
 				#print('      theseIndices:', theseIndices)
 				# todo: add option to snap to a z
 				# removed this because it was confusing
@@ -1121,6 +1183,15 @@ class bStackView(QtWidgets.QGraphicsView):
 					z = self.mySimpleStack.slabList.edgeDictList[edgeIdx]['z']
 					z = int(z)
 					self.setSlice(z)
+
+					# snap to point
+					# get the (x,y) of the middle slab
+					tmpEdgeDict = self.mySimpleStack.slabList.getEdge(edgeIdx)
+					tmp_nSlab = tmpEdgeDict['nSlab']
+					middleSlab = int(tmp_nSlab/2)
+					middleSlabIdx = tmpEdgeDict['slabList'][middleSlab]
+					tmpx, tmpy, tmpz = self.mySimpleStack.slabList.getSlab_xyz(middleSlabIdx)
+					self.zoomToPoint(tmpx, tmpy)
 
 				xMasked = self.mySimpleStack.slabList.x[theseIndices] # flipped
 				yMasked = self.mySimpleStack.slabList.y[theseIndices]
@@ -1177,7 +1248,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			print('   bStackView.selectSlab() CANCEL slabIdx:', slabIdx, 'snapz:', snapz)
 			#markersize = 10
 			#self.myEdgeSelectionPlot = self.axes.scatter([], [], marker='o', color='c', s=markersize, picker=True)
-			self.mySelectedSlab = None
+			self.selectedSlab(None)
 			self.mySlabSelectionPlot.set_offsets(np.c_[[], []])
 			self.mySlabLinePlot.set_xdata([])
 			self.mySlabLinePlot.set_ydata([])
@@ -1187,7 +1258,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				print('warning: bStackView.selectSlab() got out of bound slabIdx:', slabIdx, 'there are only numSlabs:', numSlabs)
 				return
 
-			self.mySelectedSlab = slabIdx
+			self.selectedSlab(slabIdx)
 
 			x,y,z = self.mySimpleStack.slabList.getSlab_xyz(slabIdx)
 			numSlabs = self.mySimpleStack.slabList.numSlabs()
@@ -1218,7 +1289,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			radius = 30 # pixels
 
 		if slabIdx is None:
-			slabIdx = self.mySelectedSlab
+			slabIdx = self.selectedSlab()
 		if slabIdx is None:
 			return
 
@@ -1462,6 +1533,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		#showImage = True
 
+		self.mySimpleStack.setSlice(index)
+
 		if self.displayStateDict['showImage']:
 			#if self.displaySlidingZ:
 			displayThisStack = self.displayStateDict['displayThisStack']
@@ -1532,8 +1605,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.myNodePlot.set_offsets(np.c_[[], []])
 
 
-		if self.mySelectedSlab is not None:
-			self.selectSlab(self.mySelectedSlab)
+		if self.selectedSlab() is not None:
+			self.selectSlab(self.selectedSlab())
 
 		self.currentSlice = index # update slice
 
@@ -1543,13 +1616,27 @@ class bStackView(QtWidgets.QGraphicsView):
 		# todo convert this to use a % of the total image ?
 		print('bStackView.zoomToPoint() x:', x, 'y:', y, 'THIS DOES NOT WORK WHEN ZOOMED !!!!')
 
-		scenePnt = self.mapToScene(y, x) # swapping
-		#scenePnt = self.mapFromScene(x, y)
+		'''
+		scenePnt = self.mapToScene(x,y)
 		print('   scenePnt:', scenePnt)
 		self.centerOn(scenePnt)
-		#self.centerOn(x, y)
+		'''
 
-		self.canvas.draw_idle()
+		self.centerOn(y, x) # swapped
+
+		#self.canvas.draw_idle()
+		self.canvas.draw()
+		self.repaint() # this is updating the widget !!!!!!!!
+
+	def zoom(self, zoom):
+		#print('=== bStackView.zoom()', zoom)
+		if zoom == 'in':
+			scale = 1.2
+		else:
+			scale = 0.8
+		self.scale(scale,scale)
+		#self.zoomToPoint(100,100)
+
 		'''
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
@@ -1567,7 +1654,20 @@ class bStackView(QtWidgets.QGraphicsView):
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers & QtCore.Qt.ShiftModifier
 
-		if event.key() == QtCore.Qt.Key_R:
+		if event.key() in [QtCore.Qt.Key_Escape]:
+			print('=== user hit key "esc"')
+			self.selectNode(None)
+			self.selectEdge(None)
+			self.selectSlab(None)
+			#
+			myEvent = bimpy.interface.bEvent('select node', nodeIdx=None)
+			self.selectNodeSignal.emit(myEvent)
+			myEvent = bimpy.interface.bEvent('select edge', edgeIdx=None)
+			self.selectEdgeSignal.emit(myEvent)
+
+			# todo: pass to parent so we can escape out of macOS full screen
+
+		elif event.key() == QtCore.Qt.Key_R:
 			self._preComputeAllMasks()
 			self.setSlice()
 
@@ -1624,13 +1724,13 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# move to next/prev slab
 		elif key in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
-			if self.mySelectedSlab is not None:
-				tmpEdgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(self.mySelectedSlab)
+			if self.selectedSlab() is not None:
+				tmpEdgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(self.selectedSlab())
 				if tmpEdgeIdx is None:
 					print('warning: move to next/prev slab got bad edge idx:', tmpEdgeIdx)
 					return
 				tmpSlabList = self.mySimpleStack.slabList.getEdgeSlabList(tmpEdgeIdx)
-				slabIdxInList = tmpSlabList.index(self.mySelectedSlab)
+				slabIdxInList = tmpSlabList.index(self.selectedSlab())
 				if slabIdxInList==0 or slabIdxInList==len(tmpSlabList)-1:
 					return
 				if key ==QtCore.Qt.Key_Left:
@@ -1692,20 +1792,6 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.setSlice() # just refresh
 
 		return self.displayStateDict['displaySlidingZ']
-
-	def zoom(self, zoom):
-		#print('=== bStackView.zoom()', zoom)
-		if zoom == 'in':
-			scale = 1.2
-		else:
-			scale = 0.8
-		self.scale(scale,scale)
-		#self.zoomToPoint(100,100)
-
-		'''
-		self.canvas.draw()
-		self.repaint() # this is updating the widget !!!!!!!!
-		'''
 
 	def wheelEvent(self, event):
 		#if self.hasPhoto():
@@ -1793,20 +1879,23 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		if self.onpick_madeNewEdge:
 			self.onpick_madeNewEdge = False
-		elif nKey and self.mySelectedNode is not None:
+		elif nKey and self.selectedNode() is not None:
 			# make a new edge
 			print('\n=== bStackWidget.onclick_mpl() new edge ...')
 			newNodeIdx = self.myEvent(newNodeEvent)
-			newEdgeEvent = {'type':'newEdge','srcNode':self.mySelectedNode, 'dstNode':newNodeIdx}
+			newEdgeEvent = {'type':'newEdge','srcNode':self.selectedNode(), 'dstNode':newNodeIdx}
 			newEdgeIdx = self.myEvent(newEdgeEvent)
-			self.selectNode(None) # cancel self.mySelectedNode
+			self.selectNode(None) # cancel self.selectedNode()
 			self.selectEdge(newEdgeIdx) # select the new edge
+			#
+			myEvent = bimpy.interface.bEvent('select edge', edgeIdx=newEdgeIdx)
+			self.selectEdgeSignal.emit(myEvent)
 
 		elif isShift:
-			if self.mySelectedEdge is not None:
+			if self.selectedEdge() is not None:
 				# make a new slab
 				print('\n=== bStackWidget.onclick_mpl() new slab ...')
-				newSlabEvent = {'type':'newSlab','edgeIdx':self.mySelectedEdge, 'x':x, 'y':y, 'z':z}
+				newSlabEvent = {'type':'newSlab','edgeIdx':self.selectedEdge(), 'x':x, 'y':y, 'z':z}
 				self.myEvent(newSlabEvent)
 			else:
 				# make a new node
@@ -1872,15 +1961,18 @@ class bStackView(QtWidgets.QGraphicsView):
 		if self.mainWindow is not None:
 			#if nodeIdx >= 0:
 			if selectionType=='nodeSelection':
-				if nKey and self.mySelectedNode is not None:
+				if nKey and self.selectedNode() is not None:
 					print('   need to make a new edge to nodeIdx', nodeIdx)
 					self.onpick_madeNewEdge = True
 					print('\n=== bStackWidget.onpick() new edge ...')
 					#newNodeIdx = self.myEvent(newNodeEvent)
-					newEdgeEvent = {'type':'newEdge','srcNode':self.mySelectedNode, 'dstNode':nodeIdx}
+					newEdgeEvent = {'type':'newEdge','srcNode':self.selectedNode(), 'dstNode':nodeIdx}
 					newEdgeIdx = self.myEvent(newEdgeEvent)
-					self.selectNode(None) # cancel self.mySelectedNode
+					self.selectNode(None) # cancel self.selectedNode
 					self.selectEdge(newEdgeIdx) # select the new edge
+					#
+					myEvent = bimpy.interface.bEvent('select edge', edgeIdx=newEdgeIdx, slabIdx=None)
+					self.selectEdgeSignal.emit(myEvent)
 				else:
 					self.selectNode(nodeIdx)
 					myEvent = bimpy.interface.bEvent('select node', nodeIdx=nodeIdx)

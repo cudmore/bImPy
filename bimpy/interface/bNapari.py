@@ -47,7 +47,10 @@ class bNapari:
 		#scale = (0.49718, 0.49718, 0.6)
 		title = filename
 
-		self.viewer = napari.Viewer(title=title, ndisplay=3)
+		stack = self.mySimpleStack.getStackData(channel=1)
+		stack_nDim = len(stack.shape)
+
+		self.viewer = napari.Viewer(title=title, ndisplay=stack_nDim)
 		#self.viewer = napari.Viewer(title=title)
 
 		#
@@ -73,11 +76,18 @@ class bNapari:
 		'''
 
 		#self.myNapari = napari.view_image(
+		#print('napari stack_nDim:', stack_nDim)
+		if stack_nDim == 2:
+			scale = (1,1)
+		elif stack_nDim == 3:
+			scale = (1,1,1)
+		else:
+			print('error: napari got stack dim it does not understand')
+
 		self.myNapari = self.viewer.add_image(
-			self.mySimpleStack.stack[0,:,:,:],
+			stack,
 			colormap=colormap,
-			scale=scale)#,
-			#title=title)
+			scale=scale)
 
 		# this works
 		# make a callback for all mouse moves
@@ -107,8 +117,8 @@ class bNapari:
 			# this has nans which I assume will lead to some crashes ...
 			points = np.column_stack((z,x,y,))
 
-			print('warning: bNapari is scaling diameters ... d = d * 0.5')
-			dCopy = d * 0.5
+			print('warning: bNapari is scaling diameters ... d = d * 0.8')
+			dCopy = d * 0.8
 
 			size = []
 			face_color = []
@@ -134,9 +144,15 @@ class bNapari:
 				print('   len(size)', len(size))
 				print('   len(face_color)', len(face_color))
 
-			pointLayer = self.viewer.add_points(points, size=size, face_color=face_color) #, n_dimensional=False)
+			self.pointLayer = self.viewer.add_points(points, size=size, face_color=face_color) #, n_dimensional=False)
 			#pointLayer = self.viewer.add_points(points, n_dimensional=True)
-			pointLayer.name = 'Vascular Tracing'
+			self.pointLayer.name = 'Vascular Tracing'
+
+			@self.pointLayer.mouse_drag_callbacks.append
+			def shape_mouse_move_callback(layer, event):
+				"""respond to mouse_down """
+				self.myMouseDown_Shape(layer, event)
+
 
 		self.connectNapari() # connect signals and slots
 
@@ -201,6 +217,11 @@ class bNapari:
 			self.selectionLayer.name = 'Edge Selection'
 			#print('nodeLayer.data:', nodeLayer.data)
 
+	def myMouseDown_Shape(self, layer, event):
+		print('bNapari.myMouseDown_Shape()')
+		selectedDataList = self.pointLayer.selected_data
+		print('   selectedDataList:', selectedDataList)
+
 	def connectNapari(self):
 		"""
 		connect to signal/slots
@@ -214,7 +235,7 @@ class bNapari:
 		self.myStackWidget.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.slot_selectEdge)
 
 	def slot_selectNode(Self, myEvent):
-		print('bNapari.slot_selectNode()')
+		print('bNapari.slot_selectNode() NOT IMPLEMENTED myEvent:', myEvent)
 
 	def slot_selectEdge(self, myEvent):
 		"""
@@ -229,6 +250,8 @@ class bNapari:
 
 		print('bNapari.slot_selectEdge() edgeIdx:', edgeIdx)
 
+		face_color = 'yellow'
+
 		if len(edgeList)>0:
 			#print('   selecting edge list:', edgeList)
 			# select a list of edges
@@ -240,7 +263,11 @@ class bNapari:
 			y = self.mySimpleStack.slabList.y[slabList]
 			z = self.mySimpleStack.slabList.z[slabList]
 			d = self.mySimpleStack.slabList.d[slabList]
+			edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
+			size = d #/ 300
 
+		elif edgeIdx is None:
+			edgeSelection = np.column_stack((np.nan,np.nan,np.nan,))
 		else:
 			#print('   selecting single edge:', myEvent.edgeIdx)
 			slabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
@@ -248,17 +275,14 @@ class bNapari:
 			y = self.mySimpleStack.slabList.y[slabList]
 			z = self.mySimpleStack.slabList.z[slabList]
 			d = self.mySimpleStack.slabList.d[slabList]
+			edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
+			size = d #/ 300
 
-		edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
-		size = d #/ 300
-		face_color = 'yellow'
-		#nodeLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
-		#nodeLayer.name = 'Edge Selection'
-		#print('1) edgeSelection:', edgeSelection)
 		self.selectionLayer.data = edgeSelection
-		#self.selectionLayer.face_color = ['magenta']
 
-		if edgeIdx is not None:
+		if edgeIdx is None:
+			pass
+		else:
 			if isShift:
 				colors = ['r', 'g', 'r', 'g']
 				edge = self.mySimpleStack.slabList.edgeDictList[edgeIdx]

@@ -1,16 +1,15 @@
 napari
 
-#PySide2
-#QtPy
+# these are insalled by napari
+PySide2
+QtPy
 
 numpy
 matplotlib
 tifffile
-
-#PyQt5
-#PyQtChart
-
 scikit-image
-javabridge
-python-bioformats
 h5py
+
+# see requirements-bioformats.txt
+#javabridge
+#python-bioformats

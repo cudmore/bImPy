@@ -349,6 +349,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 					self.myNodeTableWidget.setItem(idx, colIdx, item)
 
 			for idx, edgeDict in enumerate(self.mainWindow.mySimpleStack.slabList.edgeDictList):
+				edgeDict = self.mainWindow.mySimpleStack.slabList.getEdge(idx) # todo: fix this
 				for colIdx, headerStr in enumerate(self.edgeHeaderLabels):
 					myString = str(edgeDict[headerStr])
 					# special cases
@@ -491,7 +492,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 	def deleteNode(self, nodeDict):
 		print('bAnnotationTable.deleteNode() nodeDict:', nodeDict)
 		self.stopSelectionPropogation = True
-		nodeRowIdx = self.findNodeRow(nodeDict)
+		nodeRowIdx = self.findNodeRow(nodeDict=nodeDict)
 		if nodeRowIdx is None:
 			print('   !!! !!! THIS IS A BUG: bAnnotationTable.deleteNode() nodeRowIdx', nodeRowIdx)
 			print(' ')
@@ -504,7 +505,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		#rowItems = self.edgeItemFromEdgeDict(edgeDict)
 		self.stopSelectionPropogation = True
 
-		edgeRowIdx = self.findEdgeRow(edgeDict)
+		edgeRowIdx = self.findEdgeRow(edgeDict=edgeDict)
 		if edgeRowIdx is None:
 			print('   !!! !!! THIS IS A BUG: bAnnotationTable.deleteEdge() edgeRowIdx', edgeRowIdx)
 			print(' ')
@@ -594,9 +595,10 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.myEdgeTableWidget.setItem(idx, 5, item)
 	'''
 
-	def findNodeRow(self, nodeDict):
+	def findNodeRow(self, nodeIdx=None, nodeDict=None):
 		theRet = None
-		nodeIdx = nodeDict['idx']
+		if nodeIdx is None:
+			nodeIdx = nodeDict['idx']
 		for row in range(self.myNodeTableWidget.rowCount()):
 			idxItem = self.myNodeTableWidget.item(row, 0) # 0 is idx column
 			myIdxStr = idxItem.text()
@@ -605,9 +607,10 @@ class bAnnotationTable(QtWidgets.QWidget):
 				break
 		return theRet
 
-	def findEdgeRow(self, edgeDict):
+	def findEdgeRow(self, edgeIdx=None, edgeDict=None):
 		theRet = None
-		edgeIdx = edgeDict['idx']
+		if edgeIdx is None:
+			edgeIdx = edgeDict['idx']
 		for row in range(self.myEdgeTableWidget.rowCount()):
 			idxItem = self.myEdgeTableWidget.item(row, 0) # 0 is idx column
 			myIdxStr = idxItem.text()
@@ -618,7 +621,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 	# todo: need to search for edgeIdx in case we are sorted
 	def slot_selectEdge(self, myEvent):
-		print('bAnnotationTable.slot_selectEdge() myEvent:', myEvent)
+		#print('bAnnotationTable.slot_selectEdge() myEvent:', myEvent)
 		edgeList = myEvent.edgeList
 		if len(edgeList)>0:
 			# select a list of edges
@@ -629,9 +632,13 @@ class bAnnotationTable(QtWidgets.QWidget):
 		else:
 			# select a single edge
 			edgeIdx = myEvent.edgeIdx
+			if edgeIdx is None:
+				# happens on user key 'esc'
+				return
+			edgeRowIdx = self.findEdgeRow(edgeIdx=edgeIdx)
 			#print('bAnnotationTable.slot_selectEdge() edgeIdx:', edgeIdx)
 			self.stopSelectionPropogation = True
-			self.myEdgeTableWidget.selectRow(edgeIdx)
+			self.myEdgeTableWidget.selectRow(edgeRowIdx)
 			#self.repaint()
 
 		#self.myEdgeTableWidget.update()
@@ -640,9 +647,13 @@ class bAnnotationTable(QtWidgets.QWidget):
 	# todo: need to search for nodeIdx in case we are sorted
 	def slot_selectNode(self, myEvent):
 		nodeIdx = myEvent.nodeIdx
-		print('bAnnotationTable.slot_selectNode() nodeIdx:', nodeIdx)
+		if nodeIdx is None:
+			# happens on user key 'esc'
+			return
+		nodeRowIdx = self.findNodeRow(nodeIdx=nodeIdx)
+		#print('bAnnotationTable.slot_selectNode() nodeIdx:', nodeRowIdx)
 		self.stopSelectionPropogation = True
-		self.myNodeTableWidget.selectRow(nodeIdx)
+		self.myNodeTableWidget.selectRow(nodeRowIdx)
 
 		self.myNodeTableWidget.repaint()
 

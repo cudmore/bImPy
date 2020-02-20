@@ -6,6 +6,15 @@ import traceback
 #from PyQt5 import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
+# we are not using bioformats, just testing if it is installed
+try:
+	import bioformats
+except (Exception) as e:
+	#print('exception: bStackBrowser failed to import bioformats e:', e)
+	bioformats = None
+
+from QtWaitingSpinner import QtWaitingSpinner
+
 #import bimpy
 from bimpy import bJavaBridge
 from bimpy.interface import bStackWidget
@@ -47,20 +56,25 @@ class bStackBrowser(QtWidgets.QMainWindow):
 
 		self.setWindowTitle('Stack Browser')
 
-		print('0 buildUI')
 		centralWidget = QtWidgets.QWidget()
 		self.setCentralWidget(centralWidget)
 
-		print('1 buildUI')
 		self.myVBoxLayout = QtWidgets.QVBoxLayout()
 		centralWidget.setLayout(self.myVBoxLayout)
 
-		print('2 buildUI')
 		# tree
 		self.myColumnNames = ['Folder', 'Path', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels']
+		#self.myColumnNames = ['File', 'X Pixels', 'Y Pixels', 'Z Pixels']
 
 		self.myTreeWidget = QtWidgets.QTreeWidget()
 		self.myTreeWidget.setHeaderLabels(self.myColumnNames)
+
+		# set column widths
+		#self.myTreeWidget.headerView().resizeSection(2, 500);
+		header = self.myTreeWidget.header()
+		header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+		header.setStretchLastSection(False)
+		#header.setSectionResizeMode(5, QtWidgets.QHeaderView.Stretch)
 
 		'''
 		cg = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['Drag and Drop'])
@@ -93,21 +107,31 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			stack.raise_()
 		else:
 			#tmp = bimpy.interface.bStackWidget(path=path)
+			print('starting spinner')
+			spinner = QtWaitingSpinner(self.centralWidget())
+			spinner.setRoundness(70.0)
+			spinner.setMinimumTrailOpacity(15.0)
+			spinner.setTrailFadePercentage(70.0)
+			spinner.setNumberOfLines(12)
+			spinner.setLineLength(10)
+			spinner.setLineWidth(5)
+			spinner.setInnerRadius(10)
+			spinner.setRevolutionsPerSecond(1)
+			spinner.setColor(QtGui.QColor(81, 4, 71))
+			spinner.start()
+
 			tmp = bStackWidget(path=path)
 			tmp.show()
 
-			# this works
-			'''
-			napariViewer = bNapari(path='', theStack=tmp.mySimpleStack)
-			tmp.attachNapari(napariViewer)
-			'''
+			print('stopping spinner')
+			spinner.stop()
 
 			self.myStackList.append(tmp)
-
 
 	def appendStack(self, path):
 		fileName = os.path.basename(path)
 		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['', path, fileName, 'xxx', 'yyy', 'zzz'])
+		#c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, [fileName, 'xxx', 'yyy', 'zzz'])
 
 	def itemDoubleClicked(self, item, col):
 		print('item:', item)
@@ -149,17 +173,20 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			event.ignore()
 
 	def dropEvent(self, event):
-		print('dropEvent:', event)
+		print('=== bStackBrowser.dropEvent:')
 		if event.mimeData().hasUrls:
 			for url in event.mimeData().urls():
 				path = url.toLocalFile()
-				print('bStackBrowser.dropEvent() path:', path)
+				print('   path:', path)
 
 				acceptedExtensions = ['.tif', '.oir']
 
 				filename, extension = os.path.splitext(path)
 				if extension in acceptedExtensions:
-					self.appendStack(path)
+					if not path.endswith('.tif') and bioformats is None:
+						print('   error: bStackBrowser.dropEvent() did not import bioformats, will only be able to open .tif files')
+					else:
+						self.appendStack(path)
 				'''
 				if path.endswith('.tif'):
 					self.appendStack(path)
@@ -186,18 +213,16 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/box/data/nathan/20200127_gelatin/vesselucida2/20200127__A01_G001_0011_croped.tif'
 
-	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
-	#path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
+	#path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
+
+	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
 
 	#path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
 
 
-	doJavabridge = False
 	try:
-		if doJavabridge:
-			print('bStackBrowser __main__ starting bJavabridge')
-			mjb = bJavaBridge()
-			mjb.start()
+		mjb = bJavaBridge()
+		mjb.start()
 
 		myBrowser = bStackBrowser()
 		myBrowser.show()
@@ -207,27 +232,14 @@ if __name__ == '__main__':
 			myBrowser.showStackWindow(path)
 		else:
 			print('__main__ did not find path:', path)
-		#tmp = myBrowser.loadStack(path)
-		#print('tmp:', tmp)
 
-		'''
-		from skimage import data
-		import napari
-
-		#with napari.gui_qt():
-		viewer = napari.view_image(data.astronaut(), rgb=True)
-		'''
-
-		if doJavabridge:
-			print('bStackBrowser __main__ stopping bJavabridge')
-			mjb.stop()
+		mjb.stop()
 
 	except (Exception) as e:
 		print('exception:', e)
 		print(traceback.format_exc())
 
-		if doJavabridge:
-			mjb.stop()
+		mjb.stop()
 
 		raise
 
