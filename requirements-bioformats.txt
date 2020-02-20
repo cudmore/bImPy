@@ -1,0 +1,14 @@
+napari
+
+# these are insalled by napari
+PySide2
+QtPy
+
+numpy
+matplotlib
+tifffile
+scikit-image
+h5py
+
+javabridge
+python-bioformats
