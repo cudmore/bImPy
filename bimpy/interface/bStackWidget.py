@@ -547,6 +547,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		# visually turn off scroll bars
 		self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+		#self.horizontalScrollBar().disconnect()
+		#self.verticalScrollBar().disconnect()
 
 		#self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 
@@ -1628,26 +1630,55 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.centerOn(scenePnt)
 		'''
 
+		transform0 = self.transform()
+
+		print('--- zoomToPoint()')
+		print('transform0 h:', transform0.m31(), 'v:', transform0.m32(), transform0)
+
+		'''
+		scenePnt = self.mapToScene(y,x)
+		scenePnt = transform0.map(scenePnt)
+		'''
+
 		# was working but since adding bStackFeedback (removing stretch) is broken?
 		self.centerOn(y, x) # swapped
+		#self.centerOn(scenePnt) # swapped
+
+		#
+		#
+		'''
+		p = self.mapToScene(x, y)
+		r = self.sceneRect()
+		r.moveCenter(p)
+		self.setSceneRect(r)
+		'''
+
+		#
+		#
 
 		#self.canvas.draw_idle()
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
 
+	'''
 	def zoom(self, zoom):
 		#print('=== bStackView.zoom()', zoom)
 		if zoom == 'in':
 			scale = 1.2
 		else:
 			scale = 0.8
-		self.scale(scale,scale)
-		#self.zoomToPoint(100,100)
 
-		'''
+		transform0 = self.transform()
+		self.scale(scale,scale)
+		transform1 = self.transform()
+		#self.zoomToPoint(100,100)
+		print('---')
+		print('transform0:', transform0)
+		print('transform1:', transform1)
+
 		self.canvas.draw()
 		self.repaint() # this is updating the widget !!!!!!!!
-		'''
+	'''
 
 	def keyReleaseEvent(self, event):
 		self.keyIsDown = None
@@ -1812,6 +1843,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
 			'''
 
+			transform0 = self.transform()
+
 			oldPos = self.mapToScene(event.pos())
 			if event.angleDelta().y() > 0:
 				zoomFactor = 1.2
@@ -1824,10 +1857,20 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			self.translate(delta.y(), delta.x())
 
+			transform1 = self.transform()
+			print('--- wheelEvent()')
+			print('transform0 h:', transform0.m31(), transform0)
+			print('transform1 v:', transform0.m32(), transform1)
+
 			#self.centerOn(newPos)
 
 			#event.setAccepted(True)
 			#super(bStackView,self).wheelEvent(event)
+
+			#self.canvas.draw_idle()
+			self.canvas.draw()
+			self.repaint() # this is updating the widget !!!!!!!!
+
 		else:
 			if event.angleDelta().y() > 0:
 				self.currentSlice -= 1
