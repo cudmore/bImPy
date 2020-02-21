@@ -61,8 +61,10 @@ class bStackWidget(QtWidgets.QWidget):
 
 		#
 		#
+		'''
 		myFeedbackWidget = bimpy.interface.bStackFeebackWidget(self)
 		self.myHBoxLayout.addWidget(myFeedbackWidget, stretch=2)
+		'''
 		#
 		#
 
@@ -139,8 +141,9 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myStackView.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
 		self.myStackView.selectNodeSignal.connect(self.annotationTable.slot_selectNode)
 		self.myStackView.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
-		self.myStackView.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode)
-		self.myStackView.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge)
+		# put back in
+		#self.myStackView.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode)
+		#self.myStackView.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge)
 		self.myStackView.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
 		self.myStackView.setSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		#
@@ -153,8 +156,10 @@ class bStackWidget(QtWidgets.QWidget):
 		# listen to self.annotationTable
 		self.annotationTable.selectNodeSignal.connect(self.myStackView.slot_selectNode) # change to slot_selectNode ???
 		self.annotationTable.selectEdgeSignal.connect(self.myStackView.slot_selectEdge) # change to slot_selectNode ???
-		self.annotationTable.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode) # change to slot_selectNode ???
-		self.annotationTable.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge) # change to slot_selectNode ???
+		# put back in
+		#self.annotationTable.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode) # change to slot_selectNode ???
+		#self.annotationTable.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge) # change to slot_selectNode ???
+		#
 		#self.annotationTable.selectEdgeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
 		#self.annotationTable.selectNodeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
 		self.annotationTable.selectEdgeSignal.connect(self.statusToolbarWidget.slot_StateChange2)
@@ -1616,12 +1621,14 @@ class bStackView(QtWidgets.QGraphicsView):
 		# todo convert this to use a % of the total image ?
 		print('bStackView.zoomToPoint() x:', x, 'y:', y, 'THIS DOES NOT WORK WHEN ZOOMED !!!!')
 
+
 		'''
 		scenePnt = self.mapToScene(x,y)
 		print('   scenePnt:', scenePnt)
 		self.centerOn(scenePnt)
 		'''
 
+		# was working but since adding bStackFeedback (removing stretch) is broken?
 		self.centerOn(y, x) # swapped
 
 		#self.canvas.draw_idle()
