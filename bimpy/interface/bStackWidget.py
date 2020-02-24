@@ -61,10 +61,9 @@ class bStackWidget(QtWidgets.QWidget):
 
 		#
 		#
-		'''
+		myFeedbackWidget = None
 		myFeedbackWidget = bimpy.interface.bStackFeebackWidget(self)
 		self.myHBoxLayout.addWidget(myFeedbackWidget, stretch=2)
-		'''
 		#
 		#
 
@@ -141,9 +140,9 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myStackView.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
 		self.myStackView.selectNodeSignal.connect(self.annotationTable.slot_selectNode)
 		self.myStackView.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
-		# put back in
-		#self.myStackView.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode)
-		#self.myStackView.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge)
+		if myFeedbackWidget is not None:
+			self.myStackView.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode)
+			self.myStackView.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge)
 		self.myStackView.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
 		self.myStackView.setSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		#
@@ -493,6 +492,8 @@ class bStackView(QtWidgets.QGraphicsView):
 		#self.options_defaults()
 
 		#self.napariViewer = None
+
+		self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 
 		self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 		self.customContextMenuRequested.connect(self.showRightClickMenu)
@@ -1624,8 +1625,35 @@ class bStackView(QtWidgets.QGraphicsView):
 		print('bStackView.zoomToPoint() x:', x, 'y:', y)
 
 		scenePnt = self.mapToScene(y,x) # swapped
+		print('   rect:', self.sceneRect())
 		print('   scenePnt:', scenePnt)
-		self.centerOn(scenePnt)
+
+		myTransform = self.transform()
+		print('    myTransform:', myTransform)
+		print('    translation:', myTransform.m31(), myTransform.m32())
+		print('    scale:', myTransform.m11(), myTransform.m22())
+		#self.setTransformationAnchor(QtWidgets.QGraphicsView.NoAnchor)
+		#self.setResizeAnchor(QtWidgets.QGraphicsView.NoAnchor)
+
+		'''
+		tmp = x
+		x = y
+		y = tmp
+
+		#self.centerOn(scenePnt)
+		#x /= myTransform.m11() # m11() is horizontal, m22() is vertical
+		#y /= myTransform.m22()
+		dx = myTransform.m31()
+		dy = myTransform.m32()
+
+		x = myTransform.m11()*x + myTransform.m21()*y + dx
+		y = myTransform.m22()*y + myTransform.m12()*x + dx
+		'''
+
+		self.centerOn(y, x) #
+
+		#self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+		#self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
 		# was working but since adding bStackFeedback (removing stretch) is broken?
 		#self.centerOn(y, x) # swapped
@@ -1674,7 +1702,15 @@ class bStackView(QtWidgets.QGraphicsView):
 		if followMouse:
 			oldPos = self.mapToScene(pos)
 
+		#self.setTransformationAnchor(QtWidgets.QGraphicsView.NoAnchor)
+		#self.setResizeAnchor(QtWidgets.QGraphicsView.NoAnchor)
+
 		self.scale(zoomFactor,zoomFactor)
+
+		#super(bStackView, self).scale(zoomFactor,zoomFactor)
+
+		#self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+		#self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 
 		if followMouse:
 			newPos = self.mapToScene(pos)
@@ -1916,7 +1952,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		super().mousePressEvent(event)
 
 	def mouseMoveEvent(self, event):
-		#print('=== bStackView.mouseMoveEvent()')
+		#print('=== bStackView.mouseMoveEvent()', event.pos())
 		if self.clickPos is not None:
 			newPos = event.pos() - self.clickPos
 			dx = self.clickPos.x() - newPos.x()
