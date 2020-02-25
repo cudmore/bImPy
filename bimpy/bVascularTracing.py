@@ -874,7 +874,7 @@ class bVascularTracing:
 		self._analyze()
 
 		# this sorta works
-		for i in range(1):
+		for i in range(3):
 			self.joinEdges()
 
 		# this sorta works

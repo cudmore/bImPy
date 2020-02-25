@@ -10,12 +10,22 @@ listOfDict: from nodeList, edgeList, searchList
 
 from qtpy import QtGui, QtCore, QtWidgets
 
+import bimpy
+
 class bTableWidget2(QtWidgets.QTableWidget):
+
+	# signals
+	selectRowSignal = QtCore.Signal(object) # object can be a dict
+
 	def __init__(self, type, listOfDict, parent=None):
+		"""
+		type: ('nodes', 'edges', 'search')
+		"""
 		super(bTableWidget2, self).__init__(parent)
 
 		self._type = type # from ('nodes', 'edges', 'search')
-		self._listOfDict = listOfDict # list of dict to populate
+		
+		self.stopSelectionPropogation = False
 		
 		self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 		self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -30,18 +40,17 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		header.sectionClicked.connect(self.on_click_header)
 
 		self.populate(listOfDict)
-		self.buildUI()
+		#self.buildUI()
 		
-	def buildUI(self):
-		pass
+	#def buildUI(self):
+	#	pass
 	
 	def populate(self, newDictList):
+		
 		self.headerLabels = []
 		
-		print('_listOfDict:', self._listOfDict)
-		
 		# headers
-		firstDict = self._listOfDict[0]
+		firstDict = newDictList[0]
 		for k in firstDict.keys():
 			self.headerLabels.append(k)
 		print('self.headerLabels:', self.headerLabels)
@@ -50,9 +59,9 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		self.setHorizontalHeaderLabels(self.headerLabels)
 				
 		# rows
-		numRows = len(self._listOfDict)
+		numRows = len(newDictList)
 		self.setRowCount(numRows)
-		for idx, editDict in enumerate(self._listOfDict):
+		for idx, editDict in enumerate(newDictList):
 			for colIdx, header in enumerate(self.headerLabels):
 				myString = str(editDict[header])
 				item = QtWidgets.QTableWidgetItem()
@@ -65,8 +74,80 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		for idx, label in enumerate(self.headerLabels):
 			header.setSectionResizeMode(idx, QtWidgets.QHeaderView.ResizeToContents)
 				
+		self.repaint()
+		
+	def slot_select(self, myEvent):
+		print('bTableWidget2.slot_select() myEvent:', myEvent)
+	
+	def appendRow(self, theDict):
+		"""
+		append
+		"""
+		print('bTableWidget2.addRow() theDict:', theDict)
+		rowIdx = self.rowCount()
+		self.insertRow(rowIdx)
+
+		rowItems = self._itemFromDict(theDict)
+		for colIdx, item in enumerate(rowItems):
+			self.setItem(rowIdx, colIdx, item)
+
+	def deleteRow(self, theDict):
+		"""
+		todo: need to decrement remaining 'idx'
+		"""
+		print('bTableWidget2.deleteRow() theDict:', theDict)
+		self.stopSelectionPropogation = True
+		rowIdx = self._findRow(theDict)
+		if rowIdx is None:
+			print('   !!! !!! THIS IS A BUG: bAnnotationTable.deleteRow() rowIdx', rowIdx)
+			print(' ')
+		else:
+			self.removeRow(rowIdx)
+
+	def setRow(self, rowDict):
+		"""
+		Assume: rowDict['Idx']
+		"""
+		theIdx = rowDict['idx']
+		for row in range(self.rowCount()):
+			idxItem = self.item(row, 0) # 0 is idx column
+			myIdxStr = idxItem.text()
+			if myIdxStr == str(theIdx):
+				print('   setRow() theIdx:', theIdx, rowDict)
+				rowItems = self._itemFromDict(rowDict)
+				for colIdx, item in enumerate(rowItems):
+					self.setItem(row, colIdx, item)
+	
+	def _findRow(self, theDict):
+		theRet = None
+		theIdx = theDict['idx']
+		for row in range(self.rowCount()):
+			idxItem = self.item(row, 0) # 0 is idx column
+			myIdxStr = idxItem.text()
+			if myIdxStr == str(theIdx):
+				theRet = row
+				break
+		return theRet
+
+	def _itemFromDict(self, theDict):
+		rowItems = []
+		for colIdx, header in enumerate(self.headerLabels):
+			myString = str(theDict[header])
+			item = QtWidgets.QTableWidgetItem()
+			item.setData(QtCore.Qt.EditRole, myString)
+			rowItems.append(item)
+		return rowItems
+			
+	def _getColumnIdx(self, colStr):
+		colIdx = None
+		try:
+			colIdx = self.headerLabels.index(colStr)
+		except (ValueError) as e:
+			print('error: bTableWidget2._getColumnIdx() did not find col:', colStr, 'in self.headerLabels')
+		return colIdx
+
 	def keyPressEvent(self, event):
-		super(bTableWidget, self).keyPressEvent(event)
+		super(bTableWidget2, self).keyPressEvent(event)
 		key = event.key()
 		print('=== on_keypress_node() key:', event.text())
 		if key in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
@@ -94,6 +175,23 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
 
+		# emit a signal
+		if self.stopSelectionPropogation:
+			self.stopSelectionPropogation = False
+		else:
+			print('=== bTableWidget2.on_clicked_row() row:', row, 'myIdx:', myIdx, isShift)
+			if self._type == 'nodes':
+				myEvent = bimpy.interface.bEvent('select node', nodeIdx=myIdx, snapz=True, isShift=isShift)
+				colIdx = self._getColumnIdx('z')
+				myItem = self.item(row, colIdx)
+				myEvent._sliceIdx = int(float(myItem.text()))
+				print('   emit myEvent:', myEvent)
+				self.selectRowSignal.emit(myEvent)
+			elif self._type == 'edges':
+				print('todo: implement .emit() for edges')
+			elif self._type == 'search':
+				print('todo: implement .emit() for search')
+				
 if __name__ == '__main__':
 	import sys
 	app = QtWidgets.QApplication(sys.argv)
@@ -101,28 +199,54 @@ if __name__ == '__main__':
 	dictList = []
 
 	dict = {}
-	dict['Idx'] = 0
+	dict['idx'] = 0
 	dict['x'] = 10
 	dict['y'] = 20
 	dict['z'] = 1
 	dictList.append(dict)
 	
 	dict = {}
-	dict['Idx'] = 1
+	dict['idx'] = 1
 	dict['x'] = 30
 	dict['y'] = 40
 	dict['z'] = 2
 	dictList.append(dict)
 
 	dict = {}
-	dict['Idx'] = 1
+	dict['idx'] = 2
 	dict['x'] = 50
 	dict['y'] = 60
 	dict['z'] = 3
 	dictList.append(dict)
 
-	type = 'test'
+	type = 'search'
 	btw2 = bTableWidget2(type, dictList)
 	btw2.show()
+	
+	dict['idx'] = 1
+	dict['x'] = 300
+	dict['y'] = 400
+	dict['z'] = 20
+	btw2.setRow(dict)
+	
+	dict = {}
+	dict['idx'] = 3
+	dict['x'] = 70
+	dict['y'] = 80
+	dict['z'] = 4
+	btw2.appendRow(dict)
+	
+	btw2.deleteRow(dictList[0])
+	
+	# load a stack and populate with editDictList
+	from bimpy.interface import bStackBrowser
+	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
+	myBrowser = bStackBrowser()
+	myBrowser.appendStack(path)
+	myBrowser.showStackWindow(path)
+	
+	editDictList = myBrowser.myStackList[0].mySimpleStack.slabList.editDictList
+	#print(editDictList)
+	btw2.populate(editDictList)
 	
 	sys.exit(app.exec_())

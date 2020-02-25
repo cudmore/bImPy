@@ -15,9 +15,9 @@ except (Exception) as e:
 
 from QtWaitingSpinner import QtWaitingSpinner
 
-#import bimpy
-from bimpy import bJavaBridge
-from bimpy.interface import bStackWidget
+import bimpy
+#from bimpy import bJavaBridge
+#from bimpy.interface import bStackWidget
 
 '''
 import logging
@@ -120,7 +120,7 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			spinner.setColor(QtGui.QColor(81, 4, 71))
 			spinner.start()
 
-			tmp = bStackWidget(path=path)
+			tmp = bimpy.interface.bStackWidget(path=path)
 			tmp.show()
 
 			print('stopping spinner')
@@ -221,10 +221,10 @@ if __name__ == '__main__':
 
 
 	try:
-		mjb = bJavaBridge()
+		mjb = bimpy.bJavaBridge()
 		mjb.start()
 
-		myBrowser = bStackBrowser()
+		myBrowser = bimpy.interface.bStackBrowser()
 		myBrowser.show()
 
 		if os.path.isfile(path):

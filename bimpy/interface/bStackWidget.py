@@ -106,12 +106,28 @@ class bStackWidget(QtWidgets.QWidget):
 		#self.addToolBar(QtCore.Qt.BottomToolBarArea, self.statusToolbarWidget)
 		self.myVBoxLayout.addWidget(self.statusToolbarWidget) #, stretch = 9)
 
+		#
+		# OLD
+		#
 		# todo: Need to show/hide annotation table
-		#self.annotationTable = bAnnotationTable(mainWindow=self, parent=None, slabList=self.mySimpleStack.slabList)
-		self.annotationTable = bimpy.interface.bAnnotationTable(mainWindow=self, parent=None)
-		self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
-		#self.myHBoxLayout.addWidget(self.annotationTable) # stretch=10, not sure on the units???
-		#print('self.mySimpleStack.slabList:', self.mySimpleStack.slabList)
+		#self.annotationTable = bimpy.interface.bAnnotationTable(mainWindow=self, parent=None)
+		#self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
+
+		#
+		# NEW
+		#
+		# nodes
+		self.nodeTable2 = bimpy.interface.bTableWidget2('nodes', self.mySimpleStack.slabList.nodeDictList)
+		self.myHBoxLayout.addWidget(self.nodeTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
+		# edges
+		self.edgeTable2 = bimpy.interface.bTableWidget2('edges', self.mySimpleStack.slabList.edgeDictList)
+		self.myHBoxLayout.addWidget(self.edgeTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
+		# edits
+		self.editTable2 = bimpy.interface.bTableWidget2('edges', self.mySimpleStack.slabList.editDictList)
+		self.myHBoxLayout.addWidget(self.editTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
+		#
+		#
+		#
 
 		'''
 		# 20200211
@@ -138,12 +154,17 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myStackView.setSliceSignal.connect(self.mySliceSlider.slot_UpdateSlice)
 		#self.myStackView.setSliceSignal.connect(self.bStackFeebackWidget.slot_StateChange)
 		self.myStackView.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
-		self.myStackView.selectNodeSignal.connect(self.annotationTable.slot_selectNode)
-		self.myStackView.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
+		self.myStackView.selectNodeSignal.connect(self.nodeTable2.slot_select)
+		self.myStackView.selectEdgeSignal.connect(self.nodeTable2.slot_select)
+		self.myStackView.selectEdgeSignal.connect(self.edgeTable2.slot_select)
+
 		if myFeedbackWidget is not None:
 			self.myStackView.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode)
 			self.myStackView.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge)
+		'''
+		# todo: implement this in bTableWidget2
 		self.myStackView.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
+		'''
 		self.myStackView.setSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		#
 		# listen to self.mySliceSlider
@@ -153,24 +174,32 @@ class bStackWidget(QtWidgets.QWidget):
 		self.mySliceSlider.updateSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		#
 		# listen to self.annotationTable
+		'''
 		self.annotationTable.selectNodeSignal.connect(self.myStackView.slot_selectNode) # change to slot_selectNode ???
 		self.annotationTable.selectEdgeSignal.connect(self.myStackView.slot_selectEdge) # change to slot_selectNode ???
+		'''
+		self.nodeTable2.selectRowSignal.connect(self.myStackView.slot_selectNode)
+		self.edgeTable2.selectRowSignal.connect(self.myStackView.slot_selectEdge)
 		# put back in
 		#self.annotationTable.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode) # change to slot_selectNode ???
 		#self.annotationTable.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge) # change to slot_selectNode ???
 		#
 		#self.annotationTable.selectEdgeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
 		#self.annotationTable.selectNodeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
+		'''
 		self.annotationTable.selectEdgeSignal.connect(self.statusToolbarWidget.slot_StateChange2)
 		self.annotationTable.selectNodeSignal.connect(self.statusToolbarWidget.slot_StateChange2)
 		self.annotationTable.selectEdgeSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.annotationTable.selectNodeSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.annotationTable.selectNodeSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		self.annotationTable.selectEdgeSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
+		'''
 		#
 		# listen to edit table, self.
+		'''
 		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.myStackView.slot_selectEdge)
 		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
+		'''
 		#
 		# listen to bStackContrastWidget
 		self.myContrastWidget.contrastChangeSignal.connect(self.myStackView.slot_contrastChange)
@@ -210,10 +239,12 @@ class bStackWidget(QtWidgets.QWidget):
 
 	def updateDisplayedWidgets(self):
 		# left control bar
+		'''
 		if self.options['Panels']['showAnnotations']:
 			self.annotationTable.show()
 		else:
 			self.annotationTable.hide()
+		'''
 
 		# contrast bar
 		if self.options['Panels']['showContrast']:

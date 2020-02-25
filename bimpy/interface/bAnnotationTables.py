@@ -621,7 +621,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 	# todo: need to search for edgeIdx in case we are sorted
 	def slot_selectEdge(self, myEvent):
-		#print('bAnnotationTable.slot_selectEdge() myEvent:', myEvent)
+		print('bAnnotationTable.slot_selectEdge() myEvent:', myEvent)
 		edgeList = myEvent.edgeList
 		if len(edgeList)>0:
 			# select a list of edges
@@ -646,6 +646,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 
 	# todo: need to search for nodeIdx in case we are sorted
 	def slot_selectNode(self, myEvent):
+		print('bAnnotationTable.slot_selectNode() myEvent:', myEvent)
 		nodeIdx = myEvent.nodeIdx
 		if nodeIdx is None:
 			# happens on user key 'esc'
@@ -658,8 +659,7 @@ class bAnnotationTable(QtWidgets.QWidget):
 		self.myNodeTableWidget.repaint()
 
 	def slot_updateTracing(self, myEvent):
-		#print('bAnnotationTable.slot_updateTracing() eventType:', myEvent.eventType)
-
+		print('bAnnotationTable.slot_updateTracing() myEvent:', myEvent)
 		updateNodes = False
 		updateEdges = False
 		if myEvent.eventType == 'newNode':
