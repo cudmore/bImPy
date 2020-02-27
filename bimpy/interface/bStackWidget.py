@@ -24,6 +24,9 @@ class bStackWidget(QtWidgets.QWidget):
 	"""
 	A widget to display a stack. This includes a bStackView and a bAnnotationTable.
 	"""
+
+	optionsStateChange = QtCore.Signal(str, object) # object can be a dict
+
 	def __init__(self, mainWindow=None, parent=None, path=''):
 		super(bStackWidget, self).__init__()
 
@@ -333,6 +336,10 @@ class bStackWidget(QtWidgets.QWidget):
 			self.editTable2.populate(self.mySimpleStack.slabList.editDictList)
 		if signal == 'load_xml':
 			self.mySimpleStack.loadAnnotations_xml()
+
+	def optionsChange(self, key1, key2, value):
+		self.options[key1][key2] = value
+		self.optionsStateChange.emit('')
 
 	def keyPressEvent(self, event):
 		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
