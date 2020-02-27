@@ -68,6 +68,20 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			currentSliceStr = 'Slice ' + str(sliceIdx) + '/' + str(self.numSlices)
 			self.currentSliceLabel.setText(currentSliceStr)
 
+	def slot_select(self, myEvent):
+		print('bStatusToolbarWidget.slot_select() myEvent:', myEvent)
+		if myEvent.eventType == 'select node':
+			nodeIdx = myEvent.nodeIdx
+			if nodeIdx is None:
+				return # happens on user key 'esc'
+			#self.mySelectRow(itemIdx=nodeIdx)
+
+		elif myEvent.eventType == 'select edge':
+			edgeIdx = myEvent.edgeIdx
+			if edgeIdx is None:
+				return # happens on user key 'esc'
+			#self.mySelectRow(itemIdx=edgeIdx)
+
 	def setMousePosition(self, point):
 		x = round(point.x(),0)
 		y = round(point.y(),0)

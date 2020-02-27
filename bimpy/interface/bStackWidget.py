@@ -61,9 +61,8 @@ class bStackWidget(QtWidgets.QWidget):
 
 		#
 		#
-		myFeedbackWidget = None
-		myFeedbackWidget = bimpy.interface.bStackFeebackWidget(self)
-		self.myHBoxLayout.addWidget(myFeedbackWidget, stretch=2)
+		self.myFeedbackWidget = bimpy.interface.bStackFeebackWidget(self)
+		self.myHBoxLayout.addWidget(self.myFeedbackWidget)#, stretch=2)
 		#
 		#
 
@@ -123,7 +122,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.edgeTable2 = bimpy.interface.bTableWidget2('edges', self.mySimpleStack.slabList.edgeDictList)
 		self.myHBoxLayout.addWidget(self.edgeTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
 		# edits
-		self.editTable2 = bimpy.interface.bTableWidget2('edges', self.mySimpleStack.slabList.editDictList)
+		self.editTable2 = bimpy.interface.bTableWidget2('search', self.mySimpleStack.slabList.editDictList)
 		self.myHBoxLayout.addWidget(self.editTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
 		#
 		#
@@ -155,12 +154,16 @@ class bStackWidget(QtWidgets.QWidget):
 		#self.myStackView.setSliceSignal.connect(self.bStackFeebackWidget.slot_StateChange)
 		self.myStackView.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
 		self.myStackView.selectNodeSignal.connect(self.nodeTable2.slot_select)
+		self.myStackView.selectNodeSignal.connect(self.statusToolbarWidget.slot_select)
+		self.myStackView.selectEdgeSignal.connect(self.statusToolbarWidget.slot_select)
 		self.myStackView.selectEdgeSignal.connect(self.nodeTable2.slot_select)
 		self.myStackView.selectEdgeSignal.connect(self.edgeTable2.slot_select)
+		self.myStackView.tracingEditSignal.connect(self.nodeTable2.slot_updateTracing)
+		self.myStackView.tracingEditSignal.connect(self.edgeTable2.slot_updateTracing)
 
-		if myFeedbackWidget is not None:
-			self.myStackView.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode)
-			self.myStackView.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge)
+		if self.myFeedbackWidget is not None:
+			self.myStackView.selectNodeSignal.connect(self.myFeedbackWidget.slot_selectNode)
+			self.myStackView.selectEdgeSignal.connect(self.myFeedbackWidget.slot_selectEdge)
 		'''
 		# todo: implement this in bTableWidget2
 		self.myStackView.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
@@ -180,20 +183,14 @@ class bStackWidget(QtWidgets.QWidget):
 		'''
 		self.nodeTable2.selectRowSignal.connect(self.myStackView.slot_selectNode)
 		self.edgeTable2.selectRowSignal.connect(self.myStackView.slot_selectEdge)
-		# put back in
-		#self.annotationTable.selectNodeSignal.connect(myFeedbackWidget.slot_selectNode) # change to slot_selectNode ???
-		#self.annotationTable.selectEdgeSignal.connect(myFeedbackWidget.slot_selectEdge) # change to slot_selectNode ???
+		self.editTable2.selectRowSignal.connect(self.myStackView.slot_selectEdge)
 		#
-		#self.annotationTable.selectEdgeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
-		#self.annotationTable.selectNodeSignal.connect(self.bStackFeebackWidget.slot_StateChange2)
-		'''
-		self.annotationTable.selectEdgeSignal.connect(self.statusToolbarWidget.slot_StateChange2)
-		self.annotationTable.selectNodeSignal.connect(self.statusToolbarWidget.slot_StateChange2)
-		self.annotationTable.selectEdgeSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
-		self.annotationTable.selectNodeSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
-		self.annotationTable.selectNodeSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
-		self.annotationTable.selectEdgeSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
-		'''
+		self.nodeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_StateChange2)
+		self.edgeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_StateChange2)
+		self.nodeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
+		self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
+		self.nodeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
+		self.edgeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		#
 		# listen to edit table, self.
 		'''
@@ -209,7 +206,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.move(750,100)
 		#self.resize(2000, 1000)
 		#self.resize(2000, 1000)
-		self.resize(1024, 512)
+		self.resize(1500, 512)
 
 		self.myStackView.setSlice(0)
 
@@ -246,6 +243,26 @@ class bStackWidget(QtWidgets.QWidget):
 			self.annotationTable.hide()
 		'''
 
+		if self.options['Panels']['showLeftToolbar']:
+			self.myFeedbackWidget.show()
+		else:
+			self.myFeedbackWidget.hide()
+
+		if self.options['Panels']['showNodeList']:
+			self.nodeTable2.show()
+		else:
+			self.nodeTable2.hide()
+
+		if self.options['Panels']['showEdgeList']:
+			self.edgeTable2.show()
+		else:
+			self.edgeTable2.hide()
+
+		if self.options['Panels']['showSearch']:
+			self.editTable2.show()
+		else:
+			self.editTable2.hide()
+
 		# contrast bar
 		if self.options['Panels']['showContrast']:
 			self.myContrastWidget.show()
@@ -262,7 +279,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.bStackFeebackWidget.hide()
 		'''
 
-		if self.options['Panels']['showStatusToolbar']:
+		if self.options['Panels']['showStatus']:
 			self.statusToolbarWidget.show()
 		else:
 			self.statusToolbarWidget.hide()
@@ -273,6 +290,8 @@ class bStackWidget(QtWidgets.QWidget):
 		else:
 			self.lineProfileWidget.hide()
 			self.lineProfileWidget.doUpdate = False
+
+		self.repaint()
 
 	# get rid of this
 	def getStack(self):
@@ -309,6 +328,9 @@ class bStackWidget(QtWidgets.QWidget):
 			self.mySimpleStack.saveAnnotations()
 		if signal == 'load':
 			self.mySimpleStack.loadAnnotations()
+			self.nodeTable2.populate(self.mySimpleStack.slabList.nodeDictList)
+			self.edgeTable2.populate(self.mySimpleStack.slabList.edgeDictList)
+			self.editTable2.populate(self.mySimpleStack.slabList.editDictList)
 		if signal == 'load_xml':
 			self.mySimpleStack.loadAnnotations_xml()
 
@@ -325,7 +347,7 @@ class bStackWidget(QtWidgets.QWidget):
 
 		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
 		if event.text() == '[':
-			self.options['Panels']['showAnnotations'] = not self.options['Panels']['showAnnotations']
+			self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
 			self.updateDisplayedWidgets()
 
 		elif event.key() in [QtCore.Qt.Key_L]:
@@ -425,10 +447,14 @@ class bStackWidget(QtWidgets.QWidget):
 			})
 		# hide and show various interface widgets
 		self.options['Panels'] = OrderedDict({
-			'showAnnotations': False,
+			#'showAnnotations': False,
+			'showLeftToolbar': False,
+			'showNodeList': False,
+			'showEdgeList': False,
+			'showSearch': False,
 			'showContrast': False,
 			#'showFeedback': False,
-			'showStatusToolbar': True,
+			'showStatus': True,
 			'showLineProfile': False,
 			})
 
@@ -753,7 +779,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		menu.addSeparator()
 
-		#actions = ['Image', 'Sliding Z', 'Tracing', 'Nodes', 'Edges']
+		#
+		# view
 		actions = ['Image', 'Sliding Z', 'Nodes', 'Edges']
 		for actionStr in actions:
 			# make an action
@@ -774,19 +801,35 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		menu.addSeparator()
 
+		#
+		# panels
+
+		annotationsAction = QtWidgets.QAction('Left Toolbar', self, checkable=True)
+		annotationsAction.setChecked(self.options['Panels']['showLeftToolbar'])
+		annotationsAction.setShortcuts('[')
+		tmpMenuAction = menu.addAction(annotationsAction)
+
+		# nodes
+		annotationsAction = QtWidgets.QAction('Node List', self, checkable=True)
+		annotationsAction.setChecked(self.options['Panels']['showNodeList'])
+		tmpMenuAction = menu.addAction(annotationsAction)
+		# edges
+		annotationsAction = QtWidgets.QAction('Edge List', self, checkable=True)
+		annotationsAction.setChecked(self.options['Panels']['showEdgeList'])
+		tmpMenuAction = menu.addAction(annotationsAction)
+		# search
+		annotationsAction = QtWidgets.QAction('Search', self, checkable=True)
+		annotationsAction.setChecked(self.options['Panels']['showSearch'])
+		tmpMenuAction = menu.addAction(annotationsAction)
+
 		# contrast
 		contrastAction = QtWidgets.QAction('Contrast', self, checkable=True)
 		contrastAction.setChecked(self.options['Panels']['showContrast'])
 		tmpMenuAction = menu.addAction(contrastAction)
 
-		# annotations
-		annotationsAction = QtWidgets.QAction('Annotations', self, checkable=True)
-		annotationsAction.setChecked(self.options['Panels']['showAnnotations'])
-		tmpMenuAction = menu.addAction(annotationsAction)
-
 		# status toolbar
 		annotationsAction = QtWidgets.QAction('Status', self, checkable=True)
-		annotationsAction.setChecked(self.options['Panels']['showStatusToolbar'])
+		annotationsAction.setChecked(self.options['Panels']['showStatus'])
 		tmpMenuAction = menu.addAction(annotationsAction)
 
 		# line profile toolbar
@@ -834,6 +877,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif userActionStr == 'RGB':
 			self.displayStateDict['displayThisStack'] = 'rgb'
 
+		#
 		# view of tracing
 		if userActionStr == 'Image':
 			self.displayStateDict['showImage'] = not self.displayStateDict['showImage']
@@ -844,15 +888,25 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif userActionStr == 'Edges':
 			self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
 
+		#
 		# toolbars
+		elif userActionStr == 'Left Toolbar':
+			self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
+			self.mainWindow.updateDisplayedWidgets()
 		elif userActionStr == 'Contrast':
 			self.options['Panels']['showContrast'] = not self.options['Panels']['showContrast']
 			self.mainWindow.updateDisplayedWidgets()
-		elif userActionStr == 'Annotations':
-			self.options['Panels']['showAnnotations'] = not self.options['Panels']['showAnnotations']
+		elif userActionStr == 'Node List':
+			self.options['Panels']['showNodeList'] = not self.options['Panels']['showNodeList']
+			self.mainWindow.updateDisplayedWidgets()
+		elif userActionStr == 'Edge List':
+			self.options['Panels']['showEdgeList'] = not self.options['Panels']['showEdgeList']
+			self.mainWindow.updateDisplayedWidgets()
+		elif userActionStr == 'Search':
+			self.options['Panels']['showSearch'] = not self.options['Panels']['showSearch']
 			self.mainWindow.updateDisplayedWidgets()
 		elif userActionStr == 'Status':
-			self.options['Panels']['showStatusToolbar'] = not self.options['Panels']['showStatusToolbar']
+			self.options['Panels']['showStatus'] = not self.options['Panels']['showStatus']
 			self.mainWindow.updateDisplayedWidgets()
 		elif userActionStr == 'Line Profile':
 			self.options['Panels']['showLineProfile'] = not self.options['Panels']['showLineProfile']

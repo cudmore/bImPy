@@ -1483,11 +1483,12 @@ class bVascularTracing:
 
 				# convert numpy int64 to int
 				tmpSLabList = [int(tmpSlab) for tmpSlab in edge['slabList']]
+				edge['slabList'] = tmpSLabList # careful, we are changing backend data !!!
 
 				# each edge will have a group
 				edgeGroup = f.create_group('edge' + str(idx))
 				# each edge group will have a  dict with all parameters
-				edgeDict_json = json.dumps(tmpSLabList)
+				edgeDict_json = json.dumps(edge)
 				edgeGroup.attrs['edgeDict'] = edgeDict_json
 
 			# slabs are in a dataset
@@ -1505,7 +1506,7 @@ class bVascularTracing:
 		"""
 		h5FilePath = self._getSavePath() + '.h5f'
 
-		print('=== load()', h5FilePath)
+		print('=== bVascularTracing.load()', h5FilePath)
 
 		if not os.path.isfile(h5FilePath):
 			print('   file not found:', h5FilePath)
@@ -1558,6 +1559,8 @@ class bVascularTracing:
 		self.edgeDictList = [None] * (maxEdgeIdx+1) # make an empy list with correct length
 		for edge in tmpEdgeDictList:
 			self.edgeDictList[edge['idx']] = edge
+
+		print('    loaded nodes:', maxNodeIdx, 'edges:', maxEdgeIdx)
 
 		return True
 

@@ -27,7 +27,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				deleteNodeButton.setEnabled(True)
 			else:
 				deleteNodeButton.setEnabled(False)
-			
+
 	def slot_selectEdge(self, myEvent):
 		print('bStackFeebackWidget.slot_SelectEdge() myEvent:', myEvent)
 		if myEvent.eventType == 'select edge':
@@ -49,13 +49,43 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				slabToNodeButton.setEnabled(True)
 			else:
 				slabToNodeButton.setEnabled(False)
-		
+
 	def button_callback(self):
 		sender = self.sender()
 		title = sender.text()
 		bobID = sender.property('bobID')
-		print('button_callback() title:', title, 'bobID:', bobID)
-		
+		print('=== bStackFeebackWidget.button_callback() title:', title, 'bobID:', bobID)
+
+		if title == 'Save':
+			self.mainWindow.signal('save')
+		elif title == 'Load':
+			self.mainWindow.signal('load')
+		else:
+			print('    case not taken:', title)
+
+	def checkbox_callback(self, isChecked):
+		sender = self.sender()
+		title = sender.text()
+		print('bStackFeedbackWidget.checkbox_callback() title:', title, 'isChecked:', isChecked)
+		if title == 'Nodes':
+			self.mainWindow.options['Panels']['showNodeList'] = not self.mainWindow.options['Panels']['showNodeList']
+			self.mainWindow.updateDisplayedWidgets()
+		elif title == 'Edges':
+			self.mainWindow.options['Panels']['showEdgeList'] = not self.mainWindow.options['Panels']['showEdgeList']
+			self.mainWindow.updateDisplayedWidgets()
+		elif title == 'Search':
+			self.mainWindow.options['Panels']['showSearch'] = not self.mainWindow.options['Panels']['showSearch']
+			self.mainWindow.updateDisplayedWidgets()
+		elif title == 'Contrast':
+			self.mainWindow.options['Panels']['showContrast'] = not self.mainWindow.options['Panels']['showContrast']
+			self.mainWindow.updateDisplayedWidgets()
+		elif title == 'Status':
+			self.mainWindow.options['Panels']['showStatus'] = not self.mainWindow.options['Panels']['showStatus']
+			self.mainWindow.updateDisplayedWidgets()
+		elif title == 'Line Profile':
+			self.mainWindow.options['Panels']['showLineProfile'] = not self.mainWindow.options['Panels']['showLineProfile']
+			self.mainWindow.updateDisplayedWidgets()
+
 	def findBobID(self, bobID):
 		"""
 		Can not use layout.findChild() or layout.children() ... bug in Qt or PyQt
@@ -73,23 +103,37 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 	def buildUI(self):
 
 		self.myWidgetList = []
-		
+
 		mainLayout = QtWidgets.QVBoxLayout(self)
 		#mainLayout.setSizeConstraint(QtWidgets.QLayout.SetMinAndMaxSize) # fixed size
-	
+
 		myPath = os.path.dirname(os.path.abspath(__file__))
 		mystylesheet_css = os.path.join(myPath, 'css', 'mystylesheet.css')
-		
-		
+
+		#
+		# file
+		fileGridLayout = QtWidgets.QGridLayout(self)
+		button1 = QtWidgets.QPushButton("Save")
+		button2 = QtWidgets.QPushButton("Load")
+
+		button1.clicked.connect(self.button_callback)
+		button2.clicked.connect(self.button_callback)
+
+		row = 0
+		fileGridLayout.addWidget(button1, row, 0)
+		fileGridLayout.addWidget(button2, row, 1)
+		mainLayout.addLayout(fileGridLayout)
+
 		#
 		# view group
 		viewGroupBox = QtWidgets.QGroupBox('View')
 		#viewGroupBox.setStyleSheet('QGroupBox  {color: white;}')
 		viewGroupBox.setStyleSheet(open(mystylesheet_css).read())
 		viewGridLayout = QtWidgets.QGridLayout(self)
-		
+
 		row = 0
-		
+
+		#
 		# image display
 		radio1 = QtWidgets.QRadioButton("Ch 1")
 		radio2 = QtWidgets.QRadioButton("Ch 2")
@@ -102,7 +146,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		row += 1
 		viewGridLayout.addWidget(radio3, row, 0)
 		viewGridLayout.addWidget(radio4, row, 1)
-		
+
 		# image visuals, show/hide (image, sliding z, nodes, edges)
 		row += 1
 		check1 = QtWidgets.QCheckBox("Image")
@@ -115,48 +159,76 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		row += 1
 		viewGridLayout.addWidget(check3, row, 0)
 		viewGridLayout.addWidget(check4, row, 1)
-		
-		# sub panel widgets
-		row += 1
-		button1 = QtWidgets.QPushButton("Contrast")
-		button2 = QtWidgets.QPushButton("Annotations")
-		button3 = QtWidgets.QPushButton("Status")
-		button4 = QtWidgets.QPushButton("Line Profile")
-		#
-		viewGridLayout.addWidget(button1, row, 0)
-		viewGridLayout.addWidget(button2, row, 1)
-		row += 1
-		viewGridLayout.addWidget(button3, row, 0)
-		viewGridLayout.addWidget(button4, row, 1)
-				
-		# buttons
-		row += 1
-		button1 = QtWidgets.QPushButton("Napari")
-		button2 = QtWidgets.QPushButton("Options")
-		button3 = QtWidgets.QPushButton("Refresh")
-		#
-		viewGridLayout.addWidget(button1, row, 0)
-		viewGridLayout.addWidget(button2, row, 1)
-		row += 1
-		viewGridLayout.addWidget(button3, row, 0)
-		#viewGridLayout.addWidget(button4, row, 1)
-		
-		#
-		# does not work
+
+		# finalize
 		for rowIdx in range(row):
-			print('rowIdx:', rowIdx)
+			#print('rowIdx:', rowIdx)
 			viewGridLayout.setRowMinimumHeight(rowIdx, 20)
 			viewGridLayout.setRowStretch(rowIdx,1)
+
 		viewGroupBox.setLayout(viewGridLayout)
 		mainLayout.addWidget(viewGroupBox)
-		
+
+		#
+		# panels group
+		panelsGroupBox = QtWidgets.QGroupBox('Panels')
+		#viewGroupBox.setStyleSheet('QGroupBox  {color: white;}')
+		panelsGroupBox.setStyleSheet(open(mystylesheet_css).read())
+		panelsGridLayout = QtWidgets.QGridLayout(self)
+
+		row = 0
+		#button2 = QtWidgets.QPushButton("Annotations")
+		check1 = QtWidgets.QCheckBox("Nodes")
+		check1.setChecked(self.mainWindow.options['Panels']['showNodeList'])
+		check1.clicked.connect(self.checkbox_callback)
+		check2 = QtWidgets.QCheckBox("Edges")
+		check2.setChecked(self.mainWindow.options['Panels']['showEdgeList'])
+		check2.clicked.connect(self.checkbox_callback)
+		check3 = QtWidgets.QCheckBox("Search")
+		check3.setChecked(self.mainWindow.options['Panels']['showSearch'])
+		check3.clicked.connect(self.checkbox_callback)
+
+		check4 = QtWidgets.QCheckBox("Contrast")
+		check4.setChecked(self.mainWindow.options['Panels']['showContrast'])
+		check4.clicked.connect(self.checkbox_callback)
+		check5 = QtWidgets.QCheckBox("Status")
+		check5.setChecked(self.mainWindow.options['Panels']['showStatus'])
+		check5.clicked.connect(self.checkbox_callback)
+		check6 = QtWidgets.QCheckBox("Line Profile")
+		check6.setChecked(self.mainWindow.options['Panels']['showLineProfile'])
+		check6.clicked.connect(self.checkbox_callback)
+		#
+		panelsGridLayout.addWidget(check1, row, 0)
+		panelsGridLayout.addWidget(check2, row, 1)
+		panelsGridLayout.addWidget(check3, row, 2)
+		row += 1
+		panelsGridLayout.addWidget(check4, row, 0)
+		panelsGridLayout.addWidget(check5, row, 1)
+		panelsGridLayout.addWidget(check6, row, 2)
+
+		row += 1
+		button7 = QtWidgets.QPushButton("Napari")
+		button8 = QtWidgets.QPushButton("Options")
+		button9 = QtWidgets.QPushButton("Refresh")
+		#
+		button7.clicked.connect(self.button_callback)
+		button8.clicked.connect(self.button_callback)
+		button9.clicked.connect(self.button_callback)
+		#
+		panelsGridLayout.addWidget(button7, row, 0)
+		panelsGridLayout.addWidget(button8, row, 1)
+		panelsGridLayout.addWidget(button9, row, 2)
+
+		panelsGroupBox.setLayout(panelsGridLayout)
+		mainLayout.addWidget(panelsGroupBox)
+
 		#
 		# edit group
 		editGroupBox = QtWidgets.QGroupBox('Edit')
 		#editGroupBox.setStyleSheet('QGroupBox  {color: white;}')
 		editGroupBox.setStyleSheet(open(mystylesheet_css).read())
 		editGridLayout = QtWidgets.QGridLayout(self)
-		
+
 		editButtonList = ['- Node', '- Edge', '- Slab', 'To Node']
 
 		numCol = 3
@@ -167,14 +239,14 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 			aButton.setProperty('bobID', editButtonName)
 			aButton.clicked.connect(self.button_callback)
 			editGridLayout.addWidget(aButton, row, col)
-			
+
 			self.myWidgetList.append(aButton)
-			
+
 			col += 1
 			if col == numCol:
 				col = 0
 				row += 1
-				
+
 		'''
 		aCheckbox = QtWidgets.QCheckBox('0,0')
 		bCheckbox = QtWidgets.QCheckBox('0,1')
@@ -186,7 +258,6 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		editGridLayout.addWidget(aCheckbox, row, 0)
 		editGridLayout.addWidget(bCheckbox, row, 1)
 		'''
-		
+
 		editGroupBox.setLayout(editGridLayout)
 		mainLayout.addWidget(editGroupBox)
-		
