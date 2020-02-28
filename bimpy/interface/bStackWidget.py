@@ -25,7 +25,7 @@ class bStackWidget(QtWidgets.QWidget):
 	A widget to display a stack. This includes a bStackView and a bAnnotationTable.
 	"""
 
-	optionsStateChange = QtCore.Signal(str, object) # object can be a dict
+	optionsStateChange = QtCore.Signal(str, str, bool) # object can be a dict
 
 	def __init__(self, mainWindow=None, parent=None, path=''):
 		super(bStackWidget, self).__init__()
@@ -147,12 +147,15 @@ class bStackWidget(QtWidgets.QWidget):
 		#
 		# signals and slots
 
+		# listen to bStackWidget
+		self.optionsStateChange.connect(self.myFeedbackWidget.slot_OptionsStateChange)
+
 		#
 		# listen to self.bStackFeebackWidget
 		#self.bStackFeebackWidget.clickStateChange.connect(self.myStackView.slot_StateChange)
 		#
 		# listen to self.myStackView
-		#self.myStackView.displayStateChange.connect(self.bStackFeebackWidget.slot_StateChange)
+		self.myStackView.displayStateChangeSignal.connect(self.myFeedbackWidget.slot_DisplayStateChange)
 		self.myStackView.setSliceSignal.connect(self.mySliceSlider.slot_UpdateSlice)
 		#self.myStackView.setSliceSignal.connect(self.bStackFeebackWidget.slot_StateChange)
 		self.myStackView.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
@@ -222,10 +225,12 @@ class bStackWidget(QtWidgets.QWidget):
 	'''
 
 	# todo: remove
+	'''
 	def slot_StateChange_(self, signalName, signalValue):
 		print('bStackWidget.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
 		#if signalName=='set slice':
 		#	self.mySliceSlider.setValue(signalValue)
+	'''
 
 	#def attachNapari(self, napariViewer):
 	#	self.napariViewer = napariViewer
@@ -329,17 +334,31 @@ class bStackWidget(QtWidgets.QWidget):
 
 		if signal == 'save':
 			self.mySimpleStack.saveAnnotations()
-		if signal == 'load':
+		elif signal == 'load':
 			self.mySimpleStack.loadAnnotations()
 			self.nodeTable2.populate(self.mySimpleStack.slabList.nodeDictList)
 			self.edgeTable2.populate(self.mySimpleStack.slabList.edgeDictList)
 			self.editTable2.populate(self.mySimpleStack.slabList.editDictList)
-		if signal == 'load_xml':
+		elif signal == 'load_xml':
 			self.mySimpleStack.loadAnnotations_xml()
+		elif signal == 'save stack copy':
+			# save the currently viewed stack (always prompt for name)
 
-	def optionsChange(self, key1, key2, value):
+			# get full path to save to
+			displayThisStack = self.getStackView().displayStateDict['displayThisStack']
+			filePath = self.mySimpleStack.saveStackCopy(displayThisStack)
+			# ask user if ok
+			file = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File', filePath)
+			file = file[0]
+			print(file)
+
+	def optionsChange(self, key1, key2, value=None, toggle=False, doEmit=False):
+		if toggle:
+			value = not self.options[key1][key2]
 		self.options[key1][key2] = value
-		self.optionsStateChange.emit('')
+		self.updateDisplayedWidgets()
+		if doEmit:
+			self.optionsStateChange.emit(key1, key2, value)
 
 	def keyPressEvent(self, event):
 		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
@@ -535,7 +554,7 @@ class bStackView(QtWidgets.QGraphicsView):
 	tracingEditSignal = QtCore.pyqtSignal(object) # on new/delete/edit of node, edge, slab
 	'''
 
-	displayStateChange = QtCore.Signal(str, object) # object can be a dict
+	displayStateChangeSignal = QtCore.Signal(str, object) # object can be a dict
 	setSliceSignal = QtCore.Signal(str, object)
 	selectNodeSignal = QtCore.Signal(object)
 	selectEdgeSignal = QtCore.Signal(object)
@@ -728,7 +747,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.setScene(scene)
 
-		self.displayStateChange.emit('num slices', self.mySimpleStack.numImages)
+		self.displayStateChangeSignal.emit('num slices', self.mySimpleStack.numImages)
 
 	#@property
 	def selectedNode(self, nodeIdx=-1):
@@ -813,7 +832,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		annotationsAction = QtWidgets.QAction('Left Toolbar', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showLeftToolbar'])
-		annotationsAction.setShortcuts('[')
+		#annotationsAction.setShortcuts('[')
 		tmpMenuAction = menu.addAction(annotationsAction)
 
 		# nodes
@@ -825,22 +844,22 @@ class bStackView(QtWidgets.QGraphicsView):
 		annotationsAction.setChecked(self.options['Panels']['showEdgeList'])
 		tmpMenuAction = menu.addAction(annotationsAction)
 		# search
-		annotationsAction = QtWidgets.QAction('Search', self, checkable=True)
+		annotationsAction = QtWidgets.QAction('Search List', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showSearch'])
 		tmpMenuAction = menu.addAction(annotationsAction)
 
 		# contrast
-		contrastAction = QtWidgets.QAction('Contrast', self, checkable=True)
+		contrastAction = QtWidgets.QAction('Contrast Panel', self, checkable=True)
 		contrastAction.setChecked(self.options['Panels']['showContrast'])
 		tmpMenuAction = menu.addAction(contrastAction)
 
 		# status toolbar
-		annotationsAction = QtWidgets.QAction('Status', self, checkable=True)
+		annotationsAction = QtWidgets.QAction('Status Panel', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showStatus'])
 		tmpMenuAction = menu.addAction(annotationsAction)
 
 		# line profile toolbar
-		annotationsAction = QtWidgets.QAction('Line Profile', self, checkable=True)
+		annotationsAction = QtWidgets.QAction('Line Profile Panel', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showLineProfile'])
 		tmpMenuAction = menu.addAction(annotationsAction)
 
@@ -887,10 +906,12 @@ class bStackView(QtWidgets.QGraphicsView):
 		#
 		# view of tracing
 		if userActionStr == 'Image':
-			self.displayStateDict['showImage'] = not self.displayStateDict['showImage']
+			self.displayStateChange('showImage', toggle=True)
+			#self.displayStateDict['showImage'] = not self.displayStateDict['showImage']
 		elif userActionStr == 'Sliding Z':
 			self.displayStateDict['displaySlidingZ'] = not self.displayStateDict['displaySlidingZ']
 		elif userActionStr == 'Nodes':
+			#optionsChange('Panels', 'showLeftToolbar', toggle=True, doEmit=True)
 			self.displayStateDict['showNodes'] = not self.displayStateDict['showNodes']
 		elif userActionStr == 'Edges':
 			self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
@@ -898,26 +919,33 @@ class bStackView(QtWidgets.QGraphicsView):
 		#
 		# toolbars
 		elif userActionStr == 'Left Toolbar':
-			self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
-			self.mainWindow.updateDisplayedWidgets()
-		elif userActionStr == 'Contrast':
-			self.options['Panels']['showContrast'] = not self.options['Panels']['showContrast']
-			self.mainWindow.updateDisplayedWidgets()
+			self.mainWindow.optionsChange('Panels', 'showLeftToolbar', toggle=True, doEmit=True)
+			#self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
+			#self.mainWindow.updateDisplayedWidgets()
+		elif userActionStr == 'Contrast Panel':
+			self.mainWindow.optionsChange('Panels', 'showContrast', toggle=True, doEmit=True)
+			#self.options['Panels']['showContrast'] = not self.options['Panels']['showContrast']
+			#self.mainWindow.updateDisplayedWidgets()
 		elif userActionStr == 'Node List':
-			self.options['Panels']['showNodeList'] = not self.options['Panels']['showNodeList']
-			self.mainWindow.updateDisplayedWidgets()
+			self.mainWindow.optionsChange('Panels', 'showNodeList', toggle=True, doEmit=True)
+			#self.options['Panels']['showNodeList'] = not self.options['Panels']['showNodeList']
+			#self.mainWindow.updateDisplayedWidgets()
 		elif userActionStr == 'Edge List':
-			self.options['Panels']['showEdgeList'] = not self.options['Panels']['showEdgeList']
-			self.mainWindow.updateDisplayedWidgets()
-		elif userActionStr == 'Search':
-			self.options['Panels']['showSearch'] = not self.options['Panels']['showSearch']
-			self.mainWindow.updateDisplayedWidgets()
-		elif userActionStr == 'Status':
-			self.options['Panels']['showStatus'] = not self.options['Panels']['showStatus']
-			self.mainWindow.updateDisplayedWidgets()
-		elif userActionStr == 'Line Profile':
-			self.options['Panels']['showLineProfile'] = not self.options['Panels']['showLineProfile']
-			self.mainWindow.updateDisplayedWidgets()
+			self.mainWindow.optionsChange('Panels', 'showEdgeList', toggle=True, doEmit=True)
+			#self.options['Panels']['showEdgeList'] = not self.options['Panels']['showEdgeList']
+			#self.mainWindow.updateDisplayedWidgets()
+		elif userActionStr == 'Search List':
+			self.mainWindow.optionsChange('Panels', 'showSearch', toggle=True, doEmit=True)
+			#self.options['Panels']['showSearch'] = not self.options['Panels']['showSearch']
+			#self.mainWindow.updateDisplayedWidgets()
+		elif userActionStr == 'Status Panel':
+			self.mainWindow.optionsChange('Panels', 'showStatus', toggle=True, doEmit=True)
+			#self.options['Panels']['showStatus'] = not self.options['Panels']['showStatus']
+			#self.mainWindow.updateDisplayedWidgets()
+		elif userActionStr == 'Line Profile Panel':
+			self.mainWindow.optionsChange('Panels', 'showLineProfile', toggle=True, doEmit=True)
+			#self.options['Panels']['showLineProfile'] = not self.options['Panels']['showLineProfile']
+			#self.mainWindow.updateDisplayedWidgets()
 
 		# other
 		elif userActionStr == 'Options':
@@ -933,9 +961,18 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		# emit a signal
 		# todo: this is emitting when self.displayStateDict is not changing, e.g. for user action 'Contrast' and 'Annotations'
+		'''
 		if userSelectedMenu:
 			self.setSlice() # update
-			self.displayStateChange.emit(signalName, self.displayStateDict)
+			self.displayStateChangeSignal.emit(signalName, self.displayStateDict)
+		'''
+
+	def displayStateChange(self, key1, value=None, toggle=False):
+		if toggle:
+			value = not self.displayStateDict[key1]
+		self.displayStateDict[key1] = value
+		self.setSlice()
+		self.displayStateChangeSignal.emit(key1, self.displayStateDict)
 
 	def addEditMenu(self, menu):
 		editMenus = ['Delete Node', 'Delete Edge', 'Delete Slab', '---', 'Slab To Node']
@@ -1871,7 +1908,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			self._toggleSlidingZ()
 			#
-			self.displayStateChange.emit('bSignal Sliding Z', self.displayStateDict)
+			self.displayStateChangeSignal.emit('bSignal Sliding Z', self.displayStateDict)
 
 		elif event.key() == QtCore.Qt.Key_T:
 			'''
@@ -1888,8 +1925,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
 			self.setSlice() #refresh
 			#
-			self.displayStateChange.emit('bSignal Nodes', self.displayStateDict)
-			self.displayStateChange.emit('bSignal Edges', self.displayStateDict)
+			self.displayStateChangeSignal.emit('bSignal Nodes', self.displayStateDict)
+			self.displayStateChangeSignal.emit('bSignal Edges', self.displayStateDict)
 
 		# ''' block quotes not allowed here '''
 		#elif event.key() == QtCore.Qt.Key_N:
@@ -2030,7 +2067,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			else:
 				self.currentSlice += 1
 			self.setSlice(self.currentSlice)
-			#self.displayStateChange.emit('set slice', self.currentSlice)
+			#self.displayStateChangeSignal.emit('set slice', self.currentSlice)
 			self.setSliceSignal.emit('set slice', self.currentSlice)
 			#event.setAccepted(True)
 

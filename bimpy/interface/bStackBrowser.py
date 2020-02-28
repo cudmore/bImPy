@@ -236,8 +236,8 @@ if __name__ == '__main__':
 		mjb.stop()
 
 	except (Exception) as e:
-		print('exception:', e)
-		print(traceback.format_exc())
+		print('bStackBrowser exception:', e)
+		#print(traceback.format_exc())
 
 		mjb.stop()
 

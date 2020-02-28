@@ -229,10 +229,10 @@ class bNapari:
 		self.myStackWidget.myStackView.selectNodeSignal.connect(self.slot_selectNode)
 		self.myStackWidget.myStackView.selectEdgeSignal.connect(self.slot_selectEdge)
 		# listen to self.annotationTable
-		self.myStackWidget.annotationTable.selectNodeSignal.connect(self.slot_selectNode) # change to slot_selectNode ???
-		self.myStackWidget.annotationTable.selectEdgeSignal.connect(self.slot_selectEdge) # change to slot_selectNode ???
+		self.myStackWidget.nodeTable2.selectRowSignal.connect(self.slot_selectNode) # change to slot_selectNode ???
+		self.myStackWidget.edgeTable2.selectRowSignal.connect(self.slot_selectEdge) # change to slot_selectNode ???
 		# listen to edit table, self.
-		self.myStackWidget.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.slot_selectEdge)
+		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectEdge)
 
 	def slot_selectNode(Self, myEvent):
 		print('bNapari.slot_selectNode() NOT IMPLEMENTED myEvent:', myEvent)

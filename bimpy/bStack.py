@@ -553,6 +553,22 @@ class bStack:
 
 		self.header.saveHeader(headerFilePath)
 
+	def saveStackCopy(self, type):
+		if type == 'ch1':
+			typeStr = '_ch1'
+		elif type == 'ch2':
+			typeStr = '_ch2'
+		elif type == 'ch3':
+			typeStr = '_ch3'
+		elif type == 'mask':
+			typeStr = '_mask'
+
+		enclosingPath, fileName = os.path.split(self.path)
+		fileName = self.fileNameWithoutExtension + typeStr + '.tif'
+		saveFilePath = os.path.join(enclosingPath, fileName)
+		print('saveStackCopy() saveFilePath:', saveFilePath)
+		return saveFilePath
+
 	def saveStack(self, path=''):
 		"""
 		Save stack as .tif file

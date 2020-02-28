@@ -19,6 +19,15 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		self.buildUI()
 
+	def slot_OptionsStateChange(self, key1, key2, value):
+		print('bStackFeedbackWidget.slot_OptionsStateChange()', key1, key2, value)
+		doRepaint = False
+		if key1 == 'Panels':
+			checkbox = self.findBobID(key2)
+			if checkbox is not None:
+				checkbox.setChecked(value)
+				self.repaint()
+
 	def slot_selectNode(self, myEvent):
 		print('bStackFeebackWidget.slot_SelectNode() myEvent:', myEvent)
 		if myEvent.eventType == 'select node':
@@ -27,6 +36,10 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				deleteNodeButton.setEnabled(True)
 			else:
 				deleteNodeButton.setEnabled(False)
+
+	def slot_DisplayStateChange(self, signal, displayStateDict):
+		print('bStackFeedbackWidget.slot_DisplayStateChange() signal:', signal)
+		#if signal == 'image':
 
 	def slot_selectEdge(self, myEvent):
 		print('bStackFeebackWidget.slot_SelectEdge() myEvent:', myEvent)
@@ -56,17 +69,23 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		bobID = sender.property('bobID')
 		print('=== bStackFeebackWidget.button_callback() title:', title, 'bobID:', bobID)
 
-		if title == 'Save':
+		if title == 'Save Tracing':
 			self.mainWindow.signal('save')
-		elif title == 'Load':
+		elif title == 'Load Tracing':
 			self.mainWindow.signal('load')
+		elif title == 'Save Stack Copy':
+			self.mainWindow.signal('save stack copy')
 		else:
 			print('    case not taken:', title)
 
 	def checkbox_callback(self, isChecked):
 		sender = self.sender()
 		title = sender.text()
-		print('bStackFeedbackWidget.checkbox_callback() title:', title, 'isChecked:', isChecked)
+		bobID = sender.property('bobID')
+		print('bStackFeedbackWidget.checkbox_callback() title:', title, 'isChecked:', isChecked, 'bobID:', bobID)
+		self.mainWindow.options['Panels'][bobID] = not self.mainWindow.options['Panels'][bobID]
+		self.mainWindow.updateDisplayedWidgets()
+		"""
 		if title == 'Nodes':
 			self.mainWindow.options['Panels']['showNodeList'] = not self.mainWindow.options['Panels']['showNodeList']
 			self.mainWindow.updateDisplayedWidgets()
@@ -85,6 +104,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		elif title == 'Line Profile':
 			self.mainWindow.options['Panels']['showLineProfile'] = not self.mainWindow.options['Panels']['showLineProfile']
 			self.mainWindow.updateDisplayedWidgets()
+		"""
 
 	def findBobID(self, bobID):
 		"""
@@ -113,15 +133,18 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		#
 		# file
 		fileGridLayout = QtWidgets.QGridLayout(self)
-		button1 = QtWidgets.QPushButton("Save")
-		button2 = QtWidgets.QPushButton("Load")
+		button1 = QtWidgets.QPushButton('Save Tracing')
+		button2 = QtWidgets.QPushButton('Load Tracing')
+		button3 = QtWidgets.QPushButton('Save Stack Copy')
 
 		button1.clicked.connect(self.button_callback)
 		button2.clicked.connect(self.button_callback)
+		button3.clicked.connect(self.button_callback)
 
 		row = 0
 		fileGridLayout.addWidget(button1, row, 0)
 		fileGridLayout.addWidget(button2, row, 1)
+		fileGridLayout.addWidget(button3, row, 2)
 		mainLayout.addLayout(fileGridLayout)
 
 		#
@@ -176,24 +199,54 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		panelsGroupBox.setStyleSheet(open(mystylesheet_css).read())
 		panelsGridLayout = QtWidgets.QGridLayout(self)
 
+		numCol = 3
+		col = 0
 		row = 0
+		checkBoxList = ['showNodeList', 'showEdgeList', 'showSearch', 'showContrast', 'showStatus', 'showLineProfile']
+		niceNameList = ['Node List', 'Edge List', 'Search List', 'Contrast Panel', 'Status Panel', 'Line Profile Panel']
+		for idx, aCheckBoxName in enumerate(checkBoxList):
+			check1 = QtWidgets.QCheckBox(niceNameList[idx])
+			check1.setChecked(self.mainWindow.options['Panels'][aCheckBoxName])
+			check1.setProperty('bobID', aCheckBoxName)
+			check1.clicked.connect(self.checkbox_callback)
+			self.myWidgetList.append(check1)
+			panelsGridLayout.addWidget(check1, row, col)
+			col += 1
+			if col==numCol:
+				row += 1
+				col = 0
+
+		"""
 		#button2 = QtWidgets.QPushButton("Annotations")
 		check1 = QtWidgets.QCheckBox("Nodes")
 		check1.setChecked(self.mainWindow.options['Panels']['showNodeList'])
+		check1.setProperty('bobID', 'showNodeList')
 		check1.clicked.connect(self.checkbox_callback)
+		self.myWidgetList.append(check1)
+		#
 		check2 = QtWidgets.QCheckBox("Edges")
 		check2.setChecked(self.mainWindow.options['Panels']['showEdgeList'])
+		check2.setProperty('bobID', 'showEdgeList')
 		check2.clicked.connect(self.checkbox_callback)
+		self.myWidgetList.append(check2)
+		#
 		check3 = QtWidgets.QCheckBox("Search")
 		check3.setChecked(self.mainWindow.options['Panels']['showSearch'])
+		check3.setProperty('bobID', 'showSearch')
 		check3.clicked.connect(self.checkbox_callback)
+		self.myWidgetList.append(check3)
 
+		#
 		check4 = QtWidgets.QCheckBox("Contrast")
 		check4.setChecked(self.mainWindow.options['Panels']['showContrast'])
+		check4.setProperty('bobID', 'showContrast')
 		check4.clicked.connect(self.checkbox_callback)
+		self.myWidgetList.append(check4)
+		#
 		check5 = QtWidgets.QCheckBox("Status")
 		check5.setChecked(self.mainWindow.options['Panels']['showStatus'])
 		check5.clicked.connect(self.checkbox_callback)
+		#
 		check6 = QtWidgets.QCheckBox("Line Profile")
 		check6.setChecked(self.mainWindow.options['Panels']['showLineProfile'])
 		check6.clicked.connect(self.checkbox_callback)
@@ -205,6 +258,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		panelsGridLayout.addWidget(check4, row, 0)
 		panelsGridLayout.addWidget(check5, row, 1)
 		panelsGridLayout.addWidget(check6, row, 2)
+		"""
 
 		row += 1
 		button7 = QtWidgets.QPushButton("Napari")
