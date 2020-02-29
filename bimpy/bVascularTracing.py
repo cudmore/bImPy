@@ -655,6 +655,12 @@ class bVascularTracing:
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.4
 
+		# 20191017__0001-new_z
+		if self.path.endswith('20191017__0001-new_z.tif'):
+			xUmPerPixel = 0.4971845
+			yUmPerPixel = 0.4971845
+			zUmPerPixel = 0.4
+
 		y = abs(y)
 		z += zOffset
 		#z += 1 # does vesselucida indices start at 0 or 1???
