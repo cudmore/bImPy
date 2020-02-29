@@ -16,6 +16,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends import backend_qt5agg
 
+import tifffile
+
 import bimpy
 
 ################################################################################
@@ -346,11 +348,15 @@ class bStackWidget(QtWidgets.QWidget):
 
 			# get full path to save to
 			displayThisStack = self.getStackView().displayStateDict['displayThisStack']
+			print('displayThisStack:', displayThisStack)
 			filePath = self.mySimpleStack.saveStackCopy(displayThisStack)
 			# ask user if ok
 			file = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File', filePath)
 			file = file[0]
-			print(file)
+			if len(file) > 0:
+				#tifffile.imsave(file, self.mySimpleStack.getStack(displayThisStack))
+				print('\n\t\tALWAYS SAVING SLIDING Z\n\n')
+				tifffile.imsave(file, self.mySimpleStack._slidingz)
 
 	def optionsChange(self, key1, key2, value=None, toggle=False, doEmit=False):
 		if toggle:
@@ -2009,6 +2015,12 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.displayStateDict['displaySlidingZ'] = isChecked
 		else:
 			self.displayStateDict['displaySlidingZ'] = not self.displayStateDict['displaySlidingZ']
+
+		# todo: get rid of this
+		thisStack = self.displayStateDict['displayThisStack']
+		upSlices = self.options['Stack']['upSlidingZSlices']
+		downSlices = self.options['Stack']['downSlidingZSlices']
+		self.mySimpleStack.makeSlidingZ(thisStack, upSlices, downSlices)
 
 		self.setSlice() # just refresh
 

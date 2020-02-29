@@ -232,14 +232,54 @@ class bStack:
 	def getStack(self, thisStack):
 		stack = None
 		if thisStack == 'ch1':
-			stack = self.stack[0, startSlice:stopSlice, :, :]
+			stack = self.stack
 		elif thisStack == 'mask':
-			stack = self.getMaskVolume()[startSlice:stopSlice, :, :]
+			stack = self.getMaskVolume()
 		elif thisStack == 'skel':
-			stack = self._imagesSkel[startSlice:stopSlice, :, :]
+			stack = self._imagesSkel
 		else:
 			print('error: getStack() got bad thisStack:', thisStack)
 		return stack
+
+	def makeSlidingZ(self, thisStack, upSlices, downSlices):
+		print('makeSlidingZ up/down:', upSlices, downSlices)
+		if self.numImages>1:
+			img = np.ndarray(self.stack[0,:,:,:].shape).astype(self.stack.dtype)
+			print('img:', img.shape)
+			for currentSlice in range(self.numSlices):
+				startSlice = currentSlice - upSlices
+				if startSlice < 0:
+					startSlice = 0
+				stopSlice = currentSlice + downSlices
+				if stopSlice > self.numSlices - 1:
+					stopSlice = self.numSlices - 1
+
+				if thisStack == 'ch1':
+					tmp = self.stack[0, startSlice:stopSlice, :, :]
+					img[currentSlice,:,:] = np.max(tmp, axis=0)
+				elif thisStack == 'mask':
+					tmp = self.getMaskVolume()[startSlice:stopSlice, :, :]
+					img[currentSlice,:,:] = np.max(tmp, axis=0)
+				elif thisStack == 'skel':
+					tmp = self._imagesSkel[startSlice:stopSlice, :, :]
+					img[currentSlice,:,:] = np.max(tmp, axis=0)
+				else:
+					print('error: getSlidingZ() got bad thisStack:', thisStack)
+
+				#img = np.max(img, axis=0)
+		else:
+			# single image stack
+			if thisStack == 'ch1':
+				img = self.stack[0,:,:].copy()
+			elif thisStack == 'mask':
+				img = self.getMaskVolume()[0, :, :].copy()
+			elif thisStack == 'skel':
+				img = self._imagesSkel[0, :, :].copy()
+			else:
+				print('error: getSlidingZ() got bad thisStack:', thisStack)
+
+		self._slidingz = img
+		print('   done: _slidingz')
 
 	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
 

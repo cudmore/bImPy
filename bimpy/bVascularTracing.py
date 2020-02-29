@@ -629,16 +629,19 @@ class bVascularTracing:
 		if self.path.endswith('20191017__0001.tif'):
 			#print('!!! scaling tiff file 20191017__0001.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
-			xUmPerPixel = 0.49718 #0.4971845
-			yUmPerPixel = 0.49718
+			xUmPerPixel = 0.0138889 #0.49718 #0.4971845
+			yUmPerPixel = 0.0138889 #0.49718
 			zUmPerPixel = 0.4 # 0.6
 			zOffset = 0 #25
 		if self.path.endswith('20200127__A01_G001_0011_croped.tif'):
 			#print('!!! scaling tiff file 20200127__A01_G001_0011_croped.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
+			pass
+			'''
 			xUmPerPixel = 0.3977476
 			yUmPerPixel = 0.3977476
 			zUmPerPixel = 0.51
+			'''
 			#zOffset = 25
 
 
@@ -647,10 +650,15 @@ class bVascularTracing:
 			yUmPerPixel = 0.3107
 			zUmPerPixel = 0.5
 
-		# flip y
+		if self.path.endswith('cylinder-scaled.tif'):
+			xUmPerPixel = 0.15
+			yUmPerPixel = 0.15
+			zUmPerPixel = 0.4
+
 		y = abs(y)
-		# offset z
 		z += zOffset
+		#z += 1 # does vesselucida indices start at 0 or 1???
+
 		# flip x/y
 		if 1:
 			tmp = y
@@ -874,7 +882,7 @@ class bVascularTracing:
 		self._analyze()
 
 		# this sorta works
-		for i in range(3):
+		for i in range(1):
 			self.joinEdges()
 
 		# this sorta works
@@ -1088,23 +1096,31 @@ class bVascularTracing:
 						continue
 					elif node1 is None and node2 is None:
 						# potential join
+						'''
 						print('   1.1) potential join')
+						'''
 						addEdit('join', 1.1, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is not None and (node1 != node2):
+						'''
 						print('   1.2) both preNode and preNode2 have node but they are different ... nodes should be merged ???')
 						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
 						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						'''
 						addEdit('merge', 1.2, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is None:
+						'''
 						print('   1.3) easy ... connect preNode2 to node at preNode')
 						print('      MAKING EDIT ... edge:', idx, 'edge2["preNode"] is now preNode:', preNode)
+						'''
 						numEdits1 += 1
 						edge2['preNode'] = preNode
 						preNode2 = preNode
 						addEdit('connect1', 1.3, idx, node1, idx2, preNode2)
 					elif node1 is None and node2 is not None:
+						'''
 						print('   1.4) easy ... connect preNode to node at preNode2')
 						print('      MAKING EDIT ... edge:', idx, 'edge["preNode"] is now preNode2:', preNode2)
+						'''
 						numEdits1 += 1
 						edge['preNode'] = preNode2
 						preNode = preNode2
@@ -1138,28 +1154,38 @@ class bVascularTracing:
 						continue
 					elif node1 is None and node2 is None:
 						# potential join
+						'''
 						print('   2.1) potential join')
+						'''
 						addEdit('join', 2.1, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is not None and (node1 != node2):
+						'''
 						print('   2.2) both preNode and postNode2 have node but they are different?')
 						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
 						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						'''
 						addEdit('merge', 2.2, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is None:
+						'''
 						print('   2.3) xxx easy ... connect postNode2 to node at preNode')
 						print('      MAKING EDIT ... edge:', idx, 'edge2["postNode"] is now preNode:', preNode)
+						'''
 						numEdits2 += 1
 						edge2['postNode'] = preNode
 						postNode2 = preNode
 						addEdit('connect1', 2.3, idx, node1, idx2, postNode2)
 					elif node1 is None and node2 is not None:
+						'''
 						print('   2.4) xxx easy ... connect preNode to node at postNode2')
 						print('      MAKING EDIT ... edge:', idx, 'edge2["preNode"] is now preNode:', postNode2)
+						'''
 						numEdits2 += 1
 						edge['preNode'] = postNode2
 						preNode = postNode2
 						addEdit('connect2', 2.4, idx, preNode, idx2, node2)
+					'''
 					print('      dist_src_dst2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+					'''
 
 					'''
 					if (preNode is not None) and (preNode == postNode2):
@@ -1200,28 +1226,38 @@ class bVascularTracing:
 						continue
 					elif node1 is None and node2 is None:
 						# potential join
+						'''
 						print('   3.1) potential join')
+						'''
 						addEdit('join', 3.1, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is not None and (node1 != node2):
+						'''
 						print('   3.2) both postNode and preNode2 have node but they are different?')
 						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
 						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						'''
 						addEdit('merge', 3.2, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is None:
+						'''
 						print('   3.3) xxx easy ... connect postNode2 to node at preNode')
 						print('      MAKING EDIT ... ')
+						'''
 						numEdits3 += 1
 						edge2['preNode'] = postNode
 						preNode2 = postNode
 						addEdit('connect1', 3.3, idx, node1, idx2, preNode2)
 					elif node1 is None and node2 is not None:
+						'''
 						print('   3.4) xxx easy ... connect preNode to node at postNode2')
 						print('      MAKING EDIT ... ')
+						'''
 						numEdits3 += 1
 						edge['postNode'] = preNode2
 						postNode = preNode2
 						addEdit('connect2', 3.4, idx, node1, idx2, postNode)
+					'''
 					print('      dist_dst_src2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+					'''
 
 					'''
 					numEdits3 += 1
@@ -1275,28 +1311,38 @@ class bVascularTracing:
 						continue
 					elif node1 is None and node2 is None:
 						# potential join
+						'''
 						print('   4.1) potential join')
+						'''
 						addEdit('join', 4.1, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is not None and (node1 != node2):
+						'''
 						print('   4.2) xxx both postNode and postNode2 have node but they are different?')
 						print('      self.nodeDictList[node1]:', self.nodeDictList[node1])
 						print('      self.nodeDictList[node2]:', self.nodeDictList[node2])
+						'''
 						addEdit('merge', 4.2, idx, node1, idx2, node2)
 					elif node1 is not None and node2 is None:
+						'''
 						print('   4.3) xxx easy ... connect postNode2 to node at preNode')
 						print('      MAKING EDIT ... ')
+						'''
 						numEdits4 += 1
 						edge2['postNode'] = postNode
 						postNode2 = postNode
 						addEdit('connect1', 3.3, idx, node1, idx2, postNode2)
 					elif node1 is None and node2 is not None:
+						'''
 						print('   4.4) xxx easy ... connect preNode to node at postNode2')
 						print('      MAKING EDIT ... ')
+						'''
 						numEdits4 += 1
 						edge['postNode'] = postNode2
 						postNode = postNode2
 						addEdit('connect2', 3.4, idx, postNode, idx2, node2)
+					'''
 					print('      dist_dst_dst2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+					'''
 
 					'''
 					if (postNode is not None) and (postNode == postNode2):
@@ -1327,7 +1373,7 @@ class bVascularTracing:
 		#
 		# done
 		print('Number of edits:', numEdits1, numEdits2, numEdits3, numEdits4)
-		print('NOT EDITING ANYTHING FOR NOW')
+		print('   !!! NOT EDITING ANYTHING FOR NOW ... return')
 		return
 
 		print('*** EDITS joinEdges')
