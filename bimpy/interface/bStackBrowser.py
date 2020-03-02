@@ -25,6 +25,28 @@ logger = logging.getLogger(__name__)
 '''
 
 
+class bFileTree(QtWidgets.QTreeWidget):
+	def __init__(self, myStackBrowser):
+		super(bFileTree, self).__init__()
+		self.myStackBrowser = myStackBrowser
+
+	def keyPressEvent(self, event):
+		#print('=== bStackView.keyPressEvent() event.key():', event.key())
+
+		keyStr = event.text()
+		key = event.key()
+
+		modifiers = QtWidgets.QApplication.keyboardModifiers()
+		isShift = modifiers & QtCore.Qt.ShiftModifier
+
+		if event.key() in [QtCore.Qt.Key_I]:
+			print('=== user hit key "i"')
+		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
+			print('=== user hit key "d", close selected stack')
+			selRow = self.currentIndex().row()
+			print('selRow:', selRow)
+			self.myStackBrowser.closeStack(selRow)
+
 #class bStackBrowser(QtWidgets.QWidget):
 class bStackBrowser(QtWidgets.QMainWindow):
 	"""
@@ -67,7 +89,9 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		self.myColumnNames = ['Folder', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels', 'xVoxel', 'yVoxel', 'zVoxel']
 		#self.myColumnNames = ['File', 'X Pixels', 'Y Pixels', 'Z Pixels']
 
-		self.myTreeWidget = QtWidgets.QTreeWidget()
+		#self.myTreeWidget = QtWidgets.QTreeWidget()
+		self.myTreeWidget = bFileTree(myStackBrowser=self)
+
 		self.myTreeWidget.setHeaderLabels(self.myColumnNames)
 
 		# set column widths
@@ -95,17 +119,44 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		self.resize(700, 300)
 
 
-	def showStackWindow(self, path):
+	def closeStack(self, selRow):
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Information)
+		msg.setWindowTitle("Close Stack")
+		msg.setText("Sure you want to close? Unsaved changes will be lost...")
+		msg.setInformativeText("This is additional information")
+		msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+		retval = msg.exec_()
+		if retval == QtWidgets.QMessageBox.Cancel:
+			return
+
+		self.myFileList.pop(selRow)
+
+		self.myStackList[selRow].close()
+		self.myStackList.pop(selRow)
+
+		self.myTreeWidget.takeTopLevelItem(selRow)
+
+	def showStackWindow(self, rowIdx):
+		path = self.myFileList[rowIdx]
+		alreadyOpen = self.myStackList[rowIdx] is not None
+		'''
 		alreadyOpen = False
 		for stack in self.myStackList:
 			if stack.path == path:
 				# bring to front
 				alreadyOpen = True
 				break
+		'''
 		if alreadyOpen:
+			self.myStackList[rowIdx].show()
+			self.myStackList[rowIdx].activateWindow()
+			self.myStackList[rowIdx].raise_()
+			'''
 			stack.show()
 			stack.activateWindow()
 			stack.raise_()
+			'''
 		else:
 			#tmp = bimpy.interface.bStackWidget(path=path)
 			'''
@@ -124,7 +175,8 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			'''
 
 			tmp = bimpy.interface.bStackWidget(path=path)
-			self.myStackList.append(tmp)
+			#self.myStackList.append(tmp)
+			self.myStackList[rowIdx] = tmp
 			tmp.show()
 
 			'''
@@ -160,21 +212,10 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		#print('xPixels:', xPixels, type(xPixels))
 
 		self.myFileList.append(path)
+		self.myStackList.append(None)
 
 		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, [parentFolderName, fileName, xPixels, yPixels, zPixels, xVoxel, yVoxel, zVoxel])
 		#c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, [fileName, 'xxx', 'yyy', 'zzz'])
-
-	def keyPressEvent(self, event):
-		#print('=== bStackView.keyPressEvent() event.key():', event.key())
-
-		keyIsDown = event.text()
-		key = event.key()
-
-		modifiers = QtWidgets.QApplication.keyboardModifiers()
-		isShift = modifiers & QtCore.Qt.ShiftModifier
-
-		if event.key() in [QtCore.Qt.Key_I]:
-			print('=== user hit key "I"')
 
 	def itemDoubleClicked(self, item, col):
 		rowIdx = self.myTreeWidget.currentIndex().row()
@@ -185,8 +226,8 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		#print('itemDoubleClicked', path)
 
 		# put back in
-		path = self.myFileList[rowIdx]
-		self.showStackWindow(path)
+		#path = self.myFileList[rowIdx]
+		self.showStackWindow(rowIdx)
 
 	'''
 	def _myCol(self, str):
@@ -278,7 +319,7 @@ if __name__ == '__main__':
 
 		if os.path.isfile(path):
 			myBrowser.appendStack(path)
-			myBrowser.showStackWindow(path)
+			myBrowser.showStackWindow(0)
 		else:
 			print('__main__ did not find path:', path)
 

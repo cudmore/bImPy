@@ -631,6 +631,12 @@ class bVascularTracing:
 			yUmPerPixel = 0.3977476 #0.49718
 			zUmPerPixel = 0.5
 
+		# 20191017__0001-new_z
+		if self.path.endswith('20191017__0001-new_z.tif'):
+			xUmPerPixel = 0.4971845
+			yUmPerPixel = 0.4971845
+			zUmPerPixel = 0.4
+
 		if self.path.endswith('20191017__0001.tif'):
 			#print('!!! scaling tiff file 20191017__0001.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
@@ -657,11 +663,6 @@ class bVascularTracing:
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.4
 
-		# 20191017__0001-new_z
-		if 0 and self.path.endswith('20191017__0001-new_z.tif'):
-			xUmPerPixel = 0.4971845
-			yUmPerPixel = 0.4971845
-			zUmPerPixel = 0.4
 
 		if self.path.endswith('PV_Crop_Reslice.tif'):
 			xUmPerPixel = 0.15
