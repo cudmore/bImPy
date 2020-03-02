@@ -636,12 +636,9 @@ class bVascularTracing:
 		if self.path.endswith('20200127__A01_G001_0011_croped.tif'):
 			#print('!!! scaling tiff file 20200127__A01_G001_0011_croped.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
-			pass
-			'''
 			xUmPerPixel = 0.3977476
 			yUmPerPixel = 0.3977476
 			zUmPerPixel = 0.51
-			'''
 			#zOffset = 25
 
 
@@ -656,7 +653,7 @@ class bVascularTracing:
 			zUmPerPixel = 0.4
 
 		# 20191017__0001-new_z
-		if self.path.endswith('20191017__0001-new_z.tif'):
+		if 0 and self.path.endswith('20191017__0001-new_z.tif'):
 			xUmPerPixel = 0.4971845
 			yUmPerPixel = 0.4971845
 			zUmPerPixel = 0.4
@@ -707,7 +704,7 @@ class bVascularTracing:
 		masterEdgeIdx = 0
 		masterSlabIdx = 0
 		for i, vessel in enumerate(vessels):
-			print('vessel i:', i, 'name:', vessel.attributes['name'].value)
+			#print('vessel i:', i, 'name:', vessel.attributes['name'].value)
 
 			#
 			# nodes
@@ -1131,7 +1128,9 @@ class bVascularTracing:
 						edge['preNode'] = preNode2
 						preNode = preNode2
 						addEdit('connect2', 1.4, idx, preNode, idx2, node2)
+					'''
 					print('      dist_src_src2:', dist, 'idx:', idx, 'node1:', node1, 'idx2:', idx2, 'node2:', node2)
+					'''
 					'''
 					numEdits1 += 1
 					edge['editList'].append(1) # reverse

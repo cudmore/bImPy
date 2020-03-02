@@ -584,8 +584,10 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
 
+		'''
 		self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 		self.customContextMenuRequested.connect(self.showRightClickMenu)
+		'''
 
 		self.onpick_alreadypicked = False
 		self.onpick_madeNewEdge = False
@@ -782,6 +784,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		todo: building and then responding to menu is too hard coded here, should generalize???
 		"""
 		menu = QtWidgets.QMenu()
+		#self.menu = QtWidgets.QMenu()
 
 		#self.displayThisStack
 		numChannels = self.mySimpleStack.numChannels
@@ -828,7 +831,9 @@ class bStackView(QtWidgets.QGraphicsView):
 			elif actionStr == 'Edges':
 				isChecked = self.displayStateDict['showEdges']
 			currentAction.setChecked(isChecked)
+			currentAction.triggered.connect(self.actionHandler)
 			# add to menu
+			#menuAction = self.menu.addAction(currentAction)
 			menuAction = menu.addAction(currentAction)
 
 		menu.addSeparator()
@@ -890,7 +895,17 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		#
 		# get the action selection from user
+
+		print('show right click menu')
+		# was this
 		userAction = menu.exec_(self.mapToGlobal(pos))
+		# now this
+		'''
+		self.menu.move(self.mapToGlobal(pos))
+		self.menu.show()
+		'''
+
+		#userAction = None
 		if userAction is None:
 			# abort when no menu selected
 			return
@@ -972,6 +987,16 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.setSlice() # update
 			self.displayStateChangeSignal.emit(signalName, self.displayStateDict)
 		'''
+
+		#return False
+		print('right click menu return')
+		return
+
+	def actionHandler(self):
+		print('actionHandler')
+		sender = self.sender()
+		title = sender.text()
+		print('    title:', title)
 
 	def displayStateChange(self, key1, value=None, toggle=False):
 		if toggle:
@@ -2088,9 +2113,15 @@ class bStackView(QtWidgets.QGraphicsView):
 		shift+click will create a new node
 		n+click (assuming there is a node selected ... will create a new edge)
 		"""
-		#print('=== bStackView.mousePressEvent()', event.pos())
+		print('=== bStackView.mousePressEvent()', event.pos())
 		self.clickPos = event.pos()
 		super().mousePressEvent(event)
+
+		if event.button() == QtCore.Qt.RightButton:
+			print('bStackView.mousePressEvent() right click !!!')
+			#point = QtCore.QPoint(100,100)
+			self.showRightClickMenu(event.pos())
+			self.mouseReleaseEvent(event)
 
 	def mouseMoveEvent(self, event):
 		#print('=== bStackView.mouseMoveEvent()', event.pos())
@@ -2106,7 +2137,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		#print('=== bStackView.mouseReleaseEvent()')
 		self.clickPos = None
 		super().mouseReleaseEvent(event)
-		event.setAccepted(True)
+		#event.setAccepted(True)
 
 	def onmove_mpl(self, event):
 		#print('onmove_mpl()', event.xdata, event.ydata)
@@ -2153,15 +2184,6 @@ class bStackView(QtWidgets.QGraphicsView):
 				# make a new node
 				print('\n=== bStackWidget.onclick_mpl() new node ...')
 				self.myEvent(newNodeEvent)
-
-	'''
-	def onpick(event):
-	    thisline = event.artist
-	    xdata = thisline.get_xdata()
-	    ydata = thisline.get_ydata()
-	    ind = event.ind
-	    print ('onpick points:', zip(xdata[ind], ydata[ind]))
-	'''
 
 	def onpick_mpl(self, event):
 		"""

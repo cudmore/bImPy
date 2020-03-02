@@ -49,6 +49,8 @@ Converted header .txt file is in json format and looks like this
 import os, sys, json
 from collections import OrderedDict
 
+import tifffile
+
 #import javabridge
 try:
 	import bioformats
@@ -87,7 +89,7 @@ class bStackHeader:
 				self.readOirHeader()
 		else:
 			#print('warning: bStackHeader.__init__() did not load header')
-			pass
+			self.loadHeader()
 
 	'''
 	def getHeaderFromDict(self, igorImportDict):
@@ -177,6 +179,66 @@ class bStackHeader:
 		return bitDepth
 		#print('bStackHeader.bitDepth NEVER WORKS, RETURNING 8')
 		#return 8
+
+	def loadHeader(self):
+		self.initHeader()
+
+		verbose = False
+
+		with tifffile.TiffFile(self.path) as tif:
+			xVoxel = 1
+			yVoxel = 1
+			zVoxel = 1
+
+			try:
+				tag = tif.pages[0].tags['XResolution']
+				if tag.value[0]>0 and tag.value[1]>0:
+					xVoxel = tag.value[1] / tag.value[0]
+				else:
+					print('   bStackHeader.loadHeader() error, got zero tag value?')
+				if verbose: print('   bStackHeader.loadStack() xVoxel from TIFF XResolutions:', xVoxel)
+			except (KeyError) as e:
+				print('warning: bStackHeader.loadHeader() did not find XResolution')
+
+			try:
+				tag = tif.pages[0].tags['YResolution']
+				if tag.value[0]>0 and tag.value[1]>0:
+					yVoxel = tag.value[1] / tag.value[0]
+				else:
+					print('   bStackHeader.loadHeader() error, got zero tag value?')
+				if verbose: print('   bStackHeader.loadStack() yVoxel from TIFF YResolutions:', yVoxel)
+			except (KeyError) as e:
+				print('warning: bStackHeader.loadHeader() did not find YResolution')
+
+			# HOLY CRAP, FOUND IT QUICK
+			imagej_metadata = tif.imagej_metadata
+			if imagej_metadata is not None:
+				print('    imagej_metadata["spacing"]:', imagej_metadata['spacing'], type(imagej_metadata['spacing']))
+				zVoxel = imagej_metadata['spacing']
+			'''
+			tag = tif.pages[0].tags['ResolutionUnit']
+			print('ResolutionUnit:', tag.value)
+			'''
+
+			numImages = len(tif.pages)
+
+			tag = tif.pages[0].tags['ImageWidth']
+			xPixels = tag.value
+
+			tag = tif.pages[0].tags['ImageLength']
+			yPixels = tag.value
+
+		self.header['xPixels'] = xPixels
+		self.header['yPixels'] = yPixels
+		self.header['numImages'] = numImages
+		self.header['numFrames'] = None
+		#
+		self.header['xVoxel'] = xVoxel # um/pixel
+		self.header['yVoxel'] = yVoxel
+		self.header['zVoxel'] = zVoxel
+
+		self.header['umWidth'] = None
+		self.header['umHeight'] = None
 
 	def _loadHeaderFromConverted(self, convertedStackHeaderPath):
 		"""Load header from coverted header .txt file"""

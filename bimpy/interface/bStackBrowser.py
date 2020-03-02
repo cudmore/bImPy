@@ -13,7 +13,7 @@ except (Exception) as e:
 	#print('exception: bStackBrowser failed to import bioformats e:', e)
 	bioformats = None
 
-from QtWaitingSpinner import QtWaitingSpinner
+from bimpy.interface.WaitingSpinner import WaitingSpinner
 
 import bimpy
 #from bimpy import bJavaBridge
@@ -35,7 +35,8 @@ class bStackBrowser(QtWidgets.QMainWindow):
 	def __init__(self, parent=None):
 		super(bStackBrowser, self).__init__()
 
-		self.myStackList = []
+		self.myFileList = [] # list of files that have been dropped
+		self.myStackList = [] # stacks we have opened in a window
 
 		self.setAcceptDrops(True)
 
@@ -56,14 +57,14 @@ class bStackBrowser(QtWidgets.QMainWindow):
 
 		self.setWindowTitle('Stack Browser')
 
-		centralWidget = QtWidgets.QWidget()
-		self.setCentralWidget(centralWidget)
+		self.centralWidget = QtWidgets.QWidget()
+		self.setCentralWidget(self.centralWidget)
 
 		self.myVBoxLayout = QtWidgets.QVBoxLayout()
-		centralWidget.setLayout(self.myVBoxLayout)
+		self.centralWidget.setLayout(self.myVBoxLayout)
 
 		# tree
-		self.myColumnNames = ['Folder', 'Path', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels']
+		self.myColumnNames = ['Folder', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels', 'xVoxel', 'yVoxel', 'zVoxel']
 		#self.myColumnNames = ['File', 'X Pixels', 'Y Pixels', 'Z Pixels']
 
 		self.myTreeWidget = QtWidgets.QTreeWidget()
@@ -107,8 +108,9 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			stack.raise_()
 		else:
 			#tmp = bimpy.interface.bStackWidget(path=path)
+			'''
 			print('starting spinner')
-			spinner = QtWaitingSpinner(self.centralWidget())
+			spinner = WaitingSpinner(self.myTreeWidget)
 			spinner.setRoundness(70.0)
 			spinner.setMinimumTrailOpacity(15.0)
 			spinner.setTrailFadePercentage(70.0)
@@ -119,28 +121,74 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			spinner.setRevolutionsPerSecond(1)
 			spinner.setColor(QtGui.QColor(81, 4, 71))
 			spinner.start()
+			'''
 
 			tmp = bimpy.interface.bStackWidget(path=path)
+			self.myStackList.append(tmp)
 			tmp.show()
 
+			'''
 			print('stopping spinner')
 			spinner.stop()
+			'''
 
-			self.myStackList.append(tmp)
 
 	def appendStack(self, path):
+		print('appendStack() path:', path)
+
+		try:
+			existingIndex = self.myFileList.index(path)
+			print('warning: file is already loaded:', path)
+			return
+		except (ValueError) as e:
+			# not in list
+			pass
+
 		fileName = os.path.basename(path)
-		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, ['', path, fileName, 'xxx', 'yyy', 'zzz'])
+
+		parentFolderName = os.path.basename(os.path.dirname(path))
+
+		header = bimpy.bStackHeader(path=path)
+		xPixels = str(header.pixelsPerLine)
+		yPixels = str(header.linesPerFrame)
+		zPixels = str(header.numImages)
+		#
+		xVoxel = str(round(header.xVoxel,3))
+		yVoxel = str(round(header.yVoxel,3))
+		zVoxel = str(round(header.zVoxel,3))
+
+		#print('xPixels:', xPixels, type(xPixels))
+
+		self.myFileList.append(path)
+
+		c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, [parentFolderName, fileName, xPixels, yPixels, zPixels, xVoxel, yVoxel, zVoxel])
 		#c1 = QtWidgets.QTreeWidgetItem(self.myTreeWidget, [fileName, 'xxx', 'yyy', 'zzz'])
 
+	def keyPressEvent(self, event):
+		#print('=== bStackView.keyPressEvent() event.key():', event.key())
+
+		keyIsDown = event.text()
+		key = event.key()
+
+		modifiers = QtWidgets.QApplication.keyboardModifiers()
+		isShift = modifiers & QtCore.Qt.ShiftModifier
+
+		if event.key() in [QtCore.Qt.Key_I]:
+			print('=== user hit key "I"')
+
 	def itemDoubleClicked(self, item, col):
-		print('item:', item)
-		print('col:', col)
+		rowIdx = self.myTreeWidget.currentIndex().row()
+		print('rowIdx:', rowIdx, 'item:', item, 'col:', col)
+
 		#path = self.myTreeWidget.selectedItems()[0].text(self._myCol('Path'))
-		path = item.text(self._myCol('Path'))
+		#path = item.text(self._myCol('Path'))
 		#print('itemDoubleClicked', path)
+
+		# put back in
+		path = self.myFileList[rowIdx]
 		self.showStackWindow(path)
 
+	'''
 	def _myCol(self, str):
 		"""
 		given a column name, return the column number
@@ -152,6 +200,7 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		if theRet is None:
 			print('error:bStackBrowser._myCol() did not find column name:', str)
 		return theRet
+	'''
 
 	#
 	# drag and drop
@@ -214,6 +263,8 @@ if __name__ == '__main__':
 	path = '/Users/cudmore/box/data/nathan/20200127_gelatin/vesselucida2/20200127__A01_G001_0011_croped.tif'
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
+	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/synthetic/20200127__A01_G001_0011_cropped_slidingz.tif'
+	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/synthetic/20191017__0001-new_z.tif'
 
 	#path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
 

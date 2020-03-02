@@ -459,14 +459,6 @@ class bStack:
 		slices = self.numImages
 		channels = self.numChannels
 
-		'''
-		if rows is None:
-			print('error: bStack.loadStack() -->> None rows')
-		if cols is None:
-			print('error: bStack.loadStack() -->> None cols')
-		if slices is None:
-			print('error: bStack.loadStack() -->> None slices')
-		'''
 		if channels is None:
 			channels = 1
 			#print('error: bStack.loadStack() -->> None channels -->> set channels = 1')
@@ -476,8 +468,9 @@ class bStack:
 			if verbose: print('   bStack.loadStack() is using tifffile...')
 
 			with tifffile.TiffFile(self.path) as tif:
-				xVoxel = 1
+				xVoxel = 1 # um/pixel
 				yVoxel = 1
+				zVoxel = 1
 				try:
 					tag = tif.pages[0].tags['XResolution']
 					#print('   XResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
@@ -497,6 +490,16 @@ class bStack:
 						yVoxel = 1
 					if verbose: print('   bStack.loadStack() yVoxel from TIFF YResolutions:', yVoxel)
 
+					imagej_metadata = tif.imagej_metadata
+					#print('imagej_metadata["spacing"]:', imagej_metadata['spacing'])
+					try:
+						zVoxel = imagej_metadata['spacing0']
+					except (TypeError) as e:
+						# TypeError: 'NoneType' object is not subscriptable
+						pass
+					except (KeyError) as e:
+						pass
+
 					'''
 					for tmpKey in tif.pages[0].tags.keys():
 						tmpTag = tif.pages[0].tags[tmpKey]
@@ -506,8 +509,10 @@ class bStack:
 							print('      tmpTag2:', tmpTag2)
 					'''
 
+					#print('tif.NIH_IMAGE_HEADER:', tif.NIH_IMAGE_HEADER)
+
 				except (KeyError) as e:
-					if verbose: print('KeyError exception reading XResolution/YResolution from TIff')
+					if verbose: print('KeyError exception reading XResolution/YResolution/Spacing from TIff')
 
 				#print('   tif.imagej_metadata:', tif.imagej_metadata)
 				#print('   tif.tags:', tif.is_nih)
