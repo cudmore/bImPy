@@ -634,8 +634,8 @@ class bVascularTracing:
 		if self.path.endswith('20191017__0001.tif'):
 			#print('!!! scaling tiff file 20191017__0001.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
-			xUmPerPixel = 0.0138889 #0.49718 #0.4971845
-			yUmPerPixel = 0.0138889 #0.49718
+			xUmPerPixel = 0.4971845 #0.0138889 #0.49718 #0.4971845
+			yUmPerPixel = 0.4971845 #0.0138889 #0.49718
 			zUmPerPixel = 0.4 # 0.6
 			zOffset = 0 #25
 		if self.path.endswith('20200127__A01_G001_0011_croped.tif'):
