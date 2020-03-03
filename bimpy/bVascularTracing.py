@@ -617,7 +617,7 @@ class bVascularTracing:
 		# todo: read this from header and triple check if valid, if not valid then us 1/1/1
 		xUmPerPixel = 1 # 0.31074033574250315 #0.49718
 		yUmPerPixel = 1 # 0.31074033574250315 #0.49718
-		zUmPerSlice = 1 #0.5 #0.6 # Olympus .txt is telling us 0.4 ???
+		zUmPerPixel = 1 #0.5 #0.6 # Olympus .txt is telling us 0.4 ???
 
 		# z can never be negative
 		#don't use this because np.abs return np.float64 which is not compatible with pyqt (tables in particular)
@@ -631,40 +631,36 @@ class bVascularTracing:
 			yUmPerPixel = 0.3977476 #0.49718
 			zUmPerPixel = 0.5
 
-		# 20191017__0001-new_z
-		if self.path.endswith('20191017__0001-new_z.tif'):
+		elif self.path.endswith('20191017__0001-new_z.tif'):
 			xUmPerPixel = 0.4971845
 			yUmPerPixel = 0.4971845
 			zUmPerPixel = 0.4
 
-		if self.path.endswith('20191017__0001.tif'):
+		elif self.path.endswith('20191017__0001.tif') or self.path.endswith('20191017__0001_8b_z.tif'):
 			#print('!!! scaling tiff file 20191017__0001.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
-			xUmPerPixel = 0.4971845 #0.0138889 #0.49718 #0.4971845
+			xUmPerPixel = 0.4971847 #elif
 			yUmPerPixel = 0.4971845 #0.0138889 #0.49718
-			zUmPerPixel = 0.4 # 0.6
-			zOffset = 0 #25
-		if self.path.endswith('20200127__A01_G001_0011_croped.tif'):
+			zUmPerPixel = 0.4 #0.4 # 0.6
+
+		elif self.path.endswith('20200127__A01_G001_0011_croped.tif'):
 			#print('!!! scaling tiff file 20200127__A01_G001_0011_croped.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
 			xUmPerPixel = 0.3977476
 			yUmPerPixel = 0.3977476
 			zUmPerPixel = 0.51
-			#zOffset = 25
 
-
-		if self.path.endswith('tracing_20191217.tif'):
+		elif self.path.endswith('tracing_20191217.tif'):
 			xUmPerPixel = 0.3107
 			yUmPerPixel = 0.3107
 			zUmPerPixel = 0.5
 
-		if self.path.endswith('cylinder-scaled.tif'):
+		elif self.path.endswith('cylinder-scaled.tif'):
 			xUmPerPixel = 0.15
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.4
 
-
-		if self.path.endswith('PV_Crop_Reslice.tif'):
+		elif self.path.endswith('PV_Crop_Reslice.tif'):
 			xUmPerPixel = 0.15
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.5
@@ -681,13 +677,13 @@ class bVascularTracing:
 		# convert um to pixel using um/pixel = 0.497 and 0.4 um/slice
 		x = x / xUmPerPixel
 		y = y / yUmPerPixel
-		z = z / zUmPerSlice
+		z = z / zUmPerPixel
 		diam = diam / xUmPerPixel # assuming diamter is a sphere in x/y (not z?)
 
-		x = round(x,2)
-		y = round(y,2)
-		z = round(z,2)
-		diam = round(diam,2)
+		x = round(x,3)
+		y = round(y,3)
+		z = round(z,3)
+		diam = round(diam,3)
 
 		return x,y,z, diam
 

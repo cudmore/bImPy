@@ -213,8 +213,12 @@ class bStackHeader:
 			# HOLY CRAP, FOUND IT QUICK
 			imagej_metadata = tif.imagej_metadata
 			if imagej_metadata is not None:
-				print('    imagej_metadata["spacing"]:', imagej_metadata['spacing'], type(imagej_metadata['spacing']))
-				zVoxel = imagej_metadata['spacing']
+				try:
+					print('    imagej_metadata["spacing"]:', imagej_metadata['spacing'], type(imagej_metadata['spacing']))
+					zVoxel = imagej_metadata['spacing']
+				except (KeyError) as e:
+					print('warning: bStackHeader.loadHeader() did not find spacing')
+
 			'''
 			tag = tif.pages[0].tags['ResolutionUnit']
 			print('ResolutionUnit:', tag.value)
