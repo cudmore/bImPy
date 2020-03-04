@@ -309,6 +309,7 @@ if __name__ == '__main__':
 
 	#path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
 
+	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/fixed/20191017__0001-new.tif'
 
 	try:
 		mjb = bimpy.bJavaBridge()

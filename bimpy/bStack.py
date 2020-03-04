@@ -55,7 +55,7 @@ class bStack:
 
 		self.currentSlice = 0
 
-		self._imagesMask = None # create with self.slabList.makeVolumeMask()
+		#self._imagesMask = None # create with self.slabList.makeVolumeMask()
 
 		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
 		'''
@@ -89,6 +89,14 @@ class bStack:
 		self.slabList = bimpy.bVascularTracing(self, self.path)
 
 		self.analysis = bimpy.bAnalysis(self)
+
+	def _getSavePath(self):
+		"""
+		return full path to filename without extension
+		"""
+		path, filename = os.path.split(self.path)
+		savePath = os.path.join(path, os.path.splitext(filename)[0])
+		return savePath
 
 	@property
 	def _fileName(self):
@@ -227,7 +235,30 @@ class bStack:
 	def getMaskVolume(self):
 		if self.slabList._volumeMask is None:
 			self.slabList.makeVolumeMask()
-		return self.slabList._volumeMask
+		volumeMask = self.slabList._volumeMask
+		print('volumeMask min:', np.min(volumeMask), np.max(volumeMask))
+		#
+		# make another mask from image where volumeMask==1 is set to 0
+		print('self._subMask')
+		channel = 0
+		self._subMask = self.stack[channel,:,:,:].copy()
+		print('   min:', np.min(self._subMask), np.max(self._subMask), np.mean(self._subMask))
+		self._subMask[volumeMask==1] = 0
+		print('   min:', np.min(self._subMask), np.max(self._subMask), np.mean(self._subMask))
+
+		savePath = self._getSavePath() # full path to file without extension
+
+		# save mask
+		#self._save('/Users/cudmore/mask.tif', volumeMask) #, includeSpacing
+
+		# save subtracted mask
+		#self._save('/Users/cudmore/subMask.tif', self._subMask) #, includeSpacing
+		subMaskPath = savePath + '_subMask.tif'
+		print('bStack.getMaskVolume() saving', subMaskPath)
+		from skimage.external import tifffile as tif
+		tif.imsave(subMaskPath, self._subMask, bigtiff=True)
+
+		return volumeMask
 
 	def getStack(self, thisStack):
 		stack = None
@@ -281,6 +312,7 @@ class bStack:
 		self._slidingz = img
 		print('   done: _slidingz')
 
+	# todo: replace this with one time creation of sliding-z volume
 	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
 
 		if self.numImages>1:

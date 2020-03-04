@@ -2014,8 +2014,9 @@ class bStackView(QtWidgets.QGraphicsView):
 			else:
 				print('warning: stack only has', numChannels, 'channel(s)')
 
-		# not implemented (was for deepvess)
+
 		elif event.key() == QtCore.Qt.Key_9:
+			# not implemented (was for deepvess)
 			if self.mySimpleStack._imagesSkel is not None:
 				#self.displayThisStack = 'skel'
 				self.displayStateDict['displayThisStack'] = 'skel'

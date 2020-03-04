@@ -964,15 +964,29 @@ class bVascularTracing:
 				y = int(round(self.y[slab]))
 				z = int(round(self.z[slab]))
 				diam = self.d[slab]
-				#diam = int(round(self.d[slab]))
+
 				diamInt = int(round(diam))
-				myShape = (diamInt+1,diamInt+1,diamInt+1)
-				myRadius = int(round(diam/2)+1)
+
+				x = self.x[slab].astype('float')
+				y = self.y[slab].astype('float')
+				z = self.z[slab].astype('float')
+				diam = self.d[slab].astype('float')
+				diamInt = int(diam)
+
+				# 20200303 THIS IS NOT WORKING ... FUCK THIS
+				#diamInt *= 2 # expand by a factor !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+				#myShape = (diamInt+1,diamInt+1,diamInt+1)
+				myShape = (diamInt,diamInt,diamInt)
+				# 20200303 THIS IS NOT WORKING ... FUCK THIS
+				#myRadius = int(round(diam/2)+1) * 4 # expand by a factor !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				myRadius = float(diam/2)
 				myPosition = (myRadius, myRadius, myRadius)
 
 				# debug
 				#print('   edge:', i, 'slab:', slab, 'myShape:', myShape, 'myRadius:', myRadius, 'myPosition:', myPosition, 'x:', x, 'y:', y, 'z:', z)
 
+				print('myShape:', myShape, type(myShape[0]), 'myRadius:', myRadius, type(myRadius), 'myPosition:', myPosition, type(myPosition[0]))
 				arr = sphere(myShape, myRadius, myPosition)
 
 				paste(finalVolume, arr, (z,x,y))
