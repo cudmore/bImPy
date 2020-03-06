@@ -13,3 +13,7 @@ h5py
 # see requirements-bioformats.txt
 #javabridge
 #python-bioformats
+
+skan # skeleton tracing (requires numba and pandas)
+numba
+pandas
