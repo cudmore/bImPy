@@ -310,7 +310,8 @@ if __name__ == '__main__':
 	#path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
 
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/fixed/20191017__0001-new.tif'
-
+	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/20191017__0001_z.tif'
+	
 	try:
 		mjb = bimpy.bJavaBridge()
 		mjb.start()

@@ -263,7 +263,7 @@ class bStack:
 	def getStack(self, thisStack):
 		stack = None
 		if thisStack == 'ch1':
-			stack = self.stack
+			stack = self.stack[0,:,:,:] # abb 20200305
 		elif thisStack == 'mask':
 			stack = self.getMaskVolume()
 		elif thisStack == 'skel':

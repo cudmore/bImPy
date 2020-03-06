@@ -1,6 +1,6 @@
 # 20200117
 
-import os, sys
+import os, sys, time, json
 from collections import OrderedDict
 import statistics # to get median value from a list of numbers
 import math
@@ -8,10 +8,12 @@ import math
 from xml.dom import minidom # to load vesselucida xml file
 from skimage.external import tifffile as tif
 
-import json
+from skimage import morphology
+import skan
+#from skan import draw # for plotting
+import tifffile
 
 import numpy as np
-
 import h5py
 
 class bVascularTracing:
@@ -42,7 +44,8 @@ class bVascularTracing:
 
 		loaded_h5f = self.load()
 		if not loaded_h5f:
-			loadedVesselucida = self.loadVesselucida_xml()
+			#loadedVesselucida = self.loadVesselucida_xml()
+			loadedDeepVess = self.loadDeepVess()
 
 
 	def _initTracing(self):
@@ -902,6 +905,122 @@ class bVascularTracing:
 		#self.makeVolumeMask()
 
 		self.colorize()
+
+	def loadDeepVess(self):
+		print('loadDeepVess()')
+		dvMaskPath, ext = os.path.splitext(self.path)
+		dvMaskPath += '_dvMask.tif'
+		if not os.path.isfile(dvMaskPath):
+			print('    error: did not find file:', dvMaskPath)
+			return False
+
+		self._initTracing()
+
+		print('    loading dvMask:', dvMaskPath)
+		self._dvMask = tifffile.imread(dvMaskPath)
+
+		#
+		# convert the deepvess mask to a skeleton (same as deepves postprocess)
+		print('    making skeleton from binary stack dvMask ...')
+		startSeconds = time.time()
+		# todo: fix this, older version need to use max_pool3d
+		#skeleton0 = morphology.skeletonize(dvMask)
+		skeleton0 = morphology.skeletonize_3d(self._dvMask)
+		print('    skeleton0:', type(skeleton0), skeleton0.dtype, skeleton0.shape, np.min(skeleton0), np.max(skeleton0))
+		print('        took:', round(time.time()-startSeconds,2), 'seconds')
+
+		#
+		# convert raw skeleton into a proper graph with nodes/edges
+		print('    === running skan.Skeleton(skeleton0)')
+		startSeconds = time.time()
+		parentStack = self.parentStack.getStack('ch1')
+		skanSkel = skan.Skeleton(skeleton0, source_image=parentStack)
+		print('        took:', round(time.time()-startSeconds,2), 'seconds')
+
+		# not needed but just to remember
+		branch_data = skan.summarize(skanSkel) # branch_data is a pandas dataframe
+		print('    branch_data.shape:', branch_data.shape)
+		print(branch_data.head())
+
+		# make a list of coordinate[i] that are segment endpoints_src
+		nCoordinates = skanSkel.coordinates.shape[0]
+		slabs = skanSkel.coordinates.copy() #np.full((nCoordinates,3), np.nan)
+		nodes = np.full((nCoordinates), np.nan)
+		nodeEdgeList = [[] for tmp in range(nCoordinates)]
+		edges = np.full((nCoordinates), np.nan)
+
+		masterNodeIdx = 0
+		nPath = len(skanSkel.paths_list())
+		print('    parsing nPath:', nPath)
+		for edgeIdx, path in enumerate(skanSkel.paths_list()):
+			# edgeIdx: int
+			srcPnt = path[0]
+			dstPnt = path[-1]
+
+			z = float(skanSkel.coordinates[srcPnt,0]) # deepvess uses (slice, x, y)
+			x = float(skanSkel.coordinates[srcPnt,1])
+			y = float(skanSkel.coordinates[srcPnt,2])
+			diam = 5 # todo: add this to _analysis
+
+			if nodes[srcPnt] >= 0:
+				srcNodeIdx = int(float(nodes[srcPnt]))
+				self.nodeDictList[srcNodeIdx]['edgeList'].append(edgeIdx)
+			else:
+				# new node
+				srcNodeIdx = masterNodeIdx
+				masterNodeIdx += 1
+				#
+				nodes[srcPnt] = srcNodeIdx
+				#
+				nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=srcNodeIdx)
+				print('1:', nodeDict)
+				nodeDict['edgeList'].append(edgeIdx)
+				print('    2:', nodeDict)
+				self.nodeDictList.append(nodeDict)
+				# always append slab
+				self._appendSlab(x, y, z, d=diam, edgeIdx=np.nan, nodeIdx=srcNodeIdx)
+			if nodes[dstPnt] >= 0:
+				dstNodeIdx = int(float(nodes[dstPnt]))
+				self.nodeDictList[dstNodeIdx]['edgeList'].append(edgeIdx)
+			else:
+				# new node
+				dstNodeIdx = masterNodeIdx
+				masterNodeIdx += 1
+				#
+				nodes[dstPnt] = dstNodeIdx
+				#
+				nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=dstNodeIdx)
+				nodeDict['edgeList'].append(edgeIdx)
+				self.nodeDictList.append(nodeDict)
+				# always append slab
+				self._appendSlab(x, y, z, d=diam, edgeIdx=np.nan, nodeIdx=dstNodeIdx)
+
+			newZList = []
+			if len(path)>2:
+				for idx2 in path[1:-2]:
+					#edges[idx2] = idx
+					zEdge = float(skanSkel.coordinates[idx2,0]) # deepvess uses (slice, x, y)
+					xEdge = float(skanSkel.coordinates[idx2,1])
+					yEdge = float(skanSkel.coordinates[idx2,2])
+					newZList.append(zEdge)
+					diam = 3
+					self._appendSlab(xEdge, yEdge, zEdge, d=diam, edgeIdx=edgeIdx, nodeIdx=np.nan)
+
+			else:
+				# this happens a lot ???
+				pass
+				#print('    warning: got len(path)<=2 at edgeIdx:',edgeIdx)
+
+			# always append an edge
+			edgeDict = self._defaultEdgeDict(edgeIdx=edgeIdx, srcNode=srcNodeIdx, dstNode=dstNodeIdx)
+			if len(newZList) > 0:
+				edgeDict['z'] = int(round(statistics.median(newZList)))
+			self.edgeDictList.append(edgeDict)
+
+		self._analyze()
+
+		print('    done loadDeepVess()')
+		return True
 
 	def makeVolumeMask(self):
 		# to embed a small volume in a bigger volume, see:
