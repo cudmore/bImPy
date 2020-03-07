@@ -79,6 +79,10 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				item = QtWidgets.QTableWidgetItem()
 				item.setData(QtCore.Qt.EditRole, editDict[header])
 				#print('    idx:', idx, 'colIdx:', colIdx, 'editDict[header]:', editDict[header])
+				'''
+				if header == 'nEdges':
+					print('nEdges', editDict[header], type(editDict[header]))
+				'''
 				self.setItem(idx, colIdx, item)
 
 		#print('    2')

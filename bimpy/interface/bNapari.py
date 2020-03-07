@@ -89,6 +89,10 @@ class bNapari:
 			colormap=colormap,
 			scale=scale)
 
+		dvMask = self.mySimpleStack.getDeepVessMask()
+		if dvMask is not None:
+			self.viewer.add_image(data=dvMask, contrast_limits=[0,1], opacity=0.8, colormap='gray', name='dvMask')
+
 		# this works
 		# make a callback for all mouse moves
 		'''
@@ -105,6 +109,7 @@ class bNapari:
 			y = self.mySimpleStack.slabList.y
 			z = self.mySimpleStack.slabList.z
 			d = self.mySimpleStack.slabList.d
+			nodeIdx = self.mySimpleStack.slabList.nodeIdx
 
 			'''
 			xUmPerPixel = 0.49718
@@ -122,9 +127,10 @@ class bNapari:
 
 			size = []
 			face_color = []
-			foundNan = False
-			for i, idx in enumerate(range(len(x))):
-				if foundNan:
+			#foundNan = False
+			for idx in range(len(x)):
+				#if foundNan:
+				if nodeIdx[idx]>=0:
 					nodeSize = dCopy[idx] # might not be good idea
 					size.append(nodeSize)
 					face_color.append('red')
@@ -133,10 +139,11 @@ class bNapari:
 					slabSize = dCopy[idx] # might not be good idea
 					size.append(slabSize)
 					face_color.append('cyan')
-				if math.isnan(x[i]):
+				'''
+				if math.isnan(x[dxi]):
 					foundNan = True
-					#print('point', i, 'is nan')
-
+					#print('point', idx, 'is nan')
+				'''
 			# remember, (size, face_color), etc. Can be a scalar to set one value
 			# debug
 			if 0:
@@ -195,27 +202,22 @@ class bNapari:
 		'''
 
 		#
-		# make a selection layer
-		self.nodeSelection = []
-		self.edgeSelection = np.column_stack((np.nan,np.nan,np.nan,))
+		# make selection layers
 		if self.mySimpleStack.slabList is not None:
-			'''
-			slabList = self.mySimpleStack.slabList.getEdgeSlabList(10)
-			x = self.mySimpleStack.slabList.x[slabList]
-			y = self.mySimpleStack.slabList.y[slabList]
-			z = self.mySimpleStack.slabList.z[slabList]
-			d = self.mySimpleStack.slabList.d[slabList]
-			self.edgeSelection = np.column_stack((x,y,z,))
-			size = d / 300
-			'''
-			size = np.column_stack((10,10,10,))
+			# edge selection
+			size = np.column_stack((3,3,3,))
 			face_color = 'yellow'
-			#face_color = [1,1,1]
-			#self.edgeSelection = np.column_stack((myNaN,myNaN,myNaN,))
-			self.edgeSelection = np.column_stack((0,0,0,)) #todo: fix this
-			self.selectionLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
+			tmpData = np.column_stack((np.nan,np.nan,np.nan,)) #todo: fix this
+			self.selectionLayer = self.viewer.add_points(tmpData, size=size, face_color=face_color, n_dimensional=False)
 			self.selectionLayer.name = 'Edge Selection'
 			#print('nodeLayer.data:', nodeLayer.data)
+
+			# node selection
+			size = np.column_stack((6,6,6,))
+			face_color = 'yellow'
+			tmpData = np.column_stack((0,0,0,)) #todo: fix this
+			self.nodeSelectionLayer = self.viewer.add_points(tmpData, size=size, face_color=face_color, n_dimensional=False)
+			self.nodeSelectionLayer.name = 'Node Selection'
 
 	def myMouseDown_Shape(self, layer, event):
 		print('bNapari.myMouseDown_Shape()')
@@ -234,8 +236,25 @@ class bNapari:
 		# listen to edit table, self.
 		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectEdge)
 
-	def slot_selectNode(Self, myEvent):
-		print('bNapari.slot_selectNode() NOT IMPLEMENTED myEvent:', myEvent)
+	def slot_selectNode(self, myEvent):
+		print('bNapari.slot_selectNode() myEvent:', myEvent)
+		nodeIdx = myEvent.nodeIdx
+		if nodeIdx is None:
+			nodeSelection = np.column_stack((np.nan,np.nan,np.nan,))
+		else:
+			'''
+			slabIdx = self.mySimpleStack.slabList._getSlabFromNodeIdx(nodeIdx)
+			x = self.mySimpleStack.slabList.x[nodeIdx]
+			y = self.mySimpleStack.slabList.y[nodeIdx]
+			z = self.mySimpleStack.slabList.z[nodeIdx]
+			'''
+			x, y, z, = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
+
+			#d = self.mySimpleStack.slabList.d[slabIdx]
+			nodeSelection = np.column_stack((z,x,y,)) # (z, x, y)
+			print('   nodeSelection:', nodeSelection)
+
+		self.nodeSelectionLayer.data = nodeSelection
 
 	def slot_selectEdge(self, myEvent):
 		"""

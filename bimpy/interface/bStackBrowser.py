@@ -311,7 +311,12 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/fixed/20191017__0001-new.tif'
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/20191017__0001_z.tif'
-	
+
+	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/20200228/20200228__0001_z.tif'
+	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/20191017/20191017__0001_z.tif'
+	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/invivo/20190613__0028.tif'
+	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/octa/PV_Crop_Reslice.tif'
+
 	try:
 		mjb = bimpy.bJavaBridge()
 		mjb.start()

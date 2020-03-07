@@ -24,6 +24,7 @@ class bVascularTracing:
 		self.parentStack = parentStack
 		self.path = path
 
+		self._dvMask = None # created in loadDeepVess
 		self._initTracing()
 
 		'''
@@ -89,6 +90,7 @@ class bVascularTracing:
 		theDict = self.nodeDictList[nodeIdx]
 		theDict['idx'] = int(nodeIdx)
 		theDict['nEdges'] = len(theDict['edgeList'])
+		print('getNode()', nodeIdx, theDict)
 		return theDict
 
 	def getNode_zSlice(self, nodeIdx):
@@ -919,21 +921,38 @@ class bVascularTracing:
 		print('    loading dvMask:', dvMaskPath)
 		self._dvMask = tifffile.imread(dvMaskPath)
 
+		parentStack = self.parentStack.getStack('ch1')
+
 		#
 		# convert the deepvess mask to a skeleton (same as deepves postprocess)
 		print('    making skeleton from binary stack dvMask ...')
 		startSeconds = time.time()
 		# todo: fix this, older version need to use max_pool3d
 		#skeleton0 = morphology.skeletonize(dvMask)
-		skeleton0 = morphology.skeletonize_3d(self._dvMask)
+		dvSkelPath, ext = os.path.splitext(self.path)
+		dvSkelPath += '_dvSkel.tif'
+		tryWith_dvSkel = False
+		if tryWith_dvSkel and os.path.isfile(dvMaskPath):
+			print('loading dv skel from file:', dvSkelPath)
+			skeleton0 = tifffile.imread(dvSkelPath)
+		else:
+			print('generating skeleton from dvMask using morphology.skeletonize_3d')
+			skeleton0 = morphology.skeletonize_3d(self._dvMask)
 		print('    skeleton0:', type(skeleton0), skeleton0.dtype, skeleton0.shape, np.min(skeleton0), np.max(skeleton0))
 		print('        took:', round(time.time()-startSeconds,2), 'seconds')
+
+		'''
+		# try and get mean intensity of each branch/edge
+		pixel_graph, coordinates, degrees = skan.skeleton_to_csgraph(skeleton0)
+		myStats = skan.csr.branch_statistics(pixel_graph, pixel_values=parentStack)
+		for stat in myStats:
+			print('    branch_statistics stat:', stat)
+		'''
 
 		#
 		# convert raw skeleton into a proper graph with nodes/edges
 		print('    === running skan.Skeleton(skeleton0)')
 		startSeconds = time.time()
-		parentStack = self.parentStack.getStack('ch1')
 		skanSkel = skan.Skeleton(skeleton0, source_image=parentStack)
 		print('        took:', round(time.time()-startSeconds,2), 'seconds')
 
@@ -950,6 +969,7 @@ class bVascularTracing:
 		edges = np.full((nCoordinates), np.nan)
 
 		masterNodeIdx = 0
+		masterEdgeIdx = 0
 		nPath = len(skanSkel.paths_list())
 		print('    parsing nPath:', nPath)
 		for edgeIdx, path in enumerate(skanSkel.paths_list()):
@@ -964,7 +984,12 @@ class bVascularTracing:
 
 			if nodes[srcPnt] >= 0:
 				srcNodeIdx = int(float(nodes[srcPnt]))
-				self.nodeDictList[srcNodeIdx]['edgeList'].append(edgeIdx)
+				self.nodeDictList[srcNodeIdx]['edgeList'].append(masterEdgeIdx)
+				self.nodeDictList[srcNodeIdx]['nEdges'] = len(self.nodeDictList[srcNodeIdx]['edgeList'])
+				'''
+				print('=== srcPnt appended to node', srcNodeIdx, 'edge list:',masterEdgeIdx)
+				print('    ', self.nodeDictList[srcNodeIdx])
+				'''
 			else:
 				# new node
 				srcNodeIdx = masterNodeIdx
@@ -973,15 +998,24 @@ class bVascularTracing:
 				nodes[srcPnt] = srcNodeIdx
 				#
 				nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=srcNodeIdx)
-				print('1:', nodeDict)
-				nodeDict['edgeList'].append(edgeIdx)
-				print('    2:', nodeDict)
+				nodeDict['idx'] = srcNodeIdx
+				nodeDict['edgeList'].append(masterEdgeIdx)
 				self.nodeDictList.append(nodeDict)
 				# always append slab
 				self._appendSlab(x, y, z, d=diam, edgeIdx=np.nan, nodeIdx=srcNodeIdx)
+
+			z = float(skanSkel.coordinates[dstPnt,0]) # deepvess uses (slice, x, y)
+			x = float(skanSkel.coordinates[dstPnt,1])
+			y = float(skanSkel.coordinates[dstPnt,2])
+			diam = 5 # todo: add this to _analysis
 			if nodes[dstPnt] >= 0:
 				dstNodeIdx = int(float(nodes[dstPnt]))
-				self.nodeDictList[dstNodeIdx]['edgeList'].append(edgeIdx)
+				self.nodeDictList[dstNodeIdx]['edgeList'].append(masterEdgeIdx)
+				self.nodeDictList[dstNodeIdx]['nEdges'] = len(self.nodeDictList[dstNodeIdx]['edgeList'])
+				'''
+				print('=== dstPnt appended to node', dstNodeIdx, 'edge list:',masterEdgeIdx)
+				print('    ', self.nodeDictList[dstNodeIdx])
+				'''
 			else:
 				# new node
 				dstNodeIdx = masterNodeIdx
@@ -990,7 +1024,8 @@ class bVascularTracing:
 				nodes[dstPnt] = dstNodeIdx
 				#
 				nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=dstNodeIdx)
-				nodeDict['edgeList'].append(edgeIdx)
+				nodeDict['idx'] = dstNodeIdx
+				nodeDict['edgeList'].append(masterEdgeIdx)
 				self.nodeDictList.append(nodeDict)
 				# always append slab
 				self._appendSlab(x, y, z, d=diam, edgeIdx=np.nan, nodeIdx=dstNodeIdx)
@@ -1004,18 +1039,20 @@ class bVascularTracing:
 					yEdge = float(skanSkel.coordinates[idx2,2])
 					newZList.append(zEdge)
 					diam = 3
-					self._appendSlab(xEdge, yEdge, zEdge, d=diam, edgeIdx=edgeIdx, nodeIdx=np.nan)
+					self._appendSlab(xEdge, yEdge, zEdge, d=diam, edgeIdx=masterEdgeIdx, nodeIdx=np.nan)
+
+				# always append an edge
+				edgeDict = self._defaultEdgeDict(edgeIdx=masterEdgeIdx, srcNode=srcNodeIdx, dstNode=dstNodeIdx)
+				masterEdgeIdx += 1
+				if len(newZList) > 0:
+					edgeDict['z'] = int(round(statistics.median(newZList)))
+				self.edgeDictList.append(edgeDict)
 
 			else:
 				# this happens a lot ???
 				pass
 				#print('    warning: got len(path)<=2 at edgeIdx:',edgeIdx)
 
-			# always append an edge
-			edgeDict = self._defaultEdgeDict(edgeIdx=edgeIdx, srcNode=srcNodeIdx, dstNode=dstNodeIdx)
-			if len(newZList) > 0:
-				edgeDict['z'] = int(round(statistics.median(newZList)))
-			self.edgeDictList.append(edgeDict)
 
 		self._analyze()
 

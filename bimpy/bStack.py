@@ -219,6 +219,12 @@ class bStack:
 		elif len(self.stack.shape)==4:
 			return self.stack[channelIdx,:,:,:]
 
+	def getDeepVessMask(self):
+		theRet = None
+		if self.slabList is not None:
+			theRet = self.slabList._dvMask
+		return theRet
+
 	def getImage(self, channel=1, sliceNum=None):
 		channelIdx = channel - 1
 		if sliceNum is None:
