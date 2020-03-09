@@ -9,12 +9,16 @@ from xml.dom import minidom # to load vesselucida xml file
 from skimage.external import tifffile as tif
 
 from skimage import morphology
+from scipy.sparse import csgraph # to get dijoint segments
 import skan
 #from skan import draw # for plotting
 import tifffile
 
 import numpy as np
 import h5py
+import ast # to convert dict to string to save in h5py
+
+import bimpy
 
 class bVascularTracing:
 	def __init__(self, parentStack, path):
@@ -58,6 +62,7 @@ class bVascularTracing:
 		self.y = np.empty((0,))
 		self.z = np.empty((0,))
 		self.d = np.empty(0)
+		self.int = np.empty(0)
 		self.edgeIdx = np.empty(0, dtype=np.float) # will be nan for nodes
 		self.nodeIdx = np.empty(0, dtype=np.float) # will be nan for slabs
 		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
@@ -90,7 +95,7 @@ class bVascularTracing:
 		theDict = self.nodeDictList[nodeIdx]
 		theDict['idx'] = int(nodeIdx)
 		theDict['nEdges'] = len(theDict['edgeList'])
-		print('getNode()', nodeIdx, theDict)
+		#print('getNode()', nodeIdx, theDict)
 		return theDict
 
 	def getNode_zSlice(self, nodeIdx):
@@ -411,6 +416,7 @@ class bVascularTracing:
 		self.y = np.append(self.y, y)
 		self.z = np.append(self.z, z)
 		self.d = np.append(self.d, d)
+		self.int = np.append(self.int, np.nan)
 		self.edgeIdx = np.append(self.edgeIdx, edgeIdx)
 		self.nodeIdx = np.append(self.nodeIdx, nodeIdx)
 		#self.slabIdx = np.append(self.slabIdx, newSlabIdx)
@@ -456,7 +462,8 @@ class bVascularTracing:
 		#if edgeIdx is not None:
 
 	def _getSlabFromNodeIdx(self, nodeIdx):
-		#print('debug _getSlabFromNodeIdx() nodeIdx:', nodeIdx)
+		# todo: not sure if this works
+		#print('!!! NOT SURE IF THIS WORKS debug _getSlabFromNodeIdx() nodeIdx:', nodeIdx)
 		if nodeIdx is None:
 			return None
 		else:
@@ -491,6 +498,7 @@ class bVascularTracing:
 			#'zSlice': None, #todo remember this when I convert to um/pixel !!!
 			'edgeList': [],
 			'nEdges': 0,
+			'skelID': None, # used by deepves
 			'Bad': False,
 			'Note': '',
 		})
@@ -953,7 +961,7 @@ class bVascularTracing:
 		# convert raw skeleton into a proper graph with nodes/edges
 		print('    === running skan.Skeleton(skeleton0)')
 		startSeconds = time.time()
-		skanSkel = skan.Skeleton(skeleton0, source_image=parentStack)
+		skanSkel = skan.Skeleton(skeleton0, source_image=parentStack.astype('float'))
 		print('        took:', round(time.time()-startSeconds,2), 'seconds')
 
 		# not needed but just to remember
@@ -968,12 +976,27 @@ class bVascularTracing:
 		nodeEdgeList = [[] for tmp in range(nCoordinates)]
 		edges = np.full((nCoordinates), np.nan)
 
+		_, skeleton_ids = csgraph.connected_components(skanSkel.graph, directed=False)
+
+		path_lengths = skanSkel.path_lengths()
+		path_means = skanSkel.path_means() # does not return intensity of image, always 1 (e.g. the mask?)
+
 		masterNodeIdx = 0
 		masterEdgeIdx = 0
 		nPath = len(skanSkel.paths_list())
 		print('    parsing nPath:', nPath)
 		for edgeIdx, path in enumerate(skanSkel.paths_list()):
 			# edgeIdx: int
+
+			# skip paths made of just two nodes
+			if len(path)<=2:
+				#print('skipping edgeIdx:', edgeIdx)
+				continue
+
+			# remember to remove
+			#if int(float(skeleton_ids[edgeIdx])) == 2:
+			#	continue
+
 			srcPnt = path[0]
 			dstPnt = path[-1]
 
@@ -1000,6 +1023,8 @@ class bVascularTracing:
 				nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=srcNodeIdx)
 				nodeDict['idx'] = srcNodeIdx
 				nodeDict['edgeList'].append(masterEdgeIdx)
+				nodeDict['nEdges'] = 1
+				nodeDict['skelID'] = int(float(skeleton_ids[edgeIdx]))
 				self.nodeDictList.append(nodeDict)
 				# always append slab
 				self._appendSlab(x, y, z, d=diam, edgeIdx=np.nan, nodeIdx=srcNodeIdx)
@@ -1026,12 +1051,16 @@ class bVascularTracing:
 				nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=dstNodeIdx)
 				nodeDict['idx'] = dstNodeIdx
 				nodeDict['edgeList'].append(masterEdgeIdx)
+				nodeDict['nEdges'] = 1
+				nodeDict['skelID'] = int(float(skeleton_ids[edgeIdx]))
 				self.nodeDictList.append(nodeDict)
 				# always append slab
 				self._appendSlab(x, y, z, d=diam, edgeIdx=np.nan, nodeIdx=dstNodeIdx)
 
+			#print('path_lengths[] edgeIdx:', edgeIdx, path_lengths[edgeIdx], 'skeleton_ids:', skeleton_ids[edgeIdx], 'len(path):', len(path), 'path_means:', path_means[edgeIdx])
 			newZList = []
-			if len(path)>2:
+			#if len(path)>2:
+			if 1:
 				for idx2 in path[1:-2]:
 					#edges[idx2] = idx
 					zEdge = float(skanSkel.coordinates[idx2,0]) # deepvess uses (slice, x, y)
@@ -1039,7 +1068,7 @@ class bVascularTracing:
 					yEdge = float(skanSkel.coordinates[idx2,2])
 					newZList.append(zEdge)
 					diam = 3
-					self._appendSlab(xEdge, yEdge, zEdge, d=diam, edgeIdx=masterEdgeIdx, nodeIdx=np.nan)
+					newSlabIdx = self._appendSlab(xEdge, yEdge, zEdge, d=diam, edgeIdx=masterEdgeIdx, nodeIdx=np.nan)
 
 				# always append an edge
 				edgeDict = self._defaultEdgeDict(edgeIdx=masterEdgeIdx, srcNode=srcNodeIdx, dstNode=dstNodeIdx)
@@ -1049,10 +1078,8 @@ class bVascularTracing:
 				self.edgeDictList.append(edgeDict)
 
 			else:
-				# this happens a lot ???
-				pass
+				pass # this happens a lot ???
 				#print('    warning: got len(path)<=2 at edgeIdx:',edgeIdx)
-
 
 		self._analyze()
 
@@ -1675,6 +1702,46 @@ class bVascularTracing:
 			else:
 				edge['color'] = list(potentialColors)[0] # first available color
 
+	def search(self, type=None):
+		print('search()')
+		#
+		thresholdDist = 10
+		#
+		timer = bimpy.util.bTimer(name='search')
+		theDictList = []
+		numRows = 0
+		nNodes = len(self.nodeDictList)
+		distanceMatrix = np.ndarray((nNodes,nNodes))
+		distanceMatrix[:] = np.nan
+		for i, iDict in enumerate(self.nodeDictList):
+			x1 = iDict['x']
+			y1 = iDict['y']
+			z1 = iDict['z']
+			for j, jDict in enumerate(self.nodeDictList):
+				if i==j: continue
+				if not np.isnan(distanceMatrix[j,i]): continue
+				x2 = jDict['x']
+				y2 = jDict['y']
+				z2 = jDict['z']
+				dist = self.euclideanDistance(x1,y1,z1,x2,y2,z2)
+				if dist<thresholdDist:
+					distanceMatrix[i,j] = dist
+					theDict = OrderedDict()
+					theDict['Idx'] = numRows
+					theDict['z'] = z1
+					theDict['node1'] = i
+					theDict['nEdges1'] = iDict['nEdges']
+					theDict['node2'] = j
+					theDict['nEdges2'] = jDict['nEdges']
+					theDict['dist'] = round(dist,2)
+					#print('    nodes close:', theDict)
+					theDictList.append(theDict)
+					numRows += 1
+		print('    found:', numRows)
+		self.editDictList = theDictList
+		timer.elapsed()
+		return theDictList
+
 	def _getSavePath(self):
 		"""
 		return full path to filename without extension
@@ -1687,7 +1754,7 @@ class bVascularTracing:
 		"""
 		save a h5f file
 		"""
-		print('=== save()')
+		print('=== bVascularTracing.save()')
 		h5FilePath = self._getSavePath() + '.h5f'
 		print('   h5FilePath:', h5FilePath)
 
@@ -1695,6 +1762,7 @@ class bVascularTracing:
 		saveDict['nodeDictList'] = self.nodeDictList
 		saveDict['edgeDictList'] = self.edgeDictList
 
+		# todo: should use try:except ValueError and delete file if we get an error
 		with h5py.File(h5FilePath, "w") as f:
 			for idx, node in enumerate(self.nodeDictList):
 				node = self.getNode(idx)
@@ -1720,11 +1788,11 @@ class bVascularTracing:
 				edgeGroup.attrs['edgeDict'] = edgeDict_json
 
 			# slabs are in a dataset
-			slabData = np.column_stack((self.x, self.y, self.z, self.d, self.edgeIdx, self.nodeIdx,))
+			slabData = np.column_stack((self.x, self.y, self.z, self.d, self.int, self.edgeIdx, self.nodeIdx,))
 			#print('slabData:', slabData.shape)
 			f.create_dataset('slabs', data=slabData)
 
-		# save dict using json
+		return h5FilePath
 
 	def load(self):
 		"""
@@ -1738,7 +1806,7 @@ class bVascularTracing:
 
 		if not os.path.isfile(h5FilePath):
 			print('   file not found:', h5FilePath)
-			return False
+			return None
 
 		maxNodeIdx = -1
 		maxEdgeIdx = -1
@@ -1747,6 +1815,8 @@ class bVascularTracing:
 		# we file them away using 'idx' after loaded
 		tmpNodeDictList = []
 		tmpEdgeDictList = []
+
+		#maskDictList = None
 
 		with h5py.File(h5FilePath, "r") as f:
 			for name in f:
@@ -1776,9 +1846,15 @@ class bVascularTracing:
 					self.y = b[:,1]
 					self.z = b[:,2]
 					self.d = b[:,3]
-					self.edgeIdx = b[:,4]
-					self.nodeIdx = b[:,5]
-
+					self.int = b[:,4]
+					self.edgeIdx = b[:,5]
+					self.nodeIdx = b[:,6]
+				'''
+				elif name == 'masks':
+					c = f['masks']
+					print('debug c:', c)
+					maskDictList = ast.literal_eval(c)
+				'''
 		#
 		# go through what we loaded and sort them into the correct position based on ['idx']
 		self.nodeDictList = [None] * (maxNodeIdx+1) # make an empy list with correct length
@@ -1790,7 +1866,8 @@ class bVascularTracing:
 
 		print('    loaded nodes:', maxNodeIdx, 'edges:', maxEdgeIdx)
 
-		return True
+		#return maskDictList
+		return h5FilePath
 
 if __name__ == '__main__':
 	path = ''

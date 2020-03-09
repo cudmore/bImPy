@@ -19,11 +19,11 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 	def __init__(self, type, listOfDict, parent=None):
 		"""
-		type: ('nodes', 'edges', 'search')
+		type: ('nodes', 'edges', 'node search', 'edge search')
 		"""
 		super(bTableWidget2, self).__init__(parent)
 
-		if type not in {'nodes', 'edges', 'search'}:
+		if type not in {'nodes', 'edges', 'node search', 'edge search'}:
 			print('error: bTableWidget2 type is incorrect:', type)
 			return
 
@@ -54,12 +54,12 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		self.headerLabels = []
 
 		if len(newDictList) == 0:
-			print('error: bTableWidget2.populate() type:', self._type, 'got 0 length dict list?')
+			#print('warning: bTableWidget2.populate() type:', self._type, 'got 0 length dict list?')
 			return
 
 		# headers
 		firstDict = newDictList[0]
-		print('    firstDict:', firstDict)
+		#print('    firstDict:', firstDict)
 		for k in firstDict.keys():
 			self.headerLabels.append(k)
 		#print('bTableWidget2.populate.headerLabels:', self.headerLabels)
@@ -75,9 +75,15 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		self.setRowCount(numRows)
 		for idx, editDict in enumerate(newDictList):
 			for colIdx, header in enumerate(self.headerLabels):
-				myString = str(editDict[header])
+				#myString = str(editDict[header])
 				item = QtWidgets.QTableWidgetItem()
-				item.setData(QtCore.Qt.EditRole, editDict[header])
+				if isinstance(editDict[header], list):
+					item.setData(QtCore.Qt.DisplayRole, str(editDict[header]))
+				else:
+					# 20200306 was this
+					#item.setData(QtCore.Qt.EditRole, editDict[header])
+					item.setData(QtCore.Qt.DisplayRole, editDict[header])
+
 				#print('    idx:', idx, 'colIdx:', colIdx, 'editDict[header]:', editDict[header])
 				'''
 				if header == 'nEdges':
@@ -270,24 +276,47 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				myEvent._sliceIdx = int(float(myItem.text()))
 				print('   emit myEvent:', myEvent)
 				self.selectRowSignal.emit(myEvent)
+
 			elif self._type == 'edges':
 				myEvent = bimpy.interface.bEvent('select edge', edgeIdx=myIdx, snapz=True, isShift=isShift)
 				colIdx = self._getColumnIdx('z')
 				myItem = self.item(row, colIdx)
 				myEvent._sliceIdx = int(float(myItem.text()))
 				self.selectRowSignal.emit(myEvent)
-			elif self._type == 'search':
+
+			elif self._type == 'node search':
 				#
+				colIdx = self._getColumnIdx('node1')
+				nodeIdx = None
+				if colIdx is not None:
+					myItem = self.item(row, colIdx) # 0 is idx column
+					nodeIdx = int(myItem.text())
+				myEvent = bimpy.interface.bEvent('select node', nodeIdx=nodeIdx, snapz=True, isShift=isShift)
+				colIdx = self._getColumnIdx('z')
+				myItem = self.item(row, colIdx)
+				myEvent._sliceIdx = int(float(myItem.text()))
+				print('   emit myEvent:', myEvent)
+				self.selectRowSignal.emit(myEvent)
+
+			elif self._type == 'edge search':
+				edge1 = None
+				edge2 = None
+				edgeList = []
 				colIdx = self._getColumnIdx('edge1')
-				myItem = self.item(row, colIdx) # 0 is idx column
-				edge1 = int(myItem.text())
+				if colIdx is not None:
+					myItem = self.item(row, colIdx) # 0 is idx column
+					edge1 = int(myItem.text())
+					edgeList.append(edge1)
 				#
 				colIdx = self._getColumnIdx('edge2')
-				myItem = self.item(row, colIdx) # 0 is idx column
-				edge2 = int(myItem.text())
-				edgeList = [edge1, edge2]
+				if colIdx is not None:
+					myItem = self.item(row, colIdx) # 0 is idx column
+					edge2 = int(myItem.text())
+					edgeList.append(edge2)
+				#edgeList = [edge1, edge2]
+
 				#
-				myEvent = bimpy.interface.bEvent('select edge list', edgeList=edgeList, snapz=True, isShift=isShift)
+				myEvent = bimpy.interface.bEvent('select edge list', nodeIdx=nodeIdx, edgeList=edgeList, snapz=True, isShift=isShift)
 				self.selectRowSignal.emit(myEvent)
 
 if __name__ == '__main__':

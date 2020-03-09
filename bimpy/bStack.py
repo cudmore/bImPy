@@ -734,17 +734,21 @@ class bStack:
 			self._save(maxFilePath, maxIntensityProjection, includeSpacing=False)
 
 	def saveAnnotations(self):
+		h5FilePath = None
 		if self.slabList is not None:
-			self.slabList.save()
+			h5FilePath = self.slabList.save()
 		else:
 			print('WARNING: bStack.saveAnnotations() did not save as annotation slabList is None')
+		return h5FilePath
 
 	def loadAnnotations(self):
 		#todo: this is wrong
+		loadedFile = None
 		if self.slabList is not None:
-			self.slabList.load()
+			loadedFile = self.slabList.load()
 		else:
 			print('WARNING: bStack.loadAnnotations() did not load as annotation slabList is not None')
+		return loadedFile
 
 	def loadAnnotations_xml(self):
 		if self.slabList is not None:

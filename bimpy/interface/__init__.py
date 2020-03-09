@@ -12,3 +12,5 @@ from .bStatusToolbarWidget import bStatusToolbarWidget
 from .bTableWidget2 import bTableWidget2
 #from .bShapeAnalysisWidget import bShapeAnalysisWidget
 #from .bMenu import bMenu
+
+#from .bTimer import bTimer

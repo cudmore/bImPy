@@ -17,6 +17,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends import backend_qt5agg
 
 import tifffile
+import h5py
+import pickle # to save masks
 
 import bimpy
 
@@ -37,8 +39,6 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.path = path
 
-		#self.options_defaults()
-
 		basename = os.path.basename(self.path)
 		self.setWindowTitle(basename)
 
@@ -56,8 +56,8 @@ class bStackWidget(QtWidgets.QWidget):
 		""")
 
 		#
-		#self.mySimpleStack = bSimpleStack(path) # backend stack
 		self.mySimpleStack = bimpy.bStack(path) # backend stack
+		self.mySimpleStack.slabList.search()
 		#
 
 		self.napariViewer = None
@@ -77,28 +77,15 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.myContrastWidget = bimpy.interface.bStackContrastWidget(mainWindow=self)
 
-		#self.bStackFeebackWidget = bimpy.interface.bStackFeebackWidget(mainWindow=self, numSlices=self.mySimpleStack.numSlices)
-
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout(self)
 
 		# a slider to set slice number
 		self.mySliceSlider = myStackSlider(self.mySimpleStack.numImages)
-		'''
-		self.mySliceSlider = QtWidgets.QSlider(QtCore.Qt.Vertical)
-		self.mySliceSlider.setMaximum(self.mySimpleStack.numImages)
-		self.mySliceSlider.setInvertedAppearance(True) # so it goes from top:0 to bottom:numImages
-		self.mySliceSlider.setMinimum(0)
-		if self.mySimpleStack.numImages < 2:
-			self.mySliceSlider.setDisabled(True)
-		# use this
-		#self.mySliceSlider.sliderReleased.connect
-		#self.mySliceSlider.valueChanged.connect(self.sliceSliderValueChanged)
-		'''
 
 		self.myHBoxLayout2.addWidget(self.myStackView)
 		self.myHBoxLayout2.addWidget(self.mySliceSlider)
 
-		# add
+		#
 		self.myVBoxLayout.addWidget(self.myContrastWidget) #, stretch=0.1)
 		#self.myVBoxLayout.addWidget(self.bStackFeebackWidget) #, stretch=0.1)
 		self.myVBoxLayout.addLayout(self.myHBoxLayout2) #, stretch = 9)
@@ -111,15 +98,6 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myVBoxLayout.addWidget(self.statusToolbarWidget) #, stretch = 9)
 
 		#
-		# OLD
-		#
-		# todo: Need to show/hide annotation table
-		#self.annotationTable = bimpy.interface.bAnnotationTable(mainWindow=self, parent=None)
-		#self.myHBoxLayout.addWidget(self.annotationTable, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
-
-		#
-		# NEW
-		#
 		# nodes
 		self.nodeTable2 = bimpy.interface.bTableWidget2('nodes', self.mySimpleStack.slabList.nodeDictList)
 		self.myHBoxLayout.addWidget(self.nodeTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
@@ -127,21 +105,11 @@ class bStackWidget(QtWidgets.QWidget):
 		self.edgeTable2 = bimpy.interface.bTableWidget2('edges', self.mySimpleStack.slabList.edgeDictList)
 		self.myHBoxLayout.addWidget(self.edgeTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
 		# edits
-		self.editTable2 = bimpy.interface.bTableWidget2('search', self.mySimpleStack.slabList.editDictList)
+		self.editTable2 = bimpy.interface.bTableWidget2('node search', self.mySimpleStack.slabList.editDictList)
 		self.myHBoxLayout.addWidget(self.editTable2, stretch=3) #, stretch=7) # stretch=10, not sure on the units???
 		#
 		#
 		#
-
-		'''
-		# 20200211
-		if self.mySimpleStack.slabList is None:
-			self.annotationTable.hide()
-			self.showLeftControlBar = False
-		else:
-			pass
-			#self.annotationTable.hide()
-		'''
 
 		# vertical layout for contrast/feedback/image
 		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=5) #, stretch=7) # stretch=10, not sure on the units???
@@ -191,6 +159,7 @@ class bStackWidget(QtWidgets.QWidget):
 		'''
 		self.nodeTable2.selectRowSignal.connect(self.myStackView.slot_selectNode)
 		self.edgeTable2.selectRowSignal.connect(self.myStackView.slot_selectEdge)
+		self.editTable2.selectRowSignal.connect(self.myStackView.slot_selectNode)
 		self.editTable2.selectRowSignal.connect(self.myStackView.slot_selectEdge)
 		#
 		self.nodeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_StateChange2)
@@ -335,14 +304,51 @@ class bStackWidget(QtWidgets.QWidget):
 			self.lineProfileWidget.update(value)
 
 		if signal == 'save':
-			self.mySimpleStack.saveAnnotations()
+			startTime = time.time()
+			h5FilePath = self.mySimpleStack.saveAnnotations()
+			'''
+			if h5FilePath is not None:
+				with h5py.File(h5FilePath, "a") as f:
+					# slabs are in a dataset
+					#slabData = np.column_stack((self.x, self.y, self.z, self.d, self.int, self.edgeIdx, self.nodeIdx,))
+					#f.create_dataset('slabs', data=slabData)
+					print('    bStackWidget saving maskedNodes ...')
+					maskData = str(self.getStackView().maskedNodes)
+					f.create_dataset('masks', data=maskData)
+			'''
+			#print('   saving maskedNodes')
+			# see second answer: https://stackoverflow.com/questions/26646362/numpy-array-is-not-json-serializable
+			if h5FilePath is not None:
+				self.getStackView().saveMasks()
+				'''
+				maskFilePath = h5FilePath + '.pickle'
+				# json_dump = json.dumps({'a': a, 'aa': [2, (2, 3, 4), a], 'bb': [2]}, cls=NumpyEncoder)
+				print('    saving maskedNodes as:', maskFilePath)
+				with open(maskFilePath, 'wb') as fout:
+					#json.dump(self.getStackView().maskedNodes, fout, cls=myNumpyEncoder)
+					pickle.dump(self.getStackView().maskedNodes, fout)
+				'''
+			print('saved', h5FilePath, 'in', round(time.time()-startTime,2), 'seconds')
+
 		elif signal == 'load':
-			self.mySimpleStack.loadAnnotations()
+			startTime = time.time()
+			h5FilePath = self.mySimpleStack.loadAnnotations()
+			if h5FilePath is not None:
+				self.getStackView().loadMasks()
+				'''
+				maskFilePath = h5FilePath + '.pickle'
+				print('    loading maskedNodes from:', maskFilePath)
+				with open(maskFilePath, 'rb') as filename:
+					self.getStackView().maskedNodes = pickle.load(filename)
+				'''
+			print('loaded in', round(time.time()-startTime,2), 'seconds')
 			self.nodeTable2.populate(self.mySimpleStack.slabList.nodeDictList)
 			self.edgeTable2.populate(self.mySimpleStack.slabList.edgeDictList)
 			self.editTable2.populate(self.mySimpleStack.slabList.editDictList)
+
 		elif signal == 'load_xml':
 			self.mySimpleStack.loadAnnotations_xml()
+
 		elif signal == 'save stack copy':
 			# save the currently viewed stack (always prompt for name)
 
@@ -547,6 +553,15 @@ class myStackSlider(QtWidgets.QSlider):
 	def updateSlice_Signal(self):
 		self.updateSliceSignal.emit('set slice', self.value())
 
+'''
+# see second answer: https://stackoverflow.com/questions/26646362/numpy-array-is-not-json-serializable
+class myNumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+'''
+
 ################################################################################
 #class bStackView(QtWidgets.QWidget):
 class bStackView(QtWidgets.QGraphicsView):
@@ -629,7 +644,8 @@ class bStackView(QtWidgets.QGraphicsView):
 			'mySelectedSlab': None,
 		}
 
-		self._preComputeAllMasks()
+		# abb removed 20200307
+		self._preComputeAllMasks(loadFromFile=True)
 
 		#
 		scene = QtWidgets.QGraphicsScene(self)
@@ -1052,6 +1068,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			print('bStackView.slot_StateChange() did not understand signalName:', signalName)
 
 	def slot_selectNode(self, myEvent):
+		print('bStackView.slot_selectNode() myEvent:', myEvent)
 		nodeIdx = myEvent.nodeIdx
 		snapz = myEvent.snapz
 		isShift = myEvent.isShift
@@ -1059,6 +1076,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 	def slot_selectEdge(self, myEvent):
 		print('bStackView.slot_selectEdge() myEvent:', myEvent)
+		if myEvent.eventType == 'select node':
+			return
 		edgeList = myEvent.edgeList
 		if len(edgeList)>0:
 			# select a list of edges
@@ -1515,7 +1534,32 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.selectSlabSignal.emit(myEvent)
 		'''
 
-	def _preComputeAllMasks(self, fromSlice=None, fromCurrentSlice=False):
+	def loadMasks(self):
+		pickleFile = self.mySimpleStack._getSavePath() # tiff file without extension
+		pickleFile += '.pickle'
+		if os.path.isfile(pickleFile):
+			print('    _preComputeAllMasks loading maskedNodes from pickleFile:', pickleFile)
+			#timer = bimpy.util.bTimer()
+			timer = bimpy.util.bTimer(name='loadMasks')
+			with open(pickleFile, 'rb') as filename:
+				self.maskedNodes = pickle.load(filename)
+			print('    loaded mask file with size:', len(self.maskedNodes))
+			timer.elapsed()
+			#
+			return True
+			#
+		else:
+			print('error: _preComputeAllMasks did not find pickle file:', pickleFile)
+			return False
+
+	def saveMasks(self):
+		pickleFile = self.mySimpleStack._getSavePath() # tiff file without extension
+		pickleFile += '.pickle'
+		print('    bStackView.saveMasks() saving maskedNodes as pickleFile:', pickleFile)
+		with open(pickleFile, 'wb') as fout:
+			pickle.dump(self.maskedNodes, fout)
+
+	def _preComputeAllMasks(self, fromSlice=None, fromCurrentSlice=False, loadFromFile=False):
 		"""
 		Precompute all masks once. When user scrolls through slices this is WAY faster
 		On new/delete (node, edge), just compute slices within +/- show tracing
@@ -1523,11 +1567,22 @@ class bStackView(QtWidgets.QGraphicsView):
 		Parameter:
 			fromCurrentSlice trumps fromSlice
 		"""
-		startSeconds = time.time()
+
+		#startSeconds = time.time()
+		myTimer = bimpy.util.bTimer('_preComputeAllMasks')
 
 		if self.mySimpleStack.slabList is None:
 			return
 
+		#
+		#
+		if loadFromFile:
+			loaded = self.loadMasks()
+			if loaded:
+				myTimer.elapsed()
+				return True
+
+		#
 		recomputeAll = False
 		if fromSlice is None and not fromCurrentSlice:
 			#recreate all
@@ -1545,7 +1600,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		if fromSlice is not None:
 			sliceRange = range(fromSlice-showTracingAboveSlices, fromSlice+showTracingBelowSlices)
 		#for i in range(self.mySimpleStack.numImages):
-		print('_preComputeAllMasks() computing masks for slices:', sliceRange, 'recomputeAll:', recomputeAll)
+		print('bStackView._preComputeAllMasks() computing masks for slices:', sliceRange, 'recomputeAll:', recomputeAll, 'nEdges:', len(self.mySimpleStack.slabList.edgeDictList), '...')
 		for i in sliceRange:
 			# when using fromSlice
 			if i<0 or i>self.mySimpleStack.numImages-1:
@@ -1554,6 +1609,18 @@ class bStackView(QtWidgets.QGraphicsView):
 			upperz = i - self.options['Tracing']['showTracingAboveSlices']
 			lowerz = i + self.options['Tracing']['showTracingBelowSlices']
 
+
+			'''
+			xEdgeLines, yEdgeLines
+			nodeMasked_size
+			nodeMasked_x
+			nodeMasked_y
+
+			nodeMasked_nodeIdx
+			edgeIdxLines
+			slabIdxLines
+			nodeIdxLines
+			'''
 			#if self.mySimpleStack.slabList is not None:
 			#
 			# nodes
@@ -1563,7 +1630,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				yNodeMasked = self.mySimpleStack.slabList.x[~zNodeMasked.mask]
 				dMasked = self.mySimpleStack.slabList.d[~zNodeMasked.mask]
 				nodeIdxMasked = self.mySimpleStack.slabList.nodeIdx[~zNodeMasked.mask]
-				edgeIdxMasked = self.mySimpleStack.slabList.edgeIdx[~zNodeMasked.mask]
+				# abb edgeIdxMasked = self.mySimpleStack.slabList.edgeIdx[~zNodeMasked.mask]
 				#slabIdxMasked = self.mySimpleStack.slabList.slabIdx[~zNodeMasked.mask]
 
 				nodeMasked_x = xNodeMasked[~np.isnan(nodeIdxMasked)]
@@ -1579,7 +1646,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				# to draw lines on edges, make a disjoint list (seperated by nan
 				xEdgeLines = []
 				yEdgeLines = []
-				dEdgeLines = []
+				# abb dEdgeLines = []
 				edgeIdxLines = []
 				slabIdxLines = []
 				nodeIdxLines = [] # to intercept clicks on edge that are also node
@@ -1593,7 +1660,7 @@ class bStackView(QtWidgets.QGraphicsView):
 							# include
 							xEdgeLines.append(self.mySimpleStack.slabList.y[slab]) # flipped
 							yEdgeLines.append(self.mySimpleStack.slabList.x[slab])
-							dEdgeLines.append(self.mySimpleStack.slabList.d[slab])
+							# dEdgeLines.append(self.mySimpleStack.slabList.d[slab])
 							edgeIdxLines.append(edgeIdx)
 							slabIdxLines.append(slab)
 							nodeIdxLines.append(self.mySimpleStack.slabList.nodeIdx[slab])
@@ -1601,13 +1668,15 @@ class bStackView(QtWidgets.QGraphicsView):
 							# exclude
 							xEdgeLines.append(np.nan)
 							yEdgeLines.append(np.nan)
-							dEdgeLines.append(np.nan)
+							# dEdgeLines.append(np.nan)
 							edgeIdxLines.append(np.nan)
 							slabIdxLines.append(np.nan)
 							nodeIdxLines.append(np.nan)
+					# edges need to be separated by nan so we don't get a line b/w sequential edges
+					# this makes it hard to 'vectorize' this function, (x,y,z) is not in sync with displayed x/y/z
 					xEdgeLines.append(np.nan)
 					yEdgeLines.append(np.nan)
-					dEdgeLines.append(np.nan)
+					# dEdgeLines.append(np.nan)
 					edgeIdxLines.append(np.nan)
 					slabIdxLines.append(np.nan)
 					nodeIdxLines.append(np.nan)
@@ -1621,7 +1690,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 				xEdgeLines = []
 				yEdgeLines = []
-				dEdgeLines = []
+				# dEdgeLines = []
 				edgeIdxLines = []
 				slabIdxLines = []
 				nodeIdxLines = []
@@ -1635,7 +1704,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 				'xEdgeLines': xEdgeLines,
 				'yEdgeLines': yEdgeLines,
-				'dEdgeLines': dEdgeLines,
+				#'dEdgeLines': dEdgeLines,
 				'edgeIdxLines': edgeIdxLines,
 				'slabIdxLines': slabIdxLines,
 				'nodeIdxLines': nodeIdxLines,
@@ -1684,8 +1753,11 @@ class bStackView(QtWidgets.QGraphicsView):
 			'''
 
 			#print('slice', i, '_preComputeAllMasks() len(x):', len(xMasked), 'len(y)', len(yMasked))
+		'''
 		stopSeconds= time.time()
 		print('   took', round(stopSeconds-startSeconds,2), 'seconds')
+		'''
+		myTimer.elapsed()
 
 	# todo: remove recursion
 	def setSlice(self, index=None):
