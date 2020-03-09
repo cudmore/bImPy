@@ -6,7 +6,7 @@ class bTimer:
 	def __init__(self, name=None):
 		self.startTime = time.time()
 		self.name = name
-		
+
 	def elapsed(self):
 		now = time.time()
 		if self.name is not None:

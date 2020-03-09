@@ -49,8 +49,9 @@ class bVascularTracing:
 
 		loaded_h5f = self.load()
 		if not loaded_h5f:
-			#loadedVesselucida = self.loadVesselucida_xml()
-			loadedDeepVess = self.loadDeepVess()
+			loadedVesselucida = self.loadVesselucida_xml()
+			if not loadedVesselucida:
+				loadedDeepVess = self.loadDeepVess()
 
 
 	def _initTracing(self):
@@ -649,7 +650,7 @@ class bVascularTracing:
 			yUmPerPixel = 0.4971845
 			zUmPerPixel = 0.4
 
-		elif self.path.endswith('20191017__0001.tif') or self.path.endswith('20191017__0001_8b_z.tif'):
+		elif self.path.endswith('20191017__0001.tif') or self.path.endswith('20191017__0001_z.tif') or self.path.endswith('20191017__0001_8b_z.tif'):
 			#print('!!! scaling tiff file 20191017__0001.tif')
 			# assuming xml file has point in um/pixel, this will roughly convert back to unitless voxel
 			xUmPerPixel = 0.4971847 #elif
@@ -673,11 +674,13 @@ class bVascularTracing:
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.4
 
+		'''
 		elif self.path.endswith('PV_Crop_Reslice.tif'):
 			xUmPerPixel = 0.15
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.5
-
+		'''
+		
 		y = abs(y)
 		z += zOffset
 		#z += 1 # does vesselucida indices start at 0 or 1???
@@ -709,7 +712,7 @@ class bVascularTracing:
 		xmlFilePath += '.xml'
 		if not os.path.isfile(xmlFilePath):
 			#print('bSlabList.loadVesselucida_xml() warning, did not find', xmlFilePath)
-			return
+			return False
 
 		print('loadVesselucida_xml() file', xmlFilePath)
 
@@ -915,6 +918,8 @@ class bVascularTracing:
 		#self.makeVolumeMask()
 
 		self.colorize()
+
+		return True
 
 	def loadDeepVess(self):
 		print('loadDeepVess()')
@@ -1714,10 +1719,12 @@ class bVascularTracing:
 		distanceMatrix = np.ndarray((nNodes,nNodes))
 		distanceMatrix[:] = np.nan
 		for i, iDict in enumerate(self.nodeDictList):
+			iDict = self.getNode(i)
 			x1 = iDict['x']
 			y1 = iDict['y']
 			z1 = iDict['z']
 			for j, jDict in enumerate(self.nodeDictList):
+				jDict = self.getNode(j)
 				if i==j: continue
 				if not np.isnan(distanceMatrix[j,i]): continue
 				x2 = jDict['x']
@@ -1731,15 +1738,25 @@ class bVascularTracing:
 					theDict['z'] = z1
 					theDict['node1'] = i
 					theDict['nEdges1'] = iDict['nEdges']
+					if iDict['nEdges'] == 1:
+						theDict['edgeList'] = iDict['edgeList']
+						edgeDict = self.getEdge(iDict['edgeList'][0])
+						theDict['preNode'] = edgeDict['preNode']
+						theDict['postNode'] = edgeDict['postNode']
+						theDict['Len 2D'] = edgeDict['Len 2D']
+					else:
+						theDict['edgeList'] = ''
+						theDict['preNode'] = ''
+						theDict['postNode'] = ''
+						theDict['Len 2D'] = ''
 					theDict['node2'] = j
 					theDict['nEdges2'] = jDict['nEdges']
 					theDict['dist'] = round(dist,2)
 					#print('    nodes close:', theDict)
 					theDictList.append(theDict)
 					numRows += 1
-		print('    found:', numRows)
 		self.editDictList = theDictList
-		timer.elapsed()
+		print('    found:', numRows, timer.elapsed())
 		return theDictList
 
 	def _getSavePath(self):

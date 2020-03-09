@@ -131,12 +131,16 @@ class bNapari:
 			for idx in range(len(x)):
 				#if foundNan:
 				if nodeIdx[idx]>=0:
-					nodeSize = dCopy[idx] # might not be good idea
+					# dynamic size
+					#nodeSize = dCopy[idx] # might not be good idea
+					# fixed size
+					nodeSize = 3
 					size.append(nodeSize)
 					face_color.append('red')
 					foundNan = False
 				else:
-					slabSize = dCopy[idx] # might not be good idea
+					#slabSize = dCopy[idx] # might not be good idea
+					slabSize = 2
 					size.append(slabSize)
 					face_color.append('cyan')
 				'''
@@ -234,6 +238,7 @@ class bNapari:
 		self.myStackWidget.nodeTable2.selectRowSignal.connect(self.slot_selectNode) # change to slot_selectNode ???
 		self.myStackWidget.edgeTable2.selectRowSignal.connect(self.slot_selectEdge) # change to slot_selectNode ???
 		# listen to edit table, self.
+		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectNode)
 		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectEdge)
 
 	def slot_selectNode(self, myEvent):
@@ -262,6 +267,9 @@ class bNapari:
 		todo: fix it
 		"""
 		#print('bNapari.slot_selectEdge() myEvent:', myEvent)
+
+		if myEvent.eventType == 'select node':
+			return
 
 		isShift = myEvent.isShift
 		edgeIdx = myEvent.edgeIdx
