@@ -1,5 +1,14 @@
 ## Examples
 
+### Notebooks
+
+Example Jupyter notebooks. Requires Jupyter lab to run
+
+```
+pip install jupyterlab
+```
+### Other
+
 **bConvertFolder_Headers.py** : Given the full path to a folder, convert just the headers of all files in the folder.
 
 **bConvertFolder** : Given the full path to a folder, convert all files in the folder to Tiff.

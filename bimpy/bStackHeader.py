@@ -214,7 +214,7 @@ class bStackHeader:
 			imagej_metadata = tif.imagej_metadata
 			if imagej_metadata is not None:
 				try:
-					print('    imagej_metadata["spacing"]:', imagej_metadata['spacing'], type(imagej_metadata['spacing']))
+					#print('    imagej_metadata["spacing"]:', imagej_metadata['spacing'], type(imagej_metadata['spacing']))
 					zVoxel = imagej_metadata['spacing']
 				except (KeyError) as e:
 					print('warning: bStackHeader.loadHeader() did not find spacing')

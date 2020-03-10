@@ -530,14 +530,16 @@ class bVascularTracing:
 		return edgeDict
 
 	def _printStats(self):
+		'''
 		print('file:', self.parentStack)
 		print('   x:', self.x.shape)
 		print('   y:', self.y.shape)
 		print('   z:', self.z.shape)
-		print('   slabs:', self.numSlabs())
-		print('   nodes:', self.numNodes())
-		print('   edges:', self.numEdges())
-		print('   edits:', self.numEdits())
+		'''
+		print(os.path.basename(self.parentStack.path),
+			'slabs:', self.numSlabs(),
+			'nodes:', self.numNodes(),
+			'edges:', self.numEdges())
 
 	def _printGraph(self):
 		self._printNodes()
@@ -579,6 +581,17 @@ class bVascularTracing:
 			len3d = 0
 			#len3d_nathan = 0
 
+			# get straighl line (euclidean distance) between nodes
+			preNode = edge['preNode']
+			postNode = edge['postNode']
+			if preNode is not None and postNode is not None:
+				#print('edgeIdx:', edgeIdx, 'preNode:', preNode, 'postNode:', postNode)
+				x1,y1,z1 = self.getNode_xyz(preNode)
+				x2,y2,z2 = self.getNode_xyz(postNode)
+				euclideanDist = self.euclideanDistance(x1,y1,z1,x2,y2,z2)
+			else:
+				euclideanDist = np.nan
+
 			slabList = edge['slabList']
 			for j, slabIdx in enumerate(slabList):
 
@@ -615,6 +628,9 @@ class bVascularTracing:
 			edge['Len 2D'] = round(len2d,2)
 			edge['Len 3D'] = round(len3d,2)
 			#edge['Len 3D Nathan'] = round(len3d_nathan,2)
+
+			tort = round(len3d / euclideanDist,2)
+			edge['Tort'] = tort
 
 			# diameter, pyqt does not like to display np.float, cast to float()
 			meanDiameter = round(float(np.nanmean(self.d[edge['slabList']])),2)
