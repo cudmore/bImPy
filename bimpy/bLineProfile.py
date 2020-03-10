@@ -3,7 +3,9 @@
 
 import math
 
-from skimage.measure import profile 
+import numpy as np
+
+from skimage.measure import profile
 import scipy
 from scipy.optimize import curve_fit
 
@@ -12,12 +14,12 @@ import bimpy
 class bLineProfile:
 	def __init__(self, stack):
 		self.mySimpleStack = stack
-		
-	
+
+
 	def getLine(self, slabIdx, radius=None):
 		"""
 		given a slab, return coordinates of line
-		
+
 		taken from: bStackView.drawSlab()
 		"""
 		if radius is None:
@@ -60,21 +62,21 @@ class bLineProfile:
 		print('   xSlabPlot:', xSlabPlot)
 		print('   ySlabPlot:', ySlabPlot)
 		'''
-		
+
 		# draw
 		'''
 		self.mySlabLinePlot.set_xdata(ySlabPlot) # flipped
 		self.mySlabLinePlot.set_ydata(xSlabPlot)
 		'''
-		
+
 		lineProfileDict = {
 			'ySlabPlot': ySlabPlot,
 			'xSlabPlot': xSlabPlot,
-			'slice': this_z,
+			'slice': int(this_z),
 		}
 		return lineProfileDict
-	
-	def getIntensity(self, lineProfileDict):
+
+	def getIntensity(self, lineProfileDict, lineWidth, medianFilter):
 		"""
 		taken from bLinePRofile.update()
 		"""
@@ -87,11 +89,11 @@ class bLineProfile:
 
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])
-		intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=self.lineWidth)
+		intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=lineWidth)
 
 		# smooth it
-		if self.medianFilter > 0:
-			intensityProfile = scipy.ndimage.median_filter(intensityProfile, self.medianFilter)
+		if medianFilter > 0:
+			intensityProfile = scipy.ndimage.median_filter(intensityProfile, medianFilter)
 
 		x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
 
@@ -137,11 +139,11 @@ class bLineProfile:
 			'''
 			self.myDiameter.setText('Diameter (pixels): None')
 			'''
-			
+
 	def _fit(self, x, y):
 		"""
 		taken from: bLineProfileWidget._fit()
-		
+
 		x: np.ndarray of x, e.g. pixels or um
 		y: np.ndarray of line intensity profile
 		returns:
@@ -202,19 +204,17 @@ class bLineProfile:
 			raise
 			return np.full((x.shape[0]), np.nan), np.nan, np.nan, np.nan
 			#return None, None, None, None
-	
-	
+
+
 if __name__ == '__main__':
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20200228/blur/20200228__0001_z.tif'
-	
+
 	stack = bimpy.bStack(path=path, loadImages=True)
-	
+
 	lp = bLineProfile(stack)
-	
+
 	lpDict = lp.getLine(198)
-	
-	lp.getIntensity(lpDict)
-	
+
+	lp.getIntensity(lpDict, lineWidth=5, medianFilter=3)
+
 	print('lpDict:', lpDict)
-	
-	
