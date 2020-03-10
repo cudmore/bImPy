@@ -3,6 +3,7 @@
 #from PyQt5 import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
+# these three can remove once bLineProfile.py is done
 from skimage.measure import profile
 import scipy
 from scipy.optimize import curve_fit
