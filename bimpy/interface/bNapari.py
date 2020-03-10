@@ -11,6 +11,9 @@ import bimpy
 #from bimpy.interface import bShapeAnalysisWidget
 import napari
 
+# not sure if we can use Qt inside of napari???
+from qtpy import QtGui, QtCore, QtWidgets
+
 class bNapari:
 	"""
 	discussion on callbacks
@@ -30,37 +33,56 @@ class bNapari:
 
 		filename = os.path.basename(path)
 
-		# todo: this is loading again? just pass data to __init__ if already loaded
+		# load stack if neccessary
 		if theStack is not None:
 			self.mySimpleStack = theStack
 		else:
 			self.mySimpleStack = bimpy.bStack(path)
 
-		#print('   self.mySimpleStack.stack.shape:', self.mySimpleStack.stack.shape)
-
 		self.sliceNum = 0
 
 		#
-		# napari
-		colormap = 'green'
-		scale = (1,1,1) #(1,0.2,0.2)
-		#scale = (0.49718, 0.49718, 0.6)
 		title = filename
 
 		stack = self.mySimpleStack.getStackData(channel=1)
 		stack_nDim = len(stack.shape)
 
 		self.viewer = napari.Viewer(title=title, ndisplay=stack_nDim)
-		#self.viewer = napari.Viewer(title=title)
 
 		#
-		#
-		# replace all the above with this !!!
 		# abb 20191216 removed
 		self.bShapeAnalysisWidget = None
 		#self.bShapeAnalysisWidget = bShapeAnalysisWidget(self.viewer, self.mySimpleStack)
 		#
-		#
+
+		xVoxel = self.mySimpleStack.xVoxel
+		yVoxel = self.mySimpleStack.yVoxel
+		zVoxel = self.mySimpleStack.zVoxel
+
+		colormap = 'gray'
+		if stack_nDim == 2:
+			scale = (xVoxel, yVoxel)
+		elif stack_nDim == 3:
+			scale = (zVoxel, xVoxel, yVoxel) # (z, x, y)
+		else:
+			print('error: napari got stack dim it does not understand')
+
+		self.myNapari = self.viewer.add_image(
+			stack,
+			colormap=colormap,
+			scale=scale)
+
+		dvMask = self.mySimpleStack.getDeepVessMask()
+		if dvMask is not None:
+			self.viewer.add_image(data=dvMask, contrast_limits=[0,1], opacity=0.8, colormap='gray', scale=scale, name='dvMask')
+
+		# this works
+		# make a callback for all mouse moves
+		'''
+		@self.myNapari.mouse_move_callbacks.append
+		def myNapari_mouse_move_callback(viewer, event):
+			self.myMouseMove_Action(viewer, event)
+		'''
 
 		'''
 		@self.viewer.bind_key('u')
@@ -75,55 +97,22 @@ class bNapari:
 				self.bShapeAnalysisWidget.updateStackPolygon(data)
 		'''
 
-		#self.myNapari = napari.view_image(
-		#print('napari stack_nDim:', stack_nDim)
-		if stack_nDim == 2:
-			scale = (1,1)
-		elif stack_nDim == 3:
-			scale = (1,1,1)
-		else:
-			print('error: napari got stack dim it does not understand')
-
-		self.myNapari = self.viewer.add_image(
-			stack,
-			colormap=colormap,
-			scale=scale)
-
-		dvMask = self.mySimpleStack.getDeepVessMask()
-		if dvMask is not None:
-			self.viewer.add_image(data=dvMask, contrast_limits=[0,1], opacity=0.8, colormap='gray', name='dvMask')
-
-		# this works
-		# make a callback for all mouse moves
-		'''
-		@self.myNapari.mouse_move_callbacks.append
-		def myNapari_mouse_move_callback(viewer, event):
-			self.myMouseMove_Action(viewer, event)
-		'''
-
 		# callback for user changing slices
 		self.myNapari.dims.events.axis.connect(self.my_update_slider)
 
 		if self.mySimpleStack.slabList is not None:
-			x = self.mySimpleStack.slabList.x
-			y = self.mySimpleStack.slabList.y
-			z = self.mySimpleStack.slabList.z
-			d = self.mySimpleStack.slabList.d
+			x = self.mySimpleStack.slabList.x * xVoxel
+			y = self.mySimpleStack.slabList.y * yVoxel
+			z = self.mySimpleStack.slabList.z * zVoxel
+			d = self.mySimpleStack.slabList.d * xVoxel # use x
 			nodeIdx = self.mySimpleStack.slabList.nodeIdx
-
-			'''
-			xUmPerPixel = 0.49718
-			yUmPerPixel = 0.49718
-			zUmPerPixel = 0.6
-			'''
-
-			#d /= 300
 
 			# this has nans which I assume will lead to some crashes ...
 			points = np.column_stack((z,x,y,))
 
-			print('warning: bNapari is scaling diameters ... d = d * 0.8')
-			dCopy = d * 0.8
+			scaleFactor = 0.6
+			print('warning: bNapari is scaling diameters by scaleFactor ... d = d *', scaleFactor)
+			dCopy = d * scaleFactor
 
 			size = []
 			face_color = []
@@ -132,23 +121,22 @@ class bNapari:
 				#if foundNan:
 				if nodeIdx[idx]>=0:
 					# dynamic size
-					#nodeSize = dCopy[idx] # might not be good idea
-					# fixed size
-					nodeSize = 3
+					nodeSize = dCopy[idx]
+					#nodeSize = 7 # fixed size
 					size.append(nodeSize)
 					face_color.append('red')
 					foundNan = False
 				else:
-					#slabSize = dCopy[idx] # might not be good idea
-					slabSize = 2
+					slabSize = dCopy[idx]
+					#slabSize = 5 # fixed size
 					size.append(slabSize)
 					face_color.append('cyan')
-				'''
-				if math.isnan(x[dxi]):
+				if math.isnan(x[idx]):
 					foundNan = True
-					#print('point', idx, 'is nan')
-				'''
+					print('point', idx, 'is nan')
+
 			# remember, (size, face_color), etc. Can be a scalar to set one value
+
 			# debug
 			if 0:
 				print('   points:', points.shape)
@@ -156,14 +144,12 @@ class bNapari:
 				print('   len(face_color)', len(face_color))
 
 			self.pointLayer = self.viewer.add_points(points, size=size, face_color=face_color) #, n_dimensional=False)
-			#pointLayer = self.viewer.add_points(points, n_dimensional=True)
 			self.pointLayer.name = 'Vascular Tracing'
 
 			@self.pointLayer.mouse_drag_callbacks.append
 			def shape_mouse_move_callback(layer, event):
 				"""respond to mouse_down """
 				self.myMouseDown_Shape(layer, event)
-
 
 		self.connectNapari() # connect signals and slots
 
@@ -212,16 +198,25 @@ class bNapari:
 			size = np.column_stack((3,3,3,))
 			face_color = 'yellow'
 			tmpData = np.column_stack((np.nan,np.nan,np.nan,)) #todo: fix this
-			self.selectionLayer = self.viewer.add_points(tmpData, size=size, face_color=face_color, n_dimensional=False)
-			self.selectionLayer.name = 'Edge Selection'
-			#print('nodeLayer.data:', nodeLayer.data)
+			self.edgeSelectionLayer = self.viewer.add_points(tmpData, size=size, face_color=face_color, n_dimensional=False)
+			self.edgeSelectionLayer.name = 'Edge Selection'
+			#
+			flashSize = 10
+			flashColor = 'magenta'
+			self.edgeSelectionLayerFlash = self.viewer.add_points(tmpData, size=flashSize, face_color=flashColor, n_dimensional=False)
+			self.edgeSelectionLayerFlash.name = 'Flash Selection'
 
 			# node selection
-			size = np.column_stack((6,6,6,))
+			selectionSize = 6 #np.column_stack((6,6,6,))
 			face_color = 'yellow'
-			tmpData = np.column_stack((0,0,0,)) #todo: fix this
-			self.nodeSelectionLayer = self.viewer.add_points(tmpData, size=size, face_color=face_color, n_dimensional=False)
+			tmpData = np.column_stack((np.nan, np.nan, np.nan,)) #todo: fix this
+			self.nodeSelectionLayer = self.viewer.add_points(tmpData, size=selectionSize, face_color=face_color, n_dimensional=False)
 			self.nodeSelectionLayer.name = 'Node Selection'
+			#
+			flashSize = 15
+			flashColor = 'magenta'
+			self.nodeSelectionLayerFlash = self.viewer.add_points(tmpData, size=flashSize, face_color=flashColor, n_dimensional=False)
+			self.nodeSelectionLayerFlash.name = 'Node Selection'
 
 	def myMouseDown_Shape(self, layer, event):
 		print('bNapari.myMouseDown_Shape()')
@@ -241,6 +236,22 @@ class bNapari:
 		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectNode)
 		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectEdge)
 
+	def flashNode(self, nodeIdx, numberOfFlashes=2):
+		if nodeIdx is None:
+			return
+		if self.mySimpleStack.slabList is None:
+			return
+		#
+		if numberOfFlashes>0:
+			x, y, z = self.mySimpleStack.slabList.getNode_xyz_scaled(nodeIdx)
+			nodeSelection = np.column_stack((z,x,y,)) # (z, x, y)
+			self.nodeSelectionLayerFlash.data = nodeSelection
+			#
+			QtCore.QTimer.singleShot(20, lambda:self.flashNode(nodeIdx, numberOfFlashes-1))
+		else:
+			nodeSelection = np.column_stack((np.nan,np.nan,np.nan,)) # (z, x, y)
+			self.nodeSelectionLayerFlash.data = nodeSelection
+
 	def slot_selectNode(self, myEvent):
 		print('bNapari.slot_selectNode() myEvent:', myEvent)
 		nodeIdx = myEvent.nodeIdx
@@ -253,18 +264,37 @@ class bNapari:
 			y = self.mySimpleStack.slabList.y[nodeIdx]
 			z = self.mySimpleStack.slabList.z[nodeIdx]
 			'''
-			x, y, z, = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
+			x, y, z, = self.mySimpleStack.slabList.getNode_xyz_scaled(nodeIdx)
 
 			#d = self.mySimpleStack.slabList.d[slabIdx]
 			nodeSelection = np.column_stack((z,x,y,)) # (z, x, y)
 			print('   nodeSelection:', nodeSelection)
 
+			QtCore.QTimer.singleShot(10, lambda:self.flashNode(nodeIdx, 2))
+
+		# select (can be nan)
 		self.nodeSelectionLayer.data = nodeSelection
+
+	def flashEdgeSelection(self, numberOfFlashes=2):
+		"""
+		flash an existing edge selection
+		slightly different, called after and uses data in self.edgeSelectionLayer.data
+		Should be called flashEdgeSelection
+		"""
+		if self.mySimpleStack.slabList is None:
+			return
+		#
+		if numberOfFlashes>0:
+			self.nodeSelectionLayerFlash.data = self.edgeSelectionLayer.data
+			#
+			QtCore.QTimer.singleShot(20, lambda:self.flashEdgeSelection(numberOfFlashes-1))
+		else:
+			emptyEdgeSelection = np.column_stack((np.nan,np.nan,np.nan,)) # (z, x, y)
+			self.nodeSelectionLayerFlash.data = emptyEdgeSelection
 
 	def slot_selectEdge(self, myEvent):
 		"""
-		20200130, this is super messy ...
-		todo: fix it
+		todo: this is super messy ... fix it
 		"""
 		#print('bNapari.slot_selectEdge() myEvent:', myEvent)
 
@@ -275,37 +305,37 @@ class bNapari:
 		edgeIdx = myEvent.edgeIdx
 		edgeList = myEvent.edgeList
 
-		print('bNapari.slot_selectEdge() edgeIdx:', edgeIdx)
+		print('bNapari.slot_selectEdge() edgeIdx:', edgeIdx, 'edgeList:', edgeList)
 
 		face_color = 'yellow'
 
+		doSelection = False
 		if len(edgeList)>0:
-			#print('   selecting edge list:', edgeList)
 			# select a list of edges
+			doSelection = True
 			slabList = []
 			for edgeIdx in edgeList:
 				slabs = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
 				slabList += slabs
-			x = self.mySimpleStack.slabList.x[slabList] # flipped
-			y = self.mySimpleStack.slabList.y[slabList]
-			z = self.mySimpleStack.slabList.z[slabList]
-			d = self.mySimpleStack.slabList.d[slabList]
-			edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
-			size = d #/ 300
-
-		elif edgeIdx is None:
-			edgeSelection = np.column_stack((np.nan,np.nan,np.nan,))
-		else:
-			#print('   selecting single edge:', myEvent.edgeIdx)
+		elif edgeIdx >= 0:
+			# select a single edge
+			doSelection = True
 			slabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
-			x = self.mySimpleStack.slabList.x[slabList]
-			y = self.mySimpleStack.slabList.y[slabList]
-			z = self.mySimpleStack.slabList.z[slabList]
-			d = self.mySimpleStack.slabList.d[slabList]
-			edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
-			size = d #/ 300
+		if edgeIdx is None:
+			doSelection = False
 
-		self.selectionLayer.data = edgeSelection
+		if doSelection:
+			x = self.mySimpleStack.slabList.x[slabList] * self.mySimpleStack.xVoxel
+			y = self.mySimpleStack.slabList.y[slabList] * self.mySimpleStack.yVoxel
+			z = self.mySimpleStack.slabList.z[slabList] * self.mySimpleStack.zVoxel
+			d = self.mySimpleStack.slabList.d[slabList] * self.mySimpleStack.xVoxel # using x
+			edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
+		else:
+			edgeSelection = np.column_stack((np.nan,np.nan,np.nan,))
+
+		size = d #/ 300
+
+		self.edgeSelectionLayer.data = edgeSelection
 
 		if edgeIdx is None:
 			pass
@@ -348,10 +378,10 @@ class bNapari:
 					slabs = self.mySimpleStack.slabList.getEdgeSlabList(tmpEdgeIdx)
 					slabList += slabs
 
-				x = self.mySimpleStack.slabList.x[slabList] # flipped
-				y = self.mySimpleStack.slabList.y[slabList]
-				z = self.mySimpleStack.slabList.z[slabList]
-				d = self.mySimpleStack.slabList.d[slabList]
+				x = self.mySimpleStack.slabList.x[slabList] * self.mySimpleStack.xVoxel
+				y = self.mySimpleStack.slabList.y[slabList] * self.mySimpleStack.yVoxel
+				z = self.mySimpleStack.slabList.z[slabList] * self.mySimpleStack.zVoxel
+				d = self.mySimpleStack.slabList.d[slabList] * self.mySimpleStack.xVoxel # using x
 
 				edgeSelection = np.column_stack((z,x,y,)) # (z, x, y)
 				size = d #/ 300
@@ -359,7 +389,10 @@ class bNapari:
 				#nodeLayer = self.viewer.add_points(self.edgeSelection, size=size, face_color=face_color, n_dimensional=False)
 				#nodeLayer.name = 'Edge Selection'
 				#print('2) edgeSelection:', edgeSelection)
-				self.selectionLayer.data = edgeSelection
+				self.edgeSelectionLayer.data = edgeSelection
+
+		# slighter different, flash once we have made the edge selection
+		QtCore.QTimer.singleShot(10, lambda:self.flashEdgeSelection(2))
 
 	# this works
 	def myMouseMove_Shape(self, layer, event):

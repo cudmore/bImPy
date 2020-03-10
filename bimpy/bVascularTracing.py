@@ -111,6 +111,12 @@ class bVascularTracing:
 		z = self.nodeDictList[nodeIdx]['z']
 		return (x, y, z)
 
+	def getNode_xyz_scaled(self, nodeIdx):
+		x = self.nodeDictList[nodeIdx]['x'] * self.parentStack.xVoxel
+		y = self.nodeDictList[nodeIdx]['y'] * self.parentStack.yVoxel
+		z = self.nodeDictList[nodeIdx]['z'] * self.parentStack.zVoxel
+		return (x, y, z)
+
 	def getSlab_xyz(self, slabIdx):
 		x = self.x[slabIdx]
 		y = self.y[slabIdx]
@@ -674,13 +680,29 @@ class bVascularTracing:
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.4
 
+		elif self.path.endswith('20200127_gel_0011_z.tif'):
+			xUmPerPixel = 0.3977476
+			yUmPerPixel = 0.3977476
+			zUmPerPixel = 0.51
+
+		'''
+		elif self.path.endswith('20200228__0001_z.tif'):
+			xUmPerPixel = 0.3107403
+			yUmPerPixel = 0.3107403
+			zUmPerPixel = 0.5
+		'''
+
 		'''
 		elif self.path.endswith('PV_Crop_Reslice.tif'):
 			xUmPerPixel = 0.15
 			yUmPerPixel = 0.15
 			zUmPerPixel = 0.5
 		'''
-		
+
+		xUmPerPixel = self.parentStack.xVoxel
+		yUmPerPixel = self.parentStack.yVoxel
+		zUmPerPixel = self.parentStack.zVoxel
+
 		y = abs(y)
 		z += zOffset
 		#z += 1 # does vesselucida indices start at 0 or 1???

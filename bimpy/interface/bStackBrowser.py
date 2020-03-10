@@ -41,6 +41,8 @@ class bFileTree(QtWidgets.QTreeWidget):
 
 		if event.key() in [QtCore.Qt.Key_I]:
 			print('=== user hit key "i"')
+		elif isShift and event.key() in [QtCore.Qt.Key_P]:
+			print('=== user hit key "P" ... scale the image')
 		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			print('=== user hit key "d", close selected stack')
 			selRow = self.currentIndex().row()
@@ -317,6 +319,8 @@ if __name__ == '__main__':
 	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/octa/PV_Crop_Reslice.tif'
 
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/20191017__0001_z.tif'
+
+	path = ''
 
 	try:
 		mjb = bimpy.bJavaBridge()
