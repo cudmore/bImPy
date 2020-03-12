@@ -2,11 +2,19 @@
 
 ### Notebooks
 
-Example Jupyter notebooks. Requires Jupyter lab to run
+Jupyter notebooks requires Jupyter lab
 
 ```
 pip install jupyterlab
 ```
+
+To run the Jupyter notebookes
+
+```
+cd notebooks
+jupyter notebook
+```
+
 ### Other
 
 **bConvertFolder_Headers.py** : Given the full path to a folder, convert just the headers of all files in the folder.

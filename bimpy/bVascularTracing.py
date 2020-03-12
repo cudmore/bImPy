@@ -18,6 +18,8 @@ import numpy as np
 import h5py
 import ast # to convert dict to string to save in h5py
 
+import networkx as nx # see makeGraph
+
 import bimpy
 
 class bVascularTracing:
@@ -31,27 +33,18 @@ class bVascularTracing:
 		self._dvMask = None # created in loadDeepVess
 		self._initTracing()
 
-		'''
-		self.nodeDictList = []
-		self.edgeDictList = []
-		self.editDictList = [] # created in self.joinEdge() for vesselucida
-
-		self.x = np.empty((0,))
-		self.y = np.empty((0,))
-		self.z = np.empty((0,))
-		self.d = np.empty(0)
-		self.edgeIdx = np.empty(0, dtype=np.float) # will be nan for nodes
-		self.nodeIdx = np.empty(0, dtype=np.float) # will be nan for slabs
-		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
-
-		self._volumeMask = None
-		'''
-
+		self.hasFile = {'h5f':False, 'vesselucida':False, 'deepvess':False}
 		loaded_h5f = self.load()
-		if not loaded_h5f:
+		if loaded_h5f:
+			self.hasFile['h5f'] = True
+		else:
 			loadedVesselucida = self.loadVesselucida_xml()
-			if not loadedVesselucida:
+			if loadedVesselucida:
+				self.hasFile['vesselucida'] = True
+			else:
 				loadedDeepVess = self.loadDeepVess()
+				if loadedDeepVess:
+					self.hasFile['deepvess'] = True
 
 
 	def _initTracing(self):
@@ -63,6 +56,7 @@ class bVascularTracing:
 		self.y = np.empty((0,))
 		self.z = np.empty((0,))
 		self.d = np.empty(0)
+		self.d2 = np.empty(0)
 		self.int = np.empty(0)
 		self.edgeIdx = np.empty(0, dtype=np.float) # will be nan for nodes
 		self.nodeIdx = np.empty(0, dtype=np.float) # will be nan for slabs
@@ -423,6 +417,7 @@ class bVascularTracing:
 		self.y = np.append(self.y, y)
 		self.z = np.append(self.z, z)
 		self.d = np.append(self.d, d)
+		self.d2 = np.append(self.d2, np.nan) # will be filled in by bLineIntensity profile
 		self.int = np.append(self.int, np.nan)
 		self.edgeIdx = np.append(self.edgeIdx, edgeIdx)
 		self.nodeIdx = np.append(self.nodeIdx, nodeIdx)
@@ -458,6 +453,7 @@ class bVascularTracing:
 		self.y = np.delete(self.y, slabIdx)
 		self.z = np.delete(self.z, slabIdx)
 		self.d = np.delete(self.d, slabIdx)
+		self.d2 = np.delete(self.d2, slabIdx)
 		self.edgeIdx = np.delete(self.edgeIdx, slabIdx)
 		self.nodeIdx = np.delete(self.nodeIdx, slabIdx)
 		#self.slabIdx = np.delete(self.slabIdx, slabIdx)
@@ -516,6 +512,7 @@ class bVascularTracing:
 			'idx': None, # used by stack widget table
 			'n': 0, # umber of slabs
 			'Diam': None,
+			'Diam2': None, # my line intensity analysis
 			'Len 3D': None,
 			'Len 2D': None,
 			'Tort': None,
@@ -553,7 +550,7 @@ class bVascularTracing:
 			self._printSlab(idx)
 
 	def _printSlab(self, idx):
-		print('   x:', self.x[idx], 'y:', self.y[idx], 'z:', self.z[idx], 'd:', self.d[idx], 'nodeIdx:', self.nodeIdx[idx], 'edgeIdx:', self.edgeIdx[idx])
+		print('   x:', self.x[idx], 'y:', self.y[idx], 'z:', self.z[idx], 'd:', self.d[idx], 'd2:', self.d2[idx], 'nodeIdx:', self.nodeIdx[idx], 'edgeIdx:', self.edgeIdx[idx])
 
 	def _printNodes(self):
 		print('   nodeDictList:')
@@ -565,86 +562,6 @@ class bVascularTracing:
 		for edgeIdx, edge in enumerate(self.edgeDictList):
 			edge = self.getEdge(edgeIdx)
 			print('      ', edge, 'slabList:', self.getEdgeSlabList(edgeIdx))
-
-	def _analyze(self):
-		"""
-		Fill in derived values in self.edgeDictList
-		"""
-
-		'''
-		todo: bSlabList.analyze() needs to step through each edge, not slabs !!!
-		'''
-
-		for edgeIdx, edge in enumerate(self.edgeDictList):
-			edge = self.getEdge(edgeIdx) # todo: fix this, redundant self.getEdge() does calculations !
-			len2d = 0
-			len3d = 0
-			#len3d_nathan = 0
-
-			# get straighl line (euclidean distance) between nodes
-			preNode = edge['preNode']
-			postNode = edge['postNode']
-			if preNode is not None and postNode is not None:
-				#print('edgeIdx:', edgeIdx, 'preNode:', preNode, 'postNode:', postNode)
-				x1,y1,z1 = self.getNode_xyz(preNode)
-				x2,y2,z2 = self.getNode_xyz(postNode)
-				euclideanDist = self.euclideanDistance(x1,y1,z1,x2,y2,z2)
-			else:
-				euclideanDist = np.nan
-
-			slabList = edge['slabList']
-			for j, slabIdx in enumerate(slabList):
-
-				x1, y1, z1 = self.getSlab_xyz(slabIdx)
-				'''
-				x1 = self.x[slabIdx]
-				y1 = self.y[slabIdx]
-				z1 = self.z[slabIdx]
-				'''
-
-				#print('pointIdx:', pointIdx)
-				'''
-				orig_x = self.orig_x[slabIdx]
-				orig_y = self.orig_y[slabIdx]
-				orig_z = self.orig_z[slabIdx]
-				'''
-
-				if j>0:
-					len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
-					len2d = len2d + self.euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
-					#len3d_nathan = len3d_nathan + self.euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
-
-				# increment
-				prev_x1 = x1
-				prev_y1 = y1
-				prev_z1 = z1
-
-				'''
-				prev_orig_x1 = orig_x
-				prev_orig_y1 = orig_y
-				prev_orig_z1 = orig_z
-				'''
-
-			edge['Len 2D'] = round(len2d,2)
-			edge['Len 3D'] = round(len3d,2)
-			#edge['Len 3D Nathan'] = round(len3d_nathan,2)
-
-			tort = round(len3d / euclideanDist,2)
-			edge['Tort'] = tort
-
-			# diameter, pyqt does not like to display np.float, cast to float()
-			meanDiameter = round(float(np.nanmean(self.d[edge['slabList']])),2)
-			edge['Diam'] = meanDiameter
-
-	def euclideanDistance2(self, src, dst):
-		# src and dst are 3 element tuples (x,y,z)
-		return self.euclideanDistance(src[0], src[1], src[2], dst[0], dst[1], dst[2])
-
-	def euclideanDistance(self, x1, y1, z1, x2, y2, z2):
-		if z1 is None and z2 is None:
-			return math.sqrt((x2-x1)**2 + (y2-y1)**2)
-		else:
-			return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
 	def _massage_xyz(self, x, y, z, diam):
 		"""
@@ -898,48 +815,6 @@ class bVascularTracing:
 		self.id = np.full(nPoints, 0) #Return a new array of given shape and type, filled with fill_value.
 		'''
 
-		#
-		# create dead ends
-		'''
-		self.deadEndx = []
-		self.deadEndy = []
-		self.deadEndz = []
-		for edgeIdx, edgeDict in enumerate(self.edgeDictList):
-			edgeDict = self.getEdge(edgeIdx)
-			if edgeDict['preNode'] is None:
-				firstSlabIdx = edgeDict['slabList'][0]
-				tmpx = self.x[firstSlabIdx]
-				tmpy = self.y[firstSlabIdx]
-				tmpz = self.z[firstSlabIdx]
-				self.deadEndx.append(tmpx)
-				self.deadEndy.append(tmpy)
-				self.deadEndz.append(tmpz)
-			if edgeDict['postNode'] is None:
-				lastSlabIdx = edgeDict['slabList'][-1]
-				tmpx = self.x[lastSlabIdx]
-				tmpy = self.y[lastSlabIdx]
-				tmpz = self.z[lastSlabIdx]
-				self.deadEndx.append(tmpx)
-				self.deadEndy.append(tmpy)
-				self.deadEndz.append(tmpz)
-
-		# convert list of dead ends to nump array
-		self.deadEndx = np.array(self.deadEndx, dtype='float32')
-		self.deadEndy = np.array(self.deadEndy, dtype='float32')
-		self.deadEndz = np.array(self.deadEndz, dtype='float32')
-		'''
-
-		# debug min/max of x/y/z
-		if 0:
-			print('   x min/max', np.nanmin(self.x), np.nanmax(self.x))
-			print('   y min/max', np.nanmin(self.y), np.nanmax(self.y))
-			print('   z min/max', np.nanmin(self.z), np.nanmax(self.z))
-
-			print('taking abs value of z')
-			self.z = np.absolute(self.z)
-			self.deadEndz = np.absolute(self.deadEndz)
-			self.nodez = np.absolute(self.nodez)
-
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
 
 		#
@@ -1130,6 +1005,9 @@ class bVascularTracing:
 		return True
 
 	def makeVolumeMask(self):
+		"""
+		todo: could use my diameter ['d2']
+		"""
 		# to embed a small volume in a bigger volume, see:
 		# https://stackoverflow.com/questions/7115437/how-to-embed-a-small-numpy-array-into-a-predefined-block-of-a-large-numpy-arra
 		# for sphere, see:
@@ -1190,6 +1068,7 @@ class bVascularTracing:
 				y = int(round(self.y[slab]))
 				z = int(round(self.z[slab]))
 				diam = self.d[slab]
+				# todo: could use self.d2
 
 				diamInt = int(round(diam))
 
@@ -1745,6 +1624,150 @@ class bVascularTracing:
 			else:
 				edge['color'] = list(potentialColors)[0] # first available color
 
+	def _analyze(self):
+		"""
+		Fill in derived values in self.edgeDictList
+		"""
+
+		'''
+		todo: bSlabList.analyze() needs to step through each edge, not slabs !!!
+		'''
+
+		for edgeIdx, edge in enumerate(self.edgeDictList):
+			edge = self.getEdge(edgeIdx) # todo: fix this, redundant self.getEdge() does calculations !
+			len2d = 0
+			len3d = 0
+			#len3d_nathan = 0
+
+			# get straighl line (euclidean distance) between nodes
+			preNode = edge['preNode']
+			postNode = edge['postNode']
+			if preNode is not None and postNode is not None:
+				#print('edgeIdx:', edgeIdx, 'preNode:', preNode, 'postNode:', postNode)
+				x1,y1,z1 = self.getNode_xyz(preNode)
+				x2,y2,z2 = self.getNode_xyz(postNode)
+				euclideanDist = self.euclideanDistance(x1,y1,z1,x2,y2,z2)
+			else:
+				euclideanDist = np.nan
+
+			slabList = edge['slabList']
+			for j, slabIdx in enumerate(slabList):
+
+				x1, y1, z1 = self.getSlab_xyz(slabIdx)
+				'''
+				x1 = self.x[slabIdx]
+				y1 = self.y[slabIdx]
+				z1 = self.z[slabIdx]
+				'''
+
+				#print('pointIdx:', pointIdx)
+				'''
+				orig_x = self.orig_x[slabIdx]
+				orig_y = self.orig_y[slabIdx]
+				orig_z = self.orig_z[slabIdx]
+				'''
+
+				if j>0:
+					len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
+					len2d = len2d + self.euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
+					#len3d_nathan = len3d_nathan + self.euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
+
+				# increment
+				prev_x1 = x1
+				prev_y1 = y1
+				prev_z1 = z1
+
+				'''
+				prev_orig_x1 = orig_x
+				prev_orig_y1 = orig_y
+				prev_orig_z1 = orig_z
+				'''
+
+			edge['Len 2D'] = round(len2d,2)
+			edge['Len 3D'] = round(len3d,2)
+			#edge['Len 3D Nathan'] = round(len3d_nathan,2)
+
+			if euclideanDist == 0:
+				print('error: bVascularTracing._analyze() euclideanDist==0 for edgeIdx:', edgeIdx)
+				tort = np.nan
+			else:
+				tort = round(len3d / euclideanDist,2)
+			edge['Tort'] = tort
+
+			# diameter, pyqt does not like to display np.float, cast to float()
+			# vesselucida
+			meanDiameter = round(float(np.nanmean(self.d[edge['slabList']])),2)
+			edge['Diam'] = meanDiameter
+			# bob
+			# self.d2 might all be nan
+			possibleNaN = np.nanmean(self.d2[edge['slabList']])
+			if np.isnan(possibleNaN):
+				meanDiameter = np.nan
+			else:
+				meanDiameter = round(float(possibleNaN),2)
+			edge['Diam2'] = meanDiameter
+			#print(edgeIdx, meanDiameter)
+
+	def euclideanDistance2(self, src, dst):
+		# src and dst are 3 element tuples (x,y,z)
+		return self.euclideanDistance(src[0], src[1], src[2], dst[0], dst[1], dst[2])
+
+	def euclideanDistance(self, x1, y1, z1, x2, y2, z2):
+		if z1 is None and z2 is None:
+			return math.sqrt((x2-x1)**2 + (y2-y1)**2)
+		else:
+			return math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+
+	def analyseSlabIntensity(self, slabIdx=None, edgeIdx=None, allEdges=None):
+		"""
+		todo: add login to analyze one slab (slabIdx) or an edge (edgeIdx)
+		todo: make edgeIdx a list of edge idx
+		"""
+
+		radius = 20
+		lineWidth=5
+		medianFilter = 3
+
+		lp = bimpy.bLineProfile(self.parentStack)
+
+		startTime = bimpy.util.bTimer()
+		nEdges = self.numEdges()
+		print('analyseSlabIntensity() analyzing intensity of all slabs across edges:', nEdges, '...')
+		meanDiamList = [] # mean diam per segment based on Vesselucida
+		meanDiamList2 = [] # my intensity calculation
+		lengthList = []
+		tortList = []
+		numAnalyzed = 0
+		for edgeIdx in range(nEdges):
+			edgeDict = self.getEdge(edgeIdx)
+
+			thisDiamList = []
+
+			for slabIdx in edgeDict['slabList']:
+				lpDict = lp.getLine(slabIdx, radius=radius) # default is radius=30
+
+				if lpDict is not None:
+					retDict = lp.getIntensity(lpDict, lineWidth=lineWidth, medianFilter=medianFilter)
+					if retDict is not None:
+						thisDiamList.append(retDict['diam']) # bImPy diameter
+						self.d2[slabIdx] = retDict['diam']
+						numAnalyzed += 1
+					else:
+						self.d2[slabIdx] = np.nan
+				else:
+					self.d2[slabIdx] = np.nan
+
+			if len(thisDiamList) > 0:
+				thisDiamMean = np.nanmean(thisDiamList)
+			else:
+				thisDiamMean = np.nan
+			meanDiamList2.append(thisDiamMean)
+			meanDiamList.append(edgeDict['Diam']) # vessellucida
+			lengthList.append(edgeDict['Len 3D'])
+			tortList.append(edgeDict['Tort'])
+
+		print('   bImpy number of slabs analyzed:', numAnalyzed, startTime.elapsed())
+
 	def search(self, type=None):
 		print('search()')
 		#
@@ -1843,7 +1866,7 @@ class bVascularTracing:
 				edgeGroup.attrs['edgeDict'] = edgeDict_json
 
 			# slabs are in a dataset
-			slabData = np.column_stack((self.x, self.y, self.z, self.d, self.int, self.edgeIdx, self.nodeIdx,))
+			slabData = np.column_stack((self.x, self.y, self.z, self.d, self.d2, self.int, self.edgeIdx, self.nodeIdx,))
 			#print('slabData:', slabData.shape)
 			f.create_dataset('slabs', data=slabData)
 
@@ -1901,9 +1924,10 @@ class bVascularTracing:
 					self.y = b[:,1]
 					self.z = b[:,2]
 					self.d = b[:,3]
-					self.int = b[:,4]
-					self.edgeIdx = b[:,5]
-					self.nodeIdx = b[:,6]
+					self.d2 = b[:,4]
+					self.int = b[:,5]
+					self.edgeIdx = b[:,6]
+					self.nodeIdx = b[:,7]
 				'''
 				elif name == 'masks':
 					c = f['masks']
@@ -1923,11 +1947,74 @@ class bVascularTracing:
 
 		#return maskDictList
 		return h5FilePath
+	def makeGraph(self):
+		"""
+		Make a networkx graph
+		"""
+
+		numEdges = 0
+		self.G = nx.Graph()
+		for idx, edgeDict in enumerate(self.edgeDictList):
+			edgeDict = self.getEdge(idx) # todo: fix this
+			diam = edgeDict['Diam']
+			preNode = edgeDict['preNode']
+			postNode = edgeDict['postNode']
+			if preNode is not None and postNode is not None:
+				# add adge
+				#print('    adding edge between nodes:', preNode, postNode)
+				self.G.add_edge(preNode, postNode, diam=diam) # this adds a 'diam' key to the edge attributes
+				numEdges += 1
+			else:
+				# error, why do my edges not have pre/post nodes?
+				# this is a bigger problem
+				pass
+				#print('        error: edge idx:', idx, 'preNode:', preNode, 'postNode:', postNode)
+		print('bVascularTracing.makeGraph() created self.G with numEdges:', numEdges)
 
 if __name__ == '__main__':
-	path = ''
-	bvt = bVascularTracing(path)
+	path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
 
+	stack = bimpy.bStack(path=path)
+
+	stack.slabList.makeGraph()
+
+	# not implemented for undirected type
+	'''
+	simpleCycles = nx.simple_cycles(stack.slabList.G)
+	print('simpleCycles:', simpleCycles)
+	'''
+	
+	import matplotlib.pyplot as plt
+	options = {
+		'node_color': 'black',
+		'node_size': 50, # 100
+		'width': 3,
+	}
+	plt.subplot(111)
+	#nx.draw(stack.slabList.G, with_labels=True) #, font_weight='bold')
+	nx.draw(stack.slabList.G, **options) #, font_weight='bold')
+	plt.show()
+
+	#bvt = bVascularTracing(stack, '')
+
+	'''
+	stack.slabList.analyseSlabIntensity()
+	stack.slabList._analyze()
+	stack.saveAnnotations()
+	'''
+
+	'''
+	meanDiamList = []
+	meanDiamList2 = []
+	nEdges = stack.slabList.numEdges()
+	for edgeIdx in range(nEdges):
+		edgeDict = stack.slabList.getEdge(edgeIdx)
+		meanDiamList.append(edgeDict['Diam']) # vessellucida
+		meanDiamList2.append(edgeDict['Diam2']) # vessellucida
+	print(meanDiamList2)
+	'''
+
+	'''
 	bvt.newNode(100, 200, 50)
 	bvt.newNode(100, 200, 50)
 	bvt.newEdge(0,1)
@@ -1939,3 +2026,4 @@ if __name__ == '__main__':
 	print(bvt.x.shape, type(bvt.x))
 
 	print(bvt.edgeDictList)
+	'''
