@@ -519,6 +519,7 @@ class bVascularTracing:
 			'z': None, # median from z of slab list
 			'preNode': srcNode,
 			'postNode': dstNode,
+			'skelID': None, # used by deepves
 			'Bad': False,
 			'slabList': [], # list of slab indices on this edge
 			'color': None,
@@ -710,6 +711,7 @@ class bVascularTracing:
 						# important so user can scroll through all nodes and
 						# check they have >1 edge !!!
 						nodeDict = self._defaultNodeDict(x=x, y=y, z=z, nodeIdx=masterNodeIdx)
+						nodeDict['skelID'] = i
 						self.nodeDictList.append(nodeDict)
 
 					masterNodeIdx += 1
@@ -750,6 +752,7 @@ class bVascularTracing:
 					# default
 					# fill in srcNode/dstNode below
 					edgeDict = self._defaultEdgeDict(edgeIdx=masterEdgeIdx, srcNode=None, dstNode=None)
+					edgeDict['skelID'] = i
 					edgeDict['z'] = int(round(statistics.median(newZList)))
 
 					self.edgeDictList.append(edgeDict)
@@ -1983,7 +1986,7 @@ if __name__ == '__main__':
 	simpleCycles = nx.simple_cycles(stack.slabList.G)
 	print('simpleCycles:', simpleCycles)
 	'''
-	
+
 	import matplotlib.pyplot as plt
 	options = {
 		'node_color': 'black',

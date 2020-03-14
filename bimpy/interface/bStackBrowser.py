@@ -13,7 +13,7 @@ except (Exception) as e:
 	#print('exception: bStackBrowser failed to import bioformats e:', e)
 	bioformats = None
 
-from bimpy.interface.WaitingSpinner import WaitingSpinner
+#from bimpy.interface.WaitingSpinner import WaitingSpinner
 
 import bimpy
 #from bimpy import bJavaBridge
@@ -46,7 +46,7 @@ class bFileTree(QtWidgets.QTreeWidget):
 		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			print('=== user hit key "d", close selected stack')
 			selRow = self.currentIndex().row()
-			print('selRow:', selRow)
+			print('    bFileTree.keyPressEvent() selRow:', selRow)
 			self.myStackBrowser.closeStack(selRow)
 
 #class bStackBrowser(QtWidgets.QWidget):
@@ -134,9 +134,11 @@ class bStackBrowser(QtWidgets.QMainWindow):
 
 		self.myFileList.pop(selRow)
 
-		self.myStackList[selRow].close()
+		if self.myStackList[selRow] is not None:
+			self.myStackList[selRow].close()
 		self.myStackList.pop(selRow)
 
+		# remove from tree
 		self.myTreeWidget.takeTopLevelItem(selRow)
 
 	def showStackWindow(self, rowIdx):

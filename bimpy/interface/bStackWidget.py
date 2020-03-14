@@ -773,6 +773,19 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.displayStateChangeSignal.emit('num slices', self.mySimpleStack.numImages)
 
+	def handleFitInView(self):
+		# Auto scale a QGraphicsView
+		# http://www.qtcentre.org/threads/42917-Auto-scale-a-QGraphicsView
+		'''
+		self.setTransform(QtGui.QTransform())
+		'''
+		self.ensureVisible ( self.scene().itemsBoundingRect() )
+		self.fitInView( self.scene().itemsBoundingRect(), QtCore.Qt.KeepAspectRatio )
+
+	def resizeEvent(self, event):
+		print('resizeEvent() event:', event)
+		self.handleFitInView()
+
 	#@property
 	def selectedNode(self, nodeIdx=-1):
 		if nodeIdx is not -1:
@@ -1850,7 +1863,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.currentSlice = index # update slice
 
-		self.canvas.draw_idle()
+		#self.canvas.draw_idle()
+		self.canvas.draw()
 
 	def zoomToPoint(self, x, y):
 		# todo convert this to use a % of the total image ?
@@ -1991,6 +2005,8 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			# todo: pass to parent so we can escape out of macOS full screen
 
+		elif event.key() in [QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return]:
+			self.handleFitInView()
 		elif event.key() == QtCore.Qt.Key_R:
 			self._preComputeAllMasks()
 			self.setSlice()
@@ -2067,6 +2083,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		# choose which stack to display
 		elif event.key() == QtCore.Qt.Key_1:
 			#self.displayThisStack = 'ch1'
+			self.displayStateDict['displaySlidingZ'] = False
 			self.displayStateDict['displayThisStack'] = 'ch1'
 			self.setSlice() # just refresh
 		elif event.key() == QtCore.Qt.Key_2:

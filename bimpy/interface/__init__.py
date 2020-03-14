@@ -14,3 +14,4 @@ from .bTableWidget2 import bTableWidget2
 #from .bMenu import bMenu
 
 #from .bTimer import bTimer
+#from .WaitingSpinner import WaitingSpinner
