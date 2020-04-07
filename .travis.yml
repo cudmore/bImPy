@@ -3,12 +3,6 @@ language: python
 python:
   - "3.7"
 
-virtualenv:
-  system_site_packages: true
-
-# see: https://stackoverflow.com/questions/35019662/how-can-i-install-python3-and-pyqt5-on-travis/35029430#35029430
-# command to install dependencies
-
 install:
   - pip install -r requirements.txt
 
