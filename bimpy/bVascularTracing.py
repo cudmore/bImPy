@@ -1,6 +1,6 @@
 # 20200117
 
-import os, sys, time, json
+import os, sys, time, warnings, json
 from collections import OrderedDict
 import statistics # to get median value from a list of numbers
 import math
@@ -19,6 +19,15 @@ import h5py
 import ast # to convert dict to string to save in h5py
 
 import networkx as nx # see makeGraph
+
+# to plot networkx with matplotlib, see self.plotGraph()
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+
+# to plot networkx with plotly, see self.plotGraph2()
+import chart_studio.plotly as py
+import plotly.graph_objs as go
+import plotly.io as pio
 
 import bimpy
 
@@ -45,7 +54,14 @@ class bVascularTracing:
 				loadedDeepVess = self.loadDeepVess()
 				if loadedDeepVess:
 					self.hasFile['deepvess'] = True
-
+			#
+			# todo: combine the next two into one function
+			self.analyzeEdgeDeadEnds() # mark edges coming from Vesseluica that has pre/post None
+			self.fixMissingNodes() # fill in missing pre/post nodes coming from vesselucia
+			self._analyze()
+			self.colorize()
+		#
+		self.makeGraph() # always make the graph
 
 	def _initTracing(self):
 		self.nodeDictList = []
@@ -130,11 +146,37 @@ class bVascularTracing:
 			return int(round(self.edgeIdx[slabIdx]))
 
 	def getEdge(self, edgeIdx):
-		theDict = self.edgeDictList[edgeIdx]
-		theDict['idx'] = edgeIdx
-		theDict['slabList'] = self.getEdgeSlabList(edgeIdx)
-		theDict['nSlab'] = len(theDict['slabList'])
-		return theDict
+		edgeDict = self.edgeDictList[edgeIdx]
+		edgeDict['idx'] = edgeIdx
+		#
+		slabList = self.getEdgeSlabList(edgeIdx)
+		edgeDict['nSlab'] = len(slabList)
+		edgeDict['slabList'] = slabList
+
+		return edgeDict
+
+	def analyzeEdgeDeadEnds(self):
+		"""
+		mark edges coming from Vesseluica that has pre/post None
+		"""
+
+		for edgeIdx, edge in enumerate(self.edgeIter()):
+			foundDeadEnd = False
+			preNode = edge['preNode']
+			if preNode is not None:
+				preNodeNumEdges = self.nodeDictList[preNode]['nEdges']
+				if preNodeNumEdges == 1:
+					foundDeadEnd = True
+			else:
+				foundDeadEnd = True
+			postNode = edge['postNode']
+			if postNode is not None:
+				postNodeNumEdges = self.nodeDictList[postNode]['nEdges']
+				if postNodeNumEdges == 1:
+					foundDeadEnd = True
+			else:
+				foundDeadEnd = True
+			edge['deadEnd'] = foundDeadEnd
 
 	def getEdgeSlabList(self, edgeIdx):
 		"""
@@ -193,7 +235,7 @@ class bVascularTracing:
 
 		self._appendSlab(x=x, y=y, z=z, nodeIdx=newNodeIdx)
 
-		print('   bVascularTracing.newNode() newNodeIdx:', newNodeIdx, 'newSlabIdx:', newSlabIdx)
+		#print('   bVascularTracing.newNode() newNodeIdx:', newNodeIdx, 'newSlabIdx:', newSlabIdx)
 
 		return newNodeIdx
 
@@ -201,6 +243,8 @@ class bVascularTracing:
 		"""
 		src/dst node are w.r.t self.nodeDictList
 		"""
+		#print('bVascularTracing.newEdge() srcNode:', srcNode, type(srcNode), 'dstNode:', dstNode, type(dstNode))
+
 		newEdgeIdx = self.numEdges()
 
 		edgeDict = self._defaultEdgeDict(edgeIdx=newEdgeIdx, srcNode=srcNode, dstNode=dstNode)
@@ -220,7 +264,7 @@ class bVascularTracing:
 		x2,y2,z2 = self.getSlab_xyz(srcSlab)
 		z = (z1+z2)/2
 		z = int(round(z))
-		edgeDict['z'] = 0
+		edgeDict['z'] = z
 
 		# append to edge list
 		self.edgeDictList.append(edgeDict)
@@ -298,7 +342,7 @@ class bVascularTracing:
 		self.nodeDictList.pop(nodeIdx)
 
 		# delete from slabs
-		self._deleteSlab(nodeSlabIdx)
+		self.deleteSlab(nodeSlabIdx)
 
 		#
 		# decriment remaining self.nodeIdx
@@ -384,6 +428,8 @@ class bVascularTracing:
 		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
 		self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
 
+		# decrement 'idx' or edges in self.edgeDictList[]
+
 		#print('after) bVascularTracing.deleteEdge()', edgeIdx)
 		#self._printGraph()
 
@@ -436,13 +482,13 @@ class bVascularTracing:
 
 		for idx, slab in enumerate(slabList):
 			thisSlab = slabListCopy[idx]
-			self._deleteSlab(thisSlab)
+			self.deleteSlab(thisSlab)
 			# decriment all items of slabList > slab
 			slabListCopy = slabListCopy - 1 # this is assuming slabs are monotonically increasing
 
-	def _deleteSlab(self, slabIdx):
+	def deleteSlab(self, slabIdx):
 		'''
-		print('_deleteSlab() slabIdx:', slabIdx, 'shape:', self.x.shape)
+		print('bVascularTracing.deleteSlab() slabIdx:', slabIdx, 'shape:', self.x.shape)
 		self._printSlab(slabIdx)
 		'''
 
@@ -454,6 +500,7 @@ class bVascularTracing:
 		self.z = np.delete(self.z, slabIdx)
 		self.d = np.delete(self.d, slabIdx)
 		self.d2 = np.delete(self.d2, slabIdx)
+		self.int = np.delete(self.int, slabIdx)
 		self.edgeIdx = np.delete(self.edgeIdx, slabIdx)
 		self.nodeIdx = np.delete(self.nodeIdx, slabIdx)
 		#self.slabIdx = np.delete(self.slabIdx, slabIdx)
@@ -494,40 +541,55 @@ class bVascularTracing:
 			#'idx': nodeIdx, # index into self.nodeDictList
 			#'slabIdx': slabIdx, # index into self.x/self.y etc
 			'idx': None,
-			'slabIdx': None,
+			'nEdges': 0,
+			'type': '',
+			'isBad': False,
+			'note': '',
 			'x': round(x,2),
 			'y': round(y,2),
 			'z': round(z,2),
 			#'zSlice': None, #todo remember this when I convert to um/pixel !!!
-			'edgeList': [],
-			'nEdges': 0,
 			'skelID': None, # used by deepves
-			'Bad': False,
-			'Note': '',
+			'slabIdx': slabIdx,
+			'edgeList': [],
 		})
 		return nodeDict
 
 	def _defaultEdgeDict(self, edgeIdx, srcNode, dstNode):
 		edgeDict = OrderedDict({
-			'idx': None, # used by stack widget table
-			'n': 0, # umber of slabs
+			'idx': edgeIdx, # used by stack widget table
+			'type': '',
+			'preNode': srcNode,
+			'postNode': dstNode,
 			'Diam': None,
 			'Diam2': None, # my line intensity analysis
+			'nSlab': 0, # umber of slabs
 			'Len 3D': None,
 			'Len 2D': None,
 			'Tort': None,
+			'isBad': False,
+			'note': '',
 			'z': None, # median from z of slab list
-			'preNode': srcNode,
-			'postNode': dstNode,
+			'deadEnd': None,
 			'skelID': None, # used by deepves
-			'Bad': False,
+			'color': 'cyan',
 			'slabList': [], # list of slab indices on this edge
-			'color': None,
-			'Note': '',
 			})
 		return edgeDict
 
-	def _printStats(self):
+	def setNodeType(self, nodeIdx, newType):
+		self.nodeDictList[nodeIdx]['type'] = newType
+
+	def setEdgeType(self, edgeIdx, newType):
+		self.edgeDictList[edgeIdx]['type'] = newType
+
+	def setNodeIsBad(self, nodeIdx, isBad):
+		self.nodeDictList[nodeIdx]['isBad'] = isBad
+
+	def setEdgeIsBad(self, edgeIdx, isBad):
+		self.edgeDictList[edgeIdx]['isBad'] = isBad
+
+	def _printInfo(self):
 		'''
 		print('file:', self.parentStack)
 		print('   x:', self.x.shape)
@@ -538,6 +600,15 @@ class bVascularTracing:
 			'slabs:', self.numSlabs(),
 			'nodes:', self.numNodes(),
 			'edges:', self.numEdges())
+
+		print('len(x)', len(self.x))
+		print('len(y)', len(self.y))
+		print('len(z)', len(self.z))
+		print('len(d)', len(self.d))
+		print('len(d2)', len(self.d2))
+		print('len(int)', len(self.int))
+		print('len(edgeIdx)', len(self.edgeIdx))
+		print('len(nodeIdx)', len(self.nodeIdx))
 
 	def _printGraph(self):
 		self._printNodes()
@@ -619,23 +690,16 @@ class bVascularTracing:
 			yUmPerPixel = 0.3977476
 			zUmPerPixel = 0.51
 
-		'''
-		elif self.path.endswith('20200228__0001_z.tif'):
-			xUmPerPixel = 0.3107403
-			yUmPerPixel = 0.3107403
-			zUmPerPixel = 0.5
-		'''
-
-		'''
-		elif self.path.endswith('PV_Crop_Reslice.tif'):
-			xUmPerPixel = 0.15
-			yUmPerPixel = 0.15
-			zUmPerPixel = 0.5
-		'''
-
 		xUmPerPixel = self.parentStack.xVoxel
 		yUmPerPixel = self.parentStack.yVoxel
 		zUmPerPixel = self.parentStack.zVoxel
+
+		'''
+		if self.path.endswith('20191017_0001.tif'):
+			xUmPerPixel = 0.4971802
+			yUmPerPixel = 0.4971802
+			zUmPerPixel = 0.4
+		'''
 
 		y = abs(y)
 		z += zOffset
@@ -820,12 +884,14 @@ class bVascularTracing:
 
 		print('   loaded', masterNodeIdx, 'nodes,', masterEdgeIdx, 'edges, and approximately', masterSlabIdx, 'points')
 
-		#
-		self._analyze()
+		# defer this until we fix missing pre/post nodes
+		#self._analyze()
 
 		# this sorta works
+		'''
 		for i in range(1):
 			self.joinEdges()
+		'''
 
 		# this sorta works
 		#self.findCloseSlabs()
@@ -833,7 +899,8 @@ class bVascularTracing:
 		# this works
 		#self.makeVolumeMask()
 
-		self.colorize()
+		# defer this until we fix missing pre/post nodes
+		#self.colorize()
 
 		return True
 
@@ -842,12 +909,12 @@ class bVascularTracing:
 		dvMaskPath, ext = os.path.splitext(self.path)
 		dvMaskPath += '_dvMask.tif'
 		if not os.path.isfile(dvMaskPath):
-			print('    error: did not find file:', dvMaskPath)
+			print('    error: did not find _dvMask file:', dvMaskPath)
 			return False
 
 		self._initTracing()
 
-		print('    loading dvMask:', dvMaskPath)
+		print('    loading _dvMask file:', dvMaskPath)
 		self._dvMask = tifffile.imread(dvMaskPath)
 
 		parentStack = self.parentStack.getStack('ch1')
@@ -905,7 +972,7 @@ class bVascularTracing:
 		masterNodeIdx = 0
 		masterEdgeIdx = 0
 		nPath = len(skanSkel.paths_list())
-		print('    parsing nPath:', nPath)
+		print('    parsing nPath:', nPath, '...')
 		for edgeIdx, path in enumerate(skanSkel.paths_list()):
 			# edgeIdx: int
 
@@ -1590,7 +1657,7 @@ class bVascularTracing:
 		Will not work well for edges that do not have both pre/post node
 		"""
 
-		colors = set(['r', 'g', 'b', 'c', 'm'])
+		colors = set(['r', 'g', 'b', 'orange', 'm'])
 
 		# clear all color
 		for idx, edge in enumerate(self.edgeDictList):
@@ -1627,7 +1694,7 @@ class bVascularTracing:
 			else:
 				edge['color'] = list(potentialColors)[0] # first available color
 
-	def _analyze(self):
+	def _analyze(self, thisEdgeIdx=None):
 		"""
 		Fill in derived values in self.edgeDictList
 		"""
@@ -1636,8 +1703,20 @@ class bVascularTracing:
 		todo: bSlabList.analyze() needs to step through each edge, not slabs !!!
 		'''
 
-		for edgeIdx, edge in enumerate(self.edgeDictList):
-			edge = self.getEdge(edgeIdx) # todo: fix this, redundant self.getEdge() does calculations !
+		if thisEdgeIdx is None:
+			# all
+			thisEdgeDictList = self.edgeDictList
+		else:
+			thisEdgeDictList = [self.edgeDictList[thisEdgeIdx]]
+
+		print('bVascularTracing._analyze() thisEdgeIdx:', thisEdgeIdx, 'len(thisEdgeDictList):', len(thisEdgeDictList))
+
+		for edgeIdx, edge in enumerate(thisEdgeDictList):
+			#print('    edge:', edge)
+			if thisEdgeIdx is not None:
+				edge = self.getEdge(thisEdgeIdx) # todo: fix this, redundant self.getEdge() does calculations !
+			else:
+				edge = self.getEdge(edgeIdx) # todo: fix this, redundant self.getEdge() does calculations !
 			len2d = 0
 			len3d = 0
 			#len3d_nathan = 0
@@ -1650,6 +1729,10 @@ class bVascularTracing:
 				x1,y1,z1 = self.getNode_xyz(preNode)
 				x2,y2,z2 = self.getNode_xyz(postNode)
 				euclideanDist = self.euclideanDistance(x1,y1,z1,x2,y2,z2)
+
+				z = (z1+z2)/2
+				z = int(round(z))
+				edge['z'] = z
 			else:
 				euclideanDist = np.nan
 
@@ -1657,18 +1740,6 @@ class bVascularTracing:
 			for j, slabIdx in enumerate(slabList):
 
 				x1, y1, z1 = self.getSlab_xyz(slabIdx)
-				'''
-				x1 = self.x[slabIdx]
-				y1 = self.y[slabIdx]
-				z1 = self.z[slabIdx]
-				'''
-
-				#print('pointIdx:', pointIdx)
-				'''
-				orig_x = self.orig_x[slabIdx]
-				orig_y = self.orig_y[slabIdx]
-				orig_z = self.orig_z[slabIdx]
-				'''
 
 				if j>0:
 					len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
@@ -1680,18 +1751,12 @@ class bVascularTracing:
 				prev_y1 = y1
 				prev_z1 = z1
 
-				'''
-				prev_orig_x1 = orig_x
-				prev_orig_y1 = orig_y
-				prev_orig_z1 = orig_z
-				'''
-
 			edge['Len 2D'] = round(len2d,2)
 			edge['Len 3D'] = round(len3d,2)
 			#edge['Len 3D Nathan'] = round(len3d_nathan,2)
 
 			if euclideanDist == 0:
-				print('error: bVascularTracing._analyze() euclideanDist==0 for edgeIdx:', edgeIdx)
+				print('WARNING: bVascularTracing._analyze() euclideanDist==0 for edgeIdx:', edgeIdx)
 				tort = np.nan
 			else:
 				tort = round(len3d / euclideanDist,2)
@@ -1703,12 +1768,14 @@ class bVascularTracing:
 			edge['Diam'] = meanDiameter
 			# bob
 			# self.d2 might all be nan
+			warnings.filterwarnings('ignore')
 			possibleNaN = np.nanmean(self.d2[edge['slabList']])
 			if np.isnan(possibleNaN):
 				meanDiameter = np.nan
 			else:
 				meanDiameter = round(float(possibleNaN),2)
 			edge['Diam2'] = meanDiameter
+			warnings.resetwarnings()
 			#print(edgeIdx, meanDiameter)
 
 	def euclideanDistance2(self, src, dst):
@@ -1742,6 +1809,9 @@ class bVascularTracing:
 		tortList = []
 		numAnalyzed = 0
 		for edgeIdx in range(nEdges):
+			if edgeIdx % 20 == 0:
+				print('    edgeIdx:', edgeIdx, 'of', nEdges, 'edges')
+
 			edgeDict = self.getEdge(edgeIdx)
 
 			thisDiamList = []
@@ -1760,6 +1830,12 @@ class bVascularTracing:
 				else:
 					self.d2[slabIdx] = np.nan
 
+				if np.isnan(self.d2[slabIdx]):
+					nodeIdx = self.nodeIdx[slabIdx]
+					if np.isnan(nodeIdx):
+						#print('    got nan width for edge', edgeIdx, 'slab', slabIdx, 'nodeIdx:', nodeIdx)
+						pass
+
 			if len(thisDiamList) > 0:
 				thisDiamMean = np.nanmean(thisDiamList)
 			else:
@@ -1769,9 +1845,29 @@ class bVascularTracing:
 			lengthList.append(edgeDict['Len 3D'])
 			tortList.append(edgeDict['Tort'])
 
-		print('   bImpy number of slabs analyzed:', numAnalyzed, startTime.elapsed())
+		print('   number of slabs analyzed:', numAnalyzed, startTime.elapsed())
+
+	# my first generator :) I am almost back to my C++ savvyness
+	def nodeIter(self):
+		n = len(self.nodeDictList)
+		i = 0
+		while i<n:
+			yield self.getNode(i)
+			i += 1
+
+	def edgeIter(self):
+		n = len(self.edgeDictList)
+		i = 0
+		while i<n:
+			yield self.getEdge(i)
+			i += 1
 
 	def search(self, type=None):
+		"""
+		search for close nodes
+
+		very slow for large number of nodes
+		"""
 		print('search()')
 		#
 		thresholdDist = 10
@@ -1857,6 +1953,12 @@ class bVascularTracing:
 			for idx, edge in enumerate(self.edgeDictList):
 				edge = self.getEdge(idx)
 				#print('idx:', idx, 'edge:', edge)
+				# debug mostly to check for numpy types that are not able to be converted to json
+				'''
+				if idx==0:
+					for k,v in edge.items():
+						print(k, v, type(v))
+				'''
 
 				# convert numpy int64 to int
 				tmpSLabList = [int(tmpSlab) for tmpSlab in edge['slabList']]
@@ -1950,36 +2052,278 @@ class bVascularTracing:
 
 		#return maskDictList
 		return h5FilePath
+
+	def fixMissingNodes(self):
+		"""
+		Fill in missing pre/post nodes from Vesselucia
+		"""
+		print('fixMissingNodes() numNodes:', self.numNodes())
+		for edgeIdx, edge in enumerate(self.edgeIter()):
+			preNode = edge['preNode']
+			if preNode is None:
+				slabIdx = edge['slabList'][0]
+				x = self.x[slabIdx]
+				y = self.y[slabIdx]
+				z = self.z[slabIdx]
+				x = float(x)
+				y = float(y)
+				z = float(z)
+				newNodeIdx = self.newNode(x,y,z)
+				self.nodeDictList[newNodeIdx]['edgeList'] = [edgeIdx]
+				self.nodeDictList[newNodeIdx]['nEdges'] = 1
+				#
+				edge['preNode'] = newNodeIdx
+				#print('edge:', edgeIdx, 'after adding preNode', newNodeIdx, 'edge:', self.edgeDictList[edgeIdx])
+
+			postNode = edge['postNode']
+			if postNode is None:
+				slabIdx = edge['slabList'][-1]
+				x = self.x[slabIdx]
+				y = self.y[slabIdx]
+				z = self.z[slabIdx]
+				x = float(x)
+				y = float(y)
+				z = float(z)
+				newNodeIdx = self.newNode(x,y,z)
+				self.nodeDictList[newNodeIdx]['edgeList'] = [edgeIdx]
+				self.nodeDictList[newNodeIdx]['nEdges'] = 1
+				#
+				edge['postNode'] = newNodeIdx
+
+		print('    done fixMissingNodes() numNodes:', self.numNodes())
+
 	def makeGraph(self):
 		"""
 		Make a networkx graph
+
+		see for adding position (pos): https://stackoverflow.com/questions/11804730/networkx-add-node-with-specific-position
 		"""
 
+		numNodes = 0
 		numEdges = 0
 		self.G = nx.Graph()
 		for idx, edgeDict in enumerate(self.edgeDictList):
 			edgeDict = self.getEdge(idx) # todo: fix this
 			diam = edgeDict['Diam']
+			len3d = edgeDict['Len 3D']
 			preNode = edgeDict['preNode']
 			postNode = edgeDict['postNode']
+
 			if preNode is not None and postNode is not None:
+				preNode = int(preNode)
+				postNode = int(postNode)
+
+				xPre,yPre,zPre = self.getNode_xyz(preNode)
+				xPost,yPost,zPost = self.getNode_xyz(postNode)
+
 				# add adge
-				#print('    adding edge between nodes:', preNode, postNode)
-				self.G.add_edge(preNode, postNode, diam=diam) # this adds a 'diam' key to the edge attributes
+				#print('    adding edge:', numEdges, preNode, postNode, diam, len3d)
+				self.G.add_node(preNode, myIdx=preNode, pos=(xPre,yPre,zPre))
+				self.G.add_node(postNode, myIdx=postNode, pos=(xPost,yPost,zPost))
+				self.G.add_edge(preNode, postNode, edgeIdx=idx, diam=diam, len3d=len3d) # this adds a 'diam' key to the edge attributes
 				numEdges += 1
 			else:
 				# error, why do my edges not have pre/post nodes?
 				# this is a bigger problem
-				pass
+				print('makeGraph() skipping edge:', idx, 'pre/post:', preNode, postNode)
+
 				#print('        error: edge idx:', idx, 'preNode:', preNode, 'postNode:', postNode)
-		print('bVascularTracing.makeGraph() created self.G with numEdges:', numEdges)
+		print('bVascularTracing.makeGraph() created self.G with ')
+		print('    nodeDictList:', len(self.nodeDictList), 'edgeDictList:', len(self.edgeDictList))
+		print('    number_of_nodes:', self.G.number_of_nodes())
+		print('    number_of_edges:', self.G.number_of_edges())
+		cc = list(nx.connected_components(self.G))
+		print('    connected_components:', len(cc))
+		'''
+		allSimplePaths = nx.all_simple_paths(self.G, source=None, target=None)
+		print('    number of simple paths:', len(list(allSimplePaths)))
+		'''
+
+	def plotGraph2(self):
+		"""
+		plot a 3d graph with plotly
+
+		see: https://plot.ly/python/v3/3d-network-graph/
+		"""
+
+		pos = nx.get_node_attributes(self.G, 'pos')
+		n = self.G.number_of_nodes()
+
+		print('bVascularTracing.plotGraph2() n:', n)
+
+		myColor = [None] * n
+		for idx,cc in enumerate(nx.connected_components(self.G)):
+			# cc is a set
+			for nodeIdx in cc:
+				myColor[nodeIdx] = idx
+
+		# nodes
+		Xn=[pos[k][0] for k in range(n)] # x-coordinates of nodes
+		Yn=[pos[k][1] for k in range(n)]
+		Zn=[pos[k][2] for k in range(n)]
+
+		# node labels
+		labels = []
+		for k in range(n):
+			labelStr = 'node:' + str(k) + ' cc:' + str(myColor[k])
+			labels.append(labelStr)
+
+		# edges
+		Xe = []
+		Ye = []
+		Ze = []
+		#for src,dst,myDict in self.G.edges_iter(data=True):
+		for src,dst,myDict in self.G.edges(data=True):
+			Xe+=[pos[src][0],pos[dst][0], None]# x-coordinates of edge ends
+			Ye+=[pos[src][1],pos[dst][1], None]# x-coordinates of edge ends
+			Ze+=[pos[src][2],pos[dst][2], None]# x-coordinates of edge ends
+
+		# shortest path
+		srcNode = 114
+		dstNode = 57
+		oneShortestPath = nx.shortest_path(self.G, source=srcNode, target=dstNode)
+		xshortestn = [pos[k][0] for k in oneShortestPath]
+		yshortestn = [pos[k][1] for k in oneShortestPath]
+		zshortestn = [pos[k][2] for k in oneShortestPath]
+
+		# edges
+		trace1=go.Scatter3d(x=Xe,
+			y=Ye,
+			z=Ze,
+			mode='lines',
+			line=dict(color='rgb(125,125,125)', width=1),
+			hoverinfo='none'
+			)
+
+		# nodes
+		trace2=go.Scatter3d(x=Xn,
+			y=Yn,
+			z=Zn,
+			mode='markers',
+			name='actors',
+			marker=dict(symbol='circle',
+				size=6,
+				color=myColor, #group,
+				colorscale='Viridis',
+				line=dict(color='rgb(50,50,50)', width=0.5)
+				),
+			text=labels,
+			hoverinfo='text'
+			)
+
+		axis=dict(showbackground=False,
+			showline=False,
+			zeroline=False,
+			showgrid=False,
+			showticklabels=False,
+			title=''
+			)
+
+		layout = go.Layout(
+			title="my layout title",
+			width=1000,
+			height=1000,
+			showlegend=False,
+			scene=dict(
+				xaxis=dict(axis),
+				yaxis=dict(axis),
+				zaxis=dict(axis),
+			),
+			margin=dict(t=100),
+			hovermode='closest',
+			annotations=[
+				dict(
+					showarrow=False,
+					text="Image file: " + self.parentStack.path,
+					xref='paper',
+					yref='paper',
+					x=0,
+					y=0.1,
+					xanchor='left',
+					yanchor='bottom',
+					font=dict(size=14)
+					)
+				],    )
+
+		data = [trace1, trace2]
+		fig = go.Figure(data=data, layout=layout)
+
+		#py.iplot(fig, filename='Les-Miserables xxx')
+		#py.plot(fig, filename='Les-Miserables xxx', auto_open=True)
+		#pio.write_html(fig, file='hello_world.html', auto_open=True)
+
+		return fig
+
+	def plotGraph(self):
+		"""
+		Plot a graph with matplotlib
+		In general, VERY SLOW ... use plotly instead
+
+		see: https://www.idtools.com.au/3d-network-graphs-python-mplot3d-toolkit/
+		"""
+		pos = nx.get_node_attributes(self.G, 'pos')
+		n = self.G.number_of_nodes()
+
+		# debug
+		print('=== plotGraph()')
+		print('    len(pos):', len(pos))
+		print('    number_of_nodes n:', n)
+		# debug
+		'''
+		for i in range(n):
+			if self.G.has_node(i):
+				print('    ', i, type(i), 'degree:', self.G.degree(i))
+			else:
+				print('missing node:', i)
+		'''
+
+		edge_max = max([self.G.degree(i) for i in range(n)])
+		colors = [plt.cm.plasma(self.G.degree(i)/edge_max) for i in range(n)]
+
+		with plt.style.context(('ggplot')):
+			fig = plt.figure(figsize=(10,7))
+			ax = Axes3D(fig)
+
+			# Loop on the pos dictionary to extract the x,y,z coordinates of each node
+			for key, value in pos.items():
+				xi = value[0]
+				yi = value[1]
+				zi = value[2]
+				# Scatter plot
+				#ax.scatter(xi, yi, zi, c=colors[key], s=20+20*self.G.degree(key), edgecolors='k', alpha=0.7)
+				ax.scatter(xi, yi, zi, c='r', s=20+20*self.G.degree(key), edgecolors='k', alpha=0.7)
+
+			# Loop on the list of edges to get the x,y,z, coordinates of the connected nodes
+			# Those two points are the extrema of the line to be plotted
+			for i,j in enumerate(self.G.edges()):
+				#print('i/j:', i, j)
+				x = np.array((pos[j[0]][0], pos[j[1]][0]))
+				y = np.array((pos[j[0]][1], pos[j[1]][1]))
+				z = np.array((pos[j[0]][2], pos[j[1]][2]))
+
+				# Plot the connecting lines
+				ax.plot(x, y, z, c='black', alpha=0.5)
+
+		# Set the initial view
+		angle = 0
+		ax.view_init(30, angle)
+
+		# Hide the axes
+		ax.set_axis_off()
+
+		plt.show()
 
 if __name__ == '__main__':
-	path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
+	#path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
+	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
 
 	stack = bimpy.bStack(path=path)
 
+	stack.slabList.fixMissingNodes()
+
 	stack.slabList.makeGraph()
+
+	stack.slabList.plotGraph2()
 
 	# not implemented for undirected type
 	'''
@@ -1987,6 +2331,8 @@ if __name__ == '__main__':
 	print('simpleCycles:', simpleCycles)
 	'''
 
+	# this was working
+	'''
 	import matplotlib.pyplot as plt
 	options = {
 		'node_color': 'black',
@@ -1997,6 +2343,7 @@ if __name__ == '__main__':
 	#nx.draw(stack.slabList.G, with_labels=True) #, font_weight='bold')
 	nx.draw(stack.slabList.G, **options) #, font_weight='bold')
 	plt.show()
+	'''
 
 	#bvt = bVascularTracing(stack, '')
 

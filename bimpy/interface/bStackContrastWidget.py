@@ -135,9 +135,16 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# clear entire axes
 		self.axes.clear()
 
+		# from buildUI()
+		'''
+		self.axes.patch.set_facecolor("black")
+		self.figure.set_facecolor("black")
+		'''
+
 		self.axes.patch.set_facecolor("black")
 
-		n, bins, patches = self.axes.hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=0.5)
+		# we need histtype='stepfilled', otherwise is SUPER SLOW
+		n, bins, patches = self.axes.hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=1.0)
 
 		self.canvas.draw()
 

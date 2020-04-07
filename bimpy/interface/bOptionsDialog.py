@@ -32,10 +32,15 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 		self.setWindowTitle('bImPy Options')
 
-		mainLayout = QtWidgets.QVBoxLayout()
+		mainLayout = QtWidgets.QGridLayout()
 
+		row = 0
+		col = 0
 		#print('building bOptionsDialog')
 		for key1 in self.localOptions.keys():
+			if key1 == 'Panels':
+				col += 1
+				row = 0
 			groupBox = QtWidgets.QGroupBox(key1)
 			layout = QtWidgets.QFormLayout()
 			for key2 in self.localOptions[key1].keys():
@@ -43,6 +48,9 @@ class bOptionsDialog(QtWidgets.QDialog):
 				value = self.localOptions[key1][key2]
 				theType = type(value)
 				#print('   ', value, theType)
+				#if key1 == 'Window':
+				#	print(key2, value, type(value))
+
 				if isinstance(value, bool):
 					aCheckbox = QtWidgets.QCheckBox(key2)
 					aCheckbox.setChecked(value)
@@ -54,6 +62,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 				elif isinstance(value, int):
 					#print('      is int')
 					aSpinBox = QtWidgets.QSpinBox()
+					aSpinBox.setMaximum(1e6)
 					aSpinBox.setValue(value)
 					aSpinBox.setProperty('bobID_1', key1)
 					aSpinBox.setProperty('bobID_2', key2)
@@ -70,8 +79,8 @@ class bOptionsDialog(QtWidgets.QDialog):
 					layout.addRow(QtWidgets.QLabel(key2), aLineEdit)
 
 			groupBox.setLayout(layout)
-			mainLayout.addWidget(groupBox)
-
+			mainLayout.addWidget(groupBox, row, col)
+			row += 1
 		#self.formGroupBox = QtWidgets.QGroupBox("")
 		#layout = QtWidgets.QFormLayout()
 
@@ -88,7 +97,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 		#
 		#mainLayout = QtWidgets.QVBoxLayout()
 		#mainLayout.addWidget(self.formGroupBox)
-		mainLayout.addWidget(self.buttonBox)
+		mainLayout.addWidget(self.buttonBox, row, col)
 		self.setLayout(mainLayout)
 
 		# this is called from calling function and its return tells us accept/reject, 1/0

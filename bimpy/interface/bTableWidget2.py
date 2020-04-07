@@ -8,6 +8,10 @@ type: from (nodes, edges, search)
 listOfDict: from nodeList, edgeList, searchList
 """
 
+import json
+
+import numpy as np
+
 from qtpy import QtGui, QtCore, QtWidgets
 
 import bimpy
@@ -23,11 +27,17 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		"""
 		super(bTableWidget2, self).__init__(parent)
 
+		self.mainWindow = parent
+
 		if type not in {'nodes', 'edges', 'node search', 'edge search'}:
 			print('error: bTableWidget2 type is incorrect:', type)
 			return
 
 		self._type = type # from ('nodes', 'edges', 'search')
+
+		# I want a visual iterator to traverse a path/loop of edges
+		# this will require a second search in bStackView and bNapari
+		self.edgeIterIndex = None
 
 		self.stopSelectionPropogation = False
 
@@ -42,65 +52,72 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		header = self.horizontalHeader()
 		header.sectionClicked.connect(self.on_click_header)
+		header.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+		header.customContextMenuRequested.connect(self.contextMenuEvent_Header)
+
+		#self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+		#self.customContextMenuRequested.connect(self.handleItemContextMenu)
 
 		self.populate(listOfDict)
 
+	def hideColumns(self, columnList):
+		"""
+		hide a list of columns
+
+		see: https://stackoverflow.com/questions/25366830/qtableview-column-control-to-facilitate-show-hide-columns
+		"""
+		nColHeader = self.horizontalHeader().count()
+		for colIdx in range(nColHeader):
+			headerItem = self.horizontalHeaderItem(colIdx)
+			headerItemText = headerItem.text()
+			if headerItemText in columnList:
+				#print('    hideColumns() hiding type:', self._type, 'colIdx:', colIdx, headerItemText)
+				self.horizontalHeader().hideSection(colIdx)
+			else:
+				self.horizontalHeader().showSection(colIdx)
+
 	def populate(self, newDictList):
 
-		print('bTableWidget2.populate()')
+		#print('bTableWidget2.populate() type:', self._type)
 
 		self.clear() # need this otherwise populate() takes a SUPER long time
 
 		self.headerLabels = []
 
-		if len(newDictList) == 0:
+		numRows = len(newDictList)
+
+		if numRows == 0:
 			#print('warning: bTableWidget2.populate() type:', self._type, 'got 0 length dict list?')
+			print('    warning: bTableWidget2.populate() adding num rows:', numRows, self._type)
 			return
 
 		# headers
 		firstDict = newDictList[0]
-		#print('    firstDict:', firstDict)
 		for k in firstDict.keys():
+			#print('populate() headerLabels.append k:', k)
 			self.headerLabels.append(k)
-		#print('bTableWidget2.populate.headerLabels:', self.headerLabels)
 
+		#print('setColumnCount to len(self.headerLabels)', len(self.headerLabels))
 		self.setColumnCount(len(self.headerLabels))
 		self.setHorizontalHeaderLabels(self.headerLabels)
 
-		#print('    self.headerLabels:', self.headerLabels)
+		# show/hide
+		#self.setHorizontalHeaderLabels.hideSection(sectionIdx)
 
 		# rows
-		numRows = len(newDictList)
-		print('    bTableWidget2.populate() adding num rows:', numRows, self._type)
+		print('    bTableWidget2.populate() adding type:', self._type, 'num rows:', numRows)
 		self.setRowCount(numRows)
-		for idx, editDict in enumerate(newDictList):
-			for colIdx, header in enumerate(self.headerLabels):
-				#myString = str(editDict[header])
-				item = QtWidgets.QTableWidgetItem()
-				if isinstance(editDict[header], list):
-					item.setData(QtCore.Qt.DisplayRole, str(editDict[header]))
-				else:
-					# 20200306 was this
-					#item.setData(QtCore.Qt.EditRole, editDict[header])
-					item.setData(QtCore.Qt.DisplayRole, editDict[header])
-
-				#print('    idx:', idx, 'colIdx:', colIdx, 'editDict[header]:', editDict[header])
-				'''
-				if header == 'nEdges':
-					print('nEdges', editDict[header], type(editDict[header]))
-				'''
-				self.setItem(idx, colIdx, item)
-
-		#print('    2')
+		for rowIdx, editDict in enumerate(newDictList):
+			rowItems = self._itemFromDict(editDict)
+			for colIdx, item in enumerate(rowItems):
+				self.setItem(rowIdx, colIdx, item)
 
 		# resize headers based on content
 		header = self.horizontalHeader()
 		for idx, label in enumerate(self.headerLabels):
 			header.setSectionResizeMode(idx, QtWidgets.QHeaderView.ResizeToContents)
 
-		#self.repaint()
-
-		#print('bTableWidget2.populate() done')
+		self.repaint()
 
 	def mySelectRow(self, rowIdx=None, itemIdx=None):
 		"""
@@ -114,6 +131,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		self.repaint()
 
 	def slot_select(self, myEvent):
+		# search does not auto select
 		print('bTableWidget2.slot_select() myEvent:', myEvent)
 		if myEvent.eventType == 'select node' and self._type == 'nodes':
 			nodeIdx = myEvent.nodeIdx
@@ -131,9 +149,12 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		"""
 		respond to edits
 		"""
+
+		'''
 		print('bTableWidget2.slot_updateTracing() self._type:', self._type, 'myEvent.eventType:', myEvent.eventType)
 		print('    myEvent.nodeDict:', myEvent.nodeDict)
 		print('    myEvent.edgeDict:', myEvent.edgeDict)
+		'''
 
 		if myEvent.eventType == 'newNode' and self._type == 'nodes':
 			newRowIdx = self.appendRow(myEvent.nodeDict)
@@ -152,6 +173,10 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			self.mySelectRow(rowIdx=newRowIdx)
 			self.repaint()
 
+		elif myEvent.eventType == 'newSlab' and self._type == 'edges':
+			self.setRow(myEvent.edgeDict)
+			self.repaint()
+
 		elif myEvent.eventType == 'deleteNode' and self._type == 'nodes':
 			self.deleteRow(myEvent.nodeDict)
 			self.repaint()
@@ -160,32 +185,60 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			self.deleteRow(myEvent.edgeDict)
 			self.repaint()
 
+		elif myEvent.eventType == 'updateNode' and self._type == 'nodes':
+			self.setRow(myEvent.nodeDict)
+
+		elif myEvent.eventType == 'updateEdge' and self._type == 'edges':
+			self.setRow(myEvent.edgeDict)
+
+		else:
+			print('    bTableWidget2.slot_updateTracing() case not taken:', myEvent.eventType)
+
 	def appendRow(self, theDict):
 		"""
 		append
 		"""
-		print('bTableWidget2.addRow() theDict:', theDict)
 		rowIdx = self.rowCount()
-		self.insertRow(rowIdx)
+		print('bTableWidget2.appendRow() rowIdx:', rowIdx, 'theDict:', theDict)
+		if rowIdx == 0:
+			self.populate([theDict])
+		else:
+			self.insertRow(rowIdx)
 
-		rowItems = self._itemFromDict(theDict)
-		for colIdx, item in enumerate(rowItems):
-			self.setItem(rowIdx, colIdx, item)
+			rowItems = self._itemFromDict(theDict)
+			for colIdx, item in enumerate(rowItems):
+				self.setItem(rowIdx, colIdx, item)
+
+			self.repaint()
 
 		return rowIdx
 
 	def deleteRow(self, theDict):
 		"""
+		this is super freaking sloppy
+
 		todo: need to decrement remaining 'idx'
 		"""
 		print('bTableWidget2.deleteRow() theDict:', theDict)
 		self.stopSelectionPropogation = True
-		rowIdx = self._findRow(theDict)
+		deletingRowIdx = theDict['idx']
+		rowIdx = self._findRow(theDict=theDict)
 		if rowIdx is None:
-			print('   !!! !!! THIS IS A BUG: bAnnotationTable.deleteRow() rowIdx', rowIdx)
-			print(' ')
+			print('   \n\n\n                    !!! !!! THIS IS A BUG: bAnnotationTable.deleteRow() rowIdx', rowIdx, 'theDict:', theDict)
+			print('\n\n\n')
 		else:
 			self.removeRow(rowIdx)
+			# todo: decriment remaining ['idx']
+			for row in range(self.rowCount()):
+				print('    row:',row)
+				idx = self.getCellValue_int('idx', row)
+				if idx > deletingRowIdx:
+					# decriment 'idx' of remaining
+					idx -= 1
+					item = QtWidgets.QTableWidgetItem()
+					myString = str(idx)
+					item.setData(QtCore.Qt.EditRole, myString)
+					self.setItem(row, 0, item) # assuming col 0 is 'idx' !!!!!!!!!
 
 	def setRow(self, rowDict):
 		"""
@@ -200,26 +253,49 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				rowItems = self._itemFromDict(rowDict)
 				for colIdx, item in enumerate(rowItems):
 					self.setItem(row, colIdx, item)
+				self.repaint()
+				break
 
 	def _findRow(self, theIdx=None, theDict=None):
+		#print('_findRow() theIdx:', theIdx, type(theIdx), 'theDict:', theDict, type(theDict))
 		theRet = None
 		if theIdx is None:
 			theIdx = theDict['idx']
-		for row in range(self.rowCount()):
+		#print('_findRow() looking for theIdx:', type(theIdx))
+		nRow = self.rowCount()
+		for row in range(nRow):
+			#print('    row:', row)
 			idxItem = self.item(row, 0) # 0 is idx column
 			myIdxStr = idxItem.text()
-			if myIdxStr == str(theIdx):
+			myIdxInt = int(myIdxStr)
+			#print('    myIdxInt:', myIdxInt, type(myIdxInt))
+			#if myIdxStr == str(theIdx):
+			if myIdxInt == theIdx:
 				theRet = row
 				break
 		return theRet
 
 	def _itemFromDict(self, theDict):
+		myItemRole = QtCore.Qt.DisplayRole #options are (DisplayRole,EditRole)
 		rowItems = []
 		for colIdx, header in enumerate(self.headerLabels):
 			item = QtWidgets.QTableWidgetItem()
 			try:
-				myString = str(theDict[header])
-				item.setData(QtCore.Qt.EditRole, myString)
+				if isinstance(theDict[header], list):
+					item.setData(myItemRole, str(theDict[header]))
+				elif isinstance(theDict[header], np.int64):
+					item.setData(myItemRole, int(theDict[header]))
+				elif isinstance(theDict[header], np.float64):
+					item.setData(myItemRole, float(theDict[header]))
+				else:
+					if theDict[header] is None:
+						item.setData(myItemRole, '')
+					elif str(theDict[header]) == 'nan':
+						item.setData(myItemRole, '')
+					else:
+						item.setData(myItemRole, theDict[header])
+				#myString = str(theDict[header])
+				#item.setData(QtCore.Qt.EditRole, myString)
 			except (KeyError) as e:
 				pass
 			rowItems.append(item)
@@ -236,10 +312,52 @@ class bTableWidget2(QtWidgets.QTableWidget):
 	def keyPressEvent(self, event):
 		super(bTableWidget2, self).keyPressEvent(event)
 		key = event.key()
-		print('=== on_keypress_node() key:', event.text())
+		print('=== bTableWidget2.keyPressEvent() in', self._type, 'key:', event.text())
 		if key in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
+			if self._type == 'edge search':
+				if self.edgeIterIndex is None:
+					self.edgeIterIndex = 0
+				else:
+					if key == QtCore.Qt.Key_Left:
+						self.edgeIterIndex -= 1 #
+						if self.edgeIterIndex < 0:
+							self.edgeIterIndex = 0
+					elif key == QtCore.Qt.Key_Right:
+						self.edgeIterIndex += 1 # this will overflow
 			# reselect node
 			self.on_clicked_row()
+
+		elif key in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
+			if not self._type in ['nodes', 'edges']:
+				return
+			objectIdx = self.getCellValue_int('idx') #, row=None):
+			if self._type == 'nodes':
+				event = {'type':'deleteNode', 'objectType': self._type, 'objectIdx':objectIdx}
+			if self._type == 'edges':
+				event = {'type':'deleteEdge', 'objectType': self._type, 'objectIdx':objectIdx}
+			self.mainWindow.getStackView().myEvent(event)
+
+		elif key in [QtCore.Qt.Key_A]:
+			if self._type == 'edges':
+				# analyze edge
+				objectIdx = self.getCellValue_int('idx') #, row=None):
+				event = {'type':'analyzeEdge', 'objectType': self._type, 'objectIdx':objectIdx}
+				self.mainWindow.getStackView().myEvent(event)
+
+			elif self._type == 'edge search':
+				# emit a select edge list
+				myEvent = bimpy.interface.bEvent('select edge', edgeIdx=None, snapz=True, isShift=False)
+				nRows = self.rowCount()
+				print('    nRows:', nRows, 'myEvent._edgeList:', myEvent._edgeList)
+				for row in range(nRows):
+					edge1 = self.getCellValue_int('edge1', row)
+					myEvent._edgeList.append(edge1)
+				print('    emit event:', myEvent)
+				self.selectRowSignal.emit(myEvent)
+
+		elif key in [QtCore.Qt.Key_Escape]:
+			self.mainWindow.signal('cancelSelection')
+
 		else:
 			event.setAccepted(False)
 
@@ -255,6 +373,21 @@ class bTableWidget2(QtWidgets.QTableWidget):
 	def on_clicked_row(self):
 		#print('on_clicked_node()')
 		row = self.currentRow()
+
+		'''
+		mouse_state = self.mainWindow.mainWindow.mouseButtons()
+		print('mouse_state:', mouse_state)
+		'''
+
+		'''
+		if event.button() == QtCore.Qt.RightButton:
+			print('bTableWidget2.on_clicked_row() right click !!!')
+			self.handleItemContextMenu(row)
+			#point = QtCore.QPoint(100,100)
+			#self.showRightClickMenu(event.pos())
+			#self.mouseReleaseEvent(event)
+		'''
+
 		myItem = self.item(row, 0) # 0 is idx column
 		myIdx = myItem.text()
 		if myIdx=='':
@@ -268,7 +401,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		if self.stopSelectionPropogation:
 			self.stopSelectionPropogation = False
 		else:
-			print('=== bTableWidget2.on_clicked_row() row:', row, 'myIdx:', myIdx, isShift)
+			print('=== bTableWidget2.on_clicked_row() type:', self._type, 'row:', row, 'myIdx:', myIdx, 'isShift:', isShift)
 			if self._type == 'nodes':
 				myEvent = bimpy.interface.bEvent('select node', nodeIdx=myIdx, snapz=True, isShift=isShift)
 				colIdx = self._getColumnIdx('z')
@@ -286,40 +419,226 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 			elif self._type == 'node search':
 				#
-				colIdx = self._getColumnIdx('node1')
-				nodeIdx = None
-				if colIdx is not None:
-					myItem = self.item(row, colIdx) # 0 is idx column
-					nodeIdx = int(myItem.text())
-				myEvent = bimpy.interface.bEvent('select node', nodeIdx=nodeIdx, snapz=True, isShift=isShift)
-				colIdx = self._getColumnIdx('z')
-				myItem = self.item(row, colIdx)
-				myEvent._sliceIdx = int(float(myItem.text()))
+				node1 = self.getCellValue_int('node1')
+				myEvent = bimpy.interface.bEvent('select node', nodeIdx=node1, snapz=True, isShift=isShift)
 				print('   emit myEvent:', myEvent)
 				self.selectRowSignal.emit(myEvent)
 
 			elif self._type == 'edge search':
-				edge1 = None
-				edge2 = None
-				edgeList = []
-				colIdx = self._getColumnIdx('edge1')
-				if colIdx is not None:
-					myItem = self.item(row, colIdx) # 0 is idx column
-					edge1 = int(myItem.text())
-					edgeList.append(edge1)
-				#
-				colIdx = self._getColumnIdx('edge2')
-				if colIdx is not None:
-					myItem = self.item(row, colIdx) # 0 is idx column
-					edge2 = int(myItem.text())
-					edgeList.append(edge2)
-				#edgeList = [edge1, edge2]
+				#self.edgeIterIndex = None
+				nodeIdx = None
+				slabIdx = None
+				colorList = []
+				edgeList = self.getCellValue('edgeList')
+				if edgeList is not None:
+					edgeList = json.loads(edgeList)
+					if self.edgeIterIndex is not None:
+						edgeIdx = edgeList[self.edgeIterIndex]
+				else:
+					edgeList = []
+					idx = self.getCellValue_int('Idx')
+					edge1 = self.getCellValue_int('edge1')
+					if edge1 is not None:
+						edgeList.append(edge1)
+						colorList.append('y')
+					#
+					slab = self.getCellValue_int('slab1')
+					if slab is not None:
+						slabIdx = slab
+					#
+					node1 = self.getCellValue_int('node1')
+					if node1 is not None:
+						nodeIdx = node1
+					#
+					edge2 = self.getCellValue_int('edge2')
+					if edge2 is not None:
+						edgeList.append(edge2)
+						colorList.append('r')
+					#
+					slab2 = self.getCellValue_int('slab2')
+					if slab2 is not None:
+						slabIdx2 = slab2
+					print('    edge search idx:', idx, 'edge1:', edge1, 'edge2:', edge2)
 
+				# todo: convert bEvent nodeList to None rather than empty list []
+				nodeList = self.getCellValue('nodeList')
+				if nodeList is not None:
+					nodeList = json.loads(nodeList)
+				else:
+					nodeList = []
 				#
-				myEvent = bimpy.interface.bEvent('select edge list', nodeIdx=nodeIdx, edgeList=edgeList, snapz=True, isShift=isShift)
+				myEvent = bimpy.interface.bEvent('select edge list', nodeIdx=nodeIdx, slabIdx=slabIdx, edgeList=edgeList, snapz=True, isShift=isShift)
+				myEvent._nodeList = nodeList
+				if len(colorList) > 0:
+					myEvent._colorList = colorList
 				self.selectRowSignal.emit(myEvent)
 
-if __name__ == '__main__':
+	def contextMenuEvent_Header(self, pos):
+		"""
+		Right-click to show and hide columns
+
+		Checked items are being shown
+
+		see: https://stackoverflow.com/questions/11909139/pyqt-table-header-context-menu
+		"""
+		column = self.horizontalHeader().logicalIndexAt(pos.x())
+		print('bTableWidget2.contextMenuEvent_Header() column:', column)
+
+		menu = QtWidgets.QMenu()
+
+		nColHeader = self.horizontalHeader().count()
+		for colIdx in range(nColHeader):
+			headerItem = self.horizontalHeaderItem(colIdx)
+			headerItemText = headerItem.text()
+			isHidden = not self.horizontalHeader().isSectionHidden(colIdx) # check those not hidden
+			currentAction = QtWidgets.QAction(headerItemText, self, checkable=True, checked=isHidden)
+			currentAction.triggered.connect(self.menuActionHandler_header)
+			menuAction = menu.addAction(currentAction)
+
+		userAction = menu.exec_(self.mapToGlobal(pos))
+
+	def contextMenuEvent(self, event):
+		"""
+
+		for a more advanced example, see
+		https://stackoverflow.com/questions/20930764/how-to-add-a-right-click-menu-to-each-cell-of-qtableview-in-pyqt
+		"""
+
+		# only allow right-click menu for nodes/edges
+		if self._type in ['nodes', 'edges']:
+			# ok
+			pass
+		else:
+			return
+
+		row = self.currentRow()
+		pos = event.pos()
+		print('bTableWidget2.contextMenuEvent() row:', row, pos)
+
+		myType = self.getCellValue('type', row=row)
+		if myType is None:
+			myType = ''
+		#print('    myType:', myType, type(myType))
+
+		# make a popup allowing 'type' to be set
+		menu = QtWidgets.QMenu()
+		nodeTypes = ['Empty', 'Type 1', 'Type 2', 'Type 3', 'Type 4']
+		for nodeType in nodeTypes:
+			# make an action
+			isChecked = nodeType == myType
+			currentAction = QtWidgets.QAction(nodeType, self, checkable=True, checked=isChecked)
+			currentAction.setProperty('bobID0', self._type)
+			currentAction.setProperty('bobID', 'setType')
+			currentAction.triggered.connect(self.menuActionHandler)
+			# add to menu
+			menuAction = menu.addAction(currentAction)
+
+		menu.addSeparator()
+
+		myIsBad = self.getCellValue('isBad', row=row) # this is a string
+		#print('myIsBad:', myIsBad, type(myIsBad))
+		if myIsBad == 'True':
+			myIsBad = True
+		elif myIsBad == 'False':
+			myIsBad = False
+		else:
+			myIsBad = False
+		badAction = QtWidgets.QAction('Bad', self, checkable=True, checked=myIsBad)
+		badAction.setProperty('bobID0', self._type)
+		badAction.setProperty('bobID', 'setIsBad')
+		badAction.triggered.connect(self.menuActionHandler)
+		menuAction = menu.addAction(badAction)
+
+		userAction = menu.exec_(self.mapToGlobal(pos))
+		#print('userAction:', userAction)
+
+	def menuActionHandler_header(self):
+		"""
+		show/hide columns
+
+		as a lot of this ... this is messy !!!!!!!!!!!!!
+		"""
+		print('menuActionHandler_header()', self._type)
+		sender = self.sender()
+		title = sender.text()
+		isChecked = sender.isChecked()
+		print('    title:', title, 'isChecked:', isChecked, type(sender))
+
+		# self.horizontalHeader().isSectionHidden(colIdx)
+
+		# build a list of columns to hide
+		hideColumnList = []
+		nColHeader = self.horizontalHeader().count()
+		for colIdx in range(nColHeader):
+			headerItem = self.horizontalHeaderItem(colIdx)
+			headerItemText = headerItem.text()
+			if headerItemText == title: # logic here is a bit backwards
+				# checked means show
+				#print('menuActionHandler_header() is changing headerItemText:', headerItemText, 'to:', isChecked)
+				if isChecked:
+					# checked means show
+					pass
+				else:
+					# not checked means hide
+					hideColumnList.append(headerItemText)
+			elif self.horizontalHeader().isSectionHidden(colIdx):
+				# not checked means hide
+				hideColumnList.append(headerItemText)
+
+		self.hideColumns(hideColumnList)
+
+		# repaint
+		self.repaint()
+
+	def menuActionHandler(self):
+		"""
+		receives event when user selects a right-click menu
+		"""
+		print('menuActionHandler')
+		row = self.currentRow() # this is dangerous but seems to stay in sync, I owuld rather have the row in the event?
+		sender = self.sender()
+		title = sender.text()
+		isChecked = sender.isChecked()
+		bobID0 = sender.property('bobID0') # object type node/index/search
+		bobID = sender.property('bobID') # set type or isBad
+		print('    title:', title, 'row:', row, 'isChecked:', isChecked, 'bobID:', bobID)
+
+		#
+		objectIndex = self.getCellValue('idx', row=row)
+		myEvent = {'type': bobID, 'bobID0': bobID0, 'newType': title, 'objectIdx':int(objectIndex), 'isChecked':isChecked}
+		self.mainWindow.getStackView().myEvent(myEvent)
+
+	def getCellValue_int(self, colName, row=None):
+		theRet = None
+		if row is None:
+			row = self.currentRow()
+		colIdx = self._getColumnIdx(colName)
+		if colIdx is not None:
+			myItem = self.item(row, colIdx) # 0 is idx column
+			if myItem.text() == '':
+				pass
+			else:
+				theRet = int(myItem.text())
+		return theRet
+
+	def getCellValue(self, colName, row=None):
+		"""
+		return as string, caller is responsible for castine
+		e.g. list()
+		"""
+		theRet = None
+		if row is None:
+			row = self.currentRow()
+		colIdx = self._getColumnIdx(colName)
+		if colIdx is not None:
+			myItem = self.item(row, colIdx) # 0 is idx column
+			if myItem.text() == '':
+				pass
+			else:
+				theRet = myItem.text()
+		return theRet
+
+def main():
 	import sys
 	app = QtWidgets.QApplication(sys.argv)
 
@@ -377,3 +696,6 @@ if __name__ == '__main__':
 	btw2.populate(editDictList)
 
 	sys.exit(app.exec_())
+
+if __name__ == '__main__':
+	main()

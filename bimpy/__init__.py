@@ -14,3 +14,4 @@ from .interface.bStackContrastWidget import bStackContrastWidget
 from .util import bTimer
 
 from .bLineProfile import bLineProfile
+from .bSearchAnnotations import bSearchAnnotations

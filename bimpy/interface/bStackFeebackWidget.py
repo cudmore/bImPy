@@ -75,8 +75,59 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 			self.mainWindow.signal('load')
 		elif title == 'Save Stack Copy':
 			self.mainWindow.signal('save stack copy')
+
+		# search
+		#elif title == '1':
+		elif title=='Dead end near other slab':
+			distThreshold = self.minSpinBox.value()
+			self.mainWindow.signal('search 1', value=distThreshold)
+		elif title=='Dead end near other nodes':
+			distThreshold = self.minSpinBox.value()
+			self.mainWindow.signal('search 1_1', value=distThreshold)
+		elif title=='Slab Gaps':
+			distThreshold = self.minSpinBox.value()
+			self.mainWindow.signal('search 1_2', value=distThreshold)
+		#elif title == '2':
+		elif title == 'All Dead Ends':
+			self.mainWindow.signal('search 2')
+		elif title=='Close Nodes':
+			distThreshold = self.minSpinBox.value()
+			self.mainWindow.signal('search 1_5', value=distThreshold)
+		elif title=='Close Slabs':
+			distThreshold = self.minSpinBox.value()
+			self.mainWindow.signal('search 1_6', value=distThreshold)
+		#elif title == '3':
+		elif title == 'Shortest Path':
+			# shortest path
+			node1 = self.node1SpinBox.value()
+			node2 = self.node2SpinBox.value()
+			self.mainWindow.signal('search 3', value=(node1,node2))
+		#elif title == '4':
+		elif title == 'All Paths':
+			# all paths
+			node1 = self.node1SpinBox.value()
+			node2 = self.node2SpinBox.value()
+			self.mainWindow.signal('search 4', value=(node1,node2))
+
+		#elif title == 'Shortest Loop':
+		#	# all paths
+		#	node1 = self.node1SpinBox.value()
+		#	self.mainWindow.signal('search 5', value=node1)
+
+		elif title == 'All Subgraphs':
+			# all subgraphs
+			self.mainWindow.signal('search 5')
+
+		elif title == 'All Loops':
+			# all paths
+			node1 = self.node1SpinBox.value()
+			self.mainWindow.signal('search 6', value=node1)
+
+		elif title == 'Analyze All Diameters':
+			self.mainWindow.signal('Analyze All Diameters') # calls slabList.analyseSlabIntensity()
+
 		else:
-			print('    case not taken:', title)
+			print('    bStackFeedbackWidget.button_callback() case not taken:', title)
 
 	def checkbox_callback(self, isChecked):
 		sender = self.sender()
@@ -132,7 +183,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		#
 		# file
-		fileGridLayout = QtWidgets.QGridLayout(self)
+		fileGridLayout = QtWidgets.QGridLayout()
 		button1 = QtWidgets.QPushButton('Save Tracing')
 		button2 = QtWidgets.QPushButton('Load Tracing')
 		button3 = QtWidgets.QPushButton('Save Stack Copy')
@@ -149,6 +200,8 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		#
 		# view group
+		# todo: put this back in
+		"""
 		viewGroupBox = QtWidgets.QGroupBox('View')
 		#viewGroupBox.setStyleSheet('QGroupBox  {color: white;}')
 		viewGroupBox.setStyleSheet(open(mystylesheet_css).read())
@@ -192,12 +245,136 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		viewGroupBox.setLayout(viewGridLayout)
 		mainLayout.addWidget(viewGroupBox)
 
+		# todo: put this back in
+		"""
+
+		with open(mystylesheet_css) as f:
+			myStyleSheet = f.read()
+
+		#
+		# search group
+		searchGroupBox = QtWidgets.QGroupBox('Search')
+		#searchGroupBox.setStyleSheet(open(mystylesheet_css).read())
+		searchGroupBox.setStyleSheet(myStyleSheet)
+		searchGridLayout = QtWidgets.QGridLayout()
+
+		row = 0
+
+		spinBoxWidth = 64
+
+		minLabel = QtWidgets.QLabel("Distance Threshold")
+		self.minSpinBox = QtWidgets.QSpinBox()
+		self.minSpinBox.setMaximumWidth(spinBoxWidth)
+		self.minSpinBox.setMinimum(0)
+		self.minSpinBox.setMaximum(1e6)
+		self.minSpinBox.setValue(10)
+
+		nodeLabel = QtWidgets.QLabel("Nodes")
+		self.node1SpinBox = QtWidgets.QSpinBox()
+		self.node1SpinBox.setMaximumWidth(spinBoxWidth)
+		self.node1SpinBox.setMinimum(0)
+		self.node1SpinBox.setMaximum(1e6)
+		self.node1SpinBox.setValue(10)
+		#
+		self.node2SpinBox = QtWidgets.QSpinBox()
+		self.node2SpinBox.setMaximumWidth(spinBoxWidth)
+		self.node2SpinBox.setMinimum(0)
+		self.node2SpinBox.setMaximum(1e6)
+		self.node2SpinBox.setValue(20)
+
+		searchGridLayout.addWidget(minLabel, row, 0)
+		searchGridLayout.addWidget(self.minSpinBox, row, 1)
+		#
+		row += 1
+		searchGridLayout.addWidget(nodeLabel, row, 0)
+		searchGridLayout.addWidget(self.node1SpinBox, row, 1)
+		searchGridLayout.addWidget(self.node2SpinBox, row, 2)
+
+		row += 1
+
+		button7 = QtWidgets.QPushButton("Dead end near other slab")
+		button7.setToolTip('search for dead end nodes near a slab')
+		button8 = QtWidgets.QPushButton("All Dead Ends")
+		button8.setToolTip('search for all dead end edges')
+		#
+		button7_1 = QtWidgets.QPushButton("Dead end near other nodes")
+		button7_2 = QtWidgets.QPushButton("Slab Gaps")
+		#
+		button8_1 = QtWidgets.QPushButton("Close Nodes")
+		button8_1.setToolTip('Close Nodes')
+		button8_2 = QtWidgets.QPushButton("Close Slabs")
+		button8_2.setToolTip('Close Slabs')
+		#
+		button9 = QtWidgets.QPushButton("Shortest Path")
+		button9.setToolTip('search for shortest path between nodes')
+		button10 = QtWidgets.QPushButton("All Paths")
+		button10.setToolTip('search for all paths between nodes')
+		#
+		button7.clicked.connect(self.button_callback)
+		button7_1.clicked.connect(self.button_callback)
+		button7_2.clicked.connect(self.button_callback)
+		button8.clicked.connect(self.button_callback)
+		button8_1.clicked.connect(self.button_callback)
+		button8_2.clicked.connect(self.button_callback)
+		button9.clicked.connect(self.button_callback)
+		button10.clicked.connect(self.button_callback)
+		#
+		searchGridLayout.addWidget(button7, row, 0)
+		searchGridLayout.addWidget(button8, row, 1)
+		row += 1
+		searchGridLayout.addWidget(button7_1, row, 0)
+		searchGridLayout.addWidget(button7_2, row, 1)
+		row += 1
+		searchGridLayout.addWidget(button8_1, row, 0)
+		searchGridLayout.addWidget(button8_2, row, 1)
+		row += 1
+		searchGridLayout.addWidget(button9, row, 0)
+		searchGridLayout.addWidget(button10, row, 1)
+
+		row += 1
+		button11 = QtWidgets.QPushButton("All Subgraphs")
+		button11.setToolTip('Shortest All Subgraphs')
+		'''
+		button11 = QtWidgets.QPushButton("Shortest Loop")
+		button11.setToolTip('Shortest Loop')
+		button11.setEnabled(False) # shortest loop does not work, use "All Loops"
+		'''
+		button12 = QtWidgets.QPushButton("All Loops")
+		button12.setToolTip('All Loops')
+		#
+		button11.clicked.connect(self.button_callback)
+		button12.clicked.connect(self.button_callback)
+		#
+		searchGridLayout.addWidget(button11, row, 0)
+		searchGridLayout.addWidget(button12, row, 1)
+
+		# finalize
+		searchGroupBox.setLayout(searchGridLayout)
+		mainLayout.addWidget(searchGroupBox)
+
+		#
+		# analysis group
+		analysisGroupBox = QtWidgets.QGroupBox('Analysis')
+		#analysisGroupBox.setStyleSheet(open(mystylesheet_css).read())
+		analysisGroupBox.setStyleSheet(myStyleSheet)
+		analysisGridLayout = QtWidgets.QGridLayout()
+
+		row = 0
+		button1 = QtWidgets.QPushButton("Analyze All Diameters")
+		button1.clicked.connect(self.button_callback)
+		analysisGridLayout.addWidget(button1, row, 0)
+
+		# finalize
+		analysisGroupBox.setLayout(analysisGridLayout)
+		mainLayout.addWidget(analysisGroupBox)
+
 		#
 		# panels group
 		panelsGroupBox = QtWidgets.QGroupBox('Panels')
 		#viewGroupBox.setStyleSheet('QGroupBox  {color: white;}')
-		panelsGroupBox.setStyleSheet(open(mystylesheet_css).read())
-		panelsGridLayout = QtWidgets.QGridLayout(self)
+		#panelsGroupBox.setStyleSheet(open(mystylesheet_css).read())
+		panelsGroupBox.setStyleSheet(myStyleSheet)
+		panelsGridLayout = QtWidgets.QGridLayout()
 
 		numCol = 3
 		col = 0
@@ -280,8 +457,9 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		# edit group
 		editGroupBox = QtWidgets.QGroupBox('Edit')
 		#editGroupBox.setStyleSheet('QGroupBox  {color: white;}')
-		editGroupBox.setStyleSheet(open(mystylesheet_css).read())
-		editGridLayout = QtWidgets.QGridLayout(self)
+		#editGroupBox.setStyleSheet(open(mystylesheet_css).read())
+		editGroupBox.setStyleSheet(myStyleSheet)
+		editGridLayout = QtWidgets.QGridLayout()
 
 		editButtonList = ['- Node', '- Edge', '- Slab', 'To Node']
 

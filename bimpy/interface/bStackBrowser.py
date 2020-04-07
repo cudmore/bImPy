@@ -88,7 +88,7 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		self.centralWidget.setLayout(self.myVBoxLayout)
 
 		# tree
-		self.myColumnNames = ['Folder', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels', 'xVoxel', 'yVoxel', 'zVoxel']
+		self.myColumnNames = ['Folder', 'File', 'X Pixels', 'Y Pixels', 'Z Pixels', 'xVoxel', 'yVoxel', 'zVoxel', 'nNodes', 'nEdges', 'nGraphs']
 		#self.myColumnNames = ['File', 'X Pixels', 'Y Pixels', 'Z Pixels']
 
 		#self.myTreeWidget = QtWidgets.QTreeWidget()
@@ -122,6 +122,9 @@ class bStackBrowser(QtWidgets.QMainWindow):
 
 
 	def closeStack(self, selRow):
+		if bimpy.interface.myOkCancelDialog('close stack').canceled():
+			return
+		'''
 		msg = QtWidgets.QMessageBox()
 		msg.setIcon(QtWidgets.QMessageBox.Information)
 		msg.setWindowTitle("Close Stack")
@@ -131,7 +134,7 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		retval = msg.exec_()
 		if retval == QtWidgets.QMessageBox.Cancel:
 			return
-
+		'''
 		self.myFileList.pop(selRow)
 
 		if self.myStackList[selRow] is not None:
@@ -178,10 +181,20 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			spinner.start()
 			'''
 
-			tmp = bimpy.interface.bStackWidget(path=path)
+			tmp = bimpy.interface.bStackWidget(path=path, mainWindow=self)
 			#self.myStackList.append(tmp)
 			self.myStackList[rowIdx] = tmp
 			tmp.show()
+
+			# fill in columns
+			nNodes = tmp.getMyStack().slabList.numNodes()
+			nEdges = tmp.getMyStack().slabList.numEdges()
+
+			updateItem = self.myTreeWidget.topLevelItem(rowIdx)
+			nNodesCol = self.myColumnNames.index('nNodes') # this sometimes throws an exception
+			updateItem.setText(nNodesCol, str(nNodes))
+			nEdgesCol = self.myColumnNames.index('nEdges') # this sometimes throws an exception
+			updateItem.setText(nEdgesCol, str(nEdges))
 
 			'''
 			print('stopping spinner')
@@ -223,7 +236,7 @@ class bStackBrowser(QtWidgets.QMainWindow):
 
 	def itemDoubleClicked(self, item, col):
 		rowIdx = self.myTreeWidget.currentIndex().row()
-		print('rowIdx:', rowIdx, 'item:', item, 'col:', col)
+		print('=== bStackBrowser.itemDoubleClicked() rowIdx:', rowIdx, 'item:', item, 'col:', col)
 
 		#path = self.myTreeWidget.selectedItems()[0].text(self._myCol('Path'))
 		#path = item.text(self._myCol('Path'))
@@ -293,40 +306,31 @@ class bStackBrowser(QtWidgets.QMainWindow):
 if __name__ == '__main__':
 	import sys
 
+	useBioformats = False
+	for i, arg in enumerate(sys.argv):
+		#print('i:', i, 'arg:', arg)
+		if arg == '--bioformats':
+			useBioformats = True
+
 	app = QtWidgets.QApplication(sys.argv)
 
-	path = '/Users/cudmore/box/DeepVess/data/immuno-stack/mytest.tif'
+	#
+	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
+	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001.tif'
 
-	# square image: 145, 640, 640
-	path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
-	#path = '/Users/cudmore/box/data/bImpy-Data/high-k-video/HighK-aligned-8bit-short.tif'
-	#path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
+	path = '/Users/cudmore/box/Sites/DeepVess/data/invivo/blur/20190613__0028.tif'
 
-	# tall image, slice:134, width:1981, height:5783
-	#path = '/Users/cudmore/box/data/nathan/vesselucida/tracing_20191217/tracing_20191217.tif'
+	# this one xml tracing is broekn
+	path = '/Users/cudmore/box/data/nathan/vascular-tracing/20191017/tifs/20191017_0001.tif'
+	path = '/Users/cudmore/box/data/nathan/vascular-tracing/20191017/tifs/20191017_0002.tif'
 
-	path = '/Users/cudmore/box/data/nathan/20200127_gelatin/vesselucida2/20200127__A01_G001_0011_croped.tif'
-	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/20191017__0001.tif'
-	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/OCTa/PV_Crop_Reslice.tif'
-	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/synthetic/20200127__A01_G001_0011_cropped_slidingz.tif'
-	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/synthetic/20191017__0001-new_z.tif'
+	path = '/Users/cudmore/box/data/sami/Cell_1/1_5ADVMLEG1L1_ch2.tif'
 
-	#path = '/Users/cudmore/box/data/bImpy-Data/testoir/20191017__0001.oir'
-
-	path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017/fixed/20191017__0001-new.tif'
-
-	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/20200228/20200228__0001_z.tif'
-	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/20191017/20191017__0001_z.tif'
-	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/invivo/20190613__0028.tif'
-	path = 'C:/Users/cudmorelab/Box/Sites/DeepVess/data/octa/PV_Crop_Reslice.tif'
-
-	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/20191017__0001_z.tif'
-
-	path = ''
 
 	try:
-		mjb = bimpy.bJavaBridge()
-		mjb.start()
+		if useBioformats:
+			mjb = bimpy.bJavaBridge()
+			mjb.start()
 
 		myBrowser = bimpy.interface.bStackBrowser()
 		myBrowser.show()
@@ -337,14 +341,22 @@ if __name__ == '__main__':
 		else:
 			print('__main__ did not find path:', path)
 
-		mjb.stop()
+		#mjb.stop()
 
 	except (Exception) as e:
 		print('bStackBrowser exception:', e)
 		#print(traceback.format_exc())
 
-		mjb.stop()
+		if useBioformats:
+			mjb.stop()
 
 		raise
 
-	sys.exit(app.exec_())
+	sys.exit(app.exec_()) # this will loop
+
+	# this is never called ???
+	'''
+	if useBioformats:
+		mjb.stop()
+	print('bStackBrowser finished ...')
+	'''

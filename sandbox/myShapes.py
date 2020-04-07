@@ -16,6 +16,7 @@ scale = (1,1,1)
 
 # 1) show fernando this nathan immuno image
 path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
+path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001.tif'
 
 # 2) show fernando this oct image
 #path = '/Users/cudmore/box/data/bImpy-Data/OCTa/PV_Crop_Reslice.tif'
@@ -60,6 +61,7 @@ pointColorList = [
 x0 = myStack.slabList.x
 y0 = myStack.slabList.y
 z0 = myStack.slabList.z
+'''
 pointColorIdx = 0
 currentEdgeIdx = 0
 masterEdgeList = []
@@ -91,22 +93,34 @@ for idx, tmpx in enumerate(x):
 		currentEdgeList.append([z0[idx], x0[idx], y0[idx]])
 
 	myPointColors.append(pointColorList[pointColorIdx])
+'''
 
-print('found currentEdgeIdx:', currentEdgeIdx)
+masterEdgeList = []
+myPathColors = []
+for idx, edge in enumerate(myStack.slabList.edgeIter()):
+	slabList = edge['slabList']
+	currentEdgeList = []
+	for slab in slabList:
+		currentEdgeList.append([z0[slab], x0[slab], y0[slab]])
+		myPathColors.append(edge['color'])
+	masterEdgeList.append(currentEdgeList) # this will be list of list
+
+#print('found currentEdgeIdx:', currentEdgeIdx)
 print('masterEdgeList:', len(masterEdgeList))
 print('masterEdgeList[0]:', len(masterEdgeList[0]))
 arrayList  = [np.array(xx) for xx in masterEdgeList]
-#print('arrayList:', len(arrayList))
-#print('arrayList[0].shape:', arrayList[0].shape)
-myPath0 = np.array(arrayList)
-print('type(myPath0):', type(myPath0), 'myPath0.shape:', myPath0.shape)
-#print('myPath0[0]:', myPath0[0])
+# was this
+#myPath0 = np.array(arrayList)
 
 myPath0 = arrayList # always give napari a list where each[i] is a np.array ???
 
-edge_width0 = 1
+print('type(myPath0):', type(myPath0), 'myPath0.shape:') #, myPath0.shape)
+print('myPath0[0]:', myPath0[0])
+
+edge_width0 = 5
 edge_color0 = 'cyan'
 
+'''
 #
 # dead ends in red
 deadEndx = myStack.slabList.deadEndx.reshape((-1,1))
@@ -115,6 +129,7 @@ deadEndz = myStack.slabList.deadEndz.reshape((-1,1))
 
 # swap x/y
 xyzDeadEnds = np.hstack((deadEndz, deadEndx, deadEndy))
+'''
 
 #
 # using shapes path
@@ -137,10 +152,12 @@ with napari.gui_qt():
 	# add the points
 	#pointLayer = viewer.add_points(xyzPoints, size=myPointSize, edge_color=myPointColors, face_color=myPointColors)
 
+	'''
 	deadEndSize = 5
 	deadEndColor = 'red'
 	pointLayer = viewer.add_points(xyzDeadEnds,
 		size=deadEndSize, edge_color=deadEndColor, face_color=deadEndColor, name='deadEnds')
+	'''
 
 	#print(pointLayer.face_colors)
 
@@ -148,6 +165,7 @@ with napari.gui_qt():
 		myPath, shape_type='path', edge_width=edge_width, edge_color=edge_color, name='myPath'
 	)
 
+	#myPathColors = 'cyan'
 	layer0 = viewer.add_shapes(
 		myPath0, shape_type='path', edge_width=edge_width0, edge_color=myPathColors,
 		name='myPath0'

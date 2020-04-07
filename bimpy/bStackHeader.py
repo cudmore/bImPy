@@ -457,7 +457,9 @@ class bStackHeader:
 
 			instrumentObject = omeXml.instrument()
 			laserElement = instrumentObject.node.find(_qn(instrumentObject.ns['ome'], "Laser")) # laserElement is a 'xml.etree.ElementTree.Element'
-			self.header['laserWavelength'] = laserElement.get("Wavelength")
+			print('laserElement:',type(laserElement))
+			if laserElement is not None:
+				self.header['laserWavelength'] = laserElement.get("Wavelength")
 
 			# todo: how do i get info from detector 1 and 2 ???
 			'''

@@ -5,7 +5,7 @@ from qtpy import QtCore
 
 class bEvent(QtCore.QObject):
 	def __init__(self, eventType, nodeIdx=None, edgeIdx=None, slabIdx=None,
-			edgeList=[],
+			edgeList=None,
 			nodeDict=None, edgeDict=None, snapz=False, isShift=False):
 		super(bEvent, self).__init__()
 		self._eventType = eventType
@@ -19,7 +19,15 @@ class bEvent(QtCore.QObject):
 		self._srcNodeDict = None
 		self._dstNodeDict = None
 
-		self._edgeList = edgeList # list of int of edges
+		# not sure what is happening here?
+		# When I construct bEvent a second time, we get (edgeList not equal to None) ???
+		# print('bEvent.__init__() with edgeList:', edgeList)
+		if edgeList is None:
+			self._edgeList = []
+		else:
+			self._edgeList = edgeList # list of int of edges
+		self._nodeList = [] # abb 20200320
+		self._colorList = []
 
 		self._minContrast = None
 		self._maxContrast = None
@@ -30,7 +38,12 @@ class bEvent(QtCore.QObject):
 		self._isShift = isShift
 
 	def __str__(self):
-		retStr = 'bEvent eventType:' + str(self.eventType) + ' nodeIdx:' + str(self.nodeIdx) + ' edgeIdx:' + str(self.edgeIdx) + ' slabIdx:' + str(self.slabIdx) + ' edgeList:' + str(self.edgeList)
+		retStr = 'bEvent eventType:' + str(self.eventType) + \
+			' nodeIdx:' + str(self.nodeIdx) + \
+			' edgeIdx:' + str(self.edgeIdx) + \
+			' slabIdx:' + str(self.slabIdx) + \
+			' len(edgeList):' + str(len(self.edgeList)) + \
+			' len(nodeList):' + str(len(self.nodeList))
 		return retStr
 
 	@property
@@ -50,8 +63,16 @@ class bEvent(QtCore.QObject):
 		return self._slabIdx
 
 	@property
+	def nodeList(self):
+		return self._nodeList
+
+	@property
 	def edgeList(self):
 		return self._edgeList
+
+	@property
+	def colorList(self):
+		return self._colorList
 
 	@property
 	def nodeDict(self):
