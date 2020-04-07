@@ -1,6 +1,6 @@
-napari
+#napari
 
-# these are insalled by napari
+# these are installed by napari
 PySide2
 QtPy
 
