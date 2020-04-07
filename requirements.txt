@@ -1,4 +1,4 @@
-#napari
+napari
 
 # these are installed by napari
 PySide2
