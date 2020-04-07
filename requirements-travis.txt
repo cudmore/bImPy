@@ -1,0 +1,20 @@
+# trying to get travis working
+#napari
+
+# these are installed by napari
+PySide2
+QtPy
+
+numpy
+matplotlib
+tifffile
+scikit-image
+h5py
+
+# see requirements-bioformats.txt
+#javabridge
+#python-bioformats
+
+skan # skeleton tracing (requires numba and pandas)
+numba
+pandas
