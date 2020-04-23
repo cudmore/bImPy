@@ -16,6 +16,9 @@ setup(
     #    'pymapmanager',
     #    'pymapmanager.mmio'
     #],
+    setup_requires=[
+        "numpy>1.18",
+    ],
     install_requires=[
         'napari',
         'pyside2',

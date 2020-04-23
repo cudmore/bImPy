@@ -4,7 +4,8 @@ napari
 PySide2
 QtPy
 
-numpy
+numpy>1.18
+
 matplotlib
 tifffile
 scikit-image
