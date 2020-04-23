@@ -2181,10 +2181,14 @@ class bVascularTracing:
 		# shortest path
 		srcNode = 114
 		dstNode = 57
-		oneShortestPath = nx.shortest_path(self.G, source=srcNode, target=dstNode)
-		xshortestn = [pos[k][0] for k in oneShortestPath]
-		yshortestn = [pos[k][1] for k in oneShortestPath]
-		zshortestn = [pos[k][2] for k in oneShortestPath]
+		# networkx.exception.NetworkXNoPath
+		try:
+			oneShortestPath = nx.shortest_path(self.G, source=srcNode, target=dstNode)
+			xshortestn = [pos[k][0] for k in oneShortestPath]
+			yshortestn = [pos[k][1] for k in oneShortestPath]
+			zshortestn = [pos[k][2] for k in oneShortestPath]
+		except (nx.exception.NetworkXNoPath) as e:
+			print('my exception e:', e)
 
 		# edges
 		trace1=go.Scatter3d(x=Xe,
@@ -2316,6 +2320,7 @@ class bVascularTracing:
 if __name__ == '__main__':
 	#path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
+	path = '/Users/cudmore/box/data/nathan/vascular-tracing/20191017/tifs/20191017_0001.tif'
 
 	stack = bimpy.bStack(path=path)
 
@@ -2323,6 +2328,8 @@ if __name__ == '__main__':
 
 	stack.slabList.makeGraph()
 
+	# this was a plotly plot
+	# get it working again
 	stack.slabList.plotGraph2()
 
 	# not implemented for undirected type

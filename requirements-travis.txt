@@ -1,5 +1,5 @@
 # trying to get travis working
-#napari
+napari
 
 # these are installed by napari
 PySide2
@@ -18,3 +18,6 @@ h5py
 skan # skeleton tracing (requires numba and pandas)
 numba
 pandas
+
+chart_studio
+plotly

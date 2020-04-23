@@ -57,4 +57,5 @@ pip install -e .
 
 deactivate
 
+echo -e "${GREEN}virtual environment is in bImPy_env${NC}. It can be activated with 'source bImPy_env/bin/activate"
 echo -e "${GREEN}Install successful${NC}. Run the Analysis app with './run'"

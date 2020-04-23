@@ -17,3 +17,6 @@ h5py
 skan # skeleton tracing (requires numba and pandas)
 numba
 pandas
+
+chart_studio
+plotly
