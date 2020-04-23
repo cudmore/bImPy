@@ -1,4 +1,4 @@
-[![Build status](https://travis-ci.org/cudmore/travis-lab.svg?master)](https://travis-ci.org/cudmore)
+[![Build Status](https://travis-ci.org/cudmore/bImPy.svg?branch=master)](https://travis-ci.org/cudmore/bImPy)
 
 ## bImPy 
 
