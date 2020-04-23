@@ -25,6 +25,11 @@ setup(
         'tifffile',
         'scikit-image',
         'h5py',
+        'skan',
+        'numba',
+        'pandas',
+        'chart_studio',
+        'plotly',
         #'javabridge',
         #'python-bioformats',
     ]
