@@ -20,7 +20,7 @@ setup(
         'napari',
         'pyside2',
         'qtpy',
-        'numpy',
+        'numpy>1.18',
         'matplotlib',
         'tifffile',
         'scikit-image',
