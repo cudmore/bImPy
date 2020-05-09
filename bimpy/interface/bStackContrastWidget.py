@@ -185,6 +185,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 	def color_Callback(self, idx):
 		newColor = self._myColors[idx]
 		print('color_Callback() newColor:', newColor)
+		print('  warning: color LUT are not implemented')
 		self.color = newColor
 
 	def buildUI(self):
@@ -224,7 +225,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		#
 		# bit depth
-		self._myBitDepths = [1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32]
+		self._myBitDepths = [1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16] # don't include 32, it causes an over-run
 		bitDepthIdx = self._myBitDepths.index(self.bitDepth) # will sometimes fail
 		bitDepthLabel = QtWidgets.QLabel('Bit Depth')
 		bitDepthComboBox = QtWidgets.QComboBox()

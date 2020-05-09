@@ -1,6 +1,6 @@
 import tifffile
 
-def readVoxelSize(path, verbose=False):
+def readVoxelSize(path, getShape=False, verbose=False):
 
 	with tifffile.TiffFile(path) as tif:
 		xVoxel = 1
@@ -50,8 +50,13 @@ def readVoxelSize(path, verbose=False):
 		tag = tif.pages[0].tags['ImageLength']
 		yPixels = tag.value
 
-		return xVoxel, yVoxel, zVoxel
-
+		myShape = (xPixels, yPixels, numImages)
+		
+		if getShape:
+			return xVoxel, yVoxel, zVoxel, (myShape)
+		else:
+			return xVoxel, yVoxel, zVoxel
+			
 if __name__ == '__main__':
 	import os
 

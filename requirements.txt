@@ -21,3 +21,9 @@ pandas
 
 chart_studio
 plotly
+
+seaborn
+statsmodels
+
+# now using scipy
+#edt # for euclidean distance transform
