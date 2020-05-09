@@ -22,8 +22,9 @@ pandas
 chart_studio
 plotly
 
-seaborn
-statsmodels
+# see requirements-analysis.txt
+#seaborn
+#statsmodels
 
 # now using scipy
 #edt # for euclidean distance transform
