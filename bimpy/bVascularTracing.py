@@ -6,7 +6,7 @@ import statistics # to get median value from a list of numbers
 import math
 
 from xml.dom import minidom # to load vesselucida xml file
-from skimage.external import tifffile as tif
+#from skimage.external import tifffile as tif
 
 from skimage import morphology
 from scipy.sparse import csgraph # to get dijoint segments
