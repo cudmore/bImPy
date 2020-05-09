@@ -1,0 +1,29 @@
+napari
+
+# these are installed by napari
+PySide2
+QtPy
+
+numpy>1.18
+
+matplotlib
+tifffile
+scikit-image
+h5py
+
+# see requirements-bioformats.txt
+#javabridge
+#python-bioformats
+
+skan # skeleton tracing (requires numba and pandas)
+numba
+pandas
+
+chart_studio
+plotly
+
+seaborn
+statsmodels
+
+# now using scipy
+#edt # for euclidean distance transform
