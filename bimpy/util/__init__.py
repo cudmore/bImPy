@@ -7,3 +7,6 @@ from .dictListToFile import dictListToFile
 from .getFilePathNoExtension import getFilePathNoExtension
 from .bTiffFile import * # there are multiple functions, none are called bTiffFile
 
+from . import morphology
+from .convexHull import convexHull
+

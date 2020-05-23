@@ -1,22 +1,46 @@
-1) before making ch1 mask better
+# Install
 
-stack 20200420_distalHEAD__ch1_9_edt.tif (26, 1024, 1024) float32 min: 1.0111758 max: 48.308743 mean: 13.073876
-stack 20200420_HEAD__ch1_9_edt.tif (36, 1024, 1024) float32 min: 1.0015583 max: 74.958466 mean: 10.334607
-stack 20200420_MID__ch1_9_edt.tif (23, 1024, 1024) float32 min: 1.0111758 max: 38.991074 mean: 9.6126375
+### Make a directory to work in
 
-after removing <2
-stack 20200420_distalHEAD__ch1_9_edt.tif (26, 1024, 1024) float32 min: 1.0111758 max: 48.308743 mean: 13.073876
-stack 20200420_HEAD__ch1_9_edt.tif (36, 1024, 1024) float32 min: 1.0015583 max: 74.958466 mean: 10.334607
-stack 20200420_MID__ch1_9_edt.tif (23, 1024, 1024) float32 min: 1.0111758 max: 38.991074 mean: 9.6126375
+```
+mkdir myAnalysis
+cd myAnalysis
+```
 
+Clone and install bImPy
 
-2) after fixing hcn1 mask (making it more complete)
+```
+git clone https://github.com/cudmore/bImPy.git
+cd bImPy
+pip install -e .
+cd ..
+```
 
-stack 20200420_distalHEAD__ch1_9_edt.tif (26, 1024, 1024) float32 min: 0.0 max: 49.71332 mean: 11.911905
-stack 20200420_HEAD__ch1_9_edt.tif (36, 1024, 1024) float32 min: 0.0 max: 75.18001 mean: 8.928503
-stack 20200420_MID__ch1_9_edt.tif (23, 1024, 1024) float32 min: 0.0 max: 70.23193 mean: 10.07037
+### Make a virtual environment to run myConvex hull
 
-after removing <2
-stack 20200420_distalHEAD__ch1_9_edt.tif (26, 1024, 1024) float32 min: 1.0111758 max: 49.71332 mean: 12.99995
-stack 20200420_HEAD__ch1_9_edt.tif (36, 1024, 1024) float32 min: 1.0015583 max: 75.18001 mean: 10.247228
-stack 20200420_MID__ch1_9_edt.tif (23, 1024, 1024) float32 min: 1.0111758 max: 70.23193 mean: 11.1082735
+This is called at the end of vascDen.py myRun(). Note, saved convex hull does not have proper x/y/z voxel size.
+
+```
+python3 -m venv my_hull_env/
+source my_hull_env/bin/activate
+pip install numpy==1.17.4
+pip install scipy==1.1.0
+pip install matplotlib scikit-image
+```
+
+# Workflow
+
+Activate bImPy_env
+
+```
+source bImPy_env/bin/activate
+```
+
+Change into edt folder
+
+```
+cd examples/edt
+```
+
+### Edit examples/edt/master_cell_db.csv to specify (uFilename, uFirstSlice, uLastSLice)
+

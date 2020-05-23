@@ -1,5 +1,5 @@
 """
-Author: RObert Cudmore
+Author: Robert Cudmore
 Date: 20200424
 
 Purpose:

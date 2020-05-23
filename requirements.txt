@@ -4,7 +4,10 @@ napari
 PySide2
 QtPy
 
-numpy>1.18
+# 20200514, was this, trying to fix segmentation fault in scipy convexhull
+#numpy>1.18
+
+numpy
 
 matplotlib
 tifffile

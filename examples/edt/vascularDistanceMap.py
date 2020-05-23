@@ -54,6 +54,14 @@ def mySliceKeeper(path):
 	elif path.find('20200420_HEAD_') != -1:
 		first = 23 #1
 		last = 58 #22
+	
+	#
+	#2019016
+	if path.find('20190116__A01_G001_0007_') != -1:
+		# 20190116__A01_G001_0007_ch1.tif
+		first = 3
+		last = 84 #26
+
 	return first, last
 	
 def myLoadStack(path):
@@ -85,13 +93,56 @@ def myMedianFilter(imageStack, size=(2,2,2)):
 	print('  .myMedianFilter() size:', size, '... please wait')
 	_printStackParams('input', imageStack)
 		
+	startTime = time.time()
+	
 	result = scipy.ndimage.median_filter(imageStack, size=size)
 	
 	_printStackParams('output', result)
 
+	stopTime = time.time()
+	print('    myMedianFilter took', round(stopTime-startTime,2), 'seconds')
 	
 	return result
 	
+def myThreshold_min_max2(imageStack, min=None, max=None):
+	
+	print('  .', 'myThreshold_min_max()')
+	
+	'''
+	theMin = np.nanmin(imageStack)
+	theMax = np.nanmax(imageStack)
+	
+	min = (theMax-theMin) * 0.1 # lower 10 percent
+	min = int(min)
+	
+	if min is not None:
+		thresholdStack = np.where(imageStack>min, 1, 0)
+	#if max is not None:
+	#	thresholdStack = np.where(thresholdStack<min, 1, 0)
+	'''
+	
+	thresholdStack = imageStack.copy()
+	thresholdStack[:] = 0
+	numSlices = thresholdStack.shape[0]
+	for i in range(numSlices):
+		oneSlice = imageStack[i,:,:]
+		theMin = np.nanmin(oneSlice)
+		theMax = np.nanmax(oneSlice)
+		'''
+		myScale = 0.1
+		if theMax < 165:
+			myScale = 0.05
+		'''
+		myScale = 0.06
+		min = (theMax-theMin) * myScale # lower 10 percent
+		min = int(min)
+	
+		#print('  i:', i, 'theMin:', theMin, 'theMax:', theMax, 'myScale:', myScale, 'min:', min)
+		
+		thresholdStack[i,:,:] = np.where(oneSlice>min, 1, 0)
+		
+	return thresholdStack.astype(np.uint8)
+
 def myThreshold_min_max(imageStack, min=None, max=None):
 	"""
 	"""
@@ -167,6 +218,8 @@ def myThreshold_Local(imageStack, block_size=5):
 
 def myFillHoles(maskStack):
 	"""
+	todo: This is return first/last slice as all 0 !!!!!!!!!!
+	
 	see: https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.ndimage.morphology.binary_fill_holes.html
 	"""
 	
@@ -195,7 +248,7 @@ def myFillHoles(maskStack):
 	retStack = morphology.binary_fill_holes(retStack, structure=structure)
 	'''
 
-	# first dilate
+	# then erode
 	retStack = scipy.ndimage.morphology.binary_erosion(retStack, structure=None, iterations=1).astype(np.uint8)
 
 	_printStackParams('output', retStack)
@@ -282,7 +335,7 @@ def myRemoveSmallLabels(labelStack, removeSmallerThan=20):
 	
 	numLabels = len(loc)
 	
-	#labelSizeList = []
+	labelSizeList = []
 	#removeSliceList = []
 	smallCount = 0 # count really small labels
 	numAdded = 0
@@ -294,7 +347,7 @@ def myRemoveSmallLabels(labelStack, removeSmallerThan=20):
 		tmpStack = labelStack[tmpLoc]
 		numPixelsInLabel = np.count_nonzero(tmpStack)
 		
-		#labelSizeList.append(numPixelsInLabel)
+		labelSizeList.append(numPixelsInLabel)
 		
 		if numPixelsInLabel <= removeSmallerThan:
 			smallCount += 1
@@ -308,8 +361,28 @@ def myRemoveSmallLabels(labelStack, removeSmallerThan=20):
 	
 	print('  ', 'numAdded:', numAdded, 'smallCount', smallCount)
 	
+	#
+	# print the 50 largest labels
+	# REMEMBER: labels go from 1,2,3 NOT 0,1,2 !!!!!!!!!!!
+	reverseIdx = np.argsort(labelSizeList) # reverse sort, gives us indices
+	print('reverseIdx0:', type(reverseIdx), reverseIdx.dtype, reverseIdx.shape)
+	reverseIdx = reverseIdx.tolist()
+	print('reverseIdx1:', type(reverseIdx), reverseIdx[0:10])
+	# increment by 1, labels do not start at 0, they start at 1
+	reverseIdx = [int(npIdx)+1 for npIdx in reverseIdx]
+	print('reverseIdx2:', reverseIdx[-50:])
+	reverseIdx.reverse()	
+	print('reverseIdx3:', reverseIdx[0:50])
+
+	print('labelSizeList9:', labelSizeList[0:50])
+	labelSizeList_sorted = sorted(labelSizeList, reverse=True)
+	print('labelSizeList1:', labelSizeList[0:50])
+
+	for i in range(50):
+		print('   label', reverseIdx[i], labelSizeList_sorted[i])
+		
 	'''
-	# not very infrmative as we have so many low pixel count labels
+	# not very informative as we have so many low pixel count labels
 	g = sns.distplot(labelSizeList, kde=False, rug=True)
 	g.axes.set_yscale('log')
 	plt.show()
@@ -346,8 +419,8 @@ def myDistanceMap(maskStack, scale): #, includeDistanceLessThan=5):
 
 	return distanceMap
 	
-def processChannel(channel, path):
-	print('=== processChannel() channel:', channel, 'path:', path)
+def processChannel(channel, path, saveBaseName=None, forceSlidingZ=False, forceMedianKernel=None):
+	print('=== processChannel() channel:', channel, 'saveBaseName:', saveBaseName, 'path:', path)
 	
 	stackDict = OrderedDict()
 	stackDict['raw'] = None
@@ -373,28 +446,41 @@ def processChannel(channel, path):
 	xVoxel = retDict['tiffHeader']['xVoxel']
 	yVoxel = retDict['tiffHeader']['yVoxel']
 	zVoxel = retDict['tiffHeader']['zVoxel']
+	print('  xVoxel:', xVoxel, 'yVoxel:', yVoxel, 'zVoxel:', zVoxel)
 	
 	retDict['algorithmParams']['medianKernel'] = ''
 	retDict['algorithmParams']['minThreshold'] = ''
 	retDict['algorithmParams']['labelStructure'] = '' # to keep dicts in sync
 	retDict['algorithmParams']['removeSmallerThan'] = ''
 	
-	if channel == 2:
+	if forceSlidingZ or channel == 2:
 		slidingz = mySlidingZ(imageStack, upDownSlices=1)
 		stackDict['slidingz'] = slidingz
 		imageStack = slidingz
+		stackDict['slidingz'] = slidingz
 		
 	# median filter
 	if channel == 1:
 		# hcn1
-		medianKernel = (10,10,3)
+		if forceMedianKernel is not None:
+			medianKernel = forceMedianKernel
+		else:
+			medianKernel = (3, 10,10)
 	
 	elif channel == 2:
 		# vascular
-		medianKernel = (5,5,3)
+		if forceMedianKernel is not None:
+			medianKernel = forceMedianKernel
+		else:
+			medianKernel = (3, 5, 5)
+
 	retDict['algorithmParams']['medianKernel'] = medianKernel
 	medianFiltered = myMedianFilter(imageStack, size=medianKernel) # not returned
 	stackDict['filtered'] = medianFiltered
+	
+	#
+	# save median filter and load on next run
+	#mySave(channel, saveBaseName, stackDict, tiffHeaderDict, saveTheseStacks=['filtered'])
 	
 	#
 	# threshold to mask
@@ -403,7 +489,8 @@ def processChannel(channel, path):
 		thresholdStack = myThreshold_min_max(medianFiltered, min=minThreshold)
 		retDict['algorithmParams']['minThreshold'] = minThreshold
 	elif channel == 2:
-		thresholdStack = myThreshold_Otsu(medianFiltered) # no params
+		#thresholdStack = myThreshold_Otsu(medianFiltered) # no params
+		thresholdStack = myThreshold_min_max(medianFiltered) # no params
 	stackDict['thresh'] = thresholdStack
 	
 	if channel == 1:
@@ -418,6 +505,10 @@ def processChannel(channel, path):
 		retDict['algorithmParams']['labelStructure'] = '' # to keep dicts in sync
 		retDict['algorithmParams']['removeSmallerThan'] = ''
 		#retDict['algorithmParams']['keepDistancesLongerThan'] = ''
+		# euclidean distance transform (all pixels to mask, will be overwritten later for 2 channels)
+		scale=(zVoxel, xVoxel, yVoxel)
+		edtStack = myDistanceMap(filledHolesStack, scale=scale)
+		stackDict['edt'] = edtStack
 	elif channel == 2:
 		# fill holes with 'closing' which is dilatin followed by erosion
 		#closingStructure = (3,5,5)
@@ -426,6 +517,24 @@ def processChannel(channel, path):
 		filledHolesStack = myFillHoles(thresholdStack)
 		stackDict['filled'] = filledHolesStack
 
+		###
+		###
+		## Need initial label step to remove MASSIVE ARTERY !!!!!!!!!!
+		## search fiji for "connected"
+		##
+		##
+		## in fiji using raw stack
+		"""
+		- raw stack
+		- IJ.run(imp, "Erode", "stack");
+		- IJ.run(imp, "Connected Components Labeling", "connectivity=26 type=float");
+		- result seems to be large vessel is just one label
+		"""
+		##
+		##
+		###
+		###
+		
 		# label connected segments 1,2,3
 		labelStructure = (3,3,3)
 		retDict['algorithmParams']['labelStructure'] = labelStructure
@@ -447,7 +556,6 @@ def processChannel(channel, path):
 		stackDict['mask'] = finalMask # copy of filledHolesStack ???
 	
 		# euclidean distance transform
-		#edtStack = myEDT(finalMask, xyzScale=(3,3,5))
 		scale=(zVoxel, xVoxel, yVoxel)
 		edtStack = myDistanceMap(finalMask, scale=scale)
 		stackDict['edt'] = edtStack
@@ -501,7 +609,13 @@ def mySlidingZ(imageStack, upDownSlices=1):
 
 	return slidingz
 	
-def mySave(channel, saveBaseName, stackDict, tiffHeader):
+def myLoad(channel, saveBaseName, stackDict, tiffHeader, loadTheseStacks=None):
+	if channel == 1:
+		chStr = '_ch1_'
+	elif channel == 2:
+		chStr = '_ch2_'
+	
+def mySave(channel, saveBaseName, stackDict, tiffHeader, saveTheseStacks=None):
 	print('  .mySave() channel:', channel, 'saveBaseName:', saveBaseName)
 	if channel == 1:
 		chStr = '_ch1_'
@@ -511,8 +625,10 @@ def mySave(channel, saveBaseName, stackDict, tiffHeader):
 	# original tiff header
 	#tiffHeader = resultDict['tiffHeader']
 	
-	saveTheseStacks = ['raw', 'mask', 'edt', 'edt2']
-	
+	if saveTheseStacks is None:
+		saveTheseStacks = ['raw', 'mask', 'edt', 'edt2']
+		saveTheseStacks = ['raw', 'slidingz', 'filled', 'labeled', 'largelabeled', 'mask', 'edt', 'edt2']
+
 	for idx, (stackName, stackData) in enumerate(stackDict.items()):
 		if stackData is None:
 			continue
@@ -523,7 +639,7 @@ def mySave(channel, saveBaseName, stackDict, tiffHeader):
 				inSaveTheseStacks = True
 				break
 				
-		print('stackName:', stackName, 'inSaveTheseStacks:', inSaveTheseStacks)
+		#print('stackName:', stackName, 'inSaveTheseStacks:', inSaveTheseStacks)
 		if inSaveTheseStacks:
 			path = saveBaseName + chStr + str(idx+1) + '_' + stackName + '.tif'
 			shape = stackData.shape
@@ -533,10 +649,15 @@ def mySave(channel, saveBaseName, stackDict, tiffHeader):
 			bimpy.util.bTiffFile.imsave(path, stackData, tifHeader=tiffHeader, overwriteExisting=True)	
 
 	
-def myMain(oirpath):
+def myMain(oirpath, forceSlidingZ=False, forceMedianKernel=None, forceChannel2Analysis=False):
+	"""
+	"""
 	folderPath, oirFileName = os.path.split(oirpath)
 	filenameNoExtension, tmpExtension = oirFileName.split('.')
 	
+	filenameNoExtension = filenameNoExtension.replace('_ch1', '')
+	filenameNoExtension = filenameNoExtension.replace('_ch2', '')
+
 	ch1Path = os.path.join(folderPath, filenameNoExtension + '_ch1.tif')
 	ch2Path = os.path.join(folderPath, filenameNoExtension + '_ch2.tif')
 
@@ -550,30 +671,45 @@ def myMain(oirpath):
 	saveBaseName = os.path.join(savePath, filenameNoExtension)
 	print('  ', 'saveBaseName:', saveBaseName)
 	
+	
+	# for 1-channel stacks
+	#forceSlidingZ=False
+	#forceMedianKernel=None
+	
 	#
 	# pre-process ch1 and ch2 (in processChannel, for vascular ch2 we will remove small segments/blobs)
-	stackDict1, resultDict1 = processChannel(1, ch1Path)
-	stackDict2, resultDict2 = processChannel(2, ch2Path)
+	stackDict1 = None
+	resultDict1 = None
+	stackDict2 = None
+	resultDict2 = None
+	if os.path.isfile(ch1Path):
+		tmpChannel = 1
+		if forceChannel2Analysis:
+			tmpChannel = 2
+		stackDict1, resultDict1 = processChannel(tmpChannel, ch1Path, saveBaseName=saveBaseName, forceSlidingZ=forceSlidingZ, forceMedianKernel=forceMedianKernel)
+	if os.path.isfile(ch2Path):
+		stackDict2, resultDict2 = processChannel(2, ch2Path, saveBaseName=saveBaseName, forceSlidingZ=forceSlidingZ, forceMedianKernel=forceMedianKernel)
 
 	# 
 	# make edt of values in ch1 mask
-	print('=== making euclidean distance transform for vasculature and grabbing distance values that are in hcn1 mask')
-	these_hcn1_pixels = stackDict1['mask']==1 # pixels in hcn1 mask
-	_printStackParams('these_hcn1_pixels', these_hcn1_pixels)
-	edtFinal = stackDict2['edt'].copy()
-	edtFinal[:] = np.nan
-	edtFinal[these_hcn1_pixels] = stackDict2['edt'][these_hcn1_pixels]	# grab hcn1 pixels from vascular edt
-	stackDict1['edt'] = edtFinal
-	_printStackParams('  ch1 edt', edtFinal)
-	#
-	'''
-	edtFinal2 = edtFinal.copy()
-	keepDistancesLongerThan = 2
-	#edtFinal2 = edtFinal2[edtFinal2>keepDistancesLongerThan]
-	edtFinal2[~np.isnan(edtFinal2)] = edtFinal2[~np.isnan(edtFinal2)] > keepDistancesLongerThan
-	stackDict1['edt2'] = edtFinal2
-	_printStackParams('  ch1 edt2', edtFinal2)
-	'''
+	if stackDict1 is not None and stackDict2 is not None:
+		print('=== making euclidean distance transform for vasculature and grabbing distance values that are in hcn1 mask')
+		these_hcn1_pixels = stackDict1['mask']==1 # pixels in hcn1 mask
+		_printStackParams('these_hcn1_pixels', these_hcn1_pixels)
+		edtFinal = stackDict2['edt'].copy()
+		edtFinal[:] = np.nan
+		edtFinal[these_hcn1_pixels] = stackDict2['edt'][these_hcn1_pixels]	# grab hcn1 pixels from vascular edt
+		stackDict1['edt'] = edtFinal
+		_printStackParams('  ch1 edt', edtFinal)
+		# does not work? I end up losing the 3d into 1d?
+		'''
+		edtFinal2 = edtFinal.copy()
+		keepDistancesLongerThan = 2
+		#edtFinal2 = edtFinal2[edtFinal2>keepDistancesLongerThan]
+		edtFinal2[~np.isnan(edtFinal2)] = edtFinal2[~np.isnan(edtFinal2)] > keepDistancesLongerThan
+		stackDict1['edt2'] = edtFinal2
+		_printStackParams('  ch1 edt2', edtFinal2)
+		'''
 
 	#
 	# append final mask volume information
@@ -581,18 +717,22 @@ def myMain(oirpath):
 	#
 	# save results
 	print('=== saving results')
-	mySave(1, saveBaseName, stackDict1, resultDict1['tiffHeader'])
-	mySave(2, saveBaseName, stackDict2, resultDict2['tiffHeader'])
+	if stackDict1 is not None:
+		mySave(1, saveBaseName, stackDict1, resultDict1['tiffHeader'])
+	if stackDict2 is not None:
+		mySave(2, saveBaseName, stackDict2, resultDict2['tiffHeader'])
 	
 	#
 	# merge ordered dictionaries from ['algorithmParams'] and ['tiffHeader']
 	# this is super cryptic, not to be read by other humans
 	#myDictList = OrderedDict(list(d1.items()) + list(d2.items())) #[resultDict1, resultDict2]
 	myDictList = []
-	saveDict = OrderedDict(list(resultDict1['tiffHeader'].items()) + list(resultDict1['algorithmParams'].items()) + list(resultDict1['results'].items()))
-	myDictList.append(saveDict)
-	saveDict = OrderedDict(list(resultDict2['tiffHeader'].items()) + list(resultDict2['algorithmParams'].items()) + list(resultDict2['results'].items()))
-	myDictList.append(saveDict)
+	if resultDict1 is not None:
+		saveDict = OrderedDict(list(resultDict1['tiffHeader'].items()) + list(resultDict1['algorithmParams'].items()) + list(resultDict1['results'].items()))
+		myDictList.append(saveDict)
+	if resultDict2 is not None:
+		saveDict = OrderedDict(list(resultDict2['tiffHeader'].items()) + list(resultDict2['algorithmParams'].items()) + list(resultDict2['results'].items()))
+		myDictList.append(saveDict)
 	
 	csvFile = saveBaseName + '_results.csv'
 	print('=== saving csvFile:', csvFile)
@@ -613,7 +753,18 @@ def myMain(oirpath):
 	#myNapari(resultDict1, resultDict2)
 	
 	print('view with edtNapari.py')
-	
+
+def batch(pathToBatchFile):
+	"""
+	not working
+	"""
+	if not os.path.isfile(pathToBatchFile):
+		print('error: vascularDistanceMap.runBatch did not find file:', pathToBatchFile)
+		return
+	fileList = bimpy.util.getFileListFromFile(pathToBatchFile)
+	for file in fileList:
+		print(file)
+		
 if __name__ == '__main__':
 	startTime = time.time()
 
@@ -628,5 +779,18 @@ if __name__ == '__main__':
 		oirpath = '/Users/cudmore/box/data/nathan/20200420/20200420_MID_.oir'
 		oirpath = '/Users/cudmore/box/data/nathan/20200420/20200420_distalHEAD_.oir'
 
-	myMain(oirpath)
+		# in vivo
+		#oirpath = '/Users/cudmore/box/data/nathan/20200420/invivo/20190613__0028.tif'
+		
+		# other data from nathan
+		#oirpath = '/Users/cudmore/box/data/nathan/20200122-gelatin/20200122__0001.tif'
+		
+	#
+	# for 2-channel hcn4 + vasc
+	#myMain(oirpath)
+	
+	# for 1-channel vasculature only
+	forceSlidingZ = True
+	forceMedianKernel = (5,5,3)
+	myMain(oirpath, forceSlidingZ=forceSlidingZ, forceMedianKernel=forceMedianKernel, forceChannel2Analysis=True)
 	

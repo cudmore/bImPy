@@ -165,20 +165,20 @@ def readVoxelSize(path, getShape=False, getMetaData=False, verbose=False, return
 			if tag.value[0]>0 and tag.value[1]>0:
 				xVoxel = tag.value[1] / tag.value[0]
 			else:
-				print('  error: readVoxelSize() error, got zero tag value?')
-			if verbose: print('   readVoxelSize() xVoxel from TIFF XResolutions:', xVoxel)
+				print('  error: bTiffFile.readVoxelSize() error, got zero tag value?')
+			if verbose: print('   bTiffFile.readVoxelSize() xVoxel from TIFF XResolutions:', xVoxel)
 		except (KeyError) as e:
-			print('  warning: readVoxelSize() did not find XResolution')
+			print('  warning: bTiffFile.readVoxelSize() did not find XResolution')
 
 		try:
 			tag = tif.pages[0].tags['YResolution']
 			if tag.value[0]>0 and tag.value[1]>0:
 				yVoxel = tag.value[1] / tag.value[0]
 			else:
-				print('  error: readVoxelSize() error, got zero tag value?')
-			if verbose: print('   readVoxelSize() yVoxel from TIFF YResolutions:', yVoxel)
+				print('  error: bTiffFile.readVoxelSize() error, got zero tag value?')
+			if verbose: print('   bTiffFile.readVoxelSize() yVoxel from TIFF YResolutions:', yVoxel)
 		except (KeyError) as e:
-			print('  warning: readVoxelSize() did not find YResolution')
+			print('  warning: bTiffFile.readVoxelSize() did not find YResolution')
 
 		# HOLY CRAP, FOUND IT QUICK
 		imagej_metadata = tif.imagej_metadata
@@ -193,13 +193,13 @@ def readVoxelSize(path, getShape=False, getMetaData=False, verbose=False, return
 				zVoxel = imagej_metadata['spacing']
 				if verbose: print('    zVoxel from imagej_metadata["spacing"]:', imagej_metadata['spacing'])
 			except (KeyError) as e:
-				print('  warning: readVoxelSize() did not find "spacing" in imagej_metadata')
+				print('  warning: bTiffFile.readVoxelSize() did not find "spacing" in imagej_metadata')
 
 			try:
 				unit = imagej_metadata['unit']
 				if verbose: print('    unit from imagej_metadata["unit"]:', imagej_metadata['unit'])
 			except (KeyError) as e:
-				print('  warning: readVoxelSize() did not find "unit" in imagej_metadata')
+				print('  warning: bTiffFile.readVoxelSize() did not find "unit" in imagej_metadata')
 
 		numImages = len(tif.pages)
 
