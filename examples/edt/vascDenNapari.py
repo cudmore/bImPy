@@ -26,13 +26,15 @@ import os, json
 import argparse
 
 import numpy as np
+import scipy
 import skimage
 import napari
 import tifffile
 
 from contextlib import nullcontext # to have conditional 'with'
 
-from vascDen import myGetDefaultStackDict # vascDen.py needs to be in same folder
+#from vascDen import myGetDefaultStackDict # vascDen.py needs to be in same folder
+import vascDen
 
 class myLabelEdit:
 
@@ -47,7 +49,13 @@ class myLabelEdit:
 		tmpFolder, tmpFilename = os.path.split(pathToRawTiff)
 		tmpFileNameNoExtension, tmpExtension = tmpFilename.split('.')
 		
-		self.analysisPath = os.path.join(tmpFolder, 'analysis2')
+		if tmpFolder.endswith('analysis2'):
+			# already in analysis folder
+			self.analysisPath = tmpFolder
+			if tmpFileNameNoExtension.endswith('_raw'):
+				tmpFileNameNoExtension = tmpFileNameNoExtension.replace('_raw', '')
+		else:
+			self.analysisPath = os.path.join(tmpFolder, 'analysis2')
 		self.baseFileName = tmpFileNameNoExtension
 		self.baseFilePath = os.path.join(self.analysisPath, self.baseFileName )
 		
@@ -60,7 +68,7 @@ class myLabelEdit:
 		
 		#
 		# to load analysis from vascDen.py
-		self.stackDict = myGetDefaultStackDict()
+		self.stackDict = vascDen.myGetDefaultStackDict()
 		#print('stackDict:', json.dumps(self.stackDict, indent=4))
 
 		#
@@ -70,9 +78,12 @@ class myLabelEdit:
 		self.undoSliceNumber = []
 		self.undoSliceData = []
 
+		self.floodFillIterations = 0
+		
 		#
 		# load raw analysis stacks
-		self.loadTheseStacks = ['raw', 'filtered', 'threshold', 'labeled', 'finalMask', 'finalMask_hull', 'finalMask_edt']
+		self.loadTheseStacks = ['raw', 'filtered', 'threshold0', 'threshold1', 'threshold', 'labeled', 'finalMask', 'finalMask_hull', 'finalMask_edt']
+		#self.loadTheseStacks = ['raw', 'labeled', 'finalMask', 'finalMask_hull', 'finalMask_edt']
 		self.load() 
 		
 		origNumLabels = np.max(self.stackDict['labeled']['data'])
@@ -301,9 +312,24 @@ class myLabelEdit:
 
 			self.setUndo(val, newLabel, mySlice, sliceData)
 
+			
 			newValue = newLabel
-			myRegion = skimage.morphology.flood_fill(sliceData, myCoords, newValue)		
 
+			
+			floodFillIterations = self.floodFillIterations
+			if floodFillIterations == 0: # control with keyboard +/-
+				# was this
+				# flood_fill on JUST the label clicked on
+				myRegion = skimage.morphology.flood_fill(sliceData, myCoords, newValue)		
+			else:
+				# dilate
+				sliceDataBool = scipy.ndimage.binary_dilation(sliceData, iterations=floodFillIterations).astype(np.uint8)
+				# flood_fill on (0/1) binary_dilation
+				myRegion2 = skimage.morphology.flood_fill(sliceDataBool, myCoords, newValue)		
+				# revert back to labels
+				# create a region with original labels (sliceData) and new region (newValue)
+				myRegion = np.where((sliceData>0) & (myRegion2==newValue), newValue, sliceData)
+			
 			layer.data[mySlice,:,:] = myRegion
 						
 			layer.refresh()
@@ -385,7 +411,19 @@ class myLabelEdit:
 			@self.viewer.bind_key('u')
 			def myUndo(viewer):
 				self.undo(viewer)
-				
+			
+			@self.viewer.bind_key('.')
+			def myAdjustFloodFill_Plus(viewer):
+				self.floodFillIterations += 1
+				print('floodFillIterations:', self.floodFillIterations)
+			@self.viewer.bind_key(',')
+			def myAdjustFloodFill_Plus(viewer):
+				self.floodFillIterations -= 1
+				if self.floodFillIterations < 0:
+					self.floodFillIterations = 0
+				print('floodFillIterations:', self.floodFillIterations)
+			
+			
 			@self.myLabelsLayer.mouse_drag_callbacks.append
 			def get_connected_component_shape(layer, event):
 				"""
@@ -418,7 +456,8 @@ if __name__ == '__main__':
 		#pathToRawTiff = '/Users/cudmore/box/data/nathan/20200116/20190116__A01_G001_0011_ch1.tif'
 
 		pathToRawTiff = '/Users/cudmore/box/data/nathan/20200116/20190116__A01_G001_0014_ch1.tif'
-
+		pathToRawTiff = '/Users/cudmore/box/data/nathan/20200518/20200518__A01_G001_0003_ch2.tif'
+		
 	myLabelEdit(pathToRawTiff, withContext=True, verbose=True)
 	
 	

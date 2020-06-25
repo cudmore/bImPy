@@ -21,20 +21,23 @@ def gaussianFilter(imageStack, kernelSize=(2,2,2)):
 	_printStackParams('output', result)
 	return result
 
-def medianFilter(imageStack, kernelSize=(2,2,2)):
+def medianFilter(imageStack, kernelSize=(2,2,2), verbose=False):
 	"""
 	"""
-	print('  .myMedianFilter() kernelSize:', kernelSize, '... please wait')
-	_printStackParams('input', imageStack)
+	if verbose:
+		print('  .myMedianFilter() kernelSize:', kernelSize, '... please wait')
+	
+	if verbose: _printStackParams('input', imageStack)
 		
 	startTime = time.time()
 	
 	result = scipy.ndimage.median_filter(imageStack, size=kernelSize)
 	
-	_printStackParams('output', result)
+	if verbose: _printStackParams('output', result)
 
-	stopTime = time.time()
-	print('    myMedianFilter took', round(stopTime-startTime,2), 'seconds')
+	if verbose:
+		stopTime = time.time()
+		print('    myMedianFilter took', round(stopTime-startTime,2), 'seconds')
 	
 	return result
 
@@ -44,10 +47,10 @@ def _printStackParams(name, myStack):
 		round(np.min(myStack),2), 'max:', round(np.max(myStack),2), 'mean:', round(np.mean(myStack),2)
 		)
 
-def slidingZ(imageStack, upDownSlices=1):
-	print('  .slidingZ() upDownSlices:', upDownSlices)
+def slidingZ(imageStack, upDownSlices=1, verbose=False):
+	if verbose: print('  .slidingZ() upDownSlices:', upDownSlices)
 
-	_printStackParams('input', imageStack)
+	if verbose: _printStackParams('input', imageStack)
 
 	slidingz = imageStack.copy()
 	m = imageStack.shape[0]
@@ -61,7 +64,7 @@ def slidingZ(imageStack, upDownSlices=1):
 		
 		slidingz[i,:,:] = np.max(imageStack[firstSlice:lastSlice+1,:,:], axis=0)
 		
-	_printStackParams('output', slidingz)
+	if verbose: _printStackParams('output', slidingz)
 
 	return slidingz
 
@@ -116,9 +119,49 @@ def fillHoles(maskStack):
 	print('3 fillHoles -2:', np.nanmean(retStack[-2,:,:]))
 	'''
 	
+	retStack = retStack.astype(np.uint8)
+	
 	_printStackParams('output', retStack)
 	
 	return retStack
+
+def threshold_sauvola(imageStack, asImage = False, window_size=23, k=0.2):
+	"""
+	trying to follow Skan algorithm for masking using gaussian then xxx
+	
+	asImage:
+	window_size: 
+	k:
+	"""
+	print('  .threshold_sauvola() window_size:', window_size, 'k:', k)
+
+	if (window_size % 2) == 0:
+		print('Warning: threshold_sauvola() requires window_size to be odd, got:', window_size)
+		window_size -= 1
+	else:
+		pass
+				
+	#
+	# smooth
+	# sigma is ceil 0.1 of window_size (in skan)
+	#sigma = 3
+	#imageData = filters.gaussian(imageData, sigma=sigma)
+	
+	# k is brightnessOffset
+	# window_size is diameter (maybe the line that has both background and forground, e.g. cappillarry diameter?)
+	#window_size = 23 #23 # must be odd
+	#k = 0.2 #0.34 # 0.2
+	
+	threshData = skimage.filters.threshold_sauvola(imageStack, window_size=window_size, k=k, r=None) # returns np.float64
+	
+	if asImage:
+		threshData = np.where(imageStack > threshData, imageStack, 0)
+	else:
+		# as binary
+		threshData = imageStack > threshData # make it binary
+	threshData = threshData.astype(np.uint8)
+	
+	return threshData
 
 def threshold_otsu(imageStack):
 	"""
@@ -127,14 +170,41 @@ def threshold_otsu(imageStack):
 	Returns:
 		Binary threshold stack, same shape as imageStack, with foreground=1 and background=0
 	"""
+	print('  .threshold_otsu()')
+
 	thresholdStack = imageStack.copy() # put the binary thresholded stack in here
 	numSlices = thresholdStack.shape[0]
 	for i in range(numSlices):
 		oneImage = imageStack[i,:,:]
 		thisThresh = skimage.filters.threshold_otsu(oneImage)
-		thresholdStack[i,:,:] = thisSlice >= thisThresh # returning pixels ABOVE threshold
+		thresholdStack[i,:,:] = oneImage >= thisThresh # returning pixels ABOVE threshold
 	return thresholdStack
 		
+def threshold_remove_lower_percent2(imageStack, removeBelowThisPercent=0.06):
+	"""
+	REMOVE BELOW THRESHOLD, OTHERS STAY IN TACT
+	
+	Parameters:
+		imageStack: numpy ndarray of shape (slice,x,y)
+		removeBelowThisPercent: specifies the lower percent of pixel intensities to remove
+			if removeBelowThisPercent = 0.1 then remove lower 10% of pixel intensities
+	Returns:
+		Binary threshold stack, same shape as imageStack, with foreground=1 and background(=0
+	"""	
+	print('  .threshold_remove_lower_percent2() removeBelowThisPercent:', removeBelowThisPercent)
+
+	thresholdStack = imageStack.copy() # put the binary thresholded stack in here
+	numSlices = thresholdStack.shape[0]
+	for i in range(numSlices):
+		oneImage = imageStack[i,:,:]
+		theMin = np.nanmin(oneImage)
+		theMax = np.nanmax(oneImage)
+		theIntensityRange = theMax- theMin
+		removeBelowThisIntensity = theIntensityRange * removeBelowThisPercent # lower percent intensity
+		removeBelowThisIntensity = int(removeBelowThisIntensity) # make sure it is an int(), image intensities are always int()	
+		thresholdStack[i,:,:] = np.where(oneImage<=removeBelowThisIntensity, 0, oneImage)
+	return thresholdStack
+
 def threshold_remove_lower_percent(imageStack, removeBelowThisPercent=0.06):
 	"""
 	Parameters:
@@ -144,6 +214,8 @@ def threshold_remove_lower_percent(imageStack, removeBelowThisPercent=0.06):
 	Returns:
 		Binary threshold stack, same shape as imageStack, with foreground=1 and background(=0
 	"""	
+	print('  .threshold_remove_lower_percent() removeBelowThisPercent:', removeBelowThisPercent)
+
 	thresholdStack = imageStack.copy() # put the binary thresholded stack in here
 	numSlices = thresholdStack.shape[0]
 	for i in range(numSlices):
@@ -168,9 +240,12 @@ def labelMask(thresholdStack):
 	# originally did this to try and islate large label as one object ... does not work
 	#iterations = 3 # NO !!! we are keeping too much of large vessel
 	# this step makes it so we do not include spots (in endocardium)
-	iterations = 2
-	erodedStack = scipy.ndimage.morphology.binary_erosion(thresholdStack, structure=None, iterations=iterations).astype(np.uint8)
-	#erodedStack = thresholdStack
+	
+	#border_value = 1
+	#iterations = 2
+	#erodedStack = scipy.ndimage.morphology.binary_erosion(thresholdStack, structure=None, border_value=border_value, iterations=iterations).astype(np.uint8)
+	
+	erodedStack = thresholdStack
 
 	#
 	# label the stack
@@ -178,7 +253,7 @@ def labelMask(thresholdStack):
 	myStructure = np.ones(structure, dtype=np.uint8)
 	labeledStack, numLabels = scipy.ndimage.label(erodedStack, structure=myStructure)
 	labeledStack = labeledStack.astype(np.uint16) # assuming we might have more than 2^8 labels (often 2^16 is not enough)
-	print('  numLabels:', numLabels)
+	print('    numLabels:', numLabels)
 	
 	'''
 	#
@@ -218,24 +293,24 @@ def labelMask(thresholdStack):
 	'''
 
 	#iterations = 2
-	#erodedStack = scipy.ndimage.morphology.binary_dilation(thresholdStack, structure=None, iterations=iterations).astype(np.uint8)
+	#erodedStack = scipy.ndimage.morphology.binary_dilation(thresholdStack, structure=None, border_value=border_value, iterations=iterations).astype(np.uint8)
 	
 	#return labeledStack, largeLabelStack
 	return labeledStack
 
-def removeSmallLabels(labelStack, removeSmallerThan=20):
+def removeSmallLabels(labelStack, removeSmallerThan=20, verbose=False):
 	"""
 	When we have many small labels >5000, removing them gets slow
 	Instead we will start empty and add large labels
 	"""
-	print('  .myRemoveSmallLabels() removeSmallerThan:', removeSmallerThan, '... please wait ...')
+	print('  .removeSmallLabels() removeSmallerThan:', removeSmallerThan, '... please wait ...')
 	
-	_printStackParams('input labels', labelStack)
+	if verbose: _printStackParams('input labels', labelStack)
 
 	# Array containing objects defined by different labels. Labels with value 0 are ignored.
 	loc = scipy.ndimage.find_objects(labelStack) #
 	
-	print('  ', len(loc), 'labels') # labeled object 103 is at index 103 (0/background is not in labels)
+	#print('  ', len(loc), 'labels') # labeled object 103 is at index 103 (0/background is not in labels)
 		
 	retStack2 = labelStack.copy()
 	retStack = labelStack.copy()
@@ -269,7 +344,7 @@ def removeSmallLabels(labelStack, removeSmallerThan=20):
 	# does not work
 	#retStack[removeSliceList] = 0
 	
-	print('  ', 'numAdded:', numAdded, 'smallCount', smallCount)
+	print('  ', len(loc), 'original labels, number of large labels:', numAdded, 'smallCount', smallCount)
 	
 	#
 	# print the 50 largest labels
@@ -289,9 +364,10 @@ def removeSmallLabels(labelStack, removeSmallerThan=20):
 	#print('labelSizeList1:', labelSizeList[0:50])
 
 	# print label size from largest to smallest
-	printNumLabels = 10
-	for i in range(printNumLabels):
-		print('   label idx:', reverseIdx[i], 'size:', labelSizeList_sorted[i])
+	if verbose:
+		printNumLabels = min(len(loc), 10)
+		for i in range(printNumLabels):
+			print('   label idx:', reverseIdx[i], 'size:', labelSizeList_sorted[i])
 		
 	'''
 	# not very informative as we have so many low pixel count labels
@@ -300,6 +376,35 @@ def removeSmallLabels(labelStack, removeSmallerThan=20):
 	plt.show()
 	'''
 	
-	_printStackParams('output', retStack)
+	if verbose: _printStackParams('output', retStack)
 
 	return retStack, retStack2
+
+def euclidean_distance_transform(maskStack, hullMask=None, scale=(1,1,1)): #, includeDistanceLessThan=5):	
+	
+	print('  .euclidean_distance_transform() scale:', scale, '... please wait')
+	
+	edtMask = maskStack.copy().astype(float)
+
+	#
+	# only accept maskStack pixels in hullMask
+	# do this after
+	
+	#
+	# invert the mask, edt will calculate distance from 0 to 1
+	edtMask[edtMask==1] = 10
+	edtMask[edtMask==0] = 1
+	edtMask[edtMask==10] = 0
+
+	distanceMap = scipy.ndimage.morphology.distance_transform_edt(edtMask, sampling=scale, return_distances=True)
+	
+	distanceMap = distanceMap.astype(np.float32) # both (matplotlib, imagej) do not do float16 !!!
+
+	# only accept edt that is also in hullMask
+	if hullMask is not None:
+		distanceMap[hullMask==0] = np.nan
+	
+	_printStackParams('output edt', distanceMap)
+
+	return distanceMap
+

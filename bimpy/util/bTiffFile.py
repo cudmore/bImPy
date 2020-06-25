@@ -75,11 +75,17 @@ def imsave(path, imageData, tifHeader=None, overwriteExisting=False):
 		# this DOES change caller
 		imageData = imageData.copy()
 		imageData.shape = 1, numSlices, 1, numx, numy, 1
-		tifffile.imwrite(path, imageData, imagej=True, resolution=resolution, metadata=metadata) #, ijmetadata=ijmetadata)
+		
+		if tifffile.__version__ == '0.15.1':
+			# older interface, used by aics-segmentation
+			tifffile.imsave(path, imageData, imagej=True, resolution=resolution, metadata=metadata) #, ijmetadata=ijmetadata)
+		else:
+			# newer interface, changed on 2018.11.6
+			tifffile.imwrite(path, imageData, imagej=True, resolution=resolution, metadata=metadata) #, ijmetadata=ijmetadata)
 	
 	return True
 	
-def imread(path):
+def imread(path, verbose=False):
 	"""
 	Given a path to a .tif file, load the image data and the Fiji/ImageJ header
 	
@@ -92,11 +98,11 @@ def imread(path):
 	# check file exists
 	if not os.path.isfile(path):
 		print('ERROR: imread() did not find file:', path)
-		return None
+		return None, None
 	
 	if not path.endswith('.tif'):
 		print('ERROR: imread() expect a .tif file and got',  os.path.basename(path))
-		return None
+		return None, None
 	
 	#
 	# read the header
@@ -106,6 +112,9 @@ def imread(path):
 	# load the tiff
 	imageData = tifffile.imread(path)
 	
+	if verbose:
+		print('imread:', imageData.shape, imageData.dtype, 'zVoxel:', tifHeaderDict['zVoxel'], 'xVoxel:', tifHeaderDict['xVoxel'], 'yVoxel:', tifHeaderDict['yVoxel'], path)
+		
 	return imageData, tifHeaderDict
 	
 def getTiffFileInfo(path):

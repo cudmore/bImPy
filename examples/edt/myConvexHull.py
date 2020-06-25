@@ -25,12 +25,12 @@ import scipy.spatial
 
 def _flood_fill_hull(image):	
 	points = np.transpose(np.where(image))
-	print('  flood_fill_hull.points:', points.shape, points.dtype)
-	print('  calling scipy.spatial.ConvexHull')
+	#print('  flood_fill_hull.points:', points.shape, points.dtype)
+	#print('  calling scipy.spatial.ConvexHull')
 	hull = scipy.spatial.ConvexHull(points)
-	print('  calling scipy.spatial.Delaunay')
+	#print('  calling scipy.spatial.Delaunay')
 	deln = scipy.spatial.Delaunay(points[hull.vertices]) 
-	print('  calling np.stack')
+	#print('  calling np.stack')
 	idx = np.stack(np.indices(image.shape), axis = -1)
 	out_idx = np.nonzero(deln.find_simplex(idx) + 1)
 	out_img = np.zeros(image.shape)
@@ -45,17 +45,40 @@ def convexHull(stackMask):
 	
 	scipyVersion = scipy.__version__
 	if scipyVersion > "1.4.1":
-		print('CRITICAL ERROR: convexHull() requires scipy <= 1.4.1 but found', scipyVersion)
+		print('\nCRITICAL ERROR: convexHull() requires scipy <= 1.4.1 but found', scipyVersion, '\n')
 		return None
 	
 	points = np.transpose(np.where(stackMask))
 	
 	out_img, hull = _flood_fill_hull(stackMask)
 		
-	print('  out_img:', out_img.shape, out_img.dtype)
-	print('  hull.volume:', hull.volume)
+	#print('  out_img:', out_img.shape, out_img.dtype)
+	#print('  hull.volume:', hull.volume)
 		
 	return out_img
+
+def myRun(maskPath):
+	if not os.path.isfile(maskPath):
+		print('ERROR: myConvexHull.__main__ did not find file:', path)
+	
+	imageData = tifffile.imread(maskPath)
+	print('  .', 'myConvexHull.py __main__ loaded:', imageData.shape, imageData.dtype, 'from path:', maskPath)
+
+	#testHull()
+	convexHullData = convexHull(imageData)
+
+	#
+	# save
+	#savePath = '/Users/cudmore/Desktop/tstHull.tif'
+	
+	tmpPath, tmpFileName = os.path.split(maskPath)
+	tmpFileNameNoExtension, tmpExtension = tmpFileName.split('.')
+	baseFilePath = os.path.join(tmpPath, tmpFileNameNoExtension)
+
+	savePath = baseFilePath +'_hull.tif'
+	
+	print('    myConvexHull.__main__ saving convex hull to savePath:', savePath)
+	tifffile.imsave(savePath, convexHullData)
 
 if __name__ == '__main__':
 
@@ -81,6 +104,12 @@ if __name__ == '__main__':
 		path = '/Users/cudmore/box/data/nathan/20200116/analysis2/20190116__A01_G001_0011_ch1_finalMask.tif'
 		#imageData, tiffHeader = bTiffFile.imread(path)
 
+	myRun(path)
+	
+	'''
+	if not os.path.isfile(path):
+		print('ERROR: myConvexHull.__main__ did not find file:', path)
+	
 	imageData = tifffile.imread(path)
 	print('  .', 'myConvexHull.py __main__ loaded:', imageData.shape, imageData.dtype, 'from path:', path)
 
@@ -97,6 +126,6 @@ if __name__ == '__main__':
 
 	savePath = baseFilePath +'_hull.tif'
 	
-	print('  saving convex hull to savePath:', savePath)
+	print('    myConvexHull.__main__ saving convex hull to savePath:', savePath)
 	tifffile.imsave(savePath, convexHullData)
-	
+	'''

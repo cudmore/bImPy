@@ -1,3 +1,9 @@
+"""
+
+	Usage:
+		python 
+"""
+
 import os, sys, argparse
 
 import numpy as np
@@ -23,18 +29,23 @@ mySetDict(dict, key, value):
 '''
 		
 ################################################################################
-def myRun(path, masterFilePath):
+def myRun(path, trimPercent, masterFilePath):
 	print('cellDen.myRun() path:', path)
 		
-	filename, paramDict, stackDict = setupAnalysis(path, masterFilePath=masterFilePath)
+	filename, paramDict, stackDict = setupAnalysis(path, trimPercent, masterFilePath=masterFilePath)
 	
+	if stackDict['raw']['data'] is None:
+		print('=== *** === cellDen.myRun() aborting, got None stack data')
+		return
+
 	# set the algorithm
-	paramDict['algorithm'] = 'vascDen'
+	paramDict['algorithm'] = 'cellDen'
 	
 	# get some local variables
 	stackData = stackDict['raw']['data']
 	tiffHeader = paramDict['tiffHeader']
 	saveBase = paramDict['saveBase']
+	saveBase2 = paramDict['saveBase2']
 
 	#
 	# algorithm
@@ -50,14 +61,16 @@ def myRun(path, masterFilePath):
 
 	#
 	# threshold
-	myScale = 0.15 # vasc channel is 0.06
-	thresholdStack = bimpy.util.morphology.threshold_min_max(filteredStack, myScale=myScale)
+	'''
+	removeBelowThisPercent = 0.15 # vasc channel is 0.06
+	thresholdStack = bimpy.util.morphology.threshold_remove_lower_percent(filteredStack, removeBelowThisPercent=removeBelowThisPercent)
 	paramDict['thresholdAlgorithm'] = 'threshold_min_max'
 	paramDict['thresholdScale'] = myScale
+	'''
 	
 	# trying otsu because data from 20200518 looks like there are 2 sets of intensities???
-	#thresholdStack = bimpy.util.morphology.threshold_otsu(filteredStack)
-	#paramDict['thresholdAlgorithm'] = 'threshold_otsu'
+	thresholdStack = bimpy.util.morphology.threshold_otsu(filteredStack)
+	paramDict['thresholdAlgorithm'] = 'threshold_otsu'
 	
 	stackDict['threshold']['data'] = thresholdStack
 
@@ -65,6 +78,8 @@ def myRun(path, masterFilePath):
 	# fill holes
 	#filledHolesStack = myFillHoles(thresholdStack)
 	finalMask = bimpy.util.morphology.fillHoles(thresholdStack)
+	#_printStackParams('finalMask after fillHoles')
+	#finalMask = finalMask.astype(np.uint8)
 	stackDict['finalMask']['data'] = finalMask
 	_printStackParams('finalMask 2', finalMask)
 	
@@ -87,7 +102,7 @@ def myRun(path, masterFilePath):
 
 	#
 	# save
-	mySave(saveBase, stackDict, tiffHeader)
+	mySave(saveBase, saveBase2, stackDict, tiffHeader, paramDict)
 	
 	#
 	# update master cell db
@@ -113,4 +128,5 @@ if __name__ == '__main__':
 		#path = '/Users/cudmore/box/data/nathan/20200518/20200518__A01_G001_0003_ch1.tif'
 		path = '/Users/cudmore/box/data/nathan/20200518/20200518__A01_G001_0004_ch1.tif'
 	
-	myRun(path, masterFilePath)
+	trimPercent = 15
+	myRun(path, trimPercent, masterFilePath)
