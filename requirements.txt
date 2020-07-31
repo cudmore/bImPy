@@ -1,13 +1,15 @@
+# 20200514, was this, trying to fix segmentation fault in scipy convexhull
+#numpy>1.18
+
+# this has to be firs otherwise others often fail?
+numpy
+
 napari
 
 # these are installed by napari
 PySide2
 QtPy
 
-# 20200514, was this, trying to fix segmentation fault in scipy convexhull
-#numpy>1.18
-
-numpy
 
 matplotlib
 tifffile

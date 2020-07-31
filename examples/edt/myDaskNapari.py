@@ -155,6 +155,8 @@ def getDaskGridDict():
 	myGridParams['nRow'] = None
 	myGridParams['nCol'] = None
 	
+	myGridParams['finalPostfixList'] = []
+	
 	return myGridParams
 	
 def openDaskNapari2(myGridParams):
@@ -163,8 +165,8 @@ def openDaskNapari2(myGridParams):
 	
 	analysis_full/ is a second set of analysis with black slice above/below firstSLice/lastSLice
 	
-	USe:
-		myGridParams['finalPostfixList'] = ['raw', 'finalMask', 'finalMask_edt'] #
+	Use:
+		myGridParams['finalPostfixList'] = ['raw', 'finalMask', 'finalMask_edt']
 		
 	Given grid parameters corresponding to _ch1 and _ch2 stacks in folder (path)
 	1) construct a dask block with all files

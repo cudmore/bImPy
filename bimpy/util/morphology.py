@@ -13,12 +13,25 @@ import pandas as pd
 import scipy
 import skimage
 
-def gaussianFilter(imageStack, kernelSize=(2,2,2)):
+# for erosion
+#from scipy.ndimage import morphology
+
+def binary_erosion(imageStack, iterations, return_uint8=True):
+	result = scipy.ndimage.morphology.binary_erosion(imageStack, iterations=iterations) # returns a true/false mask?
+	if return_uint8:
+		return result.astype(np.uint8)
+	else:
+		return result
+	
+def gaussianFilter(imageStack, kernelSize=(2,2,2), verbose=False):
 	"""
 	"""
-	print('  .', 'myGaussianFilter() kernelSize:', kernelSize, '... please wait')
+	if verbose: print('  .', 'myGaussianFilter() kernelSize:', kernelSize, '... please wait')
+	
 	result = scipy.ndimage.gaussian_filter(imageStack, sigma=kernelSize)
-	_printStackParams('output', result)
+	
+	if verbose: _printStackParams('output', result)
+	
 	return result
 
 def medianFilter(imageStack, kernelSize=(2,2,2), verbose=False):
@@ -68,10 +81,18 @@ def slidingZ(imageStack, upDownSlices=1, verbose=False):
 
 	return slidingz
 
-def fillHoles(maskStack):
-	print('  .myFillHoles()')
+def binary_fill_holes(maskStack):
+	retStack = scipy.ndimage.morphology.binary_fill_holes(maskStack).astype(np.uint8)
+	return retStack
 	
-	_printStackParams('input', maskStack)
+def fillHoles(maskStack, doDilation=True, verbose=False):
+	"""
+	Fix this, remove initial dilation
+	"""
+	
+	if verbose: print('  .myFillHoles()')
+	
+	if verbose: _printStackParams('input', maskStack)
 
 	retStack = maskStack.copy()
 	
@@ -121,7 +142,7 @@ def fillHoles(maskStack):
 	
 	retStack = retStack.astype(np.uint8)
 	
-	_printStackParams('output', retStack)
+	if verbose: _printStackParams('output', retStack)
 	
 	return retStack
 
@@ -163,23 +184,40 @@ def threshold_sauvola(imageStack, asImage = False, window_size=23, k=0.2):
 	
 	return threshData
 
-def threshold_otsu(imageStack):
+def threshold_otsu(imageStack, verbose=False):
 	"""
 	Parameters:
 		imageStack: numpy ndarray of shape (slice,x,y) 
 	Returns:
 		Binary threshold stack, same shape as imageStack, with foreground=1 and background=0
 	"""
-	print('  .threshold_otsu()')
+	if verbose: print('  .threshold_otsu()')
 
 	thresholdStack = imageStack.copy() # put the binary thresholded stack in here
 	numSlices = thresholdStack.shape[0]
 	for i in range(numSlices):
 		oneImage = imageStack[i,:,:]
-		thisThresh = skimage.filters.threshold_otsu(oneImage)
-		thresholdStack[i,:,:] = oneImage >= thisThresh # returning pixels ABOVE threshold
+		try:
+			thisThresh = skimage.filters.threshold_otsu(oneImage)
+			thresholdStack[i,:,:] = oneImage >= thisThresh # returning pixels ABOVE threshold
+			if np.sum(thresholdStack[i,:,:]) == thresholdStack[i,:,:].shape[0] * thresholdStack[i,:,:].shape[1]:
+				if verbose: print('  error: threshold_otsu all ones for slice:', i)
+				thresholdStack[i,:,:] = 0
+		except (ValueError) as e:
+			if verbose: print('  my exception in threshold_otsu() slice', i, 'e:', e)
+			
 	return thresholdStack
 		
+def threshold_min(imageStack, min=None, max=None):
+	"""
+	min: return image stack where pixels are srictly greater than min
+	"""
+	if min is not None:
+		thresholdStack = np.where(imageStack>min, 1, 0)
+	#if max is not None:
+	#	thresholdStack = np.where(thresholdStack<min, 1, 0)
+	return thresholdStack.astype(np.uint8)
+
 def threshold_remove_lower_percent2(imageStack, removeBelowThisPercent=0.06):
 	"""
 	REMOVE BELOW THRESHOLD, OTHERS STAY IN TACT
@@ -228,12 +266,12 @@ def threshold_remove_lower_percent(imageStack, removeBelowThisPercent=0.06):
 		thresholdStack[i,:,:] = np.where(oneImage<=removeBelowThisIntensity, 0, 1)
 	return thresholdStack
 
-def labelMask(thresholdStack):
+def labelMask(thresholdStack, verbose=False):
 	"""
 	label connected components in a mask
 	"""
 	
-	print('  .', 'labelMask()')
+	if verbose: print('  .', 'labelMask()')
 
 	#
 	# erode
@@ -253,7 +291,7 @@ def labelMask(thresholdStack):
 	myStructure = np.ones(structure, dtype=np.uint8)
 	labeledStack, numLabels = scipy.ndimage.label(erodedStack, structure=myStructure)
 	labeledStack = labeledStack.astype(np.uint16) # assuming we might have more than 2^8 labels (often 2^16 is not enough)
-	print('    numLabels:', numLabels)
+	if verbose: print('    morphology.labelMask() numLabels:', numLabels)
 	
 	'''
 	#

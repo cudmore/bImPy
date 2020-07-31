@@ -67,7 +67,7 @@ def imsave(path, imageData, tifHeader=None, overwriteExisting=False):
 	dtypeChar = imageData.dtype.char
 	if dtypeChar == 'e':
 		# see: https://github.com/matplotlib/matplotlib/issues/15432
-		print('warning: imsave() is NOT saving as ImageJ .tif file (There will be no header information.')
+		print('warning: bTiffFile.imsave() is NOT saving as ImageJ .tif file (There will be no header information.')
 		print('    This happend with np.float16, dtype.char is "e". np.float16 will not open in Fiji or Matplotlib !!!')
 		tifffile.imwrite(path, imageData) #, ijmetadata=ijmetadata)
 	else:
@@ -97,11 +97,11 @@ def imread(path, verbose=False):
 	#
 	# check file exists
 	if not os.path.isfile(path):
-		print('ERROR: imread() did not find file:', path)
+		print('ERROR: bTiffFile.imread() did not find file:', path)
 		return None, None
 	
 	if not path.endswith('.tif'):
-		print('ERROR: imread() expect a .tif file and got',  os.path.basename(path))
+		print('ERROR: bTiffFile.imread() expects a .tif file and got',  os.path.basename(path))
 		return None, None
 	
 	#

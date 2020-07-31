@@ -176,10 +176,12 @@ def myLoad(path):
 	
 if __name__ == '__main__':
 
+	# run one file
 	if 1:
 		path = '/Users/cudmore/box/data/nathan/20200518/20200518__A01_G001_0003_ch2.tif'
 		myRun(path)
 	
+	# run batch
 	if 0:
 		path = '/Users/cudmore/box/data/nathan/20200518/20200518__A01_G001_*_ch2.tif'
 		filenames = glob.glob(path)

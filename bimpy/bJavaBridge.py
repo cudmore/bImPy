@@ -14,7 +14,7 @@ try:
 except (ImportError) as e:
 	javabridge = None
 	bioformats = None
-	print('Exception: bJavaBridge failed to import javabridge or bioformats e:', e)
+	#print('bImPy bJavaBridge Exception: bJavaBridge failed to import javabridge or bioformats e:', e)
 
 class bJavaBridge:
 	"""

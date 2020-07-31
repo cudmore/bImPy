@@ -29,6 +29,7 @@
 		
 """
 
+#%%###
 import os, sys, math, time
 import argparse
 from collections import OrderedDict
@@ -45,12 +46,12 @@ import bimpy
 #from .vascDenNapari import myLabelEdit
 import vascDenNapari
 
-################################################################################
+#%%#############################################################################
 def _printStackParams(name, myStack):
 	print('  ', name, myStack.shape, myStack.dtype, 'dtype.char:', myStack.dtype.char,
 				'min:', round(np.min(myStack),2), 'max:', round(np.max(myStack),2), 'mean:', round(np.nanmean(myStack),2))
 
-################################################################################
+#%%###############################################################################
 # mySave(saveBase, stackDict, tiffHeader, paramDict)
 def mySave(saveBase, saveBase2, stackDict, tiffHeader, paramDict):
 	"""
@@ -407,7 +408,10 @@ def setupAnalysis(path, trimPercent = 15, masterFilePath='master_cell_db.csv'):
 	
 ################################################################################
 def myRun(path, trimPercent, masterFilePath):
-
+	"""
+	My Doc String
+	"""
+	
 	print('vascDen.myRun() path:', path)
 	
 	filename, paramDict, stackDict = setupAnalysis(path, trimPercent, masterFilePath=masterFilePath)

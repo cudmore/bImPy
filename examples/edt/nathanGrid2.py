@@ -100,6 +100,7 @@ def plotGrid(folderPath, nRow, nCol, fileNameList, fileIdxList, tifMaxList, plot
 			fontsize = 14
 			axs[plotIdx].text(halfHeight, halfWidth, '{:d}'.format(fileIdxLabel), ha='center', va='center',
 				fontsize=fontsize,
+				color='k',
 				bbox=dict(boxstyle='round', facecolor='white', edgecolor='0.3'))
 
 	# Pad each stack with some border white space

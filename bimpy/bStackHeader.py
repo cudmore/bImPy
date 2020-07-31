@@ -55,7 +55,7 @@ import tifffile
 try:
 	import bioformats
 except (ImportError) as e:
-	print('Exception: bStackHeader failed to import bioformats e:', e)
+	#print('bImPy bStackHeader Exception: bStackHeader failed to import bioformats e:', e)
 	bioformats = None
 
 import xml
