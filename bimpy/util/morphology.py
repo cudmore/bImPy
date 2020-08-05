@@ -16,7 +16,9 @@ import skimage
 # for erosion
 #from scipy.ndimage import morphology
 
-def binary_erosion(imageStack, iterations, return_uint8=True):
+import bimpy
+
+def binary_erosion(imageStack, iterations=1, return_uint8=True):
 	result = scipy.ndimage.morphology.binary_erosion(imageStack, iterations=iterations) # returns a true/false mask?
 	if return_uint8:
 		return result.astype(np.uint8)
@@ -81,6 +83,10 @@ def slidingZ(imageStack, upDownSlices=1, verbose=False):
 
 	return slidingz
 
+def binary_dilation(maskStack, iterations=1):
+	retStack = scipy.ndimage.morphology.binary_dilation(maskStack, structure=None, iterations=iterations).astype(np.uint8)
+	return retStack
+	
 def binary_fill_holes(maskStack):
 	retStack = scipy.ndimage.morphology.binary_fill_holes(maskStack).astype(np.uint8)
 	return retStack
@@ -336,10 +342,73 @@ def labelMask(thresholdStack, verbose=False):
 	#return labeledStack, largeLabelStack
 	return labeledStack
 
+def removeSmallLabels2(labeledStack, removeSmallerThan=20, timeIt=False, verbose=False):
+	"""
+	remove small labels from labeledStack and put in labeledStackRemoved
+	
+	Return:
+		returnLabels: remaining labels
+		returnSmallLabels: removed labels
+		labelIndices: list of original labels
+		labelCounts: list of counts for original labels
+	"""
+	
+	if timeIt:
+		myTimer = bimpy.util.bTimer('bimpy.util.morphology.removeSmallLabels2')
+	
+	returnLabels = labeledStack.copy()
+
+	returnSmallLabels = labeledStack.copy()
+	#returnSmallLabels[:] = 0
+	
+	labelIndices, labelCounts = np.unique(labeledStack, return_counts=True)
+
+	removedCount = 0
+	
+	removeList = []
+	keepList = []
+	
+	for idx, labelIdx in enumerate(labelIndices):
+		#print('removeSmallLabels2() idx:', idx, 'labelIdx:', labelIdx, 
+		#		'labelCounts[idx]:', labelCounts[idx], 'labelCounts[labelIdx]:', labelCounts[labelIdx])
+		labelSize = labelCounts[idx]
+		if labelSize < removeSmallerThan:
+			#print('  removing')
+			
+			removeList.append(idx) # remove label number 'idx'
+			
+			# remove
+			#returnLabels[labeledStack == idx] = 0
+			
+			# add
+			#returnSmallLabels[labeledStack == idx] = idx
+			
+			removedCount += 1
+		else:
+			keepList.append(idx)
+						
+	keepMatrix = np.isin(labeledStack, keepList)
+	removeMatrix = np.isin(labeledStack, removeList)
+	
+	returnLabels[removeMatrix] = 0
+	returnSmallLabels[keepMatrix] = 0
+	
+	if verbose: print('removeSmallLabels2() removed', removedCount, 'labels')
+	
+	if timeIt:
+		myTimer.elapsed()
+
+	return returnLabels, returnSmallLabels, labelIndices, labelCounts
+		
 def removeSmallLabels(labelStack, removeSmallerThan=20, verbose=False):
 	"""
 	When we have many small labels >5000, removing them gets slow
 	Instead we will start empty and add large labels
+	
+	algorithm:
+	
+	labelIndices, labelCounts = np.unique(a, return_counts=True)
+	
 	"""
 	print('  .removeSmallLabels() removeSmallerThan:', removeSmallerThan, '... please wait ...')
 	
@@ -361,6 +430,9 @@ def removeSmallLabels(labelStack, removeSmallerThan=20, verbose=False):
 	#removeSliceList = []
 	smallCount = 0 # count really small labels
 	numAdded = 0
+	
+	labelIndices, labelCounts = np.unique(a, return_counts=True)
+	
 	for i in range(numLabels):
 
 		tmpLoc = loc[i]
@@ -371,12 +443,13 @@ def removeSmallLabels(labelStack, removeSmallerThan=20, verbose=False):
 		
 		labelSizeList.append(numPixelsInLabel)
 		
+		# we start empty and add large labels
 		if numPixelsInLabel <= removeSmallerThan:
 			smallCount += 1
 		if numPixelsInLabel > removeSmallerThan:
-			retStack[labelStack == i+1] = i + 1
+			retStack[labelStack == i+1] = i + 1 # add
 			#removeSliceList.append(tmpLoc)
-			retStack2[labelStack == i+1] = 0
+			retStack2[labelStack == i+1] = 0 # remove
 			numAdded += 1
 	
 	# does not work
@@ -416,7 +489,7 @@ def removeSmallLabels(labelStack, removeSmallerThan=20, verbose=False):
 	
 	if verbose: _printStackParams('output', retStack)
 
-	return retStack, retStack2
+	return retStack, retStack2, labelSizeList
 
 def euclidean_distance_transform(maskStack, hullMask=None, scale=(1,1,1)): #, includeDistanceLessThan=5):	
 	
