@@ -83,6 +83,8 @@ class bLineProfile:
 
 	def getIntensity(self, lineProfileDict, lineWidth, medianFilter):
 		"""
+		diameter is in pixels
+		
 		taken from bLineProfileWidget.update()
 		"""
 		slabIdx = lineProfileDict['slabIdx'] # just used in return
@@ -95,7 +97,8 @@ class bLineProfile:
 
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])
-		intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=lineWidth)
+		# abb added mode='constant'
+		intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=lineWidth, mode='constant')
 
 		# smooth it
 		if medianFilter > 0:
@@ -142,7 +145,7 @@ class bLineProfile:
 			retDict = OrderedDict()
 			retDict['slabIdx'] = slabIdx
 			retDict['FWHM'] = FWHM
-			retDict['diam'] = diam
+			retDict['diam'] = diam # pixels
 			retDict['leftIdx'] = leftIdx
 			retDict['rightIdx'] = rightIdx
 			return retDict

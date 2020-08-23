@@ -262,7 +262,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		spinBoxWidth = 64
 
-		minLabel = QtWidgets.QLabel("Distance Threshold")
+		minLabel = QtWidgets.QLabel("Distance Threshold (um)")
 		self.minSpinBox = QtWidgets.QSpinBox()
 		self.minSpinBox.setMaximumWidth(spinBoxWidth)
 		self.minSpinBox.setMinimum(0)

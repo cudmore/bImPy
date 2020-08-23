@@ -326,6 +326,8 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/box/data/sami/Cell_1/1_5ADVMLEG1L1_ch2.tif'
 
+	# abb aics
+	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
 
 	try:
 		if useBioformats:

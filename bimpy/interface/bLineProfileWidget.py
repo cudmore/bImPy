@@ -21,7 +21,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		self.updateDict = None
 
-		self.lineLength = 10
+		self.lineLength = 5
 		self.lineWidth = 3
 		self.medianFilter = 5
 		self.halfHeight = 0.5
@@ -161,8 +161,13 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])
-		intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=self.lineWidth)
-
+		try:
+			# abb aics added mode='constant'
+			intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=self.lineWidth, mode='constant')
+		except(ValueError) as e:
+			print('abb aics bLineProfileWidget.update() got nan???')
+			return
+			
 		# smooth it
 		if self.medianFilter > 0:
 			intensityProfile = scipy.ndimage.median_filter(intensityProfile, self.medianFilter)

@@ -252,9 +252,11 @@ class bSearchAnnotations:
 
 		G = self.slabList.G
 
+		numFound = 0
 		for idx, ccNodes in enumerate(nx.connected_components(G)):
 			ccNodes = list(ccNodes)
-			print('component:', idx, type(ccNodes), ccNodes)
+			
+			#print('component:', idx, type(ccNodes), ccNodes)
 
 			nNodes = len(ccNodes)
 
@@ -262,12 +264,12 @@ class bSearchAnnotations:
 			edgeList = [] # make sure we do not add edges twice !!!
 			len3d = 0
 			for node in ccNodes:
-				print('    node:', node, 'adj:', G.adj[node])
+				#print('    node:', node, 'adj:', G.adj[node])
 				for k, v in G.adj[node].items():
 					edgeIdx = v['edgeIdx']
 					if edgeIdx in edgeList:
 						continue
-					print('        is adjacent to key:', k, 'value:', v)
+					#print('        is adjacent to key:', k, 'value:', v)
 					len3d += v['len3d']
 					edgeList.append(edgeIdx)
 
@@ -278,7 +280,10 @@ class bSearchAnnotations:
 			hitDict['edgeList'] = edgeList
 			hitDict['nodeList'] = ccNodes
 			self.addFound(hitDict)
-
+			numFound += 1
+			
+		#print('  found', numFound, 'hits.')
+		
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
@@ -477,9 +482,10 @@ class bSearchAnnotations:
 	def searchCloseNodes(self, thresholdDist=10):
 
 		self.initSearch('searchCloseNodes')
-
+		
 		pairedNodes = [None] * self.slabList.numNodes() #
 
+		#foundPairList = []
 		for nodeIdx1, nodeDict1 in enumerate(self.slabList.nodeIter()):
 			if pairedNodes[nodeIdx1] is not None:
 				continue
@@ -488,6 +494,12 @@ class bSearchAnnotations:
 			for nodeIdx2, nodeDict2 in enumerate(self.slabList.nodeIter()):
 				if nodeIdx1 == nodeIdx2:
 					continue
+				
+				# abb aics
+				#if [nodeIdx2,nodeIdx1] in foundPairList:
+				#	print('searchCloseNodes:', nodeIdx2, nodeIdx1, 'already in list')
+				#	continue
+				
 				x2,y2,z2 = self.slabList.getNode_xyz(nodeIdx2)
 				dist = bimpy.util.euclideanDistance(x1,y1,z1, x2,y2,z2)
 				if dist < thresholdDist:
@@ -500,6 +512,9 @@ class bSearchAnnotations:
 					hitDict['node2'] = int(nodeIdx2)
 					hitDict['nEdges2'] = int(nodeDict2['nEdges'])
 					self.addFound(hitDict)
+					
+					#foundPairList.append([nodeIdx1, nodeIdx2])
+					
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 

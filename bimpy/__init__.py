@@ -15,3 +15,6 @@ from .util import bTimer
 
 from .bLineProfile import bLineProfile
 from .bSearchAnnotations import bSearchAnnotations
+
+# abb aics
+from . import bVascularTracingAics

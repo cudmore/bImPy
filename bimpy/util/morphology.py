@@ -18,13 +18,6 @@ import skimage
 
 import bimpy
 
-def binary_erosion(imageStack, iterations=1, return_uint8=True):
-	result = scipy.ndimage.morphology.binary_erosion(imageStack, iterations=iterations) # returns a true/false mask?
-	if return_uint8:
-		return result.astype(np.uint8)
-	else:
-		return result
-	
 def gaussianFilter(imageStack, kernelSize=(2,2,2), verbose=False):
 	"""
 	"""
@@ -83,9 +76,19 @@ def slidingZ(imageStack, upDownSlices=1, verbose=False):
 
 	return slidingz
 
-def binary_dilation(maskStack, iterations=1):
-	retStack = scipy.ndimage.morphology.binary_dilation(maskStack, structure=None, iterations=iterations).astype(np.uint8)
-	return retStack
+def binary_dilation(maskStack, iterations=1, return_uint8=True):
+	result = scipy.ndimage.morphology.binary_dilation(maskStack, structure=None, iterations=iterations).astype(np.uint8)
+	if return_uint8:
+		return result.astype(np.uint8)
+	else:
+		return result
+	
+def binary_erosion(imageStack, iterations=1, return_uint8=True):
+	result = scipy.ndimage.morphology.binary_erosion(imageStack, structure=None, iterations=iterations) # returns a true/false mask?
+	if return_uint8:
+		return result.astype(np.uint8)
+	else:
+		return result
 	
 def binary_fill_holes(maskStack):
 	retStack = scipy.ndimage.morphology.binary_fill_holes(maskStack).astype(np.uint8)
@@ -245,7 +248,7 @@ def threshold_remove_lower_percent2(imageStack, removeBelowThisPercent=0.06):
 		theMax = np.nanmax(oneImage)
 		theIntensityRange = theMax- theMin
 		removeBelowThisIntensity = theIntensityRange * removeBelowThisPercent # lower percent intensity
-		removeBelowThisIntensity = int(removeBelowThisIntensity) # make sure it is an int(), image intensities are always int()	
+		#removeBelowThisIntensity = int(removeBelowThisIntensity) # make sure it is an int(), image intensities are always int()	
 		thresholdStack[i,:,:] = np.where(oneImage<=removeBelowThisIntensity, 0, oneImage)
 	return thresholdStack
 
@@ -268,7 +271,7 @@ def threshold_remove_lower_percent(imageStack, removeBelowThisPercent=0.06):
 		theMax = np.nanmax(oneImage)
 		theIntensityRange = theMax- theMin
 		removeBelowThisIntensity = theIntensityRange * removeBelowThisPercent # lower percent intensity
-		removeBelowThisIntensity = int(removeBelowThisIntensity) # make sure it is an int(), image intensities are always int()	
+		#removeBelowThisIntensity = int(removeBelowThisIntensity) # make sure it is an int(), image intensities are always int()	
 		thresholdStack[i,:,:] = np.where(oneImage<=removeBelowThisIntensity, 0, 1)
 	return thresholdStack
 

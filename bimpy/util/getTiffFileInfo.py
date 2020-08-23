@@ -25,6 +25,7 @@ def getTiffFileInfo(path):
 	theRet['xPixels'] = shape[0]
 	theRet['yPixels'] = shape[1]
 	theRet['zPixels'] = shape[2]
+	theRet['shape'] = shape
 	'''
 	theRet['folder3'] = enclosingPath3
 	theRet['folder2'] = enclosingPath2
