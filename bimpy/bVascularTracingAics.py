@@ -136,17 +136,14 @@ def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 	# each variable (x,y,z,d,d2) on lhs is a list of slabs (in order) along the new edge
 	newSrcNodeIdx, newDstNodeIdx, x, y, z, d, d2 = makeNewEdgeSlabs(edgeIdx1, edgeIdx2, flipEdge, joinOrder)
 	numNewSlabs = len(x)
-	
-	if verbose: print('  newSrcNodeIdx:', newSrcNodeIdx)
-	if verbose: print('  newDstNodeIdx:', newDstNodeIdx)
 
 	#
 	# edit tracing
 	#
 	
-	# todo: we need to edgeIdx2 -= 1, basically
 	#
 	# b) remove edgeIdx1 and edgeIdx2
+	# todo: we need to edgeIdx2 -= 1, basically
 	vascTracing.deleteEdge(edgeIdx1)
 
 	# after delete, all edge index are decrimented
@@ -157,19 +154,22 @@ def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 	#
 	# c) add new edge
 	newEdgeIdx = vascTracing.newEdge(newSrcNodeIdx, newDstNodeIdx)
-	
-	newEdge = vascTracing.getEdge(newEdgeIdx)
+
+	#newEdge = vascTracing.getEdge(newEdgeIdx)
 
 	#
 	# add slabs
 	for slabIdx in range(numNewSlabs):
 		newSlabIdx = vascTracing.newSlab(newEdgeIdx, x[slabIdx], y[slabIdx], z[slabIdx], d=d[slabIdx], d2=d2[slabIdx])
 
-	newEdge = vascTracing.getEdge(newEdgeIdx)
+	#newEdge = vascTracing.getEdge(newEdgeIdx)
 
-	# todo
-	# analyze edge for new diameter
-	
+	if verbose: print('  newEdgeIdx:', newEdgeIdx)
+	if verbose: print('  newSrcNodeIdx:', newSrcNodeIdx)
+	if verbose: print('  newDstNodeIdx:', newDstNodeIdx)
+
+	# remember: need to analyze new edge
+
 	return newEdgeIdx, newSrcNodeIdx, newDstNodeIdx
 	
 #####################################################################

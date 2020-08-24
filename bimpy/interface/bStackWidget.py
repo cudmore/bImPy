@@ -1324,13 +1324,13 @@ class bStackView(QtWidgets.QGraphicsView):
 		# abb aics
 		if event['type']=='joinTwoEdges':
 			selectedEdgeList = self.selectedEdgeList_get()
-			print('selectedEdgeList:', selectedEdgeList)
+			print('=== myEvent() selectedEdgeList:', selectedEdgeList)
 			if len(selectedEdgeList) != 2:
 				print('  please select just two edges')
 			else:
 				edge1 = selectedEdgeList[0]
 				edge2 = selectedEdgeList[1]
-				print('=== bStackView.myEvent() ... join edges', edge1, edge2)
+				#print('=== bStackView.myEvent() ... join edges', edge1, edge2)
 				
 				# this will join two edges (via common node) and make a new longer edge
 				# use this mostly when (1) nodes have just two edges
@@ -2269,7 +2269,6 @@ class bStackView(QtWidgets.QGraphicsView):
 		else:
 			self.myNodePlot.set_offsets(np.c_[[], []])
 
-
 		if self.selectedSlab() is not None:
 			self.selectSlab(self.selectedSlab())
 
@@ -2280,6 +2279,12 @@ class bStackView(QtWidgets.QGraphicsView):
 
 	def keyReleaseEvent(self, event):
 		self.keyIsDown = None
+
+	# abb aics
+	def refreshView(self):
+		self._preComputeAllMasks()
+		self.setSlice()
+		# todo: refresh tables
 
 	def keyPressEvent(self, event):
 		#print('=== bStackView.keyPressEvent() event.key():', event.key())
@@ -2311,8 +2316,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event.key() in [QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return]:
 			self.handleFitInView()
 		elif event.key() == QtCore.Qt.Key_R:
-			self._preComputeAllMasks()
-			self.setSlice()
+			self.refreshView()
 
 		elif event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
 			self.zoom('in')
