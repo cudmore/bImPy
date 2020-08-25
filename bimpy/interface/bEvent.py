@@ -37,6 +37,8 @@ class bEvent(QtCore.QObject):
 		self._snapz = snapz
 		self._isShift = isShift
 
+		self._verboseSlots = False # if true then 
+		
 	def __str__(self):
 		retStr = 'bEvent eventType:' + str(self.eventType) + \
 			' nodeIdx:' + str(self.nodeIdx) + \
@@ -109,3 +111,7 @@ class bEvent(QtCore.QObject):
 	@property
 	def isShift(self):
 		return self._isShift
+		
+	def printSlot(self, str):
+		if self._verboseSlots:
+			print('    ', str, self)

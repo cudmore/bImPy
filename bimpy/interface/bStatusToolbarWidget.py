@@ -62,6 +62,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			self.currentSliceLabel.setText(currentSliceStr)
 
 	def slot_StateChange2(self, myEvent):
+		myEvent.printSlot('bStatusToolbarWidget.slot_StateChange2()')
 		eventType = myEvent.eventType
 		if eventType in ['select node', 'select edge']:
 			sliceIdx = myEvent.sliceIdx
@@ -69,7 +70,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			self.currentSliceLabel.setText(currentSliceStr)
 
 	def slot_select(self, myEvent):
-		print('bStatusToolbarWidget.slot_select() myEvent:', myEvent)
+		myEvent.printSlot('bStatusToolbarWidget.slot_select()')
 		if myEvent.eventType == 'select node':
 			nodeIdx = myEvent.nodeIdx
 			if nodeIdx is None:
@@ -98,3 +99,4 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		#print('image.shape:', image.shape, image[x, y], image[y, x])
 		self.pixelIntensity.setText(str(pixelIntensity))
 		self.pixelIntensity.repaint()
+		

@@ -132,7 +132,8 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 	def slot_select(self, myEvent):
 		# search does not auto select
-		print('bTableWidget2.slot_select() myEvent:', myEvent)
+		myEvent.printSlot('bTableWidget2.slot_select()')
+
 		if myEvent.eventType == 'select node' and self._type == 'nodes':
 			nodeIdx = myEvent.nodeIdx
 			if nodeIdx is None:
@@ -145,11 +146,18 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				return # happens on user key 'esc'
 			self.mySelectRow(itemIdx=edgeIdx)
 
+		else:
+			myEvent.printSlot('bTableWidget.slot_select() did not respond')
+			#print('    slot_select() did not respond to myEvent.eventType:', myEvent.eventType)
+			
 	def slot_updateTracing(self, myEvent):
 		"""
 		respond to edits
 		"""
 
+		myEvent.printSlot('bTableWidget2.slot_updateTracing()')
+		
+		#print('    bTableWidget2.slot_updateTracing() myEvent:', myEvent)
 		'''
 		print('bTableWidget2.slot_updateTracing() self._type:', self._type, 'myEvent.eventType:', myEvent.eventType)
 		print('    myEvent.nodeDict:', myEvent.nodeDict)

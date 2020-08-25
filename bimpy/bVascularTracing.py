@@ -167,32 +167,35 @@ class bVascularTracing:
 				print('EXCEPTION in safe_run() e:', e)
 			return None
 		return func_wrapper
-
+	
 	def myBoundCheck_Node(self, nodeIdx):
 		if nodeIdx is None:
 			return True
 		else:
-			theRet = nodeIdx>=0 and nodeIdx < len(self.nodeDictList)-1
+			numNodes = len(self.nodeDictList)
+			theRet = nodeIdx>=0 and nodeIdx < numNodes
 			if not theRet:
-				print('ERROR: myBoundCheck_Node() got bad nodeIdx:', nodeIdx)
+				print('ERROR: myBoundCheck_Node() got bad nodeIdx:', nodeIdx, 'with numNodes:', numNodes)
 			return theRet
 			
 	def myBoundCheck_Edge(self, edgeIdx):
 		if edgeIdx is None:
 			return True
 		else:
-			theRet =  edgeIdx>=0 and edgeIdx < len(self.edgeDictList)-1
+			numEdges = len(self.edgeDictList)
+			theRet =  edgeIdx>=0 and edgeIdx < numEdges # true/false
 			if not theRet:
-				print('ERROR: myBoundCheck_Edge() got bad edgeIdx:', edgeIdx)
+				print('ERROR: myBoundCheck_Edge() got bad edgeIdx:', edgeIdx, 'with numEdges:', numEdges)
 			return theRet
 			
 	def myBoundCheck_Slab(self, slabIdx):
 		if slabIdx is None:
 			return True
 		else:
-			theRet = slabIdx>=0 and slabIdx < len(self.x)-1
+			numSlabs = len(self.x)
+			theRet = slabIdx>=0 and slabIdx < numSlabs
 			if not theRet:
-				print('ERROR: myBoundCheck_Slab() got bad slabIdx:', slabIdx)
+				print('ERROR: myBoundCheck_Slab() got bad slabIdx:', slabIdx, 'with numSlabs:', numSlabs)
 			return theRet
 			
 	@myBoundCheck_Decorator
@@ -212,6 +215,17 @@ class bVascularTracing:
 
 		return edgeDict
 
+	# abb aics
+	def getEdgeMinMax_Z(self, edgeIdx):
+		slabIdxList = self.getEdgeSlabList(edgeIdx)
+		zMin = np.min(self.z[slabIdxList])
+		zMax = np.max(self.z[slabIdxList])
+		
+		zMin = int(zMin)
+		zMax = int(zMax)
+		
+		return zMin, zMax
+		
 	def getEdgeSlabList(self, edgeIdx):
 		"""
 		return a list of slabs in an edge
@@ -434,6 +448,7 @@ class bVascularTracing:
 			try:
 				edgeListIdx = self.nodeDictList[preNode]['edgeList'].index(edgeIdx)
 				self.nodeDictList[preNode]['edgeList'].pop(edgeListIdx)
+				self.nodeDictList[preNode]['nEdges'] -= 1 # abb aics
 				if verbose: print('      deleteEdge() popped edgeIdx from preNode:', preNode, 'edgeIdx:', edgeIdx, 'edgeListIdx:', edgeListIdx)
 			except (ValueError) as e:
 				print('   !!! WARNING: exception in deleteEdge():', str(e))
@@ -442,6 +457,7 @@ class bVascularTracing:
 			try:
 				edgeListIdx = self.nodeDictList[postNode]['edgeList'].index(edgeIdx)
 				self.nodeDictList[postNode]['edgeList'].pop(edgeListIdx)
+				self.nodeDictList[postNode]['nEdges'] -= 1 # abb aics
 				if verbose: print('      deleteEdge() popped edgeIdx from postNode:', postNode, 'edgeIdx:', edgeIdx, 'edgeListIdx:', edgeListIdx)
 			except (ValueError) as e:
 				print('   !!! WARNING: exception in deleteEdge():', str(e))
@@ -489,9 +505,12 @@ class bVascularTracing:
 		#
 		# decriment remaining self.edgeIdx
 		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
+		# abb aics removed, added to resetEdgeIdx()
 		self.edgeIdx[np.greater(self.edgeIdx, edgeIdx, where=~np.isnan(self.edgeIdx))] -= 1
 
+		# abb aics
 		# decrement 'idx' or edges in self.edgeDictList[]
+		self.resetEdgeIdx()
 
 		#print('after) bVascularTracing.deleteEdge()', edgeIdx)
 		#self._printGraph()
@@ -702,6 +721,22 @@ class bVascularTracing:
 			edge = self.getEdge(edgeIdx)
 			print('      ', edge, 'slabList:', self.getEdgeSlabList(edgeIdx))
 
+	def printNodeInfo(self, nodeIdx):
+		node = self.getNode(nodeIdx)
+		print('    printNodeInfo() nodeIdx:', nodeIdx, 'idx:', node['idx'], 'nEdges:', node['nEdges'], 'edgeList:', node['edgeList'])
+		
+	def printEdgeInfo(self, edgeIdx):
+		#print('printEdgeInfo() edgeIdx:', edgeIdx)
+		
+		edge = self.getEdge(edgeIdx)
+		print('    printEdgeInfo() edgeIdx:', edgeIdx, 'idx:', edge['idx'], 'nSlab:', edge['nSlab'])
+		
+		preNodeIdx = edge['preNode']
+		postNodeIdx= edge['postNode']
+
+		self.printNodeInfo(preNodeIdx)
+		self.printNodeInfo(postNodeIdx)
+				
 	def _massage_xyz(self, x, y, z, diam):
 		"""
 		used by vesselucida
@@ -2447,7 +2482,24 @@ class bVascularTracing:
 			theRet = True
 			
 		return theRet
-		
+	
+	# abb aics
+	def checkSanity(self):
+	
+		print('bVascularTracing.checkSanity()')
+		numEdges = self.numEdges()
+		print('  numEdges:', numEdges)
+		for idx, edgeDict in enumerate(self.edgeDictList):
+			print('  idx:', idx, 'edgeDict', edgeDict)
+	
+	# abb aics
+	def resetEdgeIdx(self):
+		for idx, edgeDict in enumerate(self.edgeDictList):
+			#print('  idx:', idx, 'edgeDict', edgeDict)
+			edgeDict['idx'] = idx
+			# do not do here !!!!
+			#self.edgeIdx[idx] = idx
+			
 if __name__ == '__main__':
 	#path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
@@ -2468,10 +2520,59 @@ if __name__ == '__main__':
 
 	bimpy.bVascularTracingAics.detectEdgesAndNodesToRemove(vascTracing)
 
-	edgeIdx1 = 82
-	edgeIdx2 = 41
-	bimpy.bVascularTracingAics.joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=True)
+	#
+	# test join 2 edges
+	
+	edgeIdx1 = 209 #82
+	edgeIdx2 = 210 #41
+	
+	# before join
+	edge1 = stack.slabList.getEdge(edgeIdx1)
+	edge2 = stack.slabList.getEdge(edgeIdx2)
+	
+	print('* before:')
+	print('  stack.slabList.numNodes()', stack.slabList.numNodes())
+	print('  stack.slabList.numEdges()', stack.slabList.numEdges())
+	print('  edgeIdx1:', edgeIdx1, edge1)
+	print('  edgeIdx2:', edgeIdx2, edge2)
+	
+	print('=== calling bimpy.bVascularTracingAics.joinEdges() edgeIdx1:', edgeIdx1, 'edgeIdx2:', edgeIdx2)
+	newEdgeIdx, newSrcNodeIdx, newDstNodeIdx = bimpy.bVascularTracingAics.joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=True)
 
+	# after join, edge 1/2 still exist but should have been changed (the order in the list is changed because of removeEdge 1/2
+	print('* after:')
+	'''
+	edge1 = stack.slabList.getEdge(edgeIdx1)
+	edge2 = stack.slabList.getEdge(edgeIdx2)
+	print('  edgeIdx1:', edgeIdx1, edge1)
+	print('  edgeIdx2:', edgeIdx2, edge2)
+	'''
+	
+	print('  newEdgeIdx:', newEdgeIdx)
+	print('  newSrcNodeIdx:', newSrcNodeIdx)
+	print('  newDstNodeIdx:', newDstNodeIdx)
+	
+	print('  stack.slabList.numNodes()', stack.slabList.numNodes())
+	print('  stack.slabList.numEdges()', stack.slabList.numEdges())
+
+	# new edge
+	newEdge = stack.slabList.getEdge(newEdgeIdx)
+	print('  newEdgeIdx:', newEdgeIdx, newEdge)
+	
+	# src/dst node of new edge
+	preNode = stack.slabList.getNode(newSrcNodeIdx)
+	postNode = stack.slabList.getNode(newDstNodeIdx)
+	print('  newSrcNodeIdx:', newSrcNodeIdx, preNode)
+	print('  newDstNodeIdx:', newDstNodeIdx, postNode)
+	
+	stack.slabList.resetEdgeIdx()
+	
+	stack.slabList.checkSanity()
+	
+	#
+	# older debug
+	#
+	
 	# this was a plotly plot
 	# get it working again
 	#stack.slabList.plotGraph2()

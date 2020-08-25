@@ -20,7 +20,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		self.buildUI()
 
 	def slot_OptionsStateChange(self, key1, key2, value):
-		print('bStackFeedbackWidget.slot_OptionsStateChange()', key1, key2, value)
+		print('    bStackFeedbackWidget.slot_OptionsStateChange()', key1, key2, value)
 		doRepaint = False
 		if key1 == 'Panels':
 			checkbox = self.findBobID(key2)
@@ -29,7 +29,8 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				self.repaint()
 
 	def slot_selectNode(self, myEvent):
-		print('bStackFeebackWidget.slot_SelectNode() myEvent:', myEvent)
+		#print('    bStackFeebackWidget.slot_SelectNode() myEvent:', myEvent)
+		myEvent.printSlot('bStackFeebackWidget.slot_SelectNode()')
 		if myEvent.eventType == 'select node':
 			deleteNodeButton = self.findBobID('- Node')
 			if myEvent.nodeIdx is not None:
@@ -38,11 +39,11 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				deleteNodeButton.setEnabled(False)
 
 	def slot_DisplayStateChange(self, signal, displayStateDict):
-		print('bStackFeedbackWidget.slot_DisplayStateChange() signal:', signal)
+		print('    bStackFeedbackWidget.slot_DisplayStateChange() signal:', signal)
 		#if signal == 'image':
 
 	def slot_selectEdge(self, myEvent):
-		print('bStackFeebackWidget.slot_SelectEdge() myEvent:', myEvent)
+		myEvent.printSlot('bStackFeebackWidget.slot_selectEdge()')
 		if myEvent.eventType == 'select edge':
 			#
 			deleteEdgeButton = self.findBobID('- Edge')

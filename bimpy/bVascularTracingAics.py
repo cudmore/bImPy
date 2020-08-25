@@ -31,6 +31,7 @@ def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 		
 	vascTracing: bVascularTracing object
 	
+	return newEdgeIdx, newSrcNodeIdx, newDstNodeIdx
 	"""
 	
 	def makeNewEdgeSlabs(edgeIdx1, edgeIdx2, flipEdge, joinOrder):
@@ -103,32 +104,37 @@ def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 	#
 	# find common connection, reject if 1/2 connected on both ends
 	connectedBy = []
+	commonNodeIdx = None
 	if preNodeIdx1 == preNodeIdx2:
 		flipEdge = 1
 		joinOrder = 'forward'
 		connectedBy += ['pre', 'pre']
+		commonNodeIdx = preNodeIdx1 # could use preNodeIdx2
 	elif preNodeIdx1 == postNodeIdx2:
 		# do nothing and join 2--1
 		flipEdge = None
 		joinOrder = 'reverse'
 		connectedBy += ['pre', 'post']
+		commonNodeIdx = preNodeIdx1 # could use postNodeIdx2
 	elif postNodeIdx1 == preNodeIdx2:
 		flipEdge = None
 		joinOrder = 'forward'
 		connectedBy += ['post', 'pre']
+		commonNodeIdx = postNodeIdx1 # could use preNodeIdx2
 	elif postNodeIdx1 == postNodeIdx2:
 		flipEdge = 2
 		joinOrder = 'forward'
 		connectedBy += ['post', 'post']
+		commonNodeIdx = postNodeIdx1 # could use postNodeIdx2
 	else:
-		print(f'  ERROR: joinEdges() edges {edgeIdx1} and {edgeIdx2} not connected?')
+		print(f'  ERROR: bVascularTracingAics.joinEdges() edges {edgeIdx1} and {edgeIdx2} not connected?')
 		return None, None, None
 		
 	if len(connectedBy) == 2:
 		# ok, one connection
 		pass
 	else:
-		print(f'  ERROR: joinEdges() found too many connections between edges {edgeIdx1} and {edgeIdx2}')
+		print(f'  ERROR: bVascularTracingAics.joinEdges() found too many connections between edges {edgeIdx1} and {edgeIdx2}')
 		return None, None, None
 		
 	if verbose: print('  flipEdge:', flipEdge, 'joinOrder:', joinOrder, 'connectedBy:', connectedBy)
@@ -164,10 +170,19 @@ def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 
 	#newEdge = vascTracing.getEdge(newEdgeIdx)
 
+	'''
 	if verbose: print('  newEdgeIdx:', newEdgeIdx)
 	if verbose: print('  newSrcNodeIdx:', newSrcNodeIdx)
 	if verbose: print('  newDstNodeIdx:', newDstNodeIdx)
-
+	'''
+	
+	# todo: if node connecting 2x edges has no more edges then remove
+	commonNodeNumEdges = vascTracing.nodeDictList[commonNodeIdx]['nEdges']
+	if commonNodeNumEdges== 0:
+		print('  need to remove commonNodeIdx:', commonNodeIdx, 'commonNodeNumEdges:', commonNodeNumEdges)
+	else:
+		print('  keep commonNodeIdx:', commonNodeIdx, 'commonNodeNumEdges:', commonNodeNumEdges)
+	
 	# remember: need to analyze new edge
 
 	return newEdgeIdx, newSrcNodeIdx, newDstNodeIdx
