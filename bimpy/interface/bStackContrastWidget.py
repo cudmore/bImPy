@@ -74,9 +74,10 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.setMaximumHeight(200)
 
-		self.doUpdate = True # set to false to not update on signal/slot
+		self.myDoUpdate = True # set to false to not update on signal/slot
 		self.mySlice = 0
-
+		self.plotLogHist = True
+		
 		self._minColor = None
 		self._maxColor = None
 
@@ -85,10 +86,10 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			print('\n\n\tFIX THIS bit Depth BUG !!!!!!!!!!', 'self.bitDepth:', self.bitDepth, type(self.bitDepth), '\n\n')
 			self.bitDepth = int(self.bitDepth)
 		elif self.bitDepth is None:
-			print('ERROR: bStackContrastWidget() got None bitDepth -->> setting to 12')
-			self.bitDepth = 12
+			print('  ERROR: bStackContrastWidget() got None bitDepth -->> setting to 8')
+			self.bitDepth = 8
 
-		print('bStackContrastWidget.__init__() self.bitDepth:', self.bitDepth, type(self.bitDepth))
+		print('  bStackContrastWidget.__init__() self.bitDepth:', self.bitDepth, type(self.bitDepth))
 
 		self.buildUI()
 
@@ -109,11 +110,13 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			self.setSlice(sliceIdx)
 
 	def setSlice(self, sliceNumber = None):
-		if not self.doUpdate:
+		if not self.myDoUpdate:
 			return
 		if sliceNumber is None:
 			sliceNumber = self.mySlice
 
+		self.mySlice = sliceNumber
+		
 		channel = 0
 		#data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
 		data = self.mainWindow.myStackView.mySimpleStack.getImage(channel=channel, sliceNum=sliceNumber)
@@ -130,7 +133,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		#num_bins = 2 ** 13
 		num_bins = 2 ** self.bitDepth #self.mainWindow.myStackView.mySimpleStack.bitDepth
 		#print('bStackContrastWidget.setSlice() num_bins:', num_bins)
-		doLog = True
+		#doLog = True
 
 		# clear entire axes
 		self.axes.clear()
@@ -144,10 +147,12 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.axes.patch.set_facecolor("black")
 
 		# we need histtype='stepfilled', otherwise is SUPER SLOW
+		doLog = self.plotLogHist
 		n, bins, patches = self.axes.hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=1.0)
 
-		self.canvas.draw()
-
+		#self.canvasHist.draw()
+		self.canvasHist.draw_idle()
+		
 	def sliderValueChanged(self):
 		theMin = self.minContrastSlider.value()
 		theMax = self.maxContrastSlider.value()
@@ -170,6 +175,27 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.minContrastSlider.setValue(theMin)
 		self.maxContrastSlider.setValue(theMax)
 
+	def checkbox_callback(self, isChecked):
+		sender = self.sender()
+		title = sender.text()
+		bobID = sender.property('bobID')
+		print('bStackContrastWidget.checkbox_callback() title:', title, 'isChecked:', isChecked, 'bobID:', bobID)
+
+		if title == 'Histogram':
+			#print('  toggle histogram')
+			if isChecked:
+				self.canvasHist.show()
+				self.myDoUpdate = True
+				self.logCheckbox.setEnabled(True)
+			else:
+				self.canvasHist.hide()
+				self.myDoUpdate = False
+				self.logCheckbox.setEnabled(False)
+			self.repaint()
+		elif title == 'Log':
+			self.plotLogHist = not self.plotLogHist
+			self.setSlice()
+			
 	def bitDepth_Callback(self, idx):
 		newBitDepth = self._myBitDepths[idx]
 		print('bitDepth_Callback() newBitDepth:', newBitDepth)
@@ -185,9 +211,14 @@ class bStackContrastWidget(QtWidgets.QWidget):
 	def color_Callback(self, idx):
 		newColor = self._myColors[idx]
 		print('color_Callback() newColor:', newColor)
-		print('  warning: color LUT are not implemented')
 		self.color = newColor
 
+		minColor = self.minColorButton.getColor()
+		maxColor = self.maxColorButton.getColor()
+		
+		# set in window
+		self.mainWindow.getStackView().set_cmap(newColor, minColor='black', maxColor='white')
+		
 	def buildUI(self):
 		minVal = 0
 		if self.bitDepth is None:
@@ -222,6 +253,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		# min color
 		self.minColorButton = myColorButton() # use *self so we can .getColor()
+		self.minColorButton.setColor('black')
 
 		#
 		# bit depth
@@ -234,6 +266,10 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			bitDepthComboBox.addItem(str(depth))
 		bitDepthComboBox.setCurrentIndex(bitDepthIdx)
 		bitDepthComboBox.currentIndexChanged.connect(self.bitDepth_Callback)
+
+		histCheckbox = QtWidgets.QCheckBox('Histogram')
+		histCheckbox.setChecked(True)
+		histCheckbox.clicked.connect(self.checkbox_callback)
 
 		row = 0
 		col = 0
@@ -249,15 +285,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		col += 1
 		self.myGridLayout.addWidget(bitDepthComboBox, row, col)
 		col += 1
-		'''
-		self.upperHBoxLayout.addWidget(self.minLabel)
-		self.upperHBoxLayout.addWidget(self.minSpinBox)
-		self.upperHBoxLayout.addWidget(self.minContrastSlider)
-		self.upperHBoxLayout.addWidget(self.minColorButton)
-		self.upperHBoxLayout.addWidget(bitDepthLabel)
-		self.upperHBoxLayout.addWidget(bitDepthComboBox)
-		self.myQVBoxLayout.addLayout(self.upperHBoxLayout) # triggering non trace warning
-		'''
+		self.myGridLayout.addWidget(histCheckbox, row, col)
 
 		#
 		# lower/max
@@ -281,10 +309,13 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		# max color
 		self.maxColorButton = myColorButton() # use *self so we can .getColor()
+		self.maxColorButton.setColor('white')
 
 		# popup for color LUT for image
 		self.myColor = 'gray'
-		self._myColors = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'gray']
+		#self._myColors = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'gray']
+		self._myColors = ['gray', 'Reds', 'Greens', 'Blues', 'gray_r', 'Reds_r', 'Greens_r', 'Blues_r',
+							'gist_earth', 'gist_earth_r', 'gist_gray', 'gist_gray_r', 'gist_heat', 'gist_heat_r']
 		colorIdx = self._myColors.index(self.myColor) # will sometimes fail
 		colorLabel = QtWidgets.QLabel('LUT')
 		colorComboBox = QtWidgets.QComboBox()
@@ -293,8 +324,12 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			colorComboBox.addItem(color)
 		colorComboBox.setCurrentIndex(colorIdx)
 		colorComboBox.currentIndexChanged.connect(self.color_Callback)
-
-		histCheckbox = QtWidgets.QCheckBox("Hist")
+		#colorComboBox.setEnabled(False)
+		
+		# todo: not implemented, turn hist on/off
+		self.logCheckbox = QtWidgets.QCheckBox('Log')
+		self.logCheckbox.setChecked(self.plotLogHist)
+		self.logCheckbox.clicked.connect(self.checkbox_callback)
 
 		row += 1
 		col = 0
@@ -310,7 +345,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		col += 1
 		self.myGridLayout.addWidget(colorComboBox, row, col)
 		col += 1
-		self.myGridLayout.addWidget(histCheckbox, row, col)
+		self.myGridLayout.addWidget(self.logCheckbox, row, col)
 		col += 1
 		'''
 		self.lowerHBoxLayout.addWidget(self.maxLabel)
@@ -326,27 +361,28 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		#
 		# histograph
 		self.figure = Figure() # need size otherwise square image gets squished in y?
-		self.canvas = backend_qt5agg.FigureCanvas(self.figure)
+		self.canvasHist = backend_qt5agg.FigureCanvas(self.figure)
 		#self.axes = self.figure.add_subplot(111)
 		self.axes = self.figure.add_axes([0, 0, 1, 1]) #remove white border
 		self.axes.patch.set_facecolor("black")
 		self.figure.set_facecolor("black")
 
 		#histHBoxLayout = QtWidgets.QHBoxLayout()
-		logCheckbox = QtWidgets.QCheckBox("Log")
 
+		#
+		# second row
 		row += 1
+		#col = 0
+		#self.myGridLayout.addWidget(self.logCheckbox, row, col)
 		col = 0
-		self.myGridLayout.addWidget(logCheckbox, row, col)
-		col += 1
 		specialCol = 2
-		self.myGridLayout.addWidget(self.canvas, row, specialCol)
+		self.myGridLayout.addWidget(self.canvasHist, row, specialCol)
 		col += 1
 		'''
-		histHBoxLayout.addWidget(logCheckbox)
-		histHBoxLayout.addWidget(self.canvas)
+		histHBoxLayout.addWidget(self.logCheckbox)
+		histHBoxLayout.addWidget(self.canvasHist)
 		'''
-
+		
 		#
 		#self.myQVBoxLayout.addLayout(histHBoxLayout)
 

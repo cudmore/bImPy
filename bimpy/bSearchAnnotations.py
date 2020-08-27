@@ -10,6 +10,8 @@ from collections import OrderedDict
 
 import numpy as np
 
+from qtpy import QtCore
+
 import networkx as nx # see makeGraph
 
 import bimpy
@@ -64,12 +66,30 @@ def find_all_cycles(G, source=None, cycle_length_limit=None):
 
     return [list(i) for i in output_cycles]
 
-class bSearchAnnotations:
-	def __init__(self, slabList):
-		self.slabList = slabList
-		# parent stack is in self.slabList.parentStack
+class bSearchAnnotations(QtCore.QThread):
+	def __init__(self, slabList, fn=None, params=None, searchType=None, editTable=None):
+		"""
+		slabList: something like bVascularTracing
+		searchType:
+		editTable : the bTableWidget2 we will update
+		"""
+		super(bSearchAnnotations, self).__init__()
+
+		self.fn = fn #searchDisconnectedEdges
+		self.params = params
+		
+		self.continueSearch = True # set False to cancel
+
+		self.slabList = slabList # parent stack is in self.slabList.parentStack
+		self.searchType = searchType
+		self.editTable = editTable
 		self.initSearch()
 
+		
+	def run(self):
+		#self.searchDisconnectedEdges()
+		self.fn(self, self.params)
+		
 	def initSearch(self, name=''):
 		"""
 		Initialize a search
@@ -79,7 +99,7 @@ class bSearchAnnotations:
 		self.nSearched = 0
 		self.startTime = time.time()
 		self.hitDictList = []
-
+		
 	def addFound(self, hitDict):
 		"""
 		Add a found object
@@ -88,6 +108,8 @@ class bSearchAnnotations:
 		hitDict['Idx'] = self.nFound # modify the dict
 		self.hitDictList.append(hitDict)
 
+		print(f'  found {len(self.hitDictList)}')
+		
 	def addSearched(self):
 		"""
 		Add to the number of searched objects/items
@@ -103,8 +125,13 @@ class bSearchAnnotations:
 				print('    ', idx, hitDict)
 		self.stopTime = time.time()
 		self.elapsed = round(self.stopTime-self.startTime,2)
-		print('bSearchAnnotations "' + self.name + '" finished in', self.elapsed, 'seconds, searched', self.nSearched, 'items -->> found', self.nFound)
+		#print('bSearchAnnotations "' + self.name + ' ' + str(self.searchType) + '" finished in', self.elapsed, 'seconds, searched', self.nSearched, 'items -->> found', self.nFound)
+		print(f'bSearchAnnotations {self.name} "{self.searchType}" finished in {self.elapsed} seconds, searched {self.nSearched} items -->> found {self.nFound}')
 
+		# update main editTable2
+		if self.searchType is not None and self.editTable is not None:
+			self.editTable.populate(self.hitDictList)
+			self.editTable._type = 'edge search'
 
 	def _defaultSearchDict(self):
 		"""
@@ -557,6 +584,9 @@ class bSearchAnnotations:
 		pairedNodes = [None] * self.slabList.numNodes() #
 
 		for edgeIdx, edgeDict in enumerate(self.slabList.edgeIter()):
+			if not self.continueSearch:
+				break
+
 			preNode = edgeDict['preNode']
 			postNode = edgeDict['postNode']
 
@@ -635,6 +665,8 @@ class bSearchAnnotations:
 
 		foundEdgeList = []
 		for edgeIdx, edgeDict in enumerate(self.slabList.edgeIter()):
+			if not self.continueSearch:
+				break
 			preNode = edgeDict['preNode']
 			postNode = edgeDict['postNode']
 
@@ -705,6 +737,30 @@ class bSearchAnnotations:
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
+	def searchDisconnectedEdges(self, params=None):
+		"""
+		params: Not used, placeholder for other search functions
+		"""
+		self.initSearch('searchDisconnectedEdges')
+		for edgeIdx, edge in enumerate(self.slabList.edgeIter()):
+			if not self.continueSearch:
+				break
+			if self.slabList.isDanglingEdge(edgeIdx):
+				#hitDict = self._defaultSearchDict2() # just includes 'idx'
+				#hitDict['edge1'] = int(edgeIdx)
+				hitDict = edge
+				self.addFound(hitDict)
+		
+			# debug quiting search with Key_Q
+			#time.sleep(0.3)
+			#print('edgeIdx:', edgeIdx)
+			
+		if not self.continueSearch:
+			print('search cancelled')
+		
+		self.finishSearch(verbose=False)
+		return self.hitDictList
+				
 if __name__ == '__main__':
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
 	stack = bimpy.bStack(path, loadImages=False)

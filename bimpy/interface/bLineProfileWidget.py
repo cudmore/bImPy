@@ -34,7 +34,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		#
 		# to hold control panel
-		self.leftGridLayout = QtWidgets.QGridLayout(self)
+		self.leftGridLayout = QtWidgets.QGridLayout() # abb aics, removed (self)
 
 		myRow = 0
 

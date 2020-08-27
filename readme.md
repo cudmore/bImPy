@@ -143,7 +143,6 @@ pip install PyQt==5.13.0 --upgrade
 pip install PyQtChart==5.13.0 --upgrade
 ```
 
-
 ## More info
 
 Please email Robert Cudmore at UC Davis if you are interested. See [https:robertcudmore.org](https:robertcudmore.org).

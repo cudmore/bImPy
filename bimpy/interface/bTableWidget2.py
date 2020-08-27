@@ -157,13 +157,6 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		myEvent.printSlot('bTableWidget2.slot_updateTracing()')
 		
-		#print('    bTableWidget2.slot_updateTracing() myEvent:', myEvent)
-		'''
-		print('bTableWidget2.slot_updateTracing() self._type:', self._type, 'myEvent.eventType:', myEvent.eventType)
-		print('    myEvent.nodeDict:', myEvent.nodeDict)
-		print('    myEvent.edgeDict:', myEvent.edgeDict)
-		'''
-
 		if myEvent.eventType == 'newNode' and self._type == 'nodes':
 			newRowIdx = self.appendRow(myEvent.nodeDict)
 			self.mySelectRow(rowIdx=newRowIdx)
@@ -200,14 +193,14 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			self.setRow(myEvent.edgeDict)
 
 		else:
-			print('    bTableWidget2.slot_updateTracing() case not taken:', myEvent.eventType)
+			myEvent.printSlot('bTableWidget2.slot_updateTracing() case not taken')
 
 	def appendRow(self, theDict):
 		"""
 		append
 		"""
 		rowIdx = self.rowCount()
-		print('bTableWidget2.appendRow() rowIdx:', rowIdx, 'theDict:', theDict)
+		print('bTableWidget2.appendRow()', self._type, 'rowIdx:', rowIdx, 'theDict:', theDict)
 		if rowIdx == 0:
 			self.populate([theDict])
 		else:
@@ -227,18 +220,23 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		todo: need to decrement remaining 'idx'
 		"""
-		print('bTableWidget2.deleteRow() theDict:', theDict)
+		if theDict is None:
+			print('warning: bTableWidget2.deleteRow()', self._type, 'got None dict')
+			return
+		else:
+			print('bTableWidget2.deleteRow()', self._type, 'theDict["idx"]:', theDict['idx'])
+		
 		self.stopSelectionPropogation = True
 		deletingRowIdx = theDict['idx']
 		rowIdx = self._findRow(theDict=theDict)
 		if rowIdx is None:
-			print('   \n\n\n                    !!! !!! THIS IS A BUG: bAnnotationTable.deleteRow() rowIdx', rowIdx, 'theDict:', theDict)
+			print('   \n\n\n                    !!! !!! THIS IS A BUG: bTableWidget2.deleteRow() rowIdx', rowIdx, 'theDict:', theDict)
 			print('\n\n\n')
 		else:
 			self.removeRow(rowIdx)
 			# todo: decriment remaining ['idx']
 			for row in range(self.rowCount()):
-				print('    row:',row)
+				#print('    row:',row)
 				idx = self.getCellValue_int('idx', row)
 				if idx > deletingRowIdx:
 					# decriment 'idx' of remaining
@@ -257,9 +255,10 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			idxItem = self.item(row, 0) # 0 is idx column
 			myIdxStr = idxItem.text()
 			if myIdxStr == str(theIdx):
-				print('   setRow() theIdx:', theIdx, rowDict)
+				#print('    bTableWidget2.setRow()', self._type, 'theIdx:', theIdx, rowDict)
 				rowItems = self._itemFromDict(rowDict)
 				for colIdx, item in enumerate(rowItems):
+					#print('  row:', row, 'col:', colIdx, rowItems)
 					self.setItem(row, colIdx, item)
 				self.repaint()
 				break
@@ -314,7 +313,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		try:
 			colIdx = self.headerLabels.index(colStr)
 		except (ValueError) as e:
-			print('error: bTableWidget2._getColumnIdx() did not find col:', colStr, 'in self.headerLabels')
+			print('error: bTableWidget2._getColumnIdx() did not find col:', colStr, 'in self.headerLabels:', self.headerLabels)
 		return colIdx
 
 	def keyPressEvent(self, event):
@@ -343,9 +342,12 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				event = {'type':'deleteNode', 'objectType': self._type, 'objectIdx':objectIdx}
 			if self._type == 'edges':
 				event = {'type':'deleteEdge', 'objectType': self._type, 'objectIdx':objectIdx}
+			if self._type == 'edge search':
+				event = {'type':'deleteEdge', 'objectType': 'edge', 'objectIdx':objectIdx}
 			self.mainWindow.getStackView().myEvent(event)
 
 		elif key in [QtCore.Qt.Key_A]:
+			# select all in list
 			if self._type == 'edges':
 				# analyze edge
 				objectIdx = self.getCellValue_int('idx') #, row=None):
@@ -354,11 +356,11 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 			elif self._type == 'edge search':
 				# emit a select edge list
-				myEvent = bimpy.interface.bEvent('select edge', edgeIdx=None, snapz=True, isShift=False)
+				myEvent = bimpy.interface.bEvent('select edge', edgeIdx=None, snapz=True, isShift=False) # using myEvent._edgeList
 				nRows = self.rowCount()
 				print('    nRows:', nRows, 'myEvent._edgeList:', myEvent._edgeList)
 				for row in range(nRows):
-					edge1 = self.getCellValue_int('edge1', row)
+					edge1 = self.getCellValue_int('idx', row)
 					myEvent._edgeList.append(edge1)
 				print('    emit event:', myEvent)
 				self.selectRowSignal.emit(myEvent)
@@ -381,7 +383,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 	def on_clicked_row(self):
 		#print('on_clicked_node()')
 		row = self.currentRow()
-
+		
 		'''
 		mouse_state = self.mainWindow.mainWindow.mouseButtons()
 		print('mouse_state:', mouse_state)
@@ -444,10 +446,15 @@ class bTableWidget2(QtWidgets.QTableWidget):
 						edgeIdx = edgeList[self.edgeIterIndex]
 				else:
 					edgeList = []
-					idx = self.getCellValue_int('Idx')
+					
+					# todo: make all edge/node search use idx for object (edge/node) index
+					idx = self.getCellValue_int('idx')
 					edge1 = self.getCellValue_int('edge1')
 					if edge1 is not None:
 						edgeList.append(edge1)
+						colorList.append('y')
+					elif idx is not None:
+						edgeList.append(idx)
 						colorList.append('y')
 					#
 					slab = self.getCellValue_int('slab1')
@@ -466,7 +473,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 					slab2 = self.getCellValue_int('slab2')
 					if slab2 is not None:
 						slabIdx2 = slab2
-					print('    edge search idx:', idx, 'edge1:', edge1, 'edge2:', edge2)
+					print('    edge search idx:', idx, 'edge2:', edge2)
 
 				# todo: convert bEvent nodeList to None rather than empty list []
 				nodeList = self.getCellValue('nodeList')
@@ -475,11 +482,17 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				else:
 					nodeList = []
 				#
-				myEvent = bimpy.interface.bEvent('select edge list', nodeIdx=nodeIdx, slabIdx=slabIdx, edgeList=edgeList, snapz=True, isShift=isShift)
-				myEvent._nodeList = nodeList
-				if len(colorList) > 0:
-					myEvent._colorList = colorList
-				self.selectRowSignal.emit(myEvent)
+				if len(edgeList) == 1:
+					edgeIdx = edgeList[0]
+					myEvent = bimpy.interface.bEvent('select edge', edgeIdx=edgeIdx, nodeIdx=None, snapz=True, isShift=isShift)
+					print('   emit myEvent:', myEvent)
+					self.selectRowSignal.emit(myEvent)
+				else:
+					myEvent = bimpy.interface.bEvent('select edge list', nodeIdx=nodeIdx, slabIdx=slabIdx, edgeList=edgeList, snapz=True, isShift=isShift)
+					myEvent._nodeList = nodeList
+					if len(colorList) > 0:
+						myEvent._colorList = colorList
+					self.selectRowSignal.emit(myEvent)
 
 	def contextMenuEvent_Header(self, pos):
 		"""
@@ -566,7 +579,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		as a lot of this ... this is messy !!!!!!!!!!!!!
 		"""
-		print('menuActionHandler_header()', self._type)
+		print('  menuActionHandler_header()', self._type)
 		sender = self.sender()
 		title = sender.text()
 		isChecked = sender.isChecked()

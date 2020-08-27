@@ -9,7 +9,7 @@ from qtpy import QtGui, QtCore, QtWidgets
 #class bStatusToolbarWidget(QtWidgets.QToolBar):
 class bStatusToolbarWidget(QtWidgets.QWidget):
 	def __init__(self, mainWindow, numSlices):
-		print('bStatusToolbarWidget.__init__')
+		#print('bStatusToolbarWidget.__init__')
 		#super(QtWidgets.QToolBar, self).__init__(parent)
 		super(bStatusToolbarWidget, self).__init__()
 
@@ -22,7 +22,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		myGroupBox.setTitle('')
 		'''
 
-		hBoxLayout = QtWidgets.QHBoxLayout(self)
+		hBoxLayout = QtWidgets.QHBoxLayout()
 
 		currentSliceStr = 'Slice 0 /' + str(self.numSlices)
 		self.currentSliceLabel = QtWidgets.QLabel(currentSliceStr)
@@ -48,6 +48,48 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		hBoxLayout.addWidget(self.lastActionLabel)
 		'''
 
+
+		#
+		# seconds row
+		hBoxLayout2 = QtWidgets.QHBoxLayout()
+
+		fixedWidth = 35
+		
+		selectedNode_ = QtWidgets.QLabel("Node")
+		self.selectedNode = QtWidgets.QLabel("None")
+		selectedNode_.setFixedWidth(fixedWidth)
+		self.selectedNode.setFixedWidth(fixedWidth)
+		hBoxLayout2.addWidget(selectedNode_)
+		hBoxLayout2.addWidget(self.selectedNode)
+
+		selectedEdge_ = QtWidgets.QLabel("Edge")
+		self.selectedEdge = QtWidgets.QLabel("None")
+		selectedEdge_.setFixedWidth(fixedWidth)
+		self.selectedEdge.setFixedWidth(fixedWidth)
+		hBoxLayout2.addWidget(selectedEdge_)
+		hBoxLayout2.addWidget(self.selectedEdge)
+
+		selectedSlab_ = QtWidgets.QLabel("Slab")
+		self.selectedSlab = QtWidgets.QLabel("None")
+		selectedSlab_.setFixedWidth(fixedWidth)
+		self.selectedSlab.setFixedWidth(fixedWidth)
+		hBoxLayout2.addWidget(selectedSlab_)
+		hBoxLayout2.addWidget(self.selectedSlab)
+
+		# works but does not actually resize widgets?
+		'''numWidgets = hBoxLayout2.count()
+		for widgetIdx in range(numWidgets):
+			# itemAt() returns an item, need to call widget() to get the widget
+			theWidget = hBoxLayout2.itemAt(widgetIdx).widget()
+			print('      theWidget:', theWidget)
+			theWidget.setFixedWidth(fixedWidth)
+		'''
+		
+		vBoxLayout = QtWidgets.QVBoxLayout(self)
+		vBoxLayout.addLayout(hBoxLayout)
+		vBoxLayout.addLayout(hBoxLayout2)
+		
+			
 		# finish
 		#myGroupBox.setLayout(hBoxLayout)
 		#self.addWidget(myGroupBox)
@@ -68,20 +110,31 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			sliceIdx = myEvent.sliceIdx
 			currentSliceStr = 'Slice ' + str(sliceIdx) + '/' + str(self.numSlices)
 			self.currentSliceLabel.setText(currentSliceStr)
-
+			self.repaint()
+		elif eventType in ['select edge list']:
+			edgeListStr = str(myEvent.edgeList)
+			self.selectedEdge.setText(edgeListStr)
+			self.repaint()
+			
 	def slot_select(self, myEvent):
 		myEvent.printSlot('bStatusToolbarWidget.slot_select()')
 		if myEvent.eventType == 'select node':
 			nodeIdx = myEvent.nodeIdx
-			if nodeIdx is None:
-				return # happens on user key 'esc'
-			#self.mySelectRow(itemIdx=nodeIdx)
-
+			nodeIdxStr = str(nodeIdx)
+			self.selectedNode.setText(nodeIdxStr)
+			self.repaint()
+			
 		elif myEvent.eventType == 'select edge':
 			edgeIdx = myEvent.edgeIdx
-			if edgeIdx is None:
-				return # happens on user key 'esc'
-			#self.mySelectRow(itemIdx=edgeIdx)
+			edgeIdxStr = str(edgeIdx)
+			self.selectedEdge.setText(edgeIdxStr)
+
+			# slab, there is no 'select slab', it is part of 'select edge'
+			slabIdx = myEvent.slabIdx
+			slabIdxStr = str(slabIdx)
+			self.selectedSlab.setText(slabIdxStr)
+
+			self.repaint()
 
 	def setMousePosition(self, point):
 		x = round(point.x(),0)

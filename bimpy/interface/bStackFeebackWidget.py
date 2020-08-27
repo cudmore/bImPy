@@ -33,10 +33,11 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		myEvent.printSlot('bStackFeebackWidget.slot_SelectNode()')
 		if myEvent.eventType == 'select node':
 			deleteNodeButton = self.findBobID('- Node')
-			if myEvent.nodeIdx is not None:
-				deleteNodeButton.setEnabled(True)
-			else:
-				deleteNodeButton.setEnabled(False)
+			if deleteNodeButton is not None:
+				if myEvent.nodeIdx is not None:
+					deleteNodeButton.setEnabled(True)
+				else:
+					deleteNodeButton.setEnabled(False)
 
 	def slot_DisplayStateChange(self, signal, displayStateDict):
 		print('    bStackFeedbackWidget.slot_DisplayStateChange() signal:', signal)
@@ -47,22 +48,25 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		if myEvent.eventType == 'select edge':
 			#
 			deleteEdgeButton = self.findBobID('- Edge')
-			if myEvent.edgeIdx is not None:
-				deleteEdgeButton.setEnabled(True)
-			else:
-				deleteEdgeButton.setEnabled(False)
+			if deleteEdgeButton is not None:
+				if myEvent.edgeIdx is not None:
+					deleteEdgeButton.setEnabled(True)
+				else:
+					deleteEdgeButton.setEnabled(False)
 			#
 			deleteSlabButton = self.findBobID('- Slab')
-			if myEvent.slabIdx is not None:
-				deleteSlabButton.setEnabled(True)
-			else:
-				deleteSlabButton.setEnabled(False)
+			if deleteSlabButton is not None:
+				if myEvent.slabIdx is not None:
+					deleteSlabButton.setEnabled(True)
+				else:
+					deleteSlabButton.setEnabled(False)
 			#
 			slabToNodeButton = self.findBobID('To Node')
-			if myEvent.slabIdx is not None:
-				slabToNodeButton.setEnabled(True)
-			else:
-				slabToNodeButton.setEnabled(False)
+			if slabToNodeButton is not None:
+				if myEvent.slabIdx is not None:
+					slabToNodeButton.setEnabled(True)
+				else:
+					slabToNodeButton.setEnabled(False)
 
 	def button_callback(self):
 		sender = self.sender()
@@ -119,14 +123,20 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 			# all subgraphs
 			self.mainWindow.signal('search 5')
 
-		elif title == 'All Loops':
+		elif title == 'All Loops (slow)':
 			# all paths
 			node1 = self.node1SpinBox.value()
 			self.mainWindow.signal('search 6', value=node1)
 
+		elif title == 'Disconnected Edges':
+			self.mainWindow.signal('Disconnected Edges')
+
+		#
+		# analysis
 		elif title == 'Analyze All Diameters':
 			self.mainWindow.signal('Analyze All Diameters') # calls slabList.analyseSlabIntensity()
 
+			
 		else:
 			print('    bStackFeedbackWidget.button_callback() case not taken:', title)
 
@@ -176,8 +186,21 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		self.myWidgetList = []
 
+		#
+		# finalize
+		# put vbox mainLayout in a widget to set width
+		'''
+		v_widget = QtWidgets.QWidget(self)
+		v_widget.setLayout(mainLayout)
+		v_widget.setFixedWidth(200)
+		'''
+		
+		self.setFixedWidth(400)
+		#self.setFixedHeight(700)
+		
 		mainLayout = QtWidgets.QVBoxLayout(self)
 		#mainLayout.setSizeConstraint(QtWidgets.QLayout.SetMinAndMaxSize) # fixed size
+		mainLayout.setAlignment(QtCore.Qt.AlignTop)
 
 		myPath = os.path.dirname(os.path.abspath(__file__))
 		mystylesheet_css = os.path.join(myPath, 'css', 'mystylesheet.css')
@@ -196,7 +219,9 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		row = 0
 		fileGridLayout.addWidget(button1, row, 0)
 		fileGridLayout.addWidget(button2, row, 1)
-		fileGridLayout.addWidget(button3, row, 2)
+		row = 1
+		col = 0
+		fileGridLayout.addWidget(button3, row, col)
 		mainLayout.addLayout(fileGridLayout)
 
 		#
@@ -254,10 +279,14 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		#
 		# search group
-		searchGroupBox = QtWidgets.QGroupBox('Search')
-		#searchGroupBox.setStyleSheet(open(mystylesheet_css).read())
+		searchGroupBox = QtWidgets.QGroupBox('Search Parameters')
 		searchGroupBox.setStyleSheet(myStyleSheet)
+
+		searchGroupBox2 = QtWidgets.QGroupBox('Search')
+		searchGroupBox2.setStyleSheet(myStyleSheet)
+
 		searchGridLayout = QtWidgets.QGridLayout()
+		searchGridLayout2 = QtWidgets.QGridLayout()
 
 		row = 0
 
@@ -271,6 +300,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		self.minSpinBox.setValue(10)
 
 		nodeLabel = QtWidgets.QLabel("Nodes")
+		nodeLabel.setMaximumWidth(spinBoxWidth)
 		self.node1SpinBox = QtWidgets.QSpinBox()
 		self.node1SpinBox.setMaximumWidth(spinBoxWidth)
 		self.node1SpinBox.setMinimum(0)
@@ -305,6 +335,10 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		button8_1.setToolTip('Close Nodes')
 		button8_2 = QtWidgets.QPushButton("Close Slabs")
 		button8_2.setToolTip('Close Slabs')
+		
+		disconnectedEdgesButton = QtWidgets.QPushButton('Disconnected Edges')
+		disconnectedEdgesButton.clicked.connect(self.button_callback)
+		
 		#
 		button9 = QtWidgets.QPushButton("Shortest Path")
 		button9.setToolTip('search for shortest path between nodes')
@@ -320,17 +354,22 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		button9.clicked.connect(self.button_callback)
 		button10.clicked.connect(self.button_callback)
 		#
-		searchGridLayout.addWidget(button7, row, 0)
-		searchGridLayout.addWidget(button8, row, 1)
+		
+		row = 0
+		searchGridLayout2.addWidget(button7, row, 0)
+		searchGridLayout2.addWidget(button8, row, 1)
 		row += 1
-		searchGridLayout.addWidget(button7_1, row, 0)
-		searchGridLayout.addWidget(button7_2, row, 1)
+		searchGridLayout2.addWidget(button7_1, row, 0)
+		searchGridLayout2.addWidget(button7_2, row, 1)
 		row += 1
-		searchGridLayout.addWidget(button8_1, row, 0)
-		searchGridLayout.addWidget(button8_2, row, 1)
+		searchGridLayout2.addWidget(button8_1, row, 0)
+		searchGridLayout2.addWidget(button8_2, row, 1)
 		row += 1
-		searchGridLayout.addWidget(button9, row, 0)
-		searchGridLayout.addWidget(button10, row, 1)
+		searchGridLayout2.addWidget(disconnectedEdgesButton, row, 0)
+		# these are graph operation, todo: allow user to cancel
+		row += 1
+		searchGridLayout2.addWidget(button9, row, 0)
+		searchGridLayout2.addWidget(button10, row, 1)
 
 		row += 1
 		button11 = QtWidgets.QPushButton("All Subgraphs")
@@ -340,18 +379,22 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		button11.setToolTip('Shortest Loop')
 		button11.setEnabled(False) # shortest loop does not work, use "All Loops"
 		'''
-		button12 = QtWidgets.QPushButton("All Loops")
-		button12.setToolTip('All Loops')
+		button12 = QtWidgets.QPushButton("All Loops (slow)")
+		button12.setToolTip('All Loops (slow)')
 		#
 		button11.clicked.connect(self.button_callback)
 		button12.clicked.connect(self.button_callback)
 		#
-		searchGridLayout.addWidget(button11, row, 0)
-		searchGridLayout.addWidget(button12, row, 1)
+		searchGridLayout2.addWidget(button11, row, 0)
+		searchGridLayout2.addWidget(button12, row, 1)
 
 		# finalize
+		# was this
 		searchGroupBox.setLayout(searchGridLayout)
 		mainLayout.addWidget(searchGroupBox)
+
+		searchGroupBox2.setLayout(searchGridLayout2)
+		mainLayout.addWidget(searchGroupBox2)
 
 		#
 		# analysis group
@@ -456,6 +499,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 
 		#
 		# edit group
+		"""
 		editGroupBox = QtWidgets.QGroupBox('Edit')
 		#editGroupBox.setStyleSheet('QGroupBox  {color: white;}')
 		#editGroupBox.setStyleSheet(open(mystylesheet_css).read())
@@ -480,17 +524,6 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 				col = 0
 				row += 1
 
-		'''
-		aCheckbox = QtWidgets.QCheckBox('0,0')
-		bCheckbox = QtWidgets.QCheckBox('0,1')
-		editGridLayout.addWidget(aCheckbox, row, 0)
-		editGridLayout.addWidget(bCheckbox, row, 1)
-		row += 1
-		aCheckbox = QtWidgets.QCheckBox('1,0')
-		bCheckbox = QtWidgets.QCheckBox('1,1')
-		editGridLayout.addWidget(aCheckbox, row, 0)
-		editGridLayout.addWidget(bCheckbox, row, 1)
-		'''
-
 		editGroupBox.setLayout(editGridLayout)
 		mainLayout.addWidget(editGroupBox)
+		"""	

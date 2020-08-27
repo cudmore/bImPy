@@ -4,6 +4,7 @@ import os, sys, time, warnings, json
 from collections import OrderedDict
 import statistics # to get median value from a list of numbers
 import math
+import traceback
 
 from xml.dom import minidom # to load vesselucida xml file
 #from skimage.external import tifffile as tif
@@ -34,9 +35,7 @@ import bimpy
 # abb aics
 #from sanode import bVascularTracingAics
 #import sanode
-#print(sanode.bVascularTracingAics.aicsTest())
 from bimpy import bVascularTracingAics
-print(bimpy.bVascularTracingAics.aicsTest())
 
 class bVascularTracing:
 	def __init__(self, parentStack, path):
@@ -164,8 +163,8 @@ class bVascularTracing:
 			try:
 				return func(*args, **kwargs)
 			except Exception as e:
-				print('EXCEPTION in safe_run() e:', e)
-			return None
+				print('EXCEPTION in bVascularTracing.myBoundCheck_Decorator() e:', e)
+				return None
 		return func_wrapper
 	
 	def myBoundCheck_Node(self, nodeIdx):
@@ -175,7 +174,10 @@ class bVascularTracing:
 			numNodes = len(self.nodeDictList)
 			theRet = nodeIdx>=0 and nodeIdx < numNodes
 			if not theRet:
-				print('ERROR: myBoundCheck_Node() got bad nodeIdx:', nodeIdx, 'with numNodes:', numNodes)
+				print('\n====================================')
+				print('  ERROR: bVascularTracing.myBoundCheck_Node() got bad nodeIdx:', nodeIdx, 'with numNodes:', numNodes)
+				traceback.print_stack()
+				print('n')
 			return theRet
 			
 	def myBoundCheck_Edge(self, edgeIdx):
@@ -185,7 +187,10 @@ class bVascularTracing:
 			numEdges = len(self.edgeDictList)
 			theRet =  edgeIdx>=0 and edgeIdx < numEdges # true/false
 			if not theRet:
-				print('ERROR: myBoundCheck_Edge() got bad edgeIdx:', edgeIdx, 'with numEdges:', numEdges)
+				print('\n====================================')
+				print('  ERROR: bVascularTracing.myBoundCheck_Edge() got bad edgeIdx:', edgeIdx, 'with numEdges:', numEdges)
+				traceback.print_stack()
+				print('n')
 			return theRet
 			
 	def myBoundCheck_Slab(self, slabIdx):
@@ -195,16 +200,22 @@ class bVascularTracing:
 			numSlabs = len(self.x)
 			theRet = slabIdx>=0 and slabIdx < numSlabs
 			if not theRet:
-				print('ERROR: myBoundCheck_Slab() got bad slabIdx:', slabIdx, 'with numSlabs:', numSlabs)
+				print('\n====================================')
+				print('  ERROR: bVascularTracing.myBoundCheck_Slab() got bad slabIdx:', slabIdx, 'with numSlabs:', numSlabs)
+				traceback.print_stack()
+				print('n')
 			return theRet
 			
-	@myBoundCheck_Decorator
+	#@myBoundCheck_Decorator
 	def getEdge(self, edgeIdx):
 		
 		# check edgeIdx is in bounds
 		#if edgeIdx is None or edgeIdx<0 or edgeIdx > self.numEdges()-1:
 		#	# error
 		#	return None
+		
+		if not self.myBoundCheck_Edge(edgeIdx):
+			return
 		
 		edgeDict = self.edgeDictList[edgeIdx]
 		edgeDict['idx'] = edgeIdx
@@ -326,6 +337,8 @@ class bVascularTracing:
 
 		edgeDict = self._defaultEdgeDict(edgeIdx=newEdgeIdx, srcNode=srcNode, dstNode=dstNode)
 
+		print('newEdge() edgeDict:', edgeDict)
+		
 		# find the slabs corresponding to src/dst node
 		srcSlab = np.where(self.nodeIdx==srcNode)[0]
 		dstSlab = np.where(self.nodeIdx==dstNode)[0]
@@ -338,7 +351,7 @@ class bVascularTracing:
 
 		# assign edge z to middle of src z, dst z
 		x1,y1,z1 = self.getSlab_xyz(srcSlab)
-		x2,y2,z2 = self.getSlab_xyz(srcSlab)
+		x2,y2,z2 = self.getSlab_xyz(dstSlab)
 		z = (z1+z2)/2
 		z = int(round(z))
 		edgeDict['z'] = z
@@ -449,18 +462,18 @@ class bVascularTracing:
 				edgeListIdx = self.nodeDictList[preNode]['edgeList'].index(edgeIdx)
 				self.nodeDictList[preNode]['edgeList'].pop(edgeListIdx)
 				self.nodeDictList[preNode]['nEdges'] -= 1 # abb aics
-				if verbose: print('      deleteEdge() popped edgeIdx from preNode:', preNode, 'edgeIdx:', edgeIdx, 'edgeListIdx:', edgeListIdx)
+				if verbose: print('      bVascularTracing.deleteEdge() popped edgeIdx from preNode:', preNode, 'edgeIdx:', edgeIdx, 'edgeListIdx:', edgeListIdx)
 			except (ValueError) as e:
-				print('   !!! WARNING: exception in deleteEdge():', str(e))
+				print('   !!! WARNING: exception in bVascularTracing.deleteEdge():', str(e))
 		if postNode is not None: # will always be true, edges always have pre/post node
 			if verbose: print('   postNode:', postNode, self.nodeDictList[postNode])
 			try:
 				edgeListIdx = self.nodeDictList[postNode]['edgeList'].index(edgeIdx)
 				self.nodeDictList[postNode]['edgeList'].pop(edgeListIdx)
 				self.nodeDictList[postNode]['nEdges'] -= 1 # abb aics
-				if verbose: print('      deleteEdge() popped edgeIdx from postNode:', postNode, 'edgeIdx:', edgeIdx, 'edgeListIdx:', edgeListIdx)
+				if verbose: print('      bVascularTracing.deleteEdge() popped edgeIdx from postNode:', postNode, 'edgeIdx:', edgeIdx, 'edgeListIdx:', edgeListIdx)
 			except (ValueError) as e:
-				print('   !!! WARNING: exception in deleteEdge():', str(e))
+				print('   !!! WARNING: exception in bVascularTracing.deleteEdge():', str(e))
 
 		# debug, edgeIdx should no longer be in node['edgeList']
 
@@ -470,7 +483,7 @@ class bVascularTracing:
 			# delete edge 70, causes interface error and is not caught here???
 			try:
 				edgeListIdx = node['edgeList'].index(edgeIdx)
-				print('!!! !!! ERROR: nodeIdx:', nodeIdx, 'still has edgeIdx:', edgeIdx, 'in ["edgeList"]:', node['edgeList'])
+				print('!!! !!! ERROR: in decriment bVascularTracing.deleteEdge() nodeIdx:', nodeIdx, 'still has edgeIdx:', edgeIdx, 'in ["edgeList"]:', node['edgeList'])
 			except (ValueError) as e:
 				pass
 			#
@@ -482,11 +495,13 @@ class bVascularTracing:
 		# delete edge from dict
 		self.edgeDictList.pop(edgeIdx)
 
-
 		#
 		# delete from slabs
 		# first/last slabs are nodes, do not delete !!!
 		#edgeSlabList = self.getEdgeSlabList(edgeIdx) #edge['slabList']
+		
+		# abb aics, was this
+		'''
 		if len(edgeSlabList) == 2:
 			# it is an edge with no slabs
 			pass
@@ -494,14 +509,27 @@ class bVascularTracing:
 			# don't do this because some vessellucia don't have both pre/post node !!!
 			# assuming we used getEdgeSlabList2() above
 			#thisSlabList  = edgeSlabList[1:-1] # slabList without first/prenode and last/postnode
-			thisSlabList  = edgeSlabList # slabList without first/prenode and last/postnode
+			thisSlabList = edgeSlabList # slabList without first/prenode and last/postnode
 			self._deleteSlabList(thisSlabList, verbose=verbose)
+		'''
+		# abb aics, now this
+		thisSlabList = edgeSlabList # slabList without first/prenode and last/postnode
+		self._deleteSlabList(thisSlabList, verbose=verbose)
 
 		# debug
 		# look for remaining slabs with edge Idx
+		# was this
+		'''
 		for tmpIdx, tmpEdgeIdx in enumerate(self.edgeIdx):
 			if tmpEdgeIdx == edgeIdx:
-				print('\n   !!! !!! ERROR: deleteEdge() self.edgeIdx at slab idx:', tmpIdx, 'STILL has edgeIdx==', edgeIdx, '\n')
+				print('\n   !!! !!! ERROR: in debug bVascularTracing.deleteEdge() edgeIdx at slab idx:', tmpIdx, 'STILL has edgeIdx==', edgeIdx, '\n')
+		'''
+		stillThere = np.where(self.edgeIdx == edgeIdx)[0]
+		if len(stillThere) > 0:
+			print('\n   !!! !!! ERROR: in debug bVascularTracing.deleteEdge() edgeIdx at slab idx:', stillThere, 'STILL has edgeIdx==', edgeIdx)
+			for stillThreIdx in range(len(stillThere)):
+				self.printSlabInfo(stillThere[stillThreIdx])
+				
 		#
 		# decriment remaining self.edgeIdx
 		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
@@ -574,6 +602,10 @@ class bVascularTracing:
 		self._printSlab(slabIdx)
 		'''
 
+		if not self.myBoundCheck_Slab(slabIdx):
+			print('ERROR: bVascularTracing.deleteSlab() got bad slab index:', slabIdx, 'total num slabs is:', len(self.x))
+			return
+		
 		edgeIdx = self.edgeIdx[slabIdx]
 		nodeIdx = self.nodeIdx[slabIdx]
 
@@ -737,6 +769,9 @@ class bVascularTracing:
 		self.printNodeInfo(preNodeIdx)
 		self.printNodeInfo(postNodeIdx)
 				
+	def printSlabInfo(self, slabIdx):
+		print('  slabIdx:', slabIdx, 'x:', self.x[slabIdx], 'y:', self.y[slabIdx], 'z:', self.z[slabIdx], 'edgeIdx:', self.edgeIdx[slabIdx], 'nodeIdx:', self.nodeIdx[slabIdx])
+		
 	def _massage_xyz(self, x, y, z, diam):
 		"""
 		used by vesselucida
@@ -1023,10 +1058,21 @@ class bVascularTracing:
 			labeledPath = dvMaskPath + '_labeled.tif'
 			labeledData = tifffile.imread(labeledPath)
 			# make mask from one label
+			
+			'''
 			thisOneLabel = 1
 			#self._dvMask = np.zeros(labeledData.shape, dtype=np.uint8)
 			self._dvMask = np.where(labeledData==thisOneLabel, 1, 0)
 			print(' !!!!! aics self._dvMask after including label', thisOneLabel, self._dvMask.shape, self._dvMask.dtype)
+			'''
+			
+			self._dvMask = labeledData>0
+			
+			# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
+			self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
+			
+			print(' !!!!! aics self._dvMask', self._dvMask.shape, self._dvMask.dtype)
+			
 		else:
 			dvMaskPath += '_dvMask.tif'
 			dvMaskPath += '_mask.tif'

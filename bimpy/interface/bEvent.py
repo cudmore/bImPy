@@ -37,7 +37,7 @@ class bEvent(QtCore.QObject):
 		self._snapz = snapz
 		self._isShift = isShift
 
-		self._verboseSlots = False # if true then 
+		self._verboseSlots = True # if true then 
 		
 	def __str__(self):
 		retStr = 'bEvent eventType:' + str(self.eventType) + \
