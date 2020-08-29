@@ -2566,54 +2566,59 @@ if __name__ == '__main__':
 
 	bimpy.bVascularTracingAics.detectEdgesAndNodesToRemove(vascTracing)
 
+	if 1:
+		nodeIdx1 = 34
+		nodeIdx2 = 116
+		okJoin = bimpy.bVascularTracingAics.joinNodes(vascTracing, nodeIdx1, nodeIdx2, verbose=True)
+		
 	#
 	# test join 2 edges
+	if 0:
+		edgeIdx1 = 209 #82
+		edgeIdx2 = 210 #41
 	
-	edgeIdx1 = 209 #82
-	edgeIdx2 = 210 #41
+		# before join
+		edge1 = stack.slabList.getEdge(edgeIdx1)
+		edge2 = stack.slabList.getEdge(edgeIdx2)
 	
-	# before join
-	edge1 = stack.slabList.getEdge(edgeIdx1)
-	edge2 = stack.slabList.getEdge(edgeIdx2)
+		print('* before:')
+		print('  stack.slabList.numNodes()', stack.slabList.numNodes())
+		print('  stack.slabList.numEdges()', stack.slabList.numEdges())
+		print('  edgeIdx1:', edgeIdx1, edge1)
+		print('  edgeIdx2:', edgeIdx2, edge2)
 	
-	print('* before:')
-	print('  stack.slabList.numNodes()', stack.slabList.numNodes())
-	print('  stack.slabList.numEdges()', stack.slabList.numEdges())
-	print('  edgeIdx1:', edgeIdx1, edge1)
-	print('  edgeIdx2:', edgeIdx2, edge2)
-	
-	print('=== calling bimpy.bVascularTracingAics.joinEdges() edgeIdx1:', edgeIdx1, 'edgeIdx2:', edgeIdx2)
-	newEdgeIdx, newSrcNodeIdx, newDstNodeIdx = bimpy.bVascularTracingAics.joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=True)
+		print('=== calling bimpy.bVascularTracingAics.joinEdges() edgeIdx1:', edgeIdx1, 'edgeIdx2:', edgeIdx2)
+		newEdgeIdx, newSrcNodeIdx, newDstNodeIdx = bimpy.bVascularTracingAics.joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=True)
 
-	# after join, edge 1/2 still exist but should have been changed (the order in the list is changed because of removeEdge 1/2
-	print('* after:')
-	'''
-	edge1 = stack.slabList.getEdge(edgeIdx1)
-	edge2 = stack.slabList.getEdge(edgeIdx2)
-	print('  edgeIdx1:', edgeIdx1, edge1)
-	print('  edgeIdx2:', edgeIdx2, edge2)
-	'''
+		# after join, edge 1/2 still exist but should have been changed (the order in the list is changed because of removeEdge 1/2
+		print('* after:')
+		'''
+		edge1 = stack.slabList.getEdge(edgeIdx1)
+		edge2 = stack.slabList.getEdge(edgeIdx2)
+		print('  edgeIdx1:', edgeIdx1, edge1)
+		print('  edgeIdx2:', edgeIdx2, edge2)
+		'''
 	
-	print('  newEdgeIdx:', newEdgeIdx)
-	print('  newSrcNodeIdx:', newSrcNodeIdx)
-	print('  newDstNodeIdx:', newDstNodeIdx)
+		print('  newEdgeIdx:', newEdgeIdx)
+		print('  newSrcNodeIdx:', newSrcNodeIdx)
+		print('  newDstNodeIdx:', newDstNodeIdx)
 	
-	print('  stack.slabList.numNodes()', stack.slabList.numNodes())
-	print('  stack.slabList.numEdges()', stack.slabList.numEdges())
+		print('  stack.slabList.numNodes()', stack.slabList.numNodes())
+		print('  stack.slabList.numEdges()', stack.slabList.numEdges())
 
-	# new edge
-	newEdge = stack.slabList.getEdge(newEdgeIdx)
-	print('  newEdgeIdx:', newEdgeIdx, newEdge)
+		# new edge
+		newEdge = stack.slabList.getEdge(newEdgeIdx)
+		print('  newEdgeIdx:', newEdgeIdx, newEdge)
 	
-	# src/dst node of new edge
-	preNode = stack.slabList.getNode(newSrcNodeIdx)
-	postNode = stack.slabList.getNode(newDstNodeIdx)
-	print('  newSrcNodeIdx:', newSrcNodeIdx, preNode)
-	print('  newDstNodeIdx:', newDstNodeIdx, postNode)
+		# src/dst node of new edge
+		preNode = stack.slabList.getNode(newSrcNodeIdx)
+		postNode = stack.slabList.getNode(newDstNodeIdx)
+		print('  newSrcNodeIdx:', newSrcNodeIdx, preNode)
+		print('  newDstNodeIdx:', newDstNodeIdx, postNode)
 	
-	stack.slabList.resetEdgeIdx()
+		stack.slabList.resetEdgeIdx()
 	
-	stack.slabList.checkSanity()
+		stack.slabList.checkSanity()
 	
 	#
 	# older debug

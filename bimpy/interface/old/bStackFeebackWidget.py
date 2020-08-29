@@ -6,12 +6,12 @@ from qtpy import QtGui, QtCore, QtWidgets
 
 import bimpy
 
-class bStackFeebackWidget(QtWidgets.QWidget):
+class bLeftToolbarWidget(QtWidgets.QWidget):
 	#clickStateChange = QtCore.pyqtSignal(str, object)
 	clickStateChange = QtCore.Signal(str, object)
 
 	def __init__(self, mainWindow=None, parent=None, numSlices=0):
-		super(bStackFeebackWidget, self).__init__(parent)
+		super(bLeftToolbarWidget, self).__init__(parent)
 
 		self.mainWindow = mainWindow
 
@@ -38,7 +38,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 		"""
 		signalValue: can be int, str, dict , ...
 		"""
-		#print('bStackFeebackWidget.slot_StateChange() signalName:', signalName, signalValue)
+		#print('bLeftToolbarWidget.slot_StateChange() signalName:', signalName, signalValue)
 		#if signalName == 'num slices':
 		#	text = str(signalValue)
 		#	self.numSlices_Label.setText('of ' + text)
@@ -72,7 +72,7 @@ class bStackFeebackWidget(QtWidgets.QWidget):
 			else:
 				print('slot_StateChange() did not find check with BobID title:', title)
 		else:
-			print('WARNING: bStackFeebackWidget.set() not handled signalName:', signalName, 'signalValue:', signalValue)
+			print('WARNING: bLeftToolbarWidget.set() not handled signalName:', signalName, 'signalValue:', signalValue)
 
 	def findBobID(self, bobID):
 		"""

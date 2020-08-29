@@ -17,6 +17,72 @@ def aicsTest():
 	print('bVascularTracingAics.py is working !!!')
 	
 #####################################################################
+def sharedEdges(vascTracing, nodeIdx1, nodeIdx2):
+	"""
+	return list of shared edges between two nodes
+
+	# see: https://www.techbeamers.com/program-python-list-contains-elements/
+	"""
+	node1 = vascTracing.getNode(nodeIdx1)
+	node2 = vascTracing.getNode(nodeIdx2)
+
+	edgeList1 = node1['edgeList']
+	edgeList2 = node2['edgeList']
+
+	# as a boolean
+	# nodeShareAnEdge =  any(item in edgeList1 for item in edgeList2)
+	tmpShareEdgeList = []
+	for item in edgeList2:
+		if item in edgeList1:
+			tmpShareEdgeList.append(item)
+	return tmpShareEdgeList
+	
+def joinNodes(vascTracing, nodeIdx1, nodeIdx2, verbose=True):
+	"""
+	- make a new node with union of nod1/node2 edge list (no repeats)
+	- for each edge in node1/node2, figure out if the node is either (pre, post) and update edges
+	"""
+
+	def getPrePost(nodeIdx, edgeIdx):
+		""" return ('pre', 'post') """
+		edgeDict = vascTracing.getEdge(edgeIdx)
+		prePostKey = None
+		if edgeDict['preNode'] == nodeIdx:
+			prePostKey = 'preNode'
+		elif edgeDict['postNode'] == nodeIdx:
+			prePostKey = 'postNode'
+		return prePostKey
+		
+	print('=== bVascularTracingAics.joinNodes() nodeIdx1:', nodeIdx1, 'nodeIdx2:', nodeIdx2)
+	
+	node1 = vascTracing.getNode(nodeIdx1)
+	edgeList1 = node1['edgeList']
+	prePostKeyList1= []
+	for tmpEdgeIdx in edgeList1:
+		tmpPrePostKey = getPrePost(nodeIdx1, tmpEdgeIdx)
+		prePostKeyList1.append(tmpPrePostKey)
+		
+	node2 = vascTracing.getNode(nodeIdx2)
+	edgeList2 = node2['edgeList']
+	prePostKeyList2= []
+	for tmpEdgeIdx in edgeList2:
+		tmpPrePostKey = getPrePost(nodeIdx2, tmpEdgeIdx)
+		prePostKeyList2.append(tmpPrePostKey)
+	
+	# if node1/node2 share any edges then bail
+	tmpShareEdgeList = sharedEdges(vascTracing, nodeIdx1, nodeIdx2)
+	if len(tmpShareEdgeList) > 0:
+		print(f'    warning: nodes {nodeIdx1} and {nodeIdx2} share edges {tmpShareEdgeList}, edgeList1: {edgeList1}, edgeList2: {edgeList2}')
+		return None
+			
+	print('    edgeList1:', edgeList1)
+	print('    prePostKeyList1:', prePostKeyList1)
+
+	print('    edgeList2:', edgeList2)
+	print('    prePostKeyList2:', prePostKeyList2)
+
+	
+#####################################################################
 def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 	"""
 	join edges that are connected by a node

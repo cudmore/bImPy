@@ -21,3 +21,9 @@ if not self.continueSearch:
 
 make sure search result table snaps image (Seems to snap for nodes?)
 
+
+
+### line profile
+
+fix updating when scrolling slices
+

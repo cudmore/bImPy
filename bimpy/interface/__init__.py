@@ -2,7 +2,7 @@ from .bStackBrowser import bStackBrowser
 #from .bCanvasApp import bCanvasApp
 from .bStackWidget import bStackWidget
 from .bStackContrastWidget import bStackContrastWidget
-from .bStackFeebackWidget import bStackFeebackWidget
+from .bLeftToolbarWidget import bLeftToolbarWidget
 from .bLineProfileWidget import bLineProfileWidget
 from .bEvent import bEvent
 from .bOptionsDialog import bOptionsDialog
@@ -16,3 +16,6 @@ from .bDialog import *
 
 #from .bTimer import bTimer
 #from .WaitingSpinner import WaitingSpinner
+
+# abb 20200828
+from .bPyQtGraph import myPyQtGraphPlotWidget

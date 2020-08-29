@@ -35,6 +35,22 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		self._type = type # from ('nodes', 'edges', 'search')
 
+		# set font size of table (default seems to be 13 point)
+		fnt = self.font()
+		#print('  original table font size:', fnt.pointSize())
+		fnt.setPointSize(12)
+		self.setFont(fnt)
+		
+		self._rowHeight = 12
+		#self.setRowHeight(12)
+		
+		# getting error: AttributeError: 'PyQt5.QtCore.pyqtSignal' object has no attribute 'connect'
+		'''
+		if type == 'node search':
+			print('bTableWidget2() connecting to bSearchAnnotations.searchFinishedSignal')
+			bimpy.bSearchAnnotations.searchFinishedSignal.connect(self.slot_SearchFinished)
+		'''
+			
 		# I want a visual iterator to traverse a path/loop of edges
 		# this will require a second search in bStackView and bNapari
 		self.edgeIterIndex = None
@@ -110,8 +126,9 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		for rowIdx, editDict in enumerate(newDictList):
 			rowItems = self._itemFromDict(editDict)
 			for colIdx, item in enumerate(rowItems):
+				self.setRowHeight(rowIdx, self._rowHeight)
 				self.setItem(rowIdx, colIdx, item)
-
+				
 		# resize headers based on content
 		header = self.horizontalHeader()
 		for idx, label in enumerate(self.headerLabels):
@@ -195,6 +212,22 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		else:
 			myEvent.printSlot('bTableWidget2.slot_updateTracing() case not taken')
 
+	def slot_newSearchHit(self, searchType, newHitDict):
+		print('bTableWidget2.slot_newSearchHit()')
+		print('  searchType:', searchType)
+		print('  newHitDict:', newHitDict)
+	
+	def slot_SearchFinished(self, searchType, hitDictList):
+		print('bTableWidget2.slot_SearchFinished()')
+		print('  searchType:', searchType)
+		print('  len(hitDictList):', len(hitDictList))
+		'''
+		self.editTable.populate(self.hitDictList)
+		self.editTable._type = 'edge search'
+		'''
+		self._type = searchType
+		self.populate(hitDictList)
+		
 	def appendRow(self, theDict):
 		"""
 		append
@@ -208,6 +241,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 			rowItems = self._itemFromDict(theDict)
 			for colIdx, item in enumerate(rowItems):
+				self.setRowHeight(rowIdx, self._rowHeight)
 				self.setItem(rowIdx, colIdx, item)
 
 			self.repaint()

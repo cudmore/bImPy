@@ -67,11 +67,13 @@ def find_all_cycles(G, source=None, cycle_length_limit=None):
     return [list(i) for i in output_cycles]
 
 class bSearchAnnotations(QtCore.QThread):
-	def __init__(self, slabList, fn=None, params=None, searchType=None, editTable=None):
+	searchNewHitSignal = QtCore.Signal(str, object)
+	searchFinishedSignal = QtCore.Signal(str, object)
+
+	def __init__(self, slabList, fn=None, params=None, searchType=None, ):
 		"""
 		slabList: something like bVascularTracing
-		searchType:
-		editTable : the bTableWidget2 we will update
+		searchType: ('node search', 'edge search')
 		"""
 		super(bSearchAnnotations, self).__init__()
 
@@ -82,7 +84,7 @@ class bSearchAnnotations(QtCore.QThread):
 
 		self.slabList = slabList # parent stack is in self.slabList.parentStack
 		self.searchType = searchType
-		self.editTable = editTable
+
 		self.initSearch()
 
 		
@@ -108,7 +110,9 @@ class bSearchAnnotations(QtCore.QThread):
 		hitDict['Idx'] = self.nFound # modify the dict
 		self.hitDictList.append(hitDict)
 
-		print(f'  found {len(self.hitDictList)}')
+		self.searchNewHitSignal.emit(self.searchType, hitDict)
+		
+		#print(f'  found {len(self.hitDictList)}')
 		
 	def addSearched(self):
 		"""
@@ -128,11 +132,16 @@ class bSearchAnnotations(QtCore.QThread):
 		#print('bSearchAnnotations "' + self.name + ' ' + str(self.searchType) + '" finished in', self.elapsed, 'seconds, searched', self.nSearched, 'items -->> found', self.nFound)
 		print(f'bSearchAnnotations {self.name} "{self.searchType}" finished in {self.elapsed} seconds, searched {self.nSearched} items -->> found {self.nFound}')
 
+		'''
 		# update main editTable2
 		if self.searchType is not None and self.editTable is not None:
 			self.editTable.populate(self.hitDictList)
 			self.editTable._type = 'edge search'
-
+		'''
+		
+		# emit search type and hitDict
+		self.searchFinishedSignal.emit(self.searchType, self.hitDictList)
+		
 	def _defaultSearchDict(self):
 		"""
 		Get a default search itme
@@ -536,8 +545,14 @@ class bSearchAnnotations(QtCore.QThread):
 					hitDict['dist'] = round(dist,2)
 					hitDict['node1'] = int(nodeIdx1)
 					hitDict['nEdges1'] = int(nodeDict1['nEdges'])
+					hitDict['edgeList1'] = nodeDict1['edgeList']
 					hitDict['node2'] = int(nodeIdx2)
 					hitDict['nEdges2'] = int(nodeDict2['nEdges'])
+					hitDict['edgeList2'] = nodeDict2['edgeList']
+					
+					sharedEdgeList = bimpy.bVascularTracingAics.sharedEdges(self.slabList, nodeIdx1, nodeIdx2)
+					hitDict['sharedEdges'] = sharedEdgeList
+
 					self.addFound(hitDict)
 					
 					#foundPairList.append([nodeIdx1, nodeIdx2])
@@ -598,6 +613,7 @@ class bSearchAnnotations(QtCore.QThread):
 			#pre
 			doPre = False
 			if pairedNodes[preNode] is None:
+				edgeListPre = self.slabList.getNode(preNode)['edgeList']
 				nEdgesPre = self.slabList.getNode(preNode)['nEdges']
 				doPre = nEdgesPre == 1
 				xPre, yPre, zPre = self.slabList.getNode_xyz(preNode)
@@ -605,6 +621,7 @@ class bSearchAnnotations(QtCore.QThread):
 			# post
 			doPost = False
 			if pairedNodes[postNode] is None:
+				edgeListPost = self.slabList.getNode(postNode)['edgeList']
 				nEdgesPost = self.slabList.getNode(postNode)['nEdges']
 				doPost = nEdgesPost == 1
 				xPost, yPost, zPost = self.slabList.getNode_xyz(postNode)
@@ -624,8 +641,18 @@ class bSearchAnnotations(QtCore.QThread):
 						hitDict['dist'] = round(dist,2)
 						hitDict['node1'] = preNode
 						hitDict['nEdges1'] = nEdgesPre # will always be 1
+						hitDict['edgeList1'] = edgeListPre # will always be 1
+						hitDict['nSlab1'] = self.slabList.getEdge(edgeListPre[0])['nSlab']
+						hitDict['Len3D1'] = self.slabList.getEdge(edgeListPre[0])['Len 3D']
 						hitDict['node2'] = nodeIdx
-						hitDict['nEdges2'] = self.slabList.getNode(preNode)['nEdges']
+						hitDict['nEdges2'] = self.slabList.getNode(nodeIdx)['nEdges']
+						hitDict['edgeList2'] = self.slabList.getNode(nodeIdx)['edgeList']
+						
+						nodeIdx1 = preNode
+						nodeIdx2 = nodeIdx
+						sharedEdgeList = bimpy.bVascularTracingAics.sharedEdges(self.slabList, nodeIdx1, nodeIdx2)
+						hitDict['sharedEdges'] = sharedEdgeList
+						
 						self.addFound(hitDict)
 				# post
 				if doPost and nodeIdx != postNode:
@@ -638,8 +665,18 @@ class bSearchAnnotations(QtCore.QThread):
 						hitDict['dist'] = round(dist,2)
 						hitDict['node1'] = postNode
 						hitDict['nEdges1'] = nEdgesPost # will always be 1
+						hitDict['edgeList1'] = edgeListPost # will always be 1
+						hitDict['nSlab1'] = self.slabList.getEdge(edgeListPost[0])['nSlab']
+						hitDict['Len3D1'] = self.slabList.getEdge(edgeListPost[0])['Len 3D']
 						hitDict['node2'] = nodeIdx
-						hitDict['nEdges2'] = self.slabList.getNode(postNode)['nEdges']
+						hitDict['nEdges2'] = self.slabList.getNode(nodeIdx)['nEdges']
+						hitDict['edgeList2'] = self.slabList.getNode(nodeIdx)['edgeList']
+
+						nodeIdx1 = postNode
+						nodeIdx2 = nodeIdx
+						sharedEdgeList = bimpy.bVascularTracingAics.sharedEdges(self.slabList, nodeIdx1, nodeIdx2)
+						hitDict['sharedEdges'] = sharedEdgeList
+
 						self.addFound(hitDict)
 
 		self.finishSearch(verbose=False)

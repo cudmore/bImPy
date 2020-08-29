@@ -26,7 +26,7 @@ QGroupBox {
 	margin-top: 0.5em;
  }
 
- QGroupBox::title {
+QGroupBox::title {
     color: white;
 	/* background-color: transparent; */
     /* subcontrol-position: top left; */
@@ -34,3 +34,8 @@ QGroupBox {
     left: 10px;
     padding: 0 3px 0 3px;
  }
+
+/* abb aics */
+QPushButton {
+	font-size: 11px;
+}
