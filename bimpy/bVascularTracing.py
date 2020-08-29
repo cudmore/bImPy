@@ -151,7 +151,7 @@ class bVascularTracing:
 		else:
 			return int(round(self.edgeIdx[slabIdx]))
 
-	
+
 	# abb aics
 	# todo: put this out of class scope
 	def myBoundCheck_Decorator(func):
@@ -166,7 +166,7 @@ class bVascularTracing:
 				print('EXCEPTION in bVascularTracing.myBoundCheck_Decorator() e:', e)
 				return None
 		return func_wrapper
-	
+
 	def myBoundCheck_Node(self, nodeIdx):
 		if nodeIdx is None:
 			return True
@@ -179,7 +179,7 @@ class bVascularTracing:
 				traceback.print_stack()
 				print('n')
 			return theRet
-			
+
 	def myBoundCheck_Edge(self, edgeIdx):
 		if edgeIdx is None:
 			return True
@@ -192,7 +192,7 @@ class bVascularTracing:
 				traceback.print_stack()
 				print('n')
 			return theRet
-			
+
 	def myBoundCheck_Slab(self, slabIdx):
 		if slabIdx is None:
 			return True
@@ -205,18 +205,18 @@ class bVascularTracing:
 				traceback.print_stack()
 				print('n')
 			return theRet
-			
+
 	#@myBoundCheck_Decorator
 	def getEdge(self, edgeIdx):
-		
+
 		# check edgeIdx is in bounds
 		#if edgeIdx is None or edgeIdx<0 or edgeIdx > self.numEdges()-1:
 		#	# error
 		#	return None
-		
+
 		if not self.myBoundCheck_Edge(edgeIdx):
 			return
-		
+
 		edgeDict = self.edgeDictList[edgeIdx]
 		edgeDict['idx'] = edgeIdx
 		#
@@ -231,12 +231,12 @@ class bVascularTracing:
 		slabIdxList = self.getEdgeSlabList(edgeIdx)
 		zMin = np.min(self.z[slabIdxList])
 		zMax = np.max(self.z[slabIdxList])
-		
+
 		zMin = int(zMin)
 		zMax = int(zMax)
-		
+
 		return zMin, zMax
-		
+
 	def getEdgeSlabList(self, edgeIdx):
 		"""
 		return a list of slabs in an edge
@@ -338,7 +338,7 @@ class bVascularTracing:
 		edgeDict = self._defaultEdgeDict(edgeIdx=newEdgeIdx, srcNode=srcNode, dstNode=dstNode)
 
 		print('newEdge() edgeDict:', edgeDict)
-		
+
 		# find the slabs corresponding to src/dst node
 		srcSlab = np.where(self.nodeIdx==srcNode)[0]
 		dstSlab = np.where(self.nodeIdx==dstNode)[0]
@@ -499,7 +499,7 @@ class bVascularTracing:
 		# delete from slabs
 		# first/last slabs are nodes, do not delete !!!
 		#edgeSlabList = self.getEdgeSlabList(edgeIdx) #edge['slabList']
-		
+
 		# abb aics, was this
 		'''
 		if len(edgeSlabList) == 2:
@@ -529,7 +529,7 @@ class bVascularTracing:
 			print('\n   !!! !!! ERROR: in debug bVascularTracing.deleteEdge() edgeIdx at slab idx:', stillThere, 'STILL has edgeIdx==', edgeIdx)
 			for stillThreIdx in range(len(stillThere)):
 				self.printSlabInfo(stillThere[stillThreIdx])
-				
+
 		#
 		# decriment remaining self.edgeIdx
 		# x[np.less(x, -1000., where=~np.isnan(x))] = np.nan
@@ -605,7 +605,7 @@ class bVascularTracing:
 		if not self.myBoundCheck_Slab(slabIdx):
 			print('ERROR: bVascularTracing.deleteSlab() got bad slab index:', slabIdx, 'total num slabs is:', len(self.x))
 			return
-		
+
 		edgeIdx = self.edgeIdx[slabIdx]
 		nodeIdx = self.nodeIdx[slabIdx]
 
@@ -706,7 +706,7 @@ class bVascularTracing:
 	# abb aics
 	def _printStats(self):
 		self._printInfo()
-		
+
 	def _printInfo(self):
 		'''
 		print('file:', self.parentStack)
@@ -756,22 +756,22 @@ class bVascularTracing:
 	def printNodeInfo(self, nodeIdx):
 		node = self.getNode(nodeIdx)
 		print('    printNodeInfo() nodeIdx:', nodeIdx, 'idx:', node['idx'], 'nEdges:', node['nEdges'], 'edgeList:', node['edgeList'])
-		
+
 	def printEdgeInfo(self, edgeIdx):
 		#print('printEdgeInfo() edgeIdx:', edgeIdx)
-		
+
 		edge = self.getEdge(edgeIdx)
 		print('    printEdgeInfo() edgeIdx:', edgeIdx, 'idx:', edge['idx'], 'nSlab:', edge['nSlab'])
-		
+
 		preNodeIdx = edge['preNode']
 		postNodeIdx= edge['postNode']
 
 		self.printNodeInfo(preNodeIdx)
 		self.printNodeInfo(postNodeIdx)
-				
+
 	def printSlabInfo(self, slabIdx):
 		print('  slabIdx:', slabIdx, 'x:', self.x[slabIdx], 'y:', self.y[slabIdx], 'z:', self.z[slabIdx], 'edgeIdx:', self.edgeIdx[slabIdx], 'nodeIdx:', self.nodeIdx[slabIdx])
-		
+
 	def _massage_xyz(self, x, y, z, diam):
 		"""
 		used by vesselucida
@@ -1044,9 +1044,9 @@ class bVascularTracing:
 	def loadDeepVess(self):
 		print('loadDeepVess()')
 		dvMaskPath, ext = os.path.splitext(self.path)
-		
+
 		print(' !!!!! 20200819 switching loadDeepVess to load vasc aics analysis')
-		
+
 		## abb aics analysis
 		"""
 		todo: use master cell db and add column to tell us which label index to use
@@ -1058,21 +1058,21 @@ class bVascularTracing:
 			labeledPath = dvMaskPath + '_labeled.tif'
 			labeledData = tifffile.imread(labeledPath)
 			# make mask from one label
-			
+
 			'''
 			thisOneLabel = 1
 			#self._dvMask = np.zeros(labeledData.shape, dtype=np.uint8)
 			self._dvMask = np.where(labeledData==thisOneLabel, 1, 0)
 			print(' !!!!! aics self._dvMask after including label', thisOneLabel, self._dvMask.shape, self._dvMask.dtype)
 			'''
-			
+
 			self._dvMask = labeledData>0
-			
+
 			# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
 			self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
-			
+
 			print(' !!!!! aics self._dvMask', self._dvMask.shape, self._dvMask.dtype)
-			
+
 		else:
 			dvMaskPath += '_dvMask.tif'
 			dvMaskPath += '_mask.tif'
@@ -1096,7 +1096,7 @@ class bVascularTracing:
 			print('    loading _dvMask file:', dvMaskPath)
 			self._dvMask = tifffile.imread(dvMaskPath)
 
-		
+
 		parentStack = self.parentStack.getStack('ch1')
 
 		#
@@ -1248,7 +1248,7 @@ class bVascularTracing:
 			else:
 				pass # this happens a lot ???
 				#print('    warning: got len(path)<=2 at edgeIdx:',edgeIdx)
-		
+
 		self._analyze()
 
 		# abb aics
@@ -1758,13 +1758,13 @@ class bVascularTracing:
 		# done
 		print('joinEdges() Number of edits (1,2,3,4):', numEdits1, numEdits2, numEdits3, numEdits4)
 		print('   !!! NOT EDITING ANYTHING FOR NOW ... return')
-		
+
 		##
 		##
 		return
 		##
 		##
-		
+
 		print('*** EDITS joinEdges')
 		print('before joinEdges() numEdges:', len(self.edgeDictList), '1:', numEdits1, '2:', numEdits2, '3:', numEdits3, '4:', numEdits4)
 		totalNumEdits = 0
@@ -2036,7 +2036,7 @@ class bVascularTracing:
 
 			# abb aics
 			edgeDict['Diam2'] = thisDiamMean
-			
+
 		print('   number of slabs analyzed:', numAnalyzed, startTime.elapsed())
 
 	# my first generator :) I am almost back to my C++ savvyness
@@ -2168,7 +2168,7 @@ class bVascularTracing:
 			f.create_dataset('slabs', data=slabData)
 
 			# abb aics ... save skel
-			
+
 		return h5FilePath
 
 	def load(self):
@@ -2516,28 +2516,28 @@ class bVascularTracing:
 		edge = self.getEdge(edgeIdx)
 		preNodeIdx = edge['preNode']
 		postNodeIdx = edge['postNode']
-		
+
 		preNode = self.getNode(preNodeIdx)
 		postNode = self.getNode(postNodeIdx)
-		
+
 		preNumEdges = preNode['nEdges']
 		postNumEdges = postNode['nEdges']
-		
+
 		theRet = False
 		if preNumEdges==1 and postNumEdges==1:
 			theRet = True
-			
+
 		return theRet
-	
+
 	# abb aics
 	def checkSanity(self):
-	
+
 		print('bVascularTracing.checkSanity()')
 		numEdges = self.numEdges()
 		print('  numEdges:', numEdges)
 		for idx, edgeDict in enumerate(self.edgeDictList):
 			print('  idx:', idx, 'edgeDict', edgeDict)
-	
+
 	# abb aics
 	def resetEdgeIdx(self):
 		for idx, edgeDict in enumerate(self.edgeDictList):
@@ -2545,14 +2545,79 @@ class bVascularTracing:
 			edgeDict['idx'] = idx
 			# do not do here !!!!
 			#self.edgeIdx[idx] = idx
-			
+
+	def _preComputeAllMasks(self):
+		print('_preComputeAllMasks2()')
+
+		timeIt = bimpy.util.bTimer('_preComputeAllMasks2')
+
+		aicsSlabList = []
+		aicsSlabList_x = np.empty((0), np.float16) #[]
+		aicsSlabList_y = np.empty((0), np.float16) #[]
+		aicsSlabList_z = np.empty((0), np.float16) #[]
+		aicsSlabList_edgeIdx = np.empty((0), np.uint16) #[]
+		aicsSlabList_slabIdx = np.empty((0), np.uint16) #[]
+
+		for edgeIdx, edge in enumerate(self.edgeDictList):
+			tmpSlabList = self.getEdgeSlabList(edgeIdx) # includes nodes
+			aicsSlabList += tmpSlabList + [np.nan] # abb aics
+
+			# x
+			aicsSlabList_x = np.append(aicsSlabList_x, self.x[tmpSlabList])
+			aicsSlabList_x = np.append(aicsSlabList_x, np.nan) # abb aics
+
+			# y
+			aicsSlabList_y = np.append(aicsSlabList_y, self.y[tmpSlabList])
+			aicsSlabList_y = np.append(aicsSlabList_y, np.nan) # abb aics
+			# x
+			aicsSlabList_z = np.append(aicsSlabList_z, self.z[tmpSlabList])
+			aicsSlabList_z = np.append(aicsSlabList_z, np.nan) # abb aics
+
+			# edgeIdx (needs to be float)
+			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, self.edgeIdx[tmpSlabList])
+			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, np.nan) # abb aics
+
+			# slabIdx (needs to be float)
+			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, tmpSlabList)
+			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, np.nan) # abb aics
+
+		#
+		# nodes
+		nodeIdxMask = np.ma.masked_greater_equal(self.nodeIdx, 0)
+		nodeIdxMask = nodeIdxMask.mask
+
+		aicsNodeList_x = self.x[nodeIdxMask]
+		aicsNodeList_y = self.y[nodeIdxMask]
+		aicsNodeList_z = self.z[nodeIdxMask]
+		aicsNodeList_nodeIdx = self.nodeIdx[nodeIdxMask].astype(np.uint16)
+
+		self.maskedEdgesDict = {
+			# edges
+			'aicsSlabList': aicsSlabList,
+			'aicsSlabList_x': aicsSlabList_x,
+			'aicsSlabList_y': aicsSlabList_y,
+			'aicsSlabList_z': aicsSlabList_z,
+			'aicsSlabList_slabIdx': aicsSlabList_slabIdx,
+			'aicsSlabList_edgeIdx': aicsSlabList_edgeIdx,
+			# nodes
+			'aicsNodeList_x': aicsNodeList_x,
+			'aicsNodeList_y': aicsNodeList_y,
+			'aicsNodeList_z': aicsNodeList_z,
+			'aicsNodeList_nodeIdx': aicsNodeList_nodeIdx,
+
+		}
+
+		print(timeIt.elapsed())
+
+		return self.maskedEdgesDict
+		
 if __name__ == '__main__':
 	#path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
 	path = '/Users/cudmore/box/data/nathan/vascular-tracing/20191017/tifs/20191017_0001.tif'
 
 	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
-	
+
 	stack = bimpy.bStack(path=path)
 
 	stack.slabList.fixMissingNodes()
@@ -2560,7 +2625,7 @@ if __name__ == '__main__':
 	#stack.slabList.makeGraph()
 
 	#bimpy.bVascularTracingAics.removeDanglingEdges(self)
-	
+
 	# abb aics, testing new aics code
 	vascTracing = stack.slabList
 
@@ -2570,23 +2635,23 @@ if __name__ == '__main__':
 		nodeIdx1 = 34
 		nodeIdx2 = 116
 		okJoin = bimpy.bVascularTracingAics.joinNodes(vascTracing, nodeIdx1, nodeIdx2, verbose=True)
-		
+
 	#
 	# test join 2 edges
 	if 0:
 		edgeIdx1 = 209 #82
 		edgeIdx2 = 210 #41
-	
+
 		# before join
 		edge1 = stack.slabList.getEdge(edgeIdx1)
 		edge2 = stack.slabList.getEdge(edgeIdx2)
-	
+
 		print('* before:')
 		print('  stack.slabList.numNodes()', stack.slabList.numNodes())
 		print('  stack.slabList.numEdges()', stack.slabList.numEdges())
 		print('  edgeIdx1:', edgeIdx1, edge1)
 		print('  edgeIdx2:', edgeIdx2, edge2)
-	
+
 		print('=== calling bimpy.bVascularTracingAics.joinEdges() edgeIdx1:', edgeIdx1, 'edgeIdx2:', edgeIdx2)
 		newEdgeIdx, newSrcNodeIdx, newDstNodeIdx = bimpy.bVascularTracingAics.joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=True)
 
@@ -2598,32 +2663,32 @@ if __name__ == '__main__':
 		print('  edgeIdx1:', edgeIdx1, edge1)
 		print('  edgeIdx2:', edgeIdx2, edge2)
 		'''
-	
+
 		print('  newEdgeIdx:', newEdgeIdx)
 		print('  newSrcNodeIdx:', newSrcNodeIdx)
 		print('  newDstNodeIdx:', newDstNodeIdx)
-	
+
 		print('  stack.slabList.numNodes()', stack.slabList.numNodes())
 		print('  stack.slabList.numEdges()', stack.slabList.numEdges())
 
 		# new edge
 		newEdge = stack.slabList.getEdge(newEdgeIdx)
 		print('  newEdgeIdx:', newEdgeIdx, newEdge)
-	
+
 		# src/dst node of new edge
 		preNode = stack.slabList.getNode(newSrcNodeIdx)
 		postNode = stack.slabList.getNode(newDstNodeIdx)
 		print('  newSrcNodeIdx:', newSrcNodeIdx, preNode)
 		print('  newDstNodeIdx:', newDstNodeIdx, postNode)
-	
+
 		stack.slabList.resetEdgeIdx()
-	
+
 		stack.slabList.checkSanity()
-	
+
 	#
 	# older debug
 	#
-	
+
 	# this was a plotly plot
 	# get it working again
 	#stack.slabList.plotGraph2()

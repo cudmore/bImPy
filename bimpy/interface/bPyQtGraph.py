@@ -80,9 +80,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		super(myPyQtGraphPlotWidget, self).__init__(parent=parent)
 
 		# abb laptop, 2 channel composite
+		'''
 		import tifffile
 		path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch1.tif'
 		self.stackData_ch2 = tifffile.imread(path)
+		'''
 
 		#self.viewBox = self.addViewBox()
 		#self.viewBox.setAspectLocked(True)
@@ -165,7 +167,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#
 		#
 		self.mySimpleStack = mySimpleStack
-		self._preComputeAllMasks2()
+		self.maskedEdgesDict = self.mySimpleStack.slabList._preComputeAllMasks()
 
 		self.currentSlice = 40
 
@@ -249,14 +251,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 			x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
 
-			x = [x]
-			y = [y]
-
 			if snapz:
 				z = int(z)
 				self.setSlice(z)
 
+				self.zoomToPoint(x, y)
+
 			# update
+			x = [x]
+			y = [y]
 			self.myNodePlotSelection.setData(x, y)
 
 			QtCore.QTimer.singleShot(20, lambda:self.flashNode(nodeIdx, 2))
@@ -285,6 +288,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				z = int(z)
 				self.setSlice(z)
 
+				# snap to point
+				# get the (x,y) of the middle slab
+				tmpEdgeDict = self.mySimpleStack.slabList.getEdge(edgeIdx)
+				tmp_nSlab = tmpEdgeDict['nSlab']
+				middleSlab = int(tmp_nSlab/2)
+				middleSlabIdx = tmpEdgeDict['slabList'][middleSlab]
+				tmpx, tmpy, tmpz = self.mySimpleStack.slabList.getSlab_xyz(middleSlabIdx)
+				self.zoomToPoint(tmpx, tmpy)
+
 			# update
 			self.mySlabPlotSelection.setData(xMasked, yMasked)
 
@@ -306,7 +318,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	def flashNode(self, nodeIdx, numberOfFlashes):
 		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
-		print('flashNode() nodeIdx:', nodeIdx, 'numberOfFlashes:', numberOfFlashes)
+		#print('flashNode() nodeIdx:', nodeIdx, 'numberOfFlashes:', numberOfFlashes)
 		if nodeIdx is None:
 			return
 		if numberOfFlashes>0:
@@ -354,6 +366,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		sliceImage = self.mySimpleStack.getImage(channel=1, sliceNum=thisSlice)
 
 		# abb laptop, 2 channel composite
+		'''
 		sliceImage_ch2 = self.stackData_ch2[thisSlice,:,:]
 		m = sliceImage.shape[0]
 		n = sliceImage.shape[1]
@@ -361,11 +374,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		threed[:,:,0] = sliceImage_ch2
 		threed[:,:,1] = sliceImage
 		threed[:,:,2] = 0
-
+		'''
 		#sliceImage = sliceImage[:, ::-1].T
 
-		#self.myImage.setImage(sliceImage)
-		self.myImage.setImage(threed)
+		self.myImage.setImage(sliceImage)
+		#self.myImage.setImage(threed)
 
 		self.myImage.setLevels([self.minContrast,self.maxContrast], update=True)
 
@@ -419,6 +432,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		print('=== wheelEvent()')
 		print('  event:', event)
 		'''
+		print('  angleDelta:', event.angleDelta().y())
+		print('  pixelDelta:', event.pixelDelta().y())
 
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		if modifiers == QtCore.Qt.ControlModifier:
@@ -460,12 +475,22 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 
 	def zoomToPoint(self, x, y):
-		xRange = self.viewRange()[0]
+		print('zoomToPoint()')
+		print('  x:', x, 'y:', y)
+		pos = self.mapToScene(x, y)
+		x = pos.x()
+		y = pos.y()
+		print('  x:', x, 'y:', y)
+		[xRange, yRange] = self.viewRange()
 		#yRange = self.viewRange()[1]
 		xWidth = xRange[1] - xRange[0]
+		yWidth = yRange[1] - yRange[0]
 		xHalfWidth = int(xWidth/2)
+		yHalfWidth = int(yWidth/2)
 		xNewRange = [x-xHalfWidth, x+xHalfWidth]
-		self.setRange(xRange=xRange)
+		yNewRange = [y-yHalfWidth, y+yHalfWidth]
+		print('  xRange:', xRange, 'yRange:', yRange)
+		self.setRange(xRange=xRange, yRange=yRange)
 
 	def onMouseClicked_scene(self, event):
 		print('=== onMouseClicked_scene()', event.pos().x(), event.pos().y())
@@ -502,14 +527,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			print('  onMouseClicked_scene() new node')
 			newNodeIdx = self.mySimpleStack.slabList.newNode(x, y, self.currentSlice)
 
-			self._preComputeAllMasks2()
+			self.maskedEdgesDict = self.mySimpleStack.slabList._preComputeAllMasks()
 			self.setSlice() #refresh
 
 	def onMouseMoved_scene(self, pos):
 		if 1:
-			print('=== onMouseMoved_scene()', pos.x(), pos.y())
+			#print('=== onMouseMoved_scene()', pos.x(), pos.y())
 			imagePos = self.myImage.mapFromScene(pos)
-			print('  imagePos:', imagePos)
+			#print('  imagePos:', imagePos)
 
 			xPos = imagePos.x()
 			yPos = imagePos.y()
@@ -644,72 +669,6 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.selectEdge(edgeIdx, snapz=snapz, isShift=isShift)
 		self.selectNode(myEvent.nodeIdx)
 		self.selectSlab(myEvent.slabIdx)
-
-	def _preComputeAllMasks2(self):
-		print('_preComputeAllMasks2()')
-
-		timeIt = bimpy.util.bTimer('_preComputeAllMasks2')
-
-		aicsSlabList = []
-		aicsSlabList_x = np.empty((0), np.float16) #[]
-		aicsSlabList_y = np.empty((0), np.float16) #[]
-		aicsSlabList_z = np.empty((0), np.float16) #[]
-		aicsSlabList_edgeIdx = np.empty((0), np.uint16) #[]
-		aicsSlabList_slabIdx = np.empty((0), np.uint16) #[]
-
-		for edgeIdx, edge in enumerate(self.mySimpleStack.slabList.edgeDictList):
-			tmpSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx) # includes nodes
-			aicsSlabList += tmpSlabList + [np.nan] # abb aics
-
-			# x
-			aicsSlabList_x = np.append(aicsSlabList_x, self.mySimpleStack.slabList.x[tmpSlabList])
-			aicsSlabList_x = np.append(aicsSlabList_x, np.nan) # abb aics
-
-			# y
-			aicsSlabList_y = np.append(aicsSlabList_y, self.mySimpleStack.slabList.y[tmpSlabList])
-			aicsSlabList_y = np.append(aicsSlabList_y, np.nan) # abb aics
-			# x
-			aicsSlabList_z = np.append(aicsSlabList_z, self.mySimpleStack.slabList.z[tmpSlabList])
-			aicsSlabList_z = np.append(aicsSlabList_z, np.nan) # abb aics
-
-			# edgeIdx (needs to be float)
-			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, self.mySimpleStack.slabList.edgeIdx[tmpSlabList])
-			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, np.nan) # abb aics
-
-			# slabIdx (needs to be float)
-			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, tmpSlabList)
-			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, np.nan) # abb aics
-
-		#
-		# nodes
-		nodeIdxMask = np.ma.masked_greater_equal(self.mySimpleStack.slabList.nodeIdx, 0)
-		nodeIdxMask = nodeIdxMask.mask
-
-		aicsNodeList_x = self.mySimpleStack.slabList.x[nodeIdxMask]
-		aicsNodeList_y = self.mySimpleStack.slabList.y[nodeIdxMask]
-		aicsNodeList_z = self.mySimpleStack.slabList.z[nodeIdxMask]
-		aicsNodeList_nodeIdx = self.mySimpleStack.slabList.nodeIdx[nodeIdxMask].astype(np.uint16)
-
-		self.maskedEdgesDict = {
-			# edges
-			'aicsSlabList': aicsSlabList,
-			'aicsSlabList_x': aicsSlabList_x,
-			'aicsSlabList_y': aicsSlabList_y,
-			'aicsSlabList_z': aicsSlabList_z,
-			'aicsSlabList_slabIdx': aicsSlabList_slabIdx,
-			'aicsSlabList_edgeIdx': aicsSlabList_edgeIdx,
-			# nodes
-			'aicsNodeList_x': aicsNodeList_x,
-			'aicsNodeList_y': aicsNodeList_y,
-			'aicsNodeList_z': aicsNodeList_z,
-			'aicsNodeList_nodeIdx': aicsNodeList_nodeIdx,
-
-		}
-
-		print(timeIt.elapsed())
-
-		#import sys
-		#sys.exit()
 
 def main():
 	app = QtWidgets.QApplication(sys.argv)
