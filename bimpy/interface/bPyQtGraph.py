@@ -7,7 +7,7 @@ see here for class diagram:
 
 see
     https://stackoverflow.com/questions/58526980/how-to-connect-mouse-clicked-signal-to-pyqtgraph-plot-widget
-    
+
 """
 
 import sys  # We need sys so that we can pass argv to QApplication
@@ -44,19 +44,19 @@ class myPyQtGraphWindow2(QtWidgets.QMainWindow):
 		self.graphicsView = pg.PlotWidget(cw)
 		self.graphicsView.plot([1,2], [1,2])
 		'''
-		
+
 		# load stack
 		path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
 		self.mySimpleStack = bimpy.bStack(path) # backend stack
-		
+
 		# makes new window
 		self.myPyQtGraphPlotWidget = myPyQtGraphPlotWidget(self, mySimpleStack=self.mySimpleStack)
 
 		button1 = QtGui.QPushButton('xxx')
 		button2 = QtGui.QPushButton('xxx')
-		
+
 		myVBoxLayout.addWidget(button1)
-		
+
 		myVBoxLayout.addWidget(self.myPyQtGraphPlotWidget)
 
 		myVBoxLayout.addWidget(button2)
@@ -64,12 +64,12 @@ class myPyQtGraphWindow2(QtWidgets.QMainWindow):
 		# does not work, embeds in window but no zooming
 		# without *self makes new window
 		#self.myPyQtGraphPlotWidget = myPyQtGraphPlotWidget(self)
-		
+
 		#self.test1()
-		
+
 
 ###########################################################################
-class myPyQtGraphPlotWidget(pg.PlotWidget):		
+class myPyQtGraphPlotWidget(pg.PlotWidget):
 	setSliceSignal = QtCore.Signal(str, object)
 	selectNodeSignal = QtCore.Signal(object)
 	selectEdgeSignal = QtCore.Signal(object)
@@ -79,40 +79,45 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	def __init__(self, parent=None, mySimpleStack=None):
 		super(myPyQtGraphPlotWidget, self).__init__(parent=parent)
 
+		# abb laptop, 2 channel composite
+		import tifffile
+		path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch1.tif'
+		self.stackData_ch2 = tifffile.imread(path)
+
 		#self.viewBox = self.addViewBox()
 		#self.viewBox.setAspectLocked(True)
-		
+
 		#p1 = self.addPlot()
 
 		#pg.setConfigOption('imageAxisOrder','row-major')
-		
+
 		self.mainWindow = parent
 		self.myPlotWidget = self #pg.PlotWidget(name='Plot2')
-		
+
 		self.setAspectLocked()
-		
+
 		# turn off both mouse pan and mouse wheel zoom
 		#self.setMouseEnabled(x=False, y=False)
-		
+
 		self.hideButtons() # Causes auto-scale button (‘A’ in lower-left corner) to be hidden for this PlotItem
-		
+
 		# turns off default right-click menu, works
 		#self.setMenuEnabled(False)
-		
+
 		# this is required for mouse callbacks to have proper x/y position !!!
 		# hide bottom/left axis, works
 		self.hideAxis('left')
 		self.hideAxis('bottom')
-		
+
 		# Instances of ImageItem can be used inside a ViewBox or GraphicsView.
 		data = np.zeros((1,1,1))
 		 #np.random.randint(0, high=256, size=(200,200), dtype=np.uint8)
 		self.myImage = pg.ImageItem(data)
 		self.myPlotWidget.addItem(self.myImage)
-		
+
 		self.minContrast = 0
 		self.maxContrast = 255
-			
+
 		# self.myPlotWidget.plot
 		# creates: <class 'pyqtgraph.graphicsItems.PlotDataItem.PlotDataItem'>
 
@@ -122,7 +127,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.mySlabPlot = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=5, symbolBrush=('c'),
 							connect='finite', clickable=True)
 		self.mySlabPlot.sigPointsClicked.connect(self.clickedSlabPlot)
-		
+
 		self.mySlabPlotSelection = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=7, symbolBrush=('y'),
 							connect='finite', clickable=False)
 
@@ -138,7 +143,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		pen = None
 		self.myNodePlot = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=8, symbolBrush=('r'))
 		self.myNodePlot.sigPointsClicked.connect(self.clickedNodePlot)
-		
+
 		self.myNodePlotSelection = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=10, symbolBrush=('y'),
 							connect='finite')
 
@@ -156,28 +161,28 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#self.myAddPlot()
 		#self.myAddImage()
-		
+
 		#
 		#
 		self.mySimpleStack = mySimpleStack
 		self._preComputeAllMasks2()
-		
+
 		self.currentSlice = 40
 
 		self.displayStat = OrderedDict()
 		self.displayStat['showNodes'] = True
 		self.displayStat['showEdges'] = True
-		
+
 		self.setSlice()
-		
+
 	def plotNodes(self):
 		if not self.displayStat['showNodes']:
 			xNodeMasked = []
 			yNodeMasked = []
-		else:	
+		else:
 			showTracingAboveSlices = 3
 			showTracingAboveSlices = 3
-		
+
 			index = self.currentSlice
 			firstSlice = index - showTracingAboveSlices
 			lastSlice = index + showTracingAboveSlices
@@ -186,10 +191,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			aicsNodeList_y = self.maskedEdgesDict['aicsNodeList_y']
 			aicsNodeList_z = self.maskedEdgesDict['aicsNodeList_z']
 			aicsNodeList_nodeIdx = self.maskedEdgesDict['aicsNodeList_nodeIdx'] # use for user clicks _onpick
-	
+
 			zNodeMasked = np.ma.masked_inside(aicsNodeList_z, firstSlice, lastSlice) # this unintentionally removes np.nan
 			zNodeMasked = zNodeMasked.mask
-	
+
 			xNodeMasked = np.where(zNodeMasked==True, aicsNodeList_x, np.nan)
 			yNodeMasked = np.where(zNodeMasked==True, aicsNodeList_y, np.nan)
 
@@ -203,7 +208,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		else:
 			showTracingAboveSlices = 3
 			showTracingAboveSlices = 3
-		
+
 			index = self.currentSlice
 			firstSlice = index - showTracingAboveSlices
 			lastSlice = index + showTracingAboveSlices
@@ -212,27 +217,27 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			aicsSlabList_x = self.maskedEdgesDict['aicsSlabList_x']
 			aicsSlabList_y = self.maskedEdgesDict['aicsSlabList_y']
 			aicsSlabList_z = self.maskedEdgesDict['aicsSlabList_z']
-		
+
 			zMasked = np.ma.masked_inside(aicsSlabList_z, firstSlice, lastSlice) # this unintentionally removes np.nan
 			zMasked = zMasked.mask
-		
+
 			nanMasked = np.ma.masked_invalid(aicsSlabList_z) # True if [i] is np.nan
 			nanMasked = nanMasked.mask
-		
+
 			finalEdgeMask = np.ma.mask_or(zMasked, nanMasked)
-		
+
 			# always one more step than I expect? Not sure why and really do not understand?
 			xEdgeMasked = np.where(finalEdgeMask==True, aicsSlabList_x, np.nan)
 			yEdgeMasked = np.where(finalEdgeMask==True, aicsSlabList_y, np.nan)
 
 		# update
 		self.mySlabPlot.setData(xEdgeMasked, yEdgeMasked) #
-		
+
 	def cancelSelection(self):
 		self.selectNode(None)
 		self.selectEdge(None)
 		self.selectSlab(None)
-		
+
 	def selectNode(self, nodeIdx, snapz=False, isShift=False):
 		if nodeIdx is None:
 			x = []
@@ -241,21 +246,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		else:
 			# todo: standardize this
 			nodeIdx = int(nodeIdx)
-			
+
 			x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
-	
+
 			x = [x]
 			y = [y]
-			
+
 			if snapz:
 				z = int(z)
 				self.setSlice(z)
-			
+
 			# update
 			self.myNodePlotSelection.setData(x, y)
 
 			QtCore.QTimer.singleShot(20, lambda:self.flashNode(nodeIdx, 2))
-	
+
 	def selectEdge(self, edgeIdx, snapz=False, isShift=False):
 		if edgeIdx is None:
 			xMasked = []
@@ -264,12 +269,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		else:
 			# todo: standardize this
 			edgeIdx = int(edgeIdx)
-			
+
 			theseIndices = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
-			
+
 			xMasked = self.mySimpleStack.slabList.x[theseIndices] # flipped
 			yMasked = self.mySimpleStack.slabList.y[theseIndices]
-	
+
 			#print('xMasked:', xMasked)
 			#print('yMasked:', yMasked)
 
@@ -279,12 +284,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				z = self.mySimpleStack.slabList.edgeDictList[edgeIdx]['z']
 				z = int(z)
 				self.setSlice(z)
-		
+
 			# update
 			self.mySlabPlotSelection.setData(xMasked, yMasked)
 
 			QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, 2))
-	
+
 	def selectSlab(self, slabIdx):
 		if slabIdx is None:
 			x = []
@@ -298,7 +303,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		# update
 		self.mySlabPlotSelection2.setData(x, y)
-				
+
 	def flashNode(self, nodeIdx, numberOfFlashes):
 		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
 		print('flashNode() nodeIdx:', nodeIdx, 'numberOfFlashes:', numberOfFlashes)
@@ -338,22 +343,32 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			#self.myEdgeSelectionFlash.set_offsets(np.c_[[], []])
 
 	def setSlice(self, thisSlice=None):
-		
+
 		if thisSlice is None:
 			thisSlice = self.currentSlice
 		else:
 			self.currentSlice = thisSlice
-		
+
 		displayThisStack = 'ch1'
 		#sliceImage = self.mySimpleStack.setSliceContrast(thisSlice, thisStack=displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
 		sliceImage = self.mySimpleStack.getImage(channel=1, sliceNum=thisSlice)
-		
+
+		# abb laptop, 2 channel composite
+		sliceImage_ch2 = self.stackData_ch2[thisSlice,:,:]
+		m = sliceImage.shape[0]
+		n = sliceImage.shape[1]
+		threed = np.ndarray((m,n,3), dtype=np.uint8)
+		threed[:,:,0] = sliceImage_ch2
+		threed[:,:,1] = sliceImage
+		threed[:,:,2] = 0
+
 		#sliceImage = sliceImage[:, ::-1].T
-		
-		self.myImage.setImage(sliceImage)
-				
+
+		#self.myImage.setImage(sliceImage)
+		self.myImage.setImage(threed)
+
 		self.myImage.setLevels([self.minContrast,self.maxContrast], update=True)
-		
+
 		pos = np.array([0.0, 0.5, 1.0])
 		color = np.array([[0,0,0,255], [255,128,0,255], [255,255,0,255]], dtype=np.ubyte)
 		greenColor = np.array([[0,0,0,255], [0,128,0,255], [0,255,0,255]], dtype=np.ubyte)
@@ -367,11 +382,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		map = pg.ColorMap(pos, greenColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myImage.setLookupTable(lut, update=True)
-		
+
 		# plot slabs/nodes
 		self.plotSlabs()
 		self.plotNodes()
-		
+
 	# this is over-riding existing member function
 	def keyPressEvent(self, event):
 		"""
@@ -381,30 +396,30 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		if event.key() in [QtCore.Qt.Key_Escape]:
 			self.cancelSelection()
-		
+
 		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			print('do delete')
-			
+
 		elif event.key() in [QtCore.Qt.Key_Left]:
 			t = (100,100)
 			#self.translateBy(t=t)
-		
+
 		elif event.key() in [QtCore.Qt.Key_T]:
 			self.displayStat['showNodes'] = not self.displayStat['showNodes']
 			self.displayStat['showEdges'] = not self.displayStat['showEdges']
 			self.setSlice() # refresh
-			
+
 	# this is over-riding existing member function
 	def wheelEvent(self, event):
 		"""
 		event: <PyQt5.QtGui.QWheelEvent object at 0x11d486910>
 		"""
-		
+
 		'''
 		print('=== wheelEvent()')
 		print('  event:', event)
 		'''
-		
+
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		if modifiers == QtCore.Qt.ControlModifier:
 			super(myPyQtGraphPlotWidget, self).wheelEvent(event)
@@ -420,14 +435,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				self.currentSlice += 1
 				if self.currentSlice > self.mySimpleStack.numSlices:
 					self.currentSlice -= 1
-					
+
 			#print(event.angleDelta().y()) # always +/- the same value
 			#print(event.pixelDelta().y()) # +/- and larger magnitude, if >100 then got by 5 !!!
-		
+
 			self.setSlice()
 
 			self.setSliceSignal.emit('set slice', self.currentSlice)
-			
+
 	def myAddPlot(self):
 		xData = [20, 50, 100, 150, 180]
 		yData = [20, 50, 100, 150, 180]
@@ -443,7 +458,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		data = np.random.randint(0, high=256, size=(200,200), dtype=np.uint8)
 		self.img = pg.ImageItem(data)
 
-	
+
 	def zoomToPoint(self, x, y):
 		xRange = self.viewRange()[0]
 		#yRange = self.viewRange()[1]
@@ -451,7 +466,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		xHalfWidth = int(xWidth/2)
 		xNewRange = [x-xHalfWidth, x+xHalfWidth]
 		self.setRange(xRange=xRange)
-		
+
 	def onMouseClicked_scene(self, event):
 		print('=== onMouseClicked_scene()', event.pos().x(), event.pos().y())
 		imagePos = self.myImage.mapFromScene(event.pos())
@@ -460,28 +475,28 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		print('  event.pos():', event.pos())
 		print('  imagePos:', imagePos) # slighlty off???
 		print('  slabPos:', slabPos)
-		
+
 		'''
 		print('  self.viewRange():', self.viewRange()) # [[xmin,xmax], [ymin,ymax]]
-		
+
 		xRange = self.viewRange()[0]
 		yRange = self.viewRange()[1]
 		xWidth = xRange[1] - xRange[0]
-		
+
 		xRange[0] += 100
 		xRange[1] += 200
 
 		self.setRange(xRange=xRange, yRange=yRange)
 		'''
-		
+
 		print('  self.getViewBox():', self.getViewBox())
-		
+
 		x = imagePos.x()
 		y = imagePos.y()
 
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
-		
+
 		if isShift:
 			# new node
 			print('  onMouseClicked_scene() new node')
@@ -489,23 +504,23 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 			self._preComputeAllMasks2()
 			self.setSlice() #refresh
-			
+
 	def onMouseMoved_scene(self, pos):
 		if 1:
 			print('=== onMouseMoved_scene()', pos.x(), pos.y())
 			imagePos = self.myImage.mapFromScene(pos)
 			print('  imagePos:', imagePos)
-			
+
 			xPos = imagePos.x()
 			yPos = imagePos.y()
 			thePoint = QtCore.QPoint(xPos, yPos)
 			self.mainWindow.getStatusToolbar().setMousePosition(thePoint)
-			
+
 	'''
 	def sceneClicked(self, event):
 		print('=== sceneClicked() event:', event)
-		
-		
+
+
 		# see: https://stackoverflow.com/questions/27222016/pyqt-mousepressevent-get-object-that-was-clicked-on
 		#items = w.scene().items(event.scenePos())
 		#print "Plots:", [x for x in items if isinstance(x, pg.PlotItem)]
@@ -515,7 +530,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			if isinstance(x, pg.PlotItem):
 				print('  ', x)
 	'''
-	
+
 	def clickedSlabPlot(self, item, points):
 		"""
 		get edge index from displayed masked edges
@@ -525,26 +540,26 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		# this works gives me the point number!!!!
 		thePoint = points[0].index()
-		
+
 		aicsSlabList_edgeIdx = self.maskedEdgesDict['aicsSlabList_edgeIdx']
 		selectedEdgeIdx = aicsSlabList_edgeIdx[thePoint]
-		
+
 		aicsSlabList_slabIdx = self.maskedEdgesDict['aicsSlabList_edgeIdx']
 		selectedSlabIdx = aicsSlabList_slabIdx[thePoint]
 
 		print('=== clickedSlabPlot() thePoint:', thePoint, 'selectedEdgeIdx:', selectedEdgeIdx)
-		
+
 		self.selectEdge(selectedEdgeIdx)
 		self.selectSlab(selectedSlabIdx)
 
 		# emit
 		myEvent = bimpy.interface.bEvent('select edge', edgeIdx=selectedEdgeIdx, slabIdx=selectedSlabIdx)
 		self.selectEdgeSignal.emit(myEvent)
-		
+
 	def clickedNodePlot(self, item, points):
 		"""
 		get node index from displayed masked node
-		
+
 		item: self.myNodePlot
 		points: [<pyqtgraph.graphicsItems.ScatterPlotItem.SpotItem object at 0x13cdb6f10>]
 		"""
@@ -553,10 +568,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		aicsNodeList_nodeIdx = self.maskedEdgesDict['aicsNodeList_nodeIdx']
 		selectedNodeIdx = aicsNodeList_nodeIdx[thePoint]
-		
+
 		print('=== clickedNodePlot()', selectedNodeIdx)
 		self.selectNode(selectedNodeIdx)
-		
+
 		myEvent = bimpy.interface.bEvent('select node', nodeIdx=selectedNodeIdx)
 		self.selectNodeSignal.emit(myEvent)
 
@@ -592,10 +607,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	def slot_contrastChange(self, myEvent):
 		myEvent.printSlot('myPyQtGraphPlotWidget.slot_contrastChange()')
-		
+
 		minContrast = myEvent.minContrast
 		maxContrast = myEvent.maxContrast
-		
+
 		if minContrast is not None and maxContrast is not None:
 			self.minContrast = minContrast
 			self.maxContrast = maxContrast
@@ -632,24 +647,24 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	def _preComputeAllMasks2(self):
 		print('_preComputeAllMasks2()')
-		
+
 		timeIt = bimpy.util.bTimer('_preComputeAllMasks2')
-		
+
 		aicsSlabList = []
 		aicsSlabList_x = np.empty((0), np.float16) #[]
 		aicsSlabList_y = np.empty((0), np.float16) #[]
 		aicsSlabList_z = np.empty((0), np.float16) #[]
 		aicsSlabList_edgeIdx = np.empty((0), np.uint16) #[]
 		aicsSlabList_slabIdx = np.empty((0), np.uint16) #[]
-		
+
 		for edgeIdx, edge in enumerate(self.mySimpleStack.slabList.edgeDictList):
 			tmpSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx) # includes nodes
 			aicsSlabList += tmpSlabList + [np.nan] # abb aics
-			
+
 			# x
 			aicsSlabList_x = np.append(aicsSlabList_x, self.mySimpleStack.slabList.x[tmpSlabList])
 			aicsSlabList_x = np.append(aicsSlabList_x, np.nan) # abb aics
-						
+
 			# y
 			aicsSlabList_y = np.append(aicsSlabList_y, self.mySimpleStack.slabList.y[tmpSlabList])
 			aicsSlabList_y = np.append(aicsSlabList_y, np.nan) # abb aics
@@ -660,21 +675,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			# edgeIdx (needs to be float)
 			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, self.mySimpleStack.slabList.edgeIdx[tmpSlabList])
 			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, np.nan) # abb aics
-				
+
 			# slabIdx (needs to be float)
 			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, tmpSlabList)
 			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, np.nan) # abb aics
-				
+
 		#
 		# nodes
 		nodeIdxMask = np.ma.masked_greater_equal(self.mySimpleStack.slabList.nodeIdx, 0)
 		nodeIdxMask = nodeIdxMask.mask
-		
+
 		aicsNodeList_x = self.mySimpleStack.slabList.x[nodeIdxMask]
 		aicsNodeList_y = self.mySimpleStack.slabList.y[nodeIdxMask]
 		aicsNodeList_z = self.mySimpleStack.slabList.z[nodeIdxMask]
 		aicsNodeList_nodeIdx = self.mySimpleStack.slabList.nodeIdx[nodeIdxMask].astype(np.uint16)
-		
+
 		self.maskedEdgesDict = {
 			# edges
 			'aicsSlabList': aicsSlabList,
@@ -688,14 +703,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			'aicsNodeList_y': aicsNodeList_y,
 			'aicsNodeList_z': aicsNodeList_z,
 			'aicsNodeList_nodeIdx': aicsNodeList_nodeIdx,
-			
+
 		}
-		
+
 		print(timeIt.elapsed())
-		
+
 		#import sys
 		#sys.exit()
-		
+
 def main():
 	app = QtWidgets.QApplication(sys.argv)
 	main = myPyQtGraphWindow2()
