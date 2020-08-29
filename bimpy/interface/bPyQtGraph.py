@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg

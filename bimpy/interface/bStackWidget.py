@@ -25,7 +25,7 @@ import h5py
 import pickle # to save masks
 
 # testing, remember to remove
-import pyqtgraph as pg
+#import pyqtgraph as pg
 
 import bimpy
 
@@ -86,7 +86,7 @@ class bStackWidget(QtWidgets.QWidget):
 		#
 		#
 		self.myFeedbackWidget = bimpy.interface.bLeftToolbarWidget(self)
-		
+
 		self.myHBoxLayout.addWidget(self.myFeedbackWidget)#, stretch=2)
 		#
 		#
@@ -239,7 +239,7 @@ class bStackWidget(QtWidgets.QWidget):
 		# end abb PyQtGraph
 		##
 		##
-		
+
 		self.updateDisplayedWidgets()
 
 		left = self.options['Window']['left']
@@ -264,7 +264,7 @@ class bStackWidget(QtWidgets.QWidget):
 		#print('moveEvent()', xy.x(), xy.y())
 		self.options['Window']['left'] = xy.x()
 		self.options['Window']['top'] = xy.y()
-		
+
 		#print('bStackWindow.moveEvent()', self.options['Window'])
 
 	def resizeEvent(self, event):
@@ -381,14 +381,14 @@ class bStackWidget(QtWidgets.QWidget):
 
 		if signal == 'Analyze All Diameters':
 			# abb aics to run in parallel
-			
+
 			# in series
 			serialTimer = bimpy.util.bTimer('Analyze All Diameters (serial version)')
-			
+
 			self.mySimpleStack.slabList.analyzeSlabIntensity()
-			
+
 			print(serialTimer.elapsed())
-			
+
 			# multiprocessing does not work inside PyQt5, need to make a thread clas and spawn/run
 			'''
 			#bimpy.bVascularTracingAics.analyzeSlabIntensity2(self.mySimpleStack.slabList)
@@ -405,13 +405,13 @@ class bStackWidget(QtWidgets.QWidget):
 			#workThread.workerThreadFinishedSignal[object].connect(self.add)
 			#self.tmpWorkThread.start()
 			self.tmpWorkThread.run()
-			
+
 			print(workerTimer.elapsed())
 			'''
-			
+
 			# abb aics update edge list (we set ['Diam2'])
 			self.edgeTable2.populate(self.mySimpleStack.slabList.edgeDictList)
-			
+
 		if signal == 'update line profile':
 			# value is profileDict
 			'''
@@ -502,7 +502,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.editTable2.populate(results)
 			self.editTable2._type = 'edge search'
 			'''
-			
+
 			self.mySearchAnnotation = bimpy.bSearchAnnotations(self.mySimpleStack.slabList,
 								fn = bimpy.bSearchAnnotations.searchDeadEnd,
 								params = thresholdDist,
@@ -518,7 +518,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.editTable2.populate(results)
 			self.editTable2._type = 'node search'
 			'''
-			
+
 			'''
 			self.mySearchAnnotation = bimpy.bSearchAnnotations(self.mySimpleStack.slabList,
 								fn = bimpy.bSearchAnnotations.searchDeadEnd2,
@@ -528,12 +528,12 @@ class bStackWidget(QtWidgets.QWidget):
 			self.mySearchAnnotation.searchNewHitSignal.connect(self.editTable2.slot_newSearchHit)
 			self.mySearchAnnotation.start()
 			'''
-			
+
 			fn = bimpy.bSearchAnnotations.searchDeadEnd2
 			params = thresholdDist # pass None for no parameters
 			searchType = 'node search'
 			self.startSearch(fn, params, searchType)
-			
+
 		elif signal == 'search 1_2':
 			thresholdDist = value
 			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
@@ -549,7 +549,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.editTable2.populate(results)
 			self.editTable2._type = 'node search'
 			'''
-			
+
 			thresholdDist = value
 			fn = bimpy.bSearchAnnotations.searchCloseNodes
 			params = thresholdDist # pass None for no parameters
@@ -608,7 +608,7 @@ class bStackWidget(QtWidgets.QWidget):
 		"""
 		Start a background search thread
 		Use keyboard q to quit
-		
+
 		fn: pointer to search function to run, like: bimpy.bSearchAnnotations.searchDeadEnd2
 		params:
 		searchType: ('node search', 'edgeSearch') defines the type of object in search results
@@ -620,7 +620,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.mySearchAnnotation.searchFinishedSignal.connect(self.editTable2.slot_SearchFinished)
 		self.mySearchAnnotation.searchNewHitSignal.connect(self.editTable2.slot_newSearchHit)
 		self.mySearchAnnotation.start()
-	
+
 	def optionsChange(self, key1, key2, value=None, toggle=False, doEmit=False):
 		if toggle:
 			value = not self.options[key1][key2]
@@ -633,7 +633,7 @@ class bStackWidget(QtWidgets.QWidget):
 	def repopulateAllTables(self):
 		self.nodeTable2.populate(self.mySimpleStack.slabList.nodeDictList)
 		self.edgeTable2.populate(self.mySimpleStack.slabList.edgeDictList)
-		
+
 		# this is populated after each search (We do not have a local copy?)
 		#self.editTable2.populate(self.mySimpleStack.slabList.edgeDictList)
 
@@ -680,7 +680,7 @@ class bStackWidget(QtWidgets.QWidget):
 		elif event.key() in [QtCore.Qt.Key_Q]:
 			# quit search
 			self.mySearchAnnotation.continueSearch = False
-			
+
 		elif event.text() == 'i':
 			self.mySimpleStack.print()
 
@@ -720,21 +720,21 @@ class bStackWidget(QtWidgets.QWidget):
 		self.options = OrderedDict()
 
 		"""
-		Possible values are: Accent, Accent_r, Blues, Blues_r, BrBG, BrBG_r, BuGn, BuGn_r, BuPu, BuPu_r, CMRmap, 
-		CMRmap_r, Dark2, Dark2_r, GnBu, GnBu_r, Greens, Greens_r, Greys, Greys_r, OrRd, OrRd_r, Oranges, 
-		Oranges_r, PRGn, PRGn_r, Paired, Paired_r, Pastel1, Pastel1_r, Pastel2, Pastel2_r, PiYG, PiYG_r, 
-		PuBu, PuBuGn, PuBuGn_r, PuBu_r, PuOr, PuOr_r, PuRd, PuRd_r, Purples, Purples_r, RdBu, RdBu_r, 
-		RdGy, RdGy_r, RdPu, RdPu_r, RdYlBu, RdYlBu_r, RdYlGn, RdYlGn_r, Reds, Reds_r, Set1, Set1_r, 
-		Set2, Set2_r, Set3, Set3_r, Spectral, Spectral_r, Wistia, Wistia_r, YlGn, YlGnBu, YlGnBu_r, 
-		YlGn_r, YlOrBr, YlOrBr_r, YlOrRd, YlOrRd_r, afmhot, afmhot_r, autumn, autumn_r, binary, binary_r, 
-		bone, bone_r, brg, brg_r, bwr, bwr_r, cividis, cividis_r, cool, cool_r, coolwarm, coolwarm_r, 
-		copper, copper_r, cubehelix, cubehelix_r, flag, flag_r, gist_earth, gist_earth_r, gist_gray, 
-		gist_gray_r, gist_heat, gist_heat_r, gist_ncar, gist_ncar_r, gist_rainbow, gist_rainbow_r, 
-		gist_stern, gist_stern_r, gist_yarg, gist_yarg_r, gnuplot, gnuplot2, gnuplot2_r, gnuplot_r, 
-		gray, gray_r, hot, hot_r, hsv, hsv_r, inferno, inferno_r, jet, jet_r, magma, magma_r, nipy_spectral, 
-		nipy_spectral_r, ocean, ocean_r, pink, pink_r, plasma, plasma_r, prism, prism_r, rainbow, rainbow_r, 
-		seismic, seismic_r, spring, spring_r, summer, summer_r, tab10, tab10_r, tab20, tab20_r, tab20b, 
-		tab20b_r, tab20c, tab20c_r, terrain, terrain_r, twilight, twilight_r, twilight_shifted, 
+		Possible values are: Accent, Accent_r, Blues, Blues_r, BrBG, BrBG_r, BuGn, BuGn_r, BuPu, BuPu_r, CMRmap,
+		CMRmap_r, Dark2, Dark2_r, GnBu, GnBu_r, Greens, Greens_r, Greys, Greys_r, OrRd, OrRd_r, Oranges,
+		Oranges_r, PRGn, PRGn_r, Paired, Paired_r, Pastel1, Pastel1_r, Pastel2, Pastel2_r, PiYG, PiYG_r,
+		PuBu, PuBuGn, PuBuGn_r, PuBu_r, PuOr, PuOr_r, PuRd, PuRd_r, Purples, Purples_r, RdBu, RdBu_r,
+		RdGy, RdGy_r, RdPu, RdPu_r, RdYlBu, RdYlBu_r, RdYlGn, RdYlGn_r, Reds, Reds_r, Set1, Set1_r,
+		Set2, Set2_r, Set3, Set3_r, Spectral, Spectral_r, Wistia, Wistia_r, YlGn, YlGnBu, YlGnBu_r,
+		YlGn_r, YlOrBr, YlOrBr_r, YlOrRd, YlOrRd_r, afmhot, afmhot_r, autumn, autumn_r, binary, binary_r,
+		bone, bone_r, brg, brg_r, bwr, bwr_r, cividis, cividis_r, cool, cool_r, coolwarm, coolwarm_r,
+		copper, copper_r, cubehelix, cubehelix_r, flag, flag_r, gist_earth, gist_earth_r, gist_gray,
+		gist_gray_r, gist_heat, gist_heat_r, gist_ncar, gist_ncar_r, gist_rainbow, gist_rainbow_r,
+		gist_stern, gist_stern_r, gist_yarg, gist_yarg_r, gnuplot, gnuplot2, gnuplot2_r, gnuplot_r,
+		gray, gray_r, hot, hot_r, hsv, hsv_r, inferno, inferno_r, jet, jet_r, magma, magma_r, nipy_spectral,
+		nipy_spectral_r, ocean, ocean_r, pink, pink_r, plasma, plasma_r, prism, prism_r, rainbow, rainbow_r,
+		seismic, seismic_r, spring, spring_r, summer, summer_r, tab10, tab10_r, tab20, tab20_r, tab20b,
+		tab20b_r, tab20c, tab20c_r, terrain, terrain_r, twilight, twilight_r, twilight_shifted,
 		twilight_shifted_r, viridis, viridis_r, winter, winter_r
 		"""
 
@@ -809,7 +809,7 @@ class bStackWidget(QtWidgets.QWidget):
 			'verboseSlots': True,
 		})
 		'''
-		
+
 	def optionsSave(self):
 		optionsFilePath = self.optionsFile()
 		print('optionsSave()', optionsFilePath)
@@ -1005,7 +1005,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		#self.myColorMap = matplotlib.colors.Colormap('gray', N=256)
 		#self.myColorMap = plt.cm.get_cmap()
 		self.myColorMap = matplotlib.cm.get_cmap('gray')
-		
+
 		# OMG, this took many hours to find the right function, set the background of the figure !!!
 		self.figure.set_facecolor("black")
 
@@ -1109,11 +1109,11 @@ class bStackView(QtWidgets.QGraphicsView):
 
 	def resizeEvent(self, event):
 		#print('resizeEvent() itemsBoundingRect:', self.scene().itemsBoundingRect(), self.frameGeometry(), self.pos())
-		
+
 		# abb aics, removed
 		#self.handleFitInView()
 		pass
-		
+
 	#
 	# get/set selections
 	def selectedNode(self, nodeIdx=-1):
@@ -1141,7 +1141,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				if not edgeIdx in self.displayStateDict['mySelectedEdgeList']:
 					self.displayStateDict['mySelectedEdgeList'] += [edgeIdx]
 		return self.displayStateDict['mySelectedEdgeList']
-	
+
 	def selectedSlab(self, slabIdx=-1):
 		if slabIdx != -1:
 			self.displayStateDict['mySelectedSlab'] = slabIdx
@@ -1492,40 +1492,40 @@ class bStackView(QtWidgets.QGraphicsView):
 				edge1 = selectedEdgeList[0]
 				edge2 = selectedEdgeList[1]
 				#print('=== bStackView.myEvent() ... join edges', edge1, edge2)
-				
+
 				# this will join two edges (via common node) and make a new longer edge
 				# use this mostly when (1) nodes have just two edges
 				#		(2) when nodes have 4 edges
 				newEdgeIdx, srcNode, dstNode = bimpy.bVascularTracingAics.joinEdges(self.mySimpleStack.slabList, edge1, edge2)
-				
+
 				if newEdgeIdx is  None:
 					# did not join (usually when edges are not connected)
 					pass
 				else:
 					print('  newEdgeIdx:', newEdgeIdx, 'srcNode:', srcNode, 'dstNode:', dstNode)
-				
+
 					# fill in new diameter
 					self.mySimpleStack.slabList._analyze(thisEdgeIdx=newEdgeIdx)
-				
+
 					# clear multi selection
 					self.selectedEdgeList_append([]) # this updates 'state'
 					#self.cancelSelection(doEmit=False)
-					
+
 					# select the new edge
 					self.selectEdge(newEdgeIdx) # select the new edge
-				
+
 					myEvent = bimpy.interface.bEvent('select edge', edgeIdx=newEdgeIdx)
 					self.selectEdgeSignal.emit(myEvent)
-			
+
 					# handled by doUpdate = True
 					#self._preComputeAllMasks(fromCurrentSlice=True)
 					#self.setSlice() #refresh
-				
+
 					#
 					# emit change
 					#
 					#doUpdate = True
-					
+
 					#
 					# update tracing
 					# can't just do zMin/zMax because all 'later' edges have changed index
@@ -1537,17 +1537,17 @@ class bStackView(QtWidgets.QGraphicsView):
 					'''
 					self._preComputeAllMasks()
 					self.setSlice() #refresh
-					
+
 					#
 					# todo: fix this, need to grab edgeDict1 BEFORE join?
 					#myEvent = bimpy.interface.bEvent('deleteEdge', edgeIdx=edge1, edgeDict=deleteEdgeDict)
 					#self.tracingEditSignal.emit(myEvent)
-					
+
 					#
 					# before I emit to tables, I need to refresh the tables
 					#self.refreshView()
 					self.mainWindow.repopulateAllTables()
-					
+
 					#
 					# select the one new edge
 					myEvent = bimpy.interface.bEvent('select edge', edgeIdx=newEdgeIdx, slabIdx=None)
@@ -1571,7 +1571,7 @@ class bStackView(QtWidgets.QGraphicsView):
 					myEvent = bimpy.interface.bEvent('updateNode', nodeIdx=dstNode, nodeDict=dstNodeDict)
 					self.tracingEditSignal.emit(myEvent)
 					'''
-					
+
 		elif event['type']=='newNode':
 			# this works fine, i need to make it more general to limit amount of code here !!!
 			if bimpy.interface.myWarningsDialog('new node', self.options).canceled():
@@ -1600,11 +1600,11 @@ class bStackView(QtWidgets.QGraphicsView):
 			srcNode = event['srcNode']
 			dstNode = event['dstNode']
 			print('=== bStackView.myEvent() ... new edge srcNode:', srcNode, 'dstNode:', dstNode)
-			
+
 			newEdgeIdx = self.mySimpleStack.slabList.newEdge(srcNode,dstNode)
 			self._preComputeAllMasks(fromCurrentSlice=True)
 			self.setSlice() #refresh
-			
+
 			theRet = newEdgeIdx
 
 			# todo: cancel node selection
@@ -1627,7 +1627,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			dstNodeDict = self.mySimpleStack.slabList.getNode(dstNode)
 			myEvent = bimpy.interface.bEvent('updateNode', nodeIdx=dstNode, nodeDict=dstNodeDict)
 			self.tracingEditSignal.emit(myEvent)
-			
+
 		elif event['type']=='newSlab':
 			edgeIdx = event['edgeIdx']
 			x = event['x']
@@ -1687,18 +1687,18 @@ class bStackView(QtWidgets.QGraphicsView):
 			# there is order of execution here, if slab selected then delete slab
 			# if no slab selected but edge is selected then delete edge
 			# if neither slab or edge is selected but there is a node selection then delete node
-			
+
 			selectedSlabIdx = self.selectedSlab()
 			selectedEdgeIdx = self.selectedEdge()
 			selectedNodeIdx = self.selectedNode()
-			
+
 			if selectedSlabIdx is not None:
 				if bimpy.interface.myWarningsDialog('delete slab', self.options).canceled():
 					return theRet
 				deleteSlabIdx = selectedSlabIdx
 				print('\n=== bStackView.myEvent() ... deleteSelection delete slab:', deleteSlabIdx, 'from edge idx:', selectedEdgeIdx)
 				self.mySimpleStack.slabList.deleteSlab(deleteSlabIdx)
-				
+
 				# interface
 				self.selectEdge(None)
 				self.selectSlab(None)
@@ -1712,7 +1712,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				deleteEdgeIdx = selectedEdgeIdx
 				print('\n=== bStackView.myEvent() ... deleteSelection delete edge idx:', deleteEdgeIdx)
 				self.mySimpleStack.slabList.deleteEdge(self.selectedEdge())
-				
+
 				# interface
 				self.selectEdge(None)
 				self.selectSlab(None)
@@ -1886,15 +1886,15 @@ class bStackView(QtWidgets.QGraphicsView):
 			self.selectedNode(None)
 			self.myNodeSelectionPlot.set_offsets(np.c_[[], []])
 		else:
-			
+
 			# abb aics todo: tracing bounds check
 			if not self.mySimpleStack.slabList.myBoundCheck_Node(nodeIdx):
 				return
-				
+
 			if self.mySimpleStack.slabList is not None:
 				#print('   bStackView.selectNode() nodeIdx:', nodeIdx, self.mySimpleStack.slabList.getNode(nodeIdx))
 				self.mySimpleStack.slabList.printNodeInfo(nodeIdx)
-				
+
 				self.selectedNode(nodeIdx)
 
 				x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
@@ -1975,7 +1975,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			# abb aics todo: tracing bounds check
 			if not self.mySimpleStack.slabList.myBoundCheck_Edge(edgeIdx):
 				return
-			
+
 			self.selectedEdge(edgeIdx)
 
 			if self.mySimpleStack.slabList is not None:
@@ -2113,11 +2113,11 @@ class bStackView(QtWidgets.QGraphicsView):
 			# only if we are showing the line profile panel
 			if not self.options['Panels']['showLineProfile']:
 				return
-			
+
 			# abb aics todo: tracing bounds check
 			if not self.mySimpleStack.slabList.myBoundCheck_Slab(slabIdx):
 				return
-			
+
 			# abb kind a bound check
 			numSlabs = self.mySimpleStack.slabList.numSlabs()
 			if slabIdx > numSlabs-1:
@@ -2209,7 +2209,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		self.mainWindow.signal('update line profile', profileDict)
 		# todo: implement this
-		
+
 		#
 		# emit
 		selectededge = self.selectedEdge()
@@ -2242,28 +2242,28 @@ class bStackView(QtWidgets.QGraphicsView):
 		with open(pickleFile, 'wb') as fout:
 			#pickle.dump(self.maskedNodes, fout)
 			pickle.dump(self.maskedEdgesDict, fout)
-	
+
 	###########################################################################
 	def _preComputeAllMasks2(self):
 		print('_preComputeAllMasks2()')
-		
+
 		timeIt = bimpy.util.bTimer('_preComputeAllMasks2')
-		
+
 		aicsSlabList = []
 		aicsSlabList_x = np.empty((0), np.float16) #[]
 		aicsSlabList_y = np.empty((0), np.float16) #[]
 		aicsSlabList_z = np.empty((0), np.float16) #[]
 		aicsSlabList_edgeIdx = np.empty((0), np.uint16) #[]
 		aicsSlabList_slabIdx = np.empty((0), np.uint16) #[]
-		
+
 		for edgeIdx, edge in enumerate(self.mySimpleStack.slabList.edgeDictList):
 			tmpSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx) # includes nodes
 			aicsSlabList += tmpSlabList + [np.nan] # abb aics
-			
+
 			# x
 			aicsSlabList_x = np.append(aicsSlabList_x, self.mySimpleStack.slabList.x[tmpSlabList])
 			aicsSlabList_x = np.append(aicsSlabList_x, np.nan) # abb aics
-						
+
 			# y
 			aicsSlabList_y = np.append(aicsSlabList_y, self.mySimpleStack.slabList.y[tmpSlabList])
 			aicsSlabList_y = np.append(aicsSlabList_y, np.nan) # abb aics
@@ -2274,21 +2274,21 @@ class bStackView(QtWidgets.QGraphicsView):
 			# edgeIdx (needs to be float)
 			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, self.mySimpleStack.slabList.edgeIdx[tmpSlabList])
 			aicsSlabList_edgeIdx = np.append(aicsSlabList_edgeIdx, np.nan) # abb aics
-				
+
 			# slabIdx (needs to be float)
 			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, tmpSlabList)
 			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, np.nan) # abb aics
-				
+
 		#
 		# nodes
 		nodeIdxMask = np.ma.masked_greater_equal(self.mySimpleStack.slabList.nodeIdx, 0)
 		nodeIdxMask = nodeIdxMask.mask
-		
+
 		aicsNodeList_x = self.mySimpleStack.slabList.x[nodeIdxMask]
 		aicsNodeList_y = self.mySimpleStack.slabList.y[nodeIdxMask]
 		aicsNodeList_z = self.mySimpleStack.slabList.z[nodeIdxMask]
 		aicsNodeList_nodeIdx = self.mySimpleStack.slabList.nodeIdx[nodeIdxMask].astype(np.uint16)
-		
+
 		self.maskedEdgesDict = {
 			# edges
 			'aicsSlabList': aicsSlabList,
@@ -2302,14 +2302,14 @@ class bStackView(QtWidgets.QGraphicsView):
 			'aicsNodeList_y': aicsNodeList_y,
 			'aicsNodeList_z': aicsNodeList_z,
 			'aicsNodeList_nodeIdx': aicsNodeList_nodeIdx,
-			
+
 		}
-		
+
 		print(timeIt.elapsed())
-		
+
 		#import sys
 		#sys.exit()
-		
+
 	def _preComputeAllMasks(self, fromSlice=None, fromCurrentSlice=False, firstSlice=None, lastSlice=None, loadFromFile=False):
 		"""
 		Precompute all masks once. When user scrolls through slices this is WAY faster
@@ -2327,7 +2327,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		return
 		#
 		#
-		
+
 		myTimer = bimpy.util.bTimer('_preComputeAllMasks')
 
 		if self.mySimpleStack.slabList is None:
@@ -2363,7 +2363,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		if firstSlice is not None and lastSlice is not None:
 			sliceRange = range(firstSlice, lastSlice+1)
 			print('  _preComputeAllMasks() is using firstSlice:', firstSlice, 'lastSlice:', lastSlice, 'sliceRange:', sliceRange)
-			
+
 		# abb aics
 		#aicsSlabList_x = np.empty((0))
 
@@ -2431,7 +2431,7 @@ class bStackView(QtWidgets.QGraphicsView):
 					tmpSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
 					aicsSlabList += tmpSlabList + [np.nan] # abb aics
 				print(timeEdgeIter.elapsed())
-				
+
 				#aicsSlabList_x = self.mySimpleStack.slabList.x[aicsSlabList]
 				'''
 				nonNanIdxArray = np.where(~np.isnan(aicsSlabList))
@@ -2461,11 +2461,11 @@ class bStackView(QtWidgets.QGraphicsView):
 					print('    self.mySimpleStack.slabList.x.shape:', self.mySimpleStack.slabList.x.shape)
 					print('    len(self.mySimpleStack.slabList.x[slabList]):', len(self.mySimpleStack.slabList.x[slabList]), 'self.mySimpleStack.slabList.x[slabList]:', self.mySimpleStack.slabList.x[slabList])
 					'''
-					
+
 					#aicsSlabList_y += self.mySimpleStack.slabList.y[slabList].tolist() + [np.nan] # abb aics
 					#aicsSlabList_z += self.mySimpleStack.slabList.z[slabList].tolist() + [np.nan] # abb aics
 					#aicsSlabList_zMask += [tmpz if (tmpz>upperz and tmpz<lowerz) else np.nan for tmpz in aicsSlabList_z] # todo: convert to numpy before???
-					
+
 					# decide if the slabs are within (upperz, lowerz)
 					for slab in slabList:
 						zSlab = self.mySimpleStack.slabList.z[slab]
@@ -2485,7 +2485,7 @@ class bStackView(QtWidgets.QGraphicsView):
 							edgeIdxLines.append(np.nan)
 							slabIdxLines.append(np.nan)
 							nodeIdxLines.append(np.nan)
-					
+
 					# edges need to be separated by nan so we don't get a line b/w sequential edges
 					# this makes it hard to 'vectorize' this function, (x,y,z) is not in sync with displayed x/y/z
 					xEdgeLines.append(np.nan)
@@ -2495,7 +2495,7 @@ class bStackView(QtWidgets.QGraphicsView):
 					slabIdxLines.append(np.nan)
 					nodeIdxLines.append(np.nan)
 				""" # aics was this
-				
+
 			else:
 				# aics was this
 				pass
@@ -2515,9 +2515,9 @@ class bStackView(QtWidgets.QGraphicsView):
 				nodeIdxLines = []
 				"""
 			#print('slice i:', i, len(aicsSlabList))
-			
+
 			#aicsSlabList = np.asarray(aicsSlabList, dtype=np.float32) # this has nan
-			
+
 			maskedNodeDict = {
 				#'zNodeMasked': zNodeMasked,
 				'zNodeMasked0': zNodeMasked0, # abb aics
@@ -2555,11 +2555,11 @@ class bStackView(QtWidgets.QGraphicsView):
 			'''
 			# abb aics, added
 			if recomputeAll:
-				self.maskedNodes.append(maskedNodeDict)			
+				self.maskedNodes.append(maskedNodeDict)
 			else:
 				print('  _preComputeAllMasks() i:', i)
 				self.maskedNodes[i] = maskedNodeDict
-			
+
 			#print('slice', i, '_preComputeAllMasks() len(x):', len(xMasked), 'len(y)', len(yMasked))
 
 		print(myTimer.elapsed())
@@ -2567,31 +2567,31 @@ class bStackView(QtWidgets.QGraphicsView):
 	def set_cmap(self, cmapName, minColor, maxColor):
 		print('  bStackView.set_cmap() cmapName:', cmapName, 'minColor:', minColor, 'maxColor:', maxColor)
 		#cmap = self.options['Stack']['colorLut']
-		
+
 		self.myColorMap = matplotlib.cm.get_cmap(cmapName)
-		
+
 		# this works but make noisy grid in darkness?
 		'''
 		self.myColorMap.set_under(color=minColor)
 		self.myColorMap.set_over(color=maxColor)
 		'''
-		
+
 		# this works
-		self.imgplot.set_cmap(self.myColorMap)	
-		
+		self.imgplot.set_cmap(self.myColorMap)
+
 		# does not work
-		#self.imgplot.clim(100, 200)	
-		
+		#self.imgplot.clim(100, 200)
+
 		# maybe this?
 		#self.imgplot.cmap.set_under('black')
-		
+
 		# redraw
 		self.canvas.draw_idle()
-		
+
 	#######################################
 	def setSlice2(self, index=None):
 		#timeSetSlice = bimpy.util.bTimer('time set slice 2')
-		
+
 		if index is None:
 			index = self.currentSlice
 		if index < 0:
@@ -2617,55 +2617,55 @@ class bStackView(QtWidgets.QGraphicsView):
 			if self.imgplot is None:
 				cmap = self.options['Stack']['colorLut'] #2**2
 				# no scale
-				
+
 				# was this
 				#self.imgplot = self.axes.imshow(image, cmap=cmap)
 
 				#self.imgplot = self.axes.imshow(image, interpolation='none', cmap=self.myColorMap, alpha=1.0)
 				self.imgplot = self.axes.imshow(image, cmap=self.myColorMap)
-				
+
 			else:
 				self.imgplot.set_data(image)
 		else:
 			if self.imgplot is not None:
 				self.imgplot.set_data(np.zeros((1,1)))
-	
+
 		print('\n\ntodo: FIX showTracingAboveSlices')
-		
+
 		showTracingAboveSlices = self.options['Tracing']['showTracingAboveSlices']
 		showTracingBelowSlices = self.options['Tracing']['showTracingBelowSlices']
 		firstSlice = index - showTracingAboveSlices
 		lastSlice = index + showTracingAboveSlices
-		
+
 		#
 		# edges
 		if self.displayStateDict['showEdges']:
 			aicsSlabList_x = self.maskedEdgesDict['aicsSlabList_x']
 			aicsSlabList_y = self.maskedEdgesDict['aicsSlabList_y']
 			aicsSlabList_z = self.maskedEdgesDict['aicsSlabList_z']
-			
+
 			zMasked = np.ma.masked_inside(aicsSlabList_z, firstSlice, lastSlice) # this unintentionally removes np.nan
 			zMasked = zMasked.mask
-			
+
 			nanMasked = np.ma.masked_invalid(aicsSlabList_z) # True if [i] is np.nan
 			nanMasked = nanMasked.mask
-			
+
 			finalEdgeMask = np.ma.mask_or(zMasked, nanMasked)
-			
+
 			# always one more step than I expect? Not sure why and really do not understand?
 			xEdgeMasked = np.where(finalEdgeMask==True, aicsSlabList_x, np.nan)
 			yEdgeMasked = np.where(finalEdgeMask==True, aicsSlabList_y, np.nan)
-			
+
 			# set display
 			self.myEdgePlot.set_xdata(yEdgeMasked)
 			self.myEdgePlot.set_ydata(xEdgeMasked)
-			
+
 			#self.myEdgePlot.set_linewidth(0)
-			
+
 		else:
 			self.myEdgePlot.set_xdata([])
 			self.myEdgePlot.set_ydata([])
-		
+
 		#
 		# nodes
 		if self.displayStateDict['showNodes']:
@@ -2674,15 +2674,15 @@ class bStackView(QtWidgets.QGraphicsView):
 			aicsNodeList_y = self.maskedEdgesDict['aicsNodeList_y']
 			aicsNodeList_z = self.maskedEdgesDict['aicsNodeList_z']
 			aicsNodeList_nodeIdx = self.maskedEdgesDict['aicsNodeList_nodeIdx'] # use for user clicks _onpick
-			
+
 			zNodeMasked = np.ma.masked_inside(aicsNodeList_z, firstSlice, lastSlice) # this unintentionally removes np.nan
 			zNodeMasked = zNodeMasked.mask
-			
+
 			xNodeMasked = np.where(zNodeMasked==True, aicsNodeList_x, np.nan)
 			yNodeMasked = np.where(zNodeMasked==True, aicsNodeList_y, np.nan)
 
 			self.myNodePlot.set_offsets(np.c_[yNodeMasked, xNodeMasked]) # flipped
-			
+
 		else:
 			self.myNodePlot.set_offsets(np.c_[[], []])
 
@@ -2696,7 +2696,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.canvas.draw_idle()
 
 		#print(timeSetSlice.elapsed())
-		
+
 	def setSlice(self, index=None):
 		#print('bStackView.setSlice()', index)
 
@@ -2706,7 +2706,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		return
 		#
 		#
-		
+
 		"""
 		if index is None:
 			index = self.currentSlice
@@ -2774,7 +2774,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			tracingPenSize = self.options['Tracing']['tracingPenSize']
 			self.myEdgePlot.set_markersize(tracingPenSize)
 			'''
-			
+
 			# abb aics, faster ???
 			timeEdges = bimpy.util.bTimer('time edges')
 			try:
@@ -2782,10 +2782,10 @@ class bStackView(QtWidgets.QGraphicsView):
 				self.maskedEdgesDict
 
 				zNodeMasked0 = self.maskedNodes[index]['zNodeMasked0'] # this is all we need from _preComputeAllMasks
-				aicsSLabList = self.maskedNodes[index]['aicsSlabList'] # 
-				aicsSLabList_x = self.maskedNodes[index]['aicsSlabList_x'] # 
-				aicsSLabList_y = self.maskedNodes[index]['aicsSlabList_y'] # 
-				aicsSLabList_z = self.maskedNodes[index]['aicsSlabList_z'] # 
+				aicsSLabList = self.maskedNodes[index]['aicsSlabList'] #
+				aicsSLabList_x = self.maskedNodes[index]['aicsSlabList_x'] #
+				aicsSLabList_y = self.maskedNodes[index]['aicsSlabList_y'] #
+				aicsSLabList_z = self.maskedNodes[index]['aicsSlabList_z'] #
 				# nodeIdxMasked size becomes (0,n) ???
 				xEdgeMasked = self.mySimpleStack.slabList.x[zNodeMasked0.mask].ravel()
 				yEdgeMasked = self.mySimpleStack.slabList.y[zNodeMasked0.mask].ravel()
@@ -2801,7 +2801,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				# this does not work because we need np.nan inserted between each edge???
 				xEdgeMasked = np.where(~np.isnan(edgeIdxMasked), xEdgeMasked, np.nan) #xEdgeMasked[~np.isnan(edgeIdxMasked)]
 				yEdgeMasked = np.where(~np.isnan(edgeIdxMasked), yEdgeMasked, np.nan) #xEdgeMasked[~np.isnan(edgeIdxMasked)]
-				
+
 				print('    xEdgeMasked:', xEdgeMasked.shape)
 				print('    yEdgeMasked:', yEdgeMasked.shape)
 
@@ -2838,7 +2838,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			#print('setSlice() index:', index, 'color:', self.maskedNodes[index]['colorMasked'])
 			#self.myNodePlot.set_array(self.maskedNodes[index]['colorMasked'])
 			#self.myNodePlot.set_clim(3, 5)
-			
+
 			# abb aics, faster ???
 			try:
 				print('aics set nodes slice i:', index)
@@ -2862,7 +2862,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			except (KeyError) as e:
 				pass
 			print('  ', timeNodes.elapsed())
-			
+
 		else:
 			self.myNodePlot.set_offsets(np.c_[[], []])
 
@@ -2874,7 +2874,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		#self.canvas.draw_idle()
 		self.canvas.draw()
 		"""
-		
+
 	def keyReleaseEvent(self, event):
 		self.keyIsDown = None
 
@@ -2890,7 +2890,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		isControl = modifiers == QtCore.Qt.ControlModifier # on macOS, this is 'command' (e.g. open-apple)
 
 		print('=== bStackView.keyPressEvent() key:', event.text(), 'isShift:', isShift, 'isControl:', isControl)
-		
+
 		if event.key() in [QtCore.Qt.Key_N]:
 			print('=== user hit key "N"')
 			"""
@@ -2911,7 +2911,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		elif event.key() in [QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return]:
 			self.handleFitInView()
-			
+
 		elif event.key() == QtCore.Qt.Key_R:
 			self.refreshView()
 
@@ -2986,7 +2986,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		elif event.key() == QtCore.Qt.Key_J:
 			event = {'type':'joinTwoEdges'}
 			self.myEvent(event)
-		
+
 		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			#self.showDeadEnds = not self.showDeadEnds
 			#self.setSlice() #refresh
@@ -3084,7 +3084,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		self.setSlice()
 		# todo: refresh tables
 		self.mainWindow.repopulateAllTables()
-	
+
 	def _toggleSlidingZ(self, isChecked=None):
 
 		if isChecked is not None:
@@ -3105,16 +3105,16 @@ class bStackView(QtWidgets.QGraphicsView):
 	def zoomToPoint(self, x, y):
 		"""
 		x/y: units are in x/y of slabList.x and slabList.y (um?)
-		
+
 		we need to figure out what percent of total sceneRect() this corresponds to
-		
+
 		matplotlib has (x,y) as (row,col)
 		PyQt is reversed !!!
-		
+
 		for example:
 			mpl_x * scene_width / image.shape[1]
 		"""
-		
+
 		# abb aics
 		# todo convert this to use a % of the total scene rect ?
 
@@ -3127,7 +3127,7 @@ class bStackView(QtWidgets.QGraphicsView):
 		print('  bStackView.zoomToPoint() x:', x, 'y:', y, 'xScene:', xGuess, 'yScene:', yGuess)
 
 		self.centerOn(yGuess, xGuess) # swapped
-				
+
 	def zoom(self, zoom, pos=None):
 		"""
 		pass pos to follow mouse location
@@ -3292,7 +3292,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 			sceneRect = self.sceneRect()
 			print('  sceneRect:', sceneRect, 'w:', sceneRect.width(), 'h:', sceneRect.height())
-			
+
 			# in matplotlib (x,y) is (rows,cols)
 			# in PyQt, pnt is (y,x)
 			imageHeight = 740
@@ -3301,14 +3301,14 @@ class bStackView(QtWidgets.QGraphicsView):
 			yGuess = y * sceneRect.height() / imageWidth
 			print('  my guess is xGuess:', xGuess, 'yGuess:', yGuess)
 			'''
-			
+
 	def onclick_mpl(self, event):
 		"""
 		onpick() get called first
 		"""
 
 		#print('onclick_mpl()')
-		
+
 		if event.xdata is None or event.ydata is None:
 			return
 
@@ -3355,7 +3355,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			# abb aics
 			# extend to multiple selections
 			pass
-			
+
 	def onpick_mpl(self, event):
 		"""
 		Click to select (node, edge, slab)
@@ -3386,13 +3386,13 @@ class bStackView(QtWidgets.QGraphicsView):
 		if thisLine == self.myNodePlot:
 			selectionType = 'nodeSelection'
 		elif thisLine == self.myEdgePlot:
-			selectionType = 'edgeSelection'		
-		
+			selectionType = 'edgeSelection'
+
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
 		isControl = modifiers == QtCore.Qt.ControlModifier # on macOS corresponds to 'command'
 		isAlt = modifiers == QtCore.Qt.AltModifier # on macOS correspnds to 'control'
-		
+
 		nKey = self.keyIsDown == 'n'
 		print('\n=== bStackView.onpick_mpl() selectionType:', selectionType, 'nKey:', nKey, 'selectionType:', selectionType, 'isShift:', isShift, 'isControl:', isControl, 'isAlt:', isAlt)
 		xdata = event.mouseevent.xdata
@@ -3404,7 +3404,7 @@ class bStackView(QtWidgets.QGraphicsView):
 
 		#
 		# abb aics
-		#print('    aics firstInd:', firstInd)		
+		#print('    aics firstInd:', firstInd)
 		aicsNodeList_nodeIdx = self.maskedEdgesDict['aicsNodeList_nodeIdx']
 		aicsSlabList_edgeIdx = self.maskedEdgesDict['aicsSlabList_edgeIdx']
 		aicsSlabList_slabIdx = self.maskedEdgesDict['aicsSlabList_slabIdx']
@@ -3414,7 +3414,7 @@ class bStackView(QtWidgets.QGraphicsView):
 			#edgeIdx = self.maskedNodes[self.currentSlice]['edgeIdxLines'][firstInd]
 			edgeIdx = aicsSlabList_edgeIdx[firstInd]
 			edgeIdx = int(edgeIdx)
-			
+
 		elif selectionType=='nodeSelection':
 			# abb aics, was this
 			'''
@@ -3477,7 +3477,7 @@ class bStackView(QtWidgets.QGraphicsView):
 					self.selectNode(nodeIdx)
 					myEvent = bimpy.interface.bEvent('select node', nodeIdx=nodeIdx)
 					self.selectNodeSignal.emit(myEvent)
-			
+
 			# abb aics, added first clause to ctrl/command click multiple edges
 			elif isControl and selectionType=='edgeSelection':
 				if not np.isnan(edgeIdx):
@@ -3487,7 +3487,7 @@ class bStackView(QtWidgets.QGraphicsView):
 				# emit multi edge selection
 				myEvent = bimpy.interface.bEvent('append to edge selection', edgeIdx=edgeIdx)
 				self.selectEdgeSignal.emit(myEvent)
-			
+
 			elif selectionType=='edgeSelection':
 				self.selectEdge(edgeIdx, isShift=isShift, isAlt=isAlt) # abb aics added isShift=isShift
 				self.selectSlab(slabIdx)
