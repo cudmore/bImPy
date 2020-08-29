@@ -251,6 +251,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.resize(width, height)
 
 		self.myStackView.setSlice(0)
+		self.myStackView2.setSlice(0)
 
 	def getMyStack(self):
 		return self.mySimpleStack

@@ -86,6 +86,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#pg.setConfigOption('imageAxisOrder','row-major')
 		
+		self.mainWindow = parent
 		self.myPlotWidget = self #pg.PlotWidget(name='Plot2')
 		
 		self.setAspectLocked()
@@ -359,7 +360,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		redColor = np.array([[0,0,0,255], [128,0,0,255], [255,0,0,255]], dtype=np.ubyte)
 		grayColor = np.array([[0,0,0,255], [128,128,128,255], [255,255,255,255]], dtype=np.ubyte)
 		grayInvertColor = np.array([[255,255,255,255], [128,128,128,255], [0,0,0,255]], dtype=np.ubyte)
-		map = pg.ColorMap(pos, grayInvertColor)
+
+		#pos = np.array([0.0, 0.2, 1.0])
+		#lowIsRed = np.array([[255,0,0,255], [255,0,0,255], [255,255,255,255]], dtype=np.ubyte)
+
+		map = pg.ColorMap(pos, greenColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myImage.setLookupTable(lut, update=True)
 		
@@ -486,10 +491,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.setSlice() #refresh
 			
 	def onMouseMoved_scene(self, pos):
-		if 0:
+		if 1:
 			print('=== onMouseMoved_scene()', pos.x(), pos.y())
 			imagePos = self.myImage.mapFromScene(pos)
 			print('  imagePos:', imagePos)
+			
+			xPos = imagePos.x()
+			yPos = imagePos.y()
+			thePoint = QtCore.QPoint(xPos, yPos)
+			self.mainWindow.getStatusToolbar().setMousePosition(thePoint)
 			
 	'''
 	def sceneClicked(self, event):
