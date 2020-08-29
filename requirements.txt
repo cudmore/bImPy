@@ -33,3 +33,6 @@ plotly
 
 # now using scipy
 #edt # for euclidean distance transform
+
+#20200829
+PyQtGraph
