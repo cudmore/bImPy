@@ -102,7 +102,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#pg.setConfigOption('imageAxisOrder','row-major')
 
 		self.mainWindow = parent
-		self.myPlotWidget = self #pg.PlotWidget(name='Plot2')
+		
+		#self.myPlotWidget = self #pg.PlotWidget(name='Plot2')
 
 		self.setAspectLocked()
 
@@ -123,48 +124,48 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		data = np.zeros((1,1,1))
 		 #np.random.randint(0, high=256, size=(200,200), dtype=np.uint8)
 		self.myImage = pg.ImageItem(data)
-		self.myPlotWidget.addItem(self.myImage)
+		self.addItem(self.myImage)
 
 		#self.minContrast = 0
 		#self.maxContrast = 255
 
-		# self.myPlotWidget.plot
+		# self.plot
 		# creates: <class 'pyqtgraph.graphicsItems.PlotDataItem.PlotDataItem'>
 
 		#
 		# slabs
 		pen = pg.mkPen(color='c', width=5)
-		self.mySlabPlot = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=7, symbolBrush=('c'),
+		self.mySlabPlot = self.plot([], [], pen=pen, symbol='o', symbolSize=7, symbolBrush=('c'),
 							connect='finite', clickable=True)
 		self.mySlabPlot.sigPointsClicked.connect(self.onMouseClicked_slabs)
 
-		self.mySlabPlotSelection = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=10, symbolBrush=('y'),
+		self.mySlabPlotSelection = self.plot([], [], pen=pen, symbol='o', symbolSize=10, symbolBrush=('y'),
 							connect='finite', clickable=False)
 
 		# for a single slab (not the edge)
-		self.mySlabPlotSelection2 = self.myPlotWidget.plot([], [], pen=None, symbol='x', symbolSize=20, symbolBrush=('g'),
+		self.mySlabPlotSelection2 = self.plot([], [], pen=None, symbol='x', symbolSize=20, symbolBrush=('g'),
 							connect='finite', clickable=False)
 
-		self.myEdgeSelectionFlash = self.myPlotWidget.plot([], [],
+		self.myEdgeSelectionFlash = self.plot([], [],
 							pen=pen, symbol='o', symbolSize=20, symbolBrush=('y'),
 							connect='finite', clickable=False)
 
 		#
 		# one slab (line orthogonal to edges)
 		oneSlabPen = pg.mkPen(color='g', width=5)
-		self.mySlabPlotOne = self.myPlotWidget.plot([], [],
+		self.mySlabPlotOne = self.plot([], [],
 							pen=oneSlabPen, symbol='x', symbolSize=20, symbolBrush=('g'),
 							connect='finite', clickable=False)
 
 		#
 		# nodes
-		self.myNodePlot = self.myPlotWidget.plot([], [], pen=None, symbol='o', symbolSize=8, symbolBrush=('r'))
+		self.myNodePlot = self.plot([], [], pen=None, symbol='o', symbolSize=8, symbolBrush=('r'))
 		self.myNodePlot.sigPointsClicked.connect(self.onMouseClicked_nodes)
 
-		self.myNodePlotSelection = self.myPlotWidget.plot([], [], pen=None, symbol='o', symbolSize=10, symbolBrush=('y'),
+		self.myNodePlotSelection = self.plot([], [], pen=None, symbol='o', symbolSize=10, symbolBrush=('y'),
 							connect='finite')
 
-		self.myNodeSelectionFlash = self.myPlotWidget.plot([], [],
+		self.myNodeSelectionFlash = self.plot([], [],
 											pen=None, symbol='o', symbolSize=20, symbolBrush=('y'))
 
 
@@ -585,6 +586,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	def setSlice(self, thisSlice=None):
 
+		#timeIt = bimpy.util.bTimer(' setSlice()')
+		
 		if thisSlice is None:
 			thisSlice = self.currentSlice
 		else:
@@ -637,17 +640,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# plot slabs/nodes
 		self.drawEdges()
 		self.drawNodes()
+		
+		#print(timeIt.elapsed())
 
-	# this is over-riding existing member function
-
-	def myAddPlot(self):
-		xData = [20, 50, 100, 150, 180]
-		yData = [20, 50, 100, 150, 180]
-
-		pen = pg.mkPen(color=(255, 0, 0))
-		self.tmp = self.plotWidget.plot(xData, yData, pen,
-				symbol='+', symbolSize=30, symbolBrush=('b'),
-				clickable=True)
+		#
+		# force update?
+		self.update()
 
 	def myAddImage(self):
 		# for callbacks, see
@@ -657,31 +655,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 
 	def _zoomToPoint(self, x, y):
-		print('zoomToPoint()')
-		print('  raw   x:', x, 'y:', y)
-		# this should works
-		#pos = self.myImage.mapToScene(pos)
-		# get m/n from stack self.mySimpleStack
+		"""
+		see code at: https://pyqtgraph.readthedocs.io/en/latest/_modules/pyqtgraph/widgets/GraphicsView.html#GraphicsView
+		"""
+		#print('=== zoomToPoint()')
 
-		#pos = self.mapToScene(x, y)
-		pos = self.myImage.mapToScene(x, y)
-		x = pos.x()
-		y = pos.y()
-		print('  scene x:', x, 'y:', y)
-		[xRange, yRange] = self.viewRange()
-		print('  xRange:', xRange, 'yRange:', yRange)
-		xWidth = xRange[1] - xRange[0]
-		yWidth = yRange[1] - yRange[0]
-		print('  xWidth:', xWidth, 'yWidth:', yWidth)
-		xHalfWidth = int(xWidth/2)
-		yHalfWidth = int(yWidth/2)
-		xNewRange = [x-xHalfWidth, x+xHalfWidth]
-		yNewRange = [y-yHalfWidth, y+yHalfWidth]
-		print('  xNewRange:', xNewRange, 'yNewRange:', yNewRange)
+		# This works !!!!!!!!!!!!!!
+		zoomPoint = QtCore.QPoint(x, y)
+		viewRect = self.viewRect()
+		viewRect.moveCenter(zoomPoint)
+		padding = 0.0
+		self.setRange(viewRect, padding=padding)
 
-		# update
-		self.setRange(xRange=xRange, yRange=yRange)
-
+		print('  zoomPoint:', type(zoomPoint), zoomPoint)
+		print('  viewRect:', type(viewRect), viewRect)
+				
 	def myTranslate(self, direction):
 		print('myTranslate() direction:', direction)
 		print('  not implemented')
@@ -743,6 +731,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		if event.key() in [QtCore.Qt.Key_Escape]:
 			self.cancelSelection()
 
+		elif event.key() in [QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return]:
+			imageBoundingRect = self.myImage.boundingRect()
+			padding = 0.0
+			self.setRange(imageBoundingRect, padding=padding)
+		
 		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			event = {'type':'deleteSelection'}
 			self.myEvent(event)
@@ -967,15 +960,30 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			pass
 
 	def onMouseMoved_scene(self, pos):
-		print('=== onMouseMoved_scene()')
-		print('       pos:', pos)
+		
+		doDebug = False
+		
+		if doDebug: print('=== onMouseMoved_scene()')
+		
+		if doDebug: print('       pos:', pos)
+		
 		imagePos = self.myImage.mapFromScene(pos)
-		print('  imagePos:', imagePos)
-
+		
+		if doDebug: print('  imagePos:', imagePos)
+		
 		xPos = imagePos.x()
 		yPos = imagePos.y()
 		thePoint = QtCore.QPoint(xPos, yPos)
-		self.mainWindow.getStatusToolbar().setMousePosition(thePoint, sliceNumber=self.currentSlice)
+
+		displayThisStack = self.displayStateDict['displayThisStack'] # (ch1, ch2, ch2, rgb)
+		if displayThisStack == 'ch1':
+			channel = 1
+		if displayThisStack == 'ch2':
+			channel = 2
+		if displayThisStack == 'ch3':
+			channel = 3
+
+		self.mainWindow.getStatusToolbar().setMousePosition(channel, self.currentSlice, thePoint)
 
 	'''
 	def sceneClicked(self, event):

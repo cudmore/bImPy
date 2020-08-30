@@ -842,11 +842,11 @@ class bStackWidget(QtWidgets.QWidget):
 			#print(self.options)
 
 			optionsKeys = self.options.keys()
-			if not 'optionsVersion' in optionsKeys:
-				print('bStackWidget.optionsLoad() did not find key: optionsVersion')
+			if not 'Code' in optionsKeys:
+				print('bStackWidget.optionsLoad() did not find key: Code')
 				self.options = None
 				return False
-			elif self.options['optionsVersion'] < self.optionsVersion():
+			elif self.options['Code']['optionsVersion'] < self.optionsVersion():
 				print(f"bStackWidget.optionsLoad() found old file with {self.options['optionsVersion']} < {self.optionsVersion()}")
 				self.options = None
 				return False

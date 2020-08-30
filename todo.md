@@ -35,3 +35,12 @@ make sure my changes didn't break lots of other things
  
 todo: stack contrast widget is always making hist for channel 1
 todo: bStatusToolbarWIdget.setMousePosition() need to know the channel
+
+
+switch displayStateDict['displayThisStack'] = 'ch1' to
+	displayStateDict['displayThisStack'] = 1
+	displayStateDict['displayThisStack'] = 2
+	displayStateDict['displayThisStack'] = 3
+	displayStateDict['displayThisStack'] = 'rgb'
+	...
+
