@@ -133,16 +133,16 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#
 		# slabs
-		pen = None #pg.mkPen(color=(255, 255, 0))
-		self.mySlabPlot = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=5, symbolBrush=('c'),
+		pen = pg.mkPen(color='c', width=5)
+		self.mySlabPlot = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=7, symbolBrush=('c'),
 							connect='finite', clickable=True)
 		self.mySlabPlot.sigPointsClicked.connect(self.onMouseClicked_slabs)
 
-		self.mySlabPlotSelection = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=7, symbolBrush=('y'),
+		self.mySlabPlotSelection = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=10, symbolBrush=('y'),
 							connect='finite', clickable=False)
 
 		# for a single slab (not the edge)
-		self.mySlabPlotSelection2 = self.myPlotWidget.plot([], [], pen=pen, symbol='x', symbolSize=20, symbolBrush=('g'),
+		self.mySlabPlotSelection2 = self.myPlotWidget.plot([], [], pen=None, symbol='x', symbolSize=20, symbolBrush=('g'),
 							connect='finite', clickable=False)
 
 		self.myEdgeSelectionFlash = self.myPlotWidget.plot([], [],
@@ -151,21 +151,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#
 		# one slab (line orthogonal to edges)
+		oneSlabPen = pg.mkPen(color='g', width=5)
 		self.mySlabPlotOne = self.myPlotWidget.plot([], [],
-							pen=pen, symbol='x', symbolSize=20, symbolBrush=('c'),
+							pen=oneSlabPen, symbol='x', symbolSize=20, symbolBrush=('g'),
 							connect='finite', clickable=False)
 
 		#
 		# nodes
-		pen = None
-		self.myNodePlot = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=8, symbolBrush=('r'))
+		self.myNodePlot = self.myPlotWidget.plot([], [], pen=None, symbol='o', symbolSize=8, symbolBrush=('r'))
 		self.myNodePlot.sigPointsClicked.connect(self.onMouseClicked_nodes)
 
-		self.myNodePlotSelection = self.myPlotWidget.plot([], [], pen=pen, symbol='o', symbolSize=10, symbolBrush=('y'),
+		self.myNodePlotSelection = self.myPlotWidget.plot([], [], pen=None, symbol='o', symbolSize=10, symbolBrush=('y'),
 							connect='finite')
 
 		self.myNodeSelectionFlash = self.myPlotWidget.plot([], [],
-											pen=pen, symbol='o', symbolSize=20, symbolBrush=('y'))
+											pen=None, symbol='o', symbolSize=20, symbolBrush=('y'))
 
 
 		# click on scene
@@ -324,7 +324,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#
 		# update
-		self.mySlabPlot.setData(xEdgeMasked, yEdgeMasked)
+		self.mySlabPlot.setData(xEdgeMasked, yEdgeMasked, connected='finite')
 
 	def drawSlab(self, slabIdx=None, radius=None):
 		"""
