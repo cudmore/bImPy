@@ -658,23 +658,29 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	def _zoomToPoint(self, x, y):
 		print('zoomToPoint()')
-		print('  x:', x, 'y:', y)
-		pos = self.mapToScene(x, y)
+		print('  raw   x:', x, 'y:', y)
+		# this should works
+		#pos = self.myImage.mapToScene(pos)
+		# get m/n from stack self.mySimpleStack
+
+		#pos = self.mapToScene(x, y)
+		pos = self.myImage.mapToScene(x, y)
 		x = pos.x()
 		y = pos.y()
-		print('  x:', x, 'y:', y)
+		print('  scene x:', x, 'y:', y)
 		[xRange, yRange] = self.viewRange()
-		#yRange = self.viewRange()[1]
+		print('  xRange:', xRange, 'yRange:', yRange)
 		xWidth = xRange[1] - xRange[0]
 		yWidth = yRange[1] - yRange[0]
+		print('  xWidth:', xWidth, 'yWidth:', yWidth)
 		xHalfWidth = int(xWidth/2)
 		yHalfWidth = int(yWidth/2)
 		xNewRange = [x-xHalfWidth, x+xHalfWidth]
 		yNewRange = [y-yHalfWidth, y+yHalfWidth]
-		print('  xRange:', xRange, 'yRange:', yRange)
+		print('  xNewRange:', xNewRange, 'yNewRange:', yNewRange)
 
 		# update
-		#self.setRange(xRange=xRange, yRange=yRange)
+		self.setRange(xRange=xRange, yRange=yRange)
 
 	def myTranslate(self, direction):
 		print('myTranslate() direction:', direction)
@@ -961,15 +967,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			pass
 
 	def onMouseMoved_scene(self, pos):
-		if 1:
-			#print('=== onMouseMoved_scene()', pos.x(), pos.y())
-			imagePos = self.myImage.mapFromScene(pos)
-			#print('  imagePos:', imagePos)
+		print('=== onMouseMoved_scene()')
+		print('       pos:', pos)
+		imagePos = self.myImage.mapFromScene(pos)
+		print('  imagePos:', imagePos)
 
-			xPos = imagePos.x()
-			yPos = imagePos.y()
-			thePoint = QtCore.QPoint(xPos, yPos)
-			self.mainWindow.getStatusToolbar().setMousePosition(thePoint, sliceNumber=self.currentSlice)
+		xPos = imagePos.x()
+		yPos = imagePos.y()
+		thePoint = QtCore.QPoint(xPos, yPos)
+		self.mainWindow.getStatusToolbar().setMousePosition(thePoint, sliceNumber=self.currentSlice)
 
 	'''
 	def sceneClicked(self, event):
