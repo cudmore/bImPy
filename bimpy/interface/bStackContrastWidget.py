@@ -67,6 +67,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 	#contrastChangeSignal = QtCore.pyqtSignal(object) # object can be a dict
 	contrastChangeSignal = QtCore.Signal(object) # object can be a dict
 
+		
 	def __init__(self, mainWindow=None, parent=None):
 		super(bStackContrastWidget, self).__init__(parent)
 
@@ -78,8 +79,8 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.mySlice = 0
 		self.plotLogHist = True
 		
-		self._minColor = None
-		self._maxColor = None
+		#self._minColor = None
+		#self._maxColor = None
 
 		self.bitDepth = mainWindow.getStack().getHeaderVal('bitDepth')
 		if type(self.bitDepth) == str:
@@ -90,6 +91,14 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			self.bitDepth = 8
 
 		print('  bStackContrastWidget.__init__() self.bitDepth:', self.bitDepth, type(self.bitDepth))
+
+		self.contrastDict = {
+			'minContrast': 0,
+			'maxContrast': 255,
+			'colorLut': 'gray',
+			'minColor': None,
+			'maxColor': None,
+		}
 
 		self.buildUI()
 
@@ -117,9 +126,10 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.mySlice = sliceNumber
 		
-		channel = 0
+		channel = 1
 		#data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
-		data = self.mainWindow.myStackView.mySimpleStack.getImage(channel=channel, sliceNum=sliceNumber)
+		#data = self.mainWindow.getStackView().mySimpleStack.getImage(channel=channel, sliceNum=sliceNumber)
+		data = self.mainWindow.getStackView().mySimpleStack.getImage2(channel=channel, sliceNum=sliceNumber)
 
 		data = data.ravel() # returns a copy
 		#print('data:', type(data), data.shape)
@@ -131,7 +141,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		#self.axes.plot(x, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
 		# see: https://stackoverflow.com/questions/35738199/matplotlib-pyplot-hist-very-slow
 		#num_bins = 2 ** 13
-		num_bins = 2 ** self.bitDepth #self.mainWindow.myStackView.mySimpleStack.bitDepth
+		num_bins = 2 ** self.bitDepth #self.mainWindow.getStackView().mySimpleStack.bitDepth
 		#print('bStackContrastWidget.setSlice() num_bins:', num_bins)
 		#doLog = True
 
@@ -153,6 +163,11 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		#self.canvasHist.draw()
 		self.canvasHist.draw_idle()
 		
+	def emitChange(self):
+		myEvent = bimpy.interface.bEvent('contrast change')
+		myEvent.contrastDict = self.contrastDict
+		self.contrastChangeSignal.emit(myEvent)
+		
 	def sliderValueChanged(self):
 		theMin = self.minContrastSlider.value()
 		theMax = self.maxContrastSlider.value()
@@ -160,13 +175,10 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.minSpinBox.setValue(theMin)
 		self.maxSpinBox.setValue(theMax)
 
-		if self.mainWindow is not None:
-			#self.mainWindow.signal('contrast change', {'minContrast':theMin, 'maxContrast':theMax})
-			#
-			myEvent = bimpy.interface.bEvent('contrast change')
-			myEvent._minContrast = theMin
-			myEvent._maxContrast = theMax
-			self.contrastChangeSignal.emit(myEvent)
+		self.contrastDict['minContrast'] = theMin
+		self.contrastDict['maxContrast'] = theMax
+		
+		self.emitChange()
 
 	def spinBoxValueChanged(self):
 		theMin = self.minSpinBox.value()
@@ -175,6 +187,30 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.minContrastSlider.setValue(theMin)
 		self.maxContrastSlider.setValue(theMax)
 
+		self.contrastDict['minContrast'] = theMin
+		self.contrastDict['maxContrast'] = theMax
+
+		self.emitChange()
+
+	def color_Callback(self, idx):
+		newColor = self._myColors[idx]
+		
+		#print('color_Callback() newColor:', newColor)
+		
+		self.color = newColor
+
+		minColor = self.minColorButton.getColor()
+		maxColor = self.maxColorButton.getColor()
+		
+		# set in window
+		#self.mainWindow.getStackView().set_cmap(newColor, minColor='black', maxColor='white')
+
+		self.contrastDict['colorLut'] = newColor
+		self.contrastDict['minColor'] = minColor
+		self.contrastDict['maxColor'] = maxColor
+
+		self.emitChange()
+		
 	def checkbox_callback(self, isChecked):
 		sender = self.sender()
 		title = sender.text()
@@ -208,17 +244,6 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# update histogram
 		self.setSlice()
 
-	def color_Callback(self, idx):
-		newColor = self._myColors[idx]
-		print('color_Callback() newColor:', newColor)
-		self.color = newColor
-
-		minColor = self.minColorButton.getColor()
-		maxColor = self.maxColorButton.getColor()
-		
-		# set in window
-		self.mainWindow.getStackView().set_cmap(newColor, minColor='black', maxColor='white')
-		
 	def buildUI(self):
 		minVal = 0
 		if self.bitDepth is None:
@@ -314,7 +339,9 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# popup for color LUT for image
 		self.myColor = 'gray'
 		#self._myColors = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'gray']
-		self._myColors = ['gray', 'Reds', 'Greens', 'Blues', 'gray_r', 'Reds_r', 'Greens_r', 'Blues_r',
+		#self._myColors = ['gray', 'Reds', 'Greens', 'Blues', 'gray_r', 'Reds_r', 'Greens_r', 'Blues_r',
+		#					'gist_earth', 'gist_earth_r', 'gist_gray', 'gist_gray_r', 'gist_heat', 'gist_heat_r']
+		self._myColors = ['gray', 'red', 'green', 'blue', 'gray_r', 'red_r', 'green_r', 'blue_r',
 							'gist_earth', 'gist_earth_r', 'gist_gray', 'gist_gray_r', 'gist_heat', 'gist_heat_r']
 		colorIdx = self._myColors.index(self.myColor) # will sometimes fail
 		colorLabel = QtWidgets.QLabel('LUT')

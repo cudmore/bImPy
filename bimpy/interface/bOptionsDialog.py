@@ -59,16 +59,20 @@ class bOptionsDialog(QtWidgets.QDialog):
 					aCheckbox.stateChanged.connect(self.checkChanged)
 					#layout.addRow(QtWidgets.QLabel(key2), aCheckbox)
 					layout.addRow(aCheckbox)
-				elif isinstance(value, int):
+				elif isinstance(value, int) or isinstance(value, float):
 					#print('      is int')
 					aSpinBox = QtWidgets.QSpinBox()
+					aSpinBox.setMinimum(0)
 					aSpinBox.setMaximum(1e6)
 					aSpinBox.setValue(value)
 					aSpinBox.setProperty('bobID_1', key1)
 					aSpinBox.setProperty('bobID_2', key2)
 					aSpinBox.valueChanged.connect(self.valueChanged)
+					if key2 == 'optionsVersion':
+						aSpinBox.setEnabled(False)
 					layout.addRow(QtWidgets.QLabel(key2), aSpinBox)
 
+						
 				elif isinstance(value, str):
 					#print('      is str')
 					aLineEdit = QtWidgets.QLineEdit()

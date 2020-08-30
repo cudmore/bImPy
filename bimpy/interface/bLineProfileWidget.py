@@ -125,7 +125,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 	def lineLength_Callback(self, value):
 		print('lineLength_Callback() value:', value)
 		self.lineLength = value
-		self.mainWindow.myStackView.drawSlab(radius=value)
+		self.mainWindow.getStackView().drawSlab(radius=value)
 
 	def lineWidth_Callback(self, value):
 		self.lineWidth = value
@@ -223,7 +223,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.axes.tick_params(axis='y', colors='white')
 
 		zorder = 1
-		c = self.mainWindow.myStackView.options['Tracing']['lineProfileColor']
+		c = self.mainWindow.getStackView().options['Tracing']['lineProfileColor']
 		self.axes.plot(x, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
 		if goodFit:
 			zorder = 2

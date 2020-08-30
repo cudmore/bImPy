@@ -27,3 +27,11 @@ make sure search result table snaps image (Seems to snap for nodes?)
 
 fix updating when scrolling slices
 
+### bStack
+
+make sure my changes didn't break lots of other things
+ - I am now loading stacks in a list 'self._stackList[]'
+ - add and using getImage2(channel, slice)
+ 
+todo: stack contrast widget is always making hist for channel 1
+todo: bStatusToolbarWIdget.setMousePosition() need to know the channel

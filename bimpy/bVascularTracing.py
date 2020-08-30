@@ -2546,10 +2546,10 @@ class bVascularTracing:
 			# do not do here !!!!
 			#self.edgeIdx[idx] = idx
 
-	def _preComputeAllMasks(self):
+	def _preComputeAllMasks(self, verbose=False):
 		print('_preComputeAllMasks2()')
 
-		timeIt = bimpy.util.bTimer('_preComputeAllMasks2')
+		timeIt = bimpy.util.bTimer('  _preComputeAllMasks2')
 
 		aicsSlabList = []
 		aicsSlabList_x = np.empty((0), np.float16) #[]

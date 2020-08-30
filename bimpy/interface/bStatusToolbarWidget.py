@@ -136,7 +136,9 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 			self.repaint()
 
-	def setMousePosition(self, point):
+	def setMousePosition(self, point, sliceNumber=None):
+		if sliceNumber is None:
+			return
 		x = round(point.x(),0)
 		y = round(point.y(),0)
 		self.xMousePosition.setText(str(x))
@@ -147,7 +149,11 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		# todo: update pixel intensity
 		# self.mainWindow.myStackView
 		channel = 1
-		image = self.mainWindow.myStackView.mySimpleStack.getImage(channel=channel)
+		image = self.mainWindow.getStackView().mySimpleStack.getImage2(channel=channel, sliceNum=sliceNumber)
+		if x <0 or y < 0:
+			return
+		if x > image.shape[0] or y > image.shape[1]:
+			return
 		pixelIntensity = image[x, y] # NOT swapped
 		#print('image.shape:', image.shape, image[x, y], image[y, x])
 		self.pixelIntensity.setText(str(pixelIntensity))

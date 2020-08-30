@@ -4,6 +4,10 @@
 from qtpy import QtCore
 
 class bEvent(QtCore.QObject):
+	
+	# 
+	_verboseSlots = True # if true then 
+
 	def __init__(self, eventType, nodeIdx=None, edgeIdx=None, slabIdx=None,
 			edgeList=None,
 			nodeDict=None, edgeDict=None, snapz=False, isShift=False):
@@ -29,15 +33,14 @@ class bEvent(QtCore.QObject):
 		self._nodeList = [] # abb 20200320
 		self._colorList = []
 
-		self._minContrast = None
-		self._maxContrast = None
-
+		self.contrastDict = {}
+		#self._minContrast = None
+		#self._maxContrast = None
+		
 		self._sliceIdx = None
 
 		self._snapz = snapz
 		self._isShift = isShift
-
-		self._verboseSlots = True # if true then 
 		
 	def __str__(self):
 		retStr = 'bEvent eventType:' + str(self.eventType) + \

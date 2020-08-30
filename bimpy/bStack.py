@@ -54,7 +54,8 @@ class bStack:
 		#self._fileName = os.path.basename(path)
 
 		self.currentSlice = 0
-
+		self._numChannels = None
+		
 		#self._imagesMask = None # create with self.slabList.makeVolumeMask()
 
 		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
@@ -82,8 +83,9 @@ class bStack:
 
 		# load image data
 		if loadImages:
-			self.loadStack()
-
+			#self.loadStack()
+			self.loadStack2()
+			
 		# load vesselucida analysis from .xml file
 		#self.slabList = bimpy.bSlabList(self.path)
 		self.slabList = bimpy.bVascularTracing(self, self.path)
@@ -150,7 +152,8 @@ class bStack:
 		return self._fileName
 	@property
 	def numChannels(self):
-		return self.header.numChannels
+		#return self.header.numChannels
+		return self._numChannels # abb aics
 	@property
 	def numSlices(self):
 		# see also numImages
@@ -224,6 +227,17 @@ class bStack:
 		if self.slabList is not None:
 			theRet = self.slabList._dvMask
 		return theRet
+
+	def getImage2(self, channel=1, sliceNum=None):
+		channelIdx = channel - 1
+		self._stackList
+		if len(self._stackList[channelIdx].shape)==2:
+			# single plane image
+			return self._stackList[channelIdx]
+		elif len(self._stackList[channelIdx].shape)==3:
+			return self._stackList[channelIdx][sliceNum,:,:]
+		else:
+			print('   error: bStack.getImage() got bad stack shape:', self.stack.shape)
 
 	def getImage(self, channel=1, sliceNum=None):
 		channelIdx = channel - 1
@@ -345,6 +359,49 @@ class bStack:
 
 		return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
 
+	def getSlidingZ2(self, sliceNumber, thisStack, upSlices, downSlices):
+		"""
+		leaving thisStack (ch1, ch2, ch3, rgb) so we can implement rgb later
+		"""
+		
+		if self.numImages>1:
+			startSlice = sliceNumber - upSlices
+			if startSlice < 0:
+				startSlice = 0
+			stopSlice = sliceNumber + downSlices
+			if stopSlice > self.numImages - 1:
+				stopSlice = self.numImages - 1
+
+			print('    startSlice:', startSlice, 'stopSlice:', stopSlice)
+			
+			if thisStack == 'ch1':
+				channel = 0
+				img = self._stackList[channel][startSlice:stopSlice, :, :].copy()
+			elif thisStack == 'ch2':
+				channel = 1
+				img = self._stackList[channel][startSlice:stopSlice, :, :].copy()
+			elif thisStack == 'ch3':
+				channel = 2
+				img = self._stackList[channel][startSlice:stopSlice, :, :].copy()
+			elif thisStack == 'mask':
+				img = self.getMaskVolume()[startSlice:stopSlice, :, :].copy()
+			elif thisStack == 'skel':
+				img = self._imagesSkel[startSlice:stopSlice, :, :].copy()
+			else:
+				print('error: getSlidingZ() got bad thisStack:', thisStack)
+
+			print('    img.shape:', img.shape)
+			img = np.max(img, axis=0)
+			print('    img.shape:', img.shape)
+		else:
+			print('  bStack.getSlidingZ2() is broken !!!')
+			# single image stack
+			img = self.stack[0,:,:].copy()
+			img = self._stackList[0][sliceNumber,:,:].copy()
+
+		#return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
+		return img
+		
 	def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
 		"""
 		thisStack in ['ch1', 'ch2', 'ch3', 'mask', 'skel']
@@ -485,6 +542,31 @@ class bStack:
 				maxProject = np.max(self.stack, axis=0)
 		return maxProject
 
+	# abb aics
+	def loadStack2(self, verbose=False):
+		basename, tmpExt = os.path.splitext(self.path)
+		basename = basename.replace('_ch1', '')
+		basename = basename.replace('_ch2', '')
+		
+		#self._stackList = []
+		
+		self._numChannels = 0
+		
+		path_ch1 = basename + '_ch1.tif'
+		print('bStack.loadStack2() path_ch1:', path_ch1)
+		if os.path.exists(path_ch1):
+			print('  loadStack2() path_ch1:', path_ch1)
+			stackData = tifffile.imread(path_ch1)
+			self._stackList[0] = stackData
+			self._numChannels += 1
+		path_ch2 = basename + '_ch2.tif'
+		print('bStack.loadStack2() path_ch2:', path_ch2)
+		if os.path.exists(path_ch2):
+			print('  loadStack2() path_ch2:', path_ch2)
+			stackData = tifffile.imread(path_ch2)
+			self._stackList[1] = stackData
+			self._numChannels += 1
+			
 	def loadStack(self, verbose=False):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
 		#verbose = True

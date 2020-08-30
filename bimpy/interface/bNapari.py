@@ -226,8 +226,8 @@ class bNapari:
 		"""
 		connect to signal/slots
 		"""
-		self.myStackWidget.myStackView.selectNodeSignal.connect(self.slot_selectNode)
-		self.myStackWidget.myStackView.selectEdgeSignal.connect(self.slot_selectEdge)
+		self.myStackWidget.getStackView().selectNodeSignal.connect(self.slot_selectNode)
+		self.myStackWidget.getStackView().selectEdgeSignal.connect(self.slot_selectEdge)
 		# listen to self.annotationTable
 		self.myStackWidget.nodeTable2.selectRowSignal.connect(self.slot_selectNode) # change to slot_selectNode ???
 		self.myStackWidget.edgeTable2.selectRowSignal.connect(self.slot_selectEdge) # change to slot_selectNode ???
