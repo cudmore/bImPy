@@ -15,11 +15,11 @@ from collections import OrderedDict
 
 import numpy as np
 
-#from qtpy import QtCore, QtGui, QtWidgets
-from PyQt5 import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
+#from PyQt5 import QtCore, QtGui, QtWidgets
 
-from PyQt5.QtCore import QT_VERSION_STR
-print('bPyQtGraph QT_VERSION_STR=', QT_VERSION_STR)
+#from PyQt5.QtCore import QT_VERSION_STR
+#print('bPyQtGraph QT_VERSION_STR=', QT_VERSION_STR)
 
 from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg
