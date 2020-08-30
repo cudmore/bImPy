@@ -55,7 +55,7 @@ class bStack:
 
 		self.currentSlice = 0
 		self._numChannels = None
-		
+
 		#self._imagesMask = None # create with self.slabList.makeVolumeMask()
 
 		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
@@ -85,7 +85,7 @@ class bStack:
 		if loadImages:
 			#self.loadStack()
 			self.loadStack2()
-			
+
 		# load vesselucida analysis from .xml file
 		#self.slabList = bimpy.bSlabList(self.path)
 		self.slabList = bimpy.bVascularTracing(self, self.path)
@@ -239,6 +239,14 @@ class bStack:
 		else:
 			print('   error: bStack.getImage() got bad stack shape:', self.stack.shape)
 
+	def getPixel(self, channel, sliceNum, x, y):
+		m = self._stackList[channel][sliceNum].shape[0]
+		n = self._stackList[channel][sliceNum].shape[1]
+		if x<0 or x>m or y<0 or y>n:
+			return np.nan
+		else:
+			return self._stackList[channel][sliceNum,x,y]
+
 	def getImage(self, channel=1, sliceNum=None):
 		channelIdx = channel - 1
 		if sliceNum is None:
@@ -363,7 +371,7 @@ class bStack:
 		"""
 		leaving thisStack (ch1, ch2, ch3, rgb) so we can implement rgb later
 		"""
-		
+
 		if self.numImages>1:
 			startSlice = sliceNumber - upSlices
 			if startSlice < 0:
@@ -373,26 +381,26 @@ class bStack:
 				stopSlice = self.numImages - 1
 
 			print('    startSlice:', startSlice, 'stopSlice:', stopSlice)
-			
+
 			if thisStack == 'ch1':
 				channel = 0
-				img = self._stackList[channel][startSlice:stopSlice, :, :].copy()
+				img = self._stackList[channel][startSlice:stopSlice, :, :] #.copy()
 			elif thisStack == 'ch2':
 				channel = 1
-				img = self._stackList[channel][startSlice:stopSlice, :, :].copy()
+				img = self._stackList[channel][startSlice:stopSlice, :, :] #.copy()
 			elif thisStack == 'ch3':
 				channel = 2
-				img = self._stackList[channel][startSlice:stopSlice, :, :].copy()
+				img = self._stackList[channel][startSlice:stopSlice, :, :] #.copy()
 			elif thisStack == 'mask':
-				img = self.getMaskVolume()[startSlice:stopSlice, :, :].copy()
+				img = self.getMaskVolume()[startSlice:stopSlice, :, :] #.copy()
 			elif thisStack == 'skel':
-				img = self._imagesSkel[startSlice:stopSlice, :, :].copy()
+				img = self._imagesSkel[startSlice:stopSlice, :, :] #.copy()
 			else:
 				print('error: getSlidingZ() got bad thisStack:', thisStack)
 
-			print('    img.shape:', img.shape)
+			#print('    img.shape:', img.shape)
 			img = np.max(img, axis=0)
-			print('    img.shape:', img.shape)
+			#print('    img.shape:', img.shape)
 		else:
 			print('  bStack.getSlidingZ2() is broken !!!')
 			# single image stack
@@ -401,7 +409,7 @@ class bStack:
 
 		#return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
 		return img
-		
+
 	def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
 		"""
 		thisStack in ['ch1', 'ch2', 'ch3', 'mask', 'skel']
@@ -547,11 +555,11 @@ class bStack:
 		basename, tmpExt = os.path.splitext(self.path)
 		basename = basename.replace('_ch1', '')
 		basename = basename.replace('_ch2', '')
-		
+
 		#self._stackList = []
-		
+
 		self._numChannels = 0
-		
+
 		path_ch1 = basename + '_ch1.tif'
 		print('bStack.loadStack2() path_ch1:', path_ch1)
 		if os.path.exists(path_ch1):
@@ -566,7 +574,7 @@ class bStack:
 			stackData = tifffile.imread(path_ch2)
 			self._stackList[1] = stackData
 			self._numChannels += 1
-			
+
 	def loadStack(self, verbose=False):
 		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
 		#verbose = True

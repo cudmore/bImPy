@@ -157,7 +157,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		slice = updateDict['slice']
 		#print('bLineProfileWidget.update() xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot, 'slice:', slice)
 
-		imageSlice = self.mainWindow.getStack().getImage(sliceNum=slice)
+		imageSlice = self.mainWindow.getStack().getImage2(channel=1, sliceNum=slice)
 
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])
@@ -167,7 +167,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		except(ValueError) as e:
 			print('abb aics bLineProfileWidget.update() got nan???')
 			return
-			
+
 		# smooth it
 		if self.medianFilter > 0:
 			intensityProfile = scipy.ndimage.median_filter(intensityProfile, self.medianFilter)

@@ -724,7 +724,7 @@ class bStackWidget(QtWidgets.QWidget):
 
 	def optionsVersion(self):
 		return 1.0
-	
+
 	def options_defaults(self):
 		print('bStackWidget.options_defaults()')
 
@@ -754,7 +754,7 @@ class bStackWidget(QtWidgets.QWidget):
 			'optionsVersion': self.optionsVersion(),
 			'_verboseSlots': False
 		})
-		
+
 		self.options['Warnings'] = OrderedDict()
 		self.options['Warnings'] = OrderedDict({
 			'warnOnNewNode': True,
@@ -840,7 +840,7 @@ class bStackWidget(QtWidgets.QWidget):
 			with open(optionsFilePath) as f:
 				self.options = json.load(f)
 			#print(self.options)
-			
+
 			optionsKeys = self.options.keys()
 			if not 'optionsVersion' in optionsKeys:
 				print('bStackWidget.optionsLoad() did not find key: optionsVersion')
@@ -997,28 +997,38 @@ class bStackWidget(QtWidgets.QWidget):
 		signalName = 'bSignal ' + userActionStr
 		userSelectedMenu = True
 
+		doStackRefresh = False
+
 		# image
 		if userActionStr == 'Channel 1':
 			self.getStackView().displayStateDict['displayThisStack'] = 'ch1'
+			doStackRefresh = True
 		elif userActionStr == 'Channel 2':
 			self.getStackView().displayStateDict['displayThisStack'] = 'ch2'
+			doStackRefresh = True
 		elif userActionStr == 'Channel 3':
 			self.getStackView().displayStateDict['displayThisStack'] = 'ch3'
+			doStackRefresh = True
 		elif userActionStr == 'RGB':
 			self.getStackView().displayStateDict['displayThisStack'] = 'rgb'
+			doStackRefresh = True
 
 		#
 		# view of tracing
 		elif userActionStr == 'Image':
 			self.getStackView().displayStateChange('showImage', toggle=True)
+			doStackRefresh = True
 			#self.displayStateDict['showImage'] = not self.displayStateDict['showImage']
 		elif userActionStr == 'Sliding Z':
 			self.getStackView().displayStateDict['displaySlidingZ'] = not self.getStackView().displayStateDict['displaySlidingZ']
+			doStackRefresh = True
 		elif userActionStr == 'Nodes':
 			#optionsChange('Panels', 'showLeftToolbar', toggle=True, doEmit=True)
 			self.getStackView().displayStateDict['showNodes'] = not self.getStackView().displayStateDict['showNodes']
+			doStackRefresh = True
 		elif userActionStr == 'Edges':
 			self.getStackView().displayStateDict['showEdges'] = not self.getStackView().displayStateDict['showEdges']
+			doStackRefresh = True
 
 		#
 		# toolbars
@@ -1070,6 +1080,9 @@ class bStackWidget(QtWidgets.QWidget):
 			self.setSlice() # update
 			self.displayStateChangeSignal.emit(signalName, self.getStackView().displayStateDict)
 		'''
+
+		if doStackRefresh:
+			self.getStackView().setSlice()
 
 		#return False
 		#print('right click menu return')

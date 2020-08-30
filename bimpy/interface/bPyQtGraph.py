@@ -15,7 +15,11 @@ from collections import OrderedDict
 
 import numpy as np
 
-from qtpy import QtCore, QtGui, QtWidgets
+#from qtpy import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+from PyQt5.QtCore import QT_VERSION_STR
+print('bPyQtGraph QT_VERSION_STR=', QT_VERSION_STR)
 
 from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg
@@ -77,7 +81,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	#
 	# not implemented, what did this do? see class bStackView
 	displayStateChangeSignal = QtCore.Signal(str, object)
-	
+
 	#def __init__(self, *args, **kwargs):
 	#	super(myPyQtGraphPlotWidget, self).__init__(*args, **kwargs)
 	def __init__(self, parent=None, mySimpleStack=None):
@@ -150,7 +154,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.mySlabPlotOne = self.myPlotWidget.plot([], [],
 							pen=pen, symbol='x', symbolSize=20, symbolBrush=('c'),
 							connect='finite', clickable=False)
-		
+
 		#
 		# nodes
 		pen = None
@@ -203,36 +207,36 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		# put this in __init__
 		self.myColorLutDict = {}
-		
+
 		pos = np.array([0.0, 0.5, 1.0])
 		#
 		grayColor = np.array([[0,0,0,255], [128,128,128,255], [255,255,255,255]], dtype=np.ubyte)
 		map = pg.ColorMap(pos, grayColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['gray'] = lut
-		
+
 		grayColor_r = np.array([[255,255,255,255], [128,128,128,255], [0,0,0,255]], dtype=np.ubyte)
 		map = pg.ColorMap(pos, grayColor_r)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['gray_r'] = lut
-		
+
 		greenColor = np.array([[0,0,0,255], [0,128,0,255], [0,255,0,255]], dtype=np.ubyte)
 		map = pg.ColorMap(pos, greenColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['green'] = lut
-		
+
 		redColor = np.array([[0,0,0,255], [128,0,0,255], [255,0,0,255]], dtype=np.ubyte)
 		map = pg.ColorMap(pos, redColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['red'] = lut
-		
+
 		blueColor = np.array([[0,0,0,255], [0,0,128,255], [0,0,266,255]], dtype=np.ubyte)
 		map = pg.ColorMap(pos, blueColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['blue'] = lut
 
 		self.contrastDict = None # assigned in self.slot_contrastChange()
-		
+
 		#
 		self._preComputeAllMasks()
 		#self.setSlice()
@@ -243,7 +247,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	@property
 	def options(self):
 		return self.mainWindow.options
-	
+
 	def drawNodes(self):
 		#print('myPyQtGraphPlotWidget.drawNodes()')
 		if not self.displayStateDict['showNodes']:
@@ -270,7 +274,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#
 		# was triggering warning
-		#  /Users/cudmore/Sites/bImPy/bImPy_env/lib/python3.7/site-packages/pyqtgraph/graphicsItems/ScatterPlotItem.py:668: 
+		#  /Users/cudmore/Sites/bImPy/bImPy_env/lib/python3.7/site-packages/pyqtgraph/graphicsItems/ScatterPlotItem.py:668:
 		#  RuntimeWarning: All-NaN slice encountered self.bounds[ax] = (np.nanmin(d) - self._maxSpotWidth*0.7072, np.nanmax(d) + self._maxSpotWidth*0.7072)
 		if np.isnan(xNodeMasked).all() or np.isnan(yNodeMasked).all():
 			xNodeMasked = []
@@ -312,12 +316,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#
 		# was triggering warning
-		#  /Users/cudmore/Sites/bImPy/bImPy_env/lib/python3.7/site-packages/pyqtgraph/graphicsItems/ScatterPlotItem.py:668: 
+		#  /Users/cudmore/Sites/bImPy/bImPy_env/lib/python3.7/site-packages/pyqtgraph/graphicsItems/ScatterPlotItem.py:668:
 		#  RuntimeWarning: All-NaN slice encountered self.bounds[ax] = (np.nanmin(d) - self._maxSpotWidth*0.7072, np.nanmax(d) + self._maxSpotWidth*0.7072)
 		if np.isnan(xEdgeMasked).all() or np.isnan(yEdgeMasked).all():
 			xEdgeMasked = []
 			yEdgeMasked = []
-			
+
 		#
 		# update
 		self.mySlabPlot.setData(xEdgeMasked, yEdgeMasked)
@@ -407,7 +411,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.displayStateDict['selectedNode'] = None
 		self.displayStateDict['selectedEdge'] = None
 		self.displayStateDict['selectedSlab'] = None
-		
+
 	def selectedNode(self):
 		return self.displayStateDict['selectedNode']
 	def selectedEdge(self):
@@ -416,12 +420,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		return self.displayStateDict['selectedSlab']
 
 	def selectNode(self, nodeIdx, snapz=False, isShift=False):
-	
+
 		if nodeIdx is not None:
 			nodeIdx = int(nodeIdx)
-		
+
 		self.displayStateDict['selectedNode'] = nodeIdx
-		
+
 		if nodeIdx is None:
 			x = []
 			y = []
@@ -492,7 +496,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	def selectSlab(self, slabIdx, snapz=False):
 
 		if slabIdx is None or np.isnan(slabIdx):
-			self.selectSlab(None)
+			self.displayStateDict['selectedSlab'] = None
 			#self.mySlabSelectionPlot.set_offsets(np.c_[[], []])
 			#self.mySlabLinePlot.set_xdata([])
 			#self.mySlabLinePlot.set_ydata([])
@@ -518,7 +522,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			y = [y]
 
 			print('  selectSlab() slabIdx:', slabIdx, 'x:', x, 'y:', y)
-			
+
 			# update
 			self.mySlabPlotSelection2.setData(x, y)
 
@@ -532,7 +536,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.mySlabLinePlot.set_markersize(markersize)
 			self.mySlabLinePlot.set_color(c)
 			'''
-			
+
 			#
 			# draw the orthogonal line
 			self.drawSlab(slabIdx)
@@ -578,7 +582,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	def _preComputeAllMasks(self):
 		self.maskedEdgesDict = self.mySimpleStack.slabList._preComputeAllMasks()
 		self.setSlice() #refresh
-		
+
 	def setSlice(self, thisSlice=None):
 
 		if thisSlice is None:
@@ -596,14 +600,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				channel = 2
 			if displayThisStack == 'ch3':
 				channel = 3
-			print('  displayThisStack:', displayThisStack)
+			#print('  displayThisStack:', displayThisStack)
 			#sliceImage = self.mySimpleStack.setSliceContrast(thisSlice, thisStack=displayThisStack, minContrast=self.minContrast, maxContrast=self.maxContrast)
 			#sliceImage = self.mySimpleStack.getImage(channel=1, sliceNum=thisSlice)
 
 			if self.displayStateDict['displaySlidingZ']:
 				upSlices = self.options['Stack']['upSlidingZSlices']
 				downSlices = self.options['Stack']['downSlidingZSlices']
-				print('upSlices:', upSlices, 'downSlices:', downSlices)
+				#print('upSlices:', upSlices, 'downSlices:', downSlices)
 				sliceImage = self.mySimpleStack.getSlidingZ2(thisSlice, displayThisStack, upSlices, downSlices)
 			elif displayThisStack == 'rgb':
 				sliceImage1 = self.mySimpleStack.getImage2(channel=1, sliceNum=thisSlice)
@@ -668,7 +672,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		xNewRange = [x-xHalfWidth, x+xHalfWidth]
 		yNewRange = [y-yHalfWidth, y+yHalfWidth]
 		print('  xRange:', xRange, 'yRange:', yRange)
-		
+
 		# update
 		#self.setRange(xRange=xRange, yRange=yRange)
 
@@ -676,7 +680,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		print('myTranslate() direction:', direction)
 		print('  not implemented')
 		return
-		
+
 		[xRange, yRange] = self.viewRange()
 		xWidth = xRange[1] - xRange[0]
 		yWidth = yRange[1] - yRange[0]
@@ -686,17 +690,23 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		if direction == 'left':
 			t = (-xTenPercent,0)
 			self.translateBy(t=t)
-		if direction == 'right':
+		elif direction == 'right':
 			t = (xTenPercent,0)
 			self.translateBy(t=t)
-			
+		elif direction == 'up':
+			t = (0,-yTenPercent)
+			self.translateBy(t=t)
+		elif direction == 'down':
+			t = (0,yTenPercent)
+			self.translateBy(t=t)
+
 	def mousePressEvent(self, event):
 		"""
 		This is a PyQt callback (not PyQtGraph)
 		Set event.setAccepted(False) to keep propogation so we get to PyQt callbacks like
 			self.onMouseClicked_scene(), _slabs(), _nodes()
 		"""
-		print('mousePressEvent() event:', event)
+		#print('mousePressEvent() event:', event)
 		if event.button() == QtCore.Qt.RightButton:
 			#print('bStackView.mousePressEvent() right click !!!')
 			self.mainWindow.showRightClickMenu(event.pos())
@@ -704,7 +714,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		else:
 			event.setAccepted(False)
 			super().mousePressEvent(event)
-		
+
 	def mouseReleaseEvent(self, event):
 		event.setAccepted(False)
 		super().mouseReleaseEvent(event)
@@ -713,34 +723,111 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		event: <PyQt5.QtGui.QKeyEvent object at 0x13e1f7410>
 		"""
-		
+
 		# event.key() is a number
 		if event.text() != 'n':
 			print(f'=== keyPressEvent() event.text() "{event.text()}"')
-		
+
 		# this works to print 'left', 'right' etc etc
 		# but raises 'UnicodeEncodeError' for others
 		#print('  ', QtGui.QKeySequence(event.key()).toString())
-		
+
 		self.keyIsDown = event.text()
 
 		if event.key() in [QtCore.Qt.Key_Escape]:
 			self.cancelSelection()
 
-		elif event.key() in [QtCore.Qt.Key_Left]:
-			if self.selectedSlab() is None:
-				self.myTranslate('left')
-		elif event.key() in [QtCore.Qt.Key_Right]:
-			if self.selectedSlab() is None:
-				self.myTranslate('right')
-
 		elif event.key() in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			event = {'type':'deleteSelection'}
 			self.myEvent(event)
 
+		elif event.key() in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
+			selectedSlabIdx = self.selectedSlab()
+			if selectedSlabIdx is not None:
+				tmpEdgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(selectedSlabIdx)
+				if tmpEdgeIdx is None:
+					print('warning: move to next/prev slab got bad edge idx:', tmpEdgeIdx)
+					return
+				tmpSlabList = self.mySimpleStack.slabList.getEdgeSlabList(tmpEdgeIdx) # abb aics, get all including nodes
+				try:
+					slabIdxInList = tmpSlabList.index(selectedSlabIdx)
+				except (ValueError) as e:
+					print('warning: bStackWidget.keyPressEvent() did not find slabIdx:', selectedSlabIdx, 'in edge', tmpEdgeIdx, 'list:', tmpSlabList)
+					return
+				if event.key() == QtCore.Qt.Key_Left:
+					slabIdxInList -= 1
+				elif event.key() == QtCore.Qt.Key_Right:
+					slabIdxInList += 1
+				#print('  moving to slabIdxInList:', slabIdxInList)
+				if slabIdxInList==0 or slabIdxInList==len(tmpSlabList)-1:
+					print('  --> at end of edge', tmpEdgeIdx)
+					return
+				try:
+					newSlabIdx = tmpSlabList[slabIdxInList]
+				except (IndexError) as e:
+					print('  at end of edge', tmpEdgeIdx)
+					return
+				print('  --> selecting slab:', newSlabIdx, 'slab number', slabIdxInList+1, 'of', len(tmpSlabList), 'in edge', tmpEdgeIdx)
+				self.selectSlab(newSlabIdx, snapz=True)
+			else:
+				# arrow key should either pan image or scroll slices
+				if event.key() in [QtCore.Qt.Key_Left]:
+					if self.selectedSlab() is None:
+						self.myTranslate('left')
+				elif event.key() in [QtCore.Qt.Key_Right]:
+					if self.selectedSlab() is None:
+						self.myTranslate('right')
+
+				# abb aics
+				'''
+				if key == QtCore.Qt.Key_Left:
+					self.currentSlice -= 1
+				else:
+					self.currentSlice += 1
+				self.setSlice(self.currentSlice)
+				#self.displayStateChangeSignal.emit('set slice', self.currentSlice)
+				self.setSliceSignal.emit('set slice', self.currentSlice)
+				'''
+		# choose which stack to display
+		elif event.key() == QtCore.Qt.Key_1:
+			#self.displayThisStack = 'ch1'
+			self.displayStateDict['displaySlidingZ'] = False
+			self.displayStateDict['displayThisStack'] = 'ch1'
+			self.setSlice() # just refresh
+		elif event.key() == QtCore.Qt.Key_2:
+			numChannels = self.mySimpleStack.numChannels
+			if numChannels > 1:
+				#self.displayThisStack = 'ch2'
+				self.displayStateDict['displayThisStack'] = 'ch2'
+				self.setSlice() # just refresh
+			else:
+				print('warning: stack only has', numChannels, 'channel(s)')
+		elif event.key() == QtCore.Qt.Key_3:
+			numChannels = self.mySimpleStack.numChannels
+			if numChannels > 2:
+				#self.displayThisStack = 'ch3'
+				self.displayStateDict['displayThisStack'] = 'ch3'
+				self.setSlice() # just refresh
+			else:
+				print('warning: stack only has', numChannels, 'channel(s)')
+
+
+		elif event.key() == QtCore.Qt.Key_9:
+			# not implemented (was for deepvess)
+			if self.mySimpleStack._imagesSkel is not None:
+				#self.displayThisStack = 'skel'
+				self.displayStateDict['displayThisStack'] = 'skel'
+				self.setSlice() # just refresh
+		# should work, creates a mask from vesselucida tracing
+		elif event.key() == QtCore.Qt.Key_0:
+			if 1: #self.mySimpleStack._imagesMask is not None:
+				#self.displayThisStack = 'mask'
+				self.displayStateDict['displayThisStack'] = 'mask'
+				self.setSlice() # just refresh
+
 		elif event.key() in [QtCore.Qt.Key_R]:
 			self._preComputeAllMasks()
-			
+
 		elif event.key() in [QtCore.Qt.Key_T]:
 			self.displayStateDict['showNodes'] = not self.displayStateDict['showNodes']
 			self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
@@ -765,7 +852,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		print('=== wheelEvent()')
 		print('  event:', event)
 		'''
-		
+
 		#print('  angleDelta:', event.angleDelta().y())
 		#print('  pixelDelta:', event.pixelDelta().y())
 
@@ -774,15 +861,17 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			super(myPyQtGraphPlotWidget, self).wheelEvent(event)
 		else:
 			yAngleDelta = event.angleDelta().y()
+			#print('yAngleDelta:', yAngleDelta)
+			# getting yAngleDelta==0 on macbook laptop trackpad?
 			if yAngleDelta > 0:
 				# mouse up
 				self.currentSlice -= 1
 				if self.currentSlice < 0:
 					self.currentSlice = 0
-			else:
+			if yAngleDelta < 0:
 				# mouse down
 				self.currentSlice += 1
-				if self.currentSlice > self.mySimpleStack.numSlices:
+				if self.currentSlice > self.mySimpleStack.numSlices-1:
 					self.currentSlice -= 1
 
 			#print(event.angleDelta().y()) # always +/- the same value
@@ -796,7 +885,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		nKeyIsDown = self.keyIsDown == 'n'
 
 		print('=== onMouseClicked_scene()', event.pos().x(), event.pos().y(), 'nKeyIsDown:', nKeyIsDown)
-		
+
 		#imagePos = self.myImage.mapFromScene(event.pos())
 		imagePos = self.myImage.mapFromScene(event.pos())
 		slabPos = self.mySlabPlot.mapFromScene(event.pos())
@@ -805,7 +894,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		print('  imagePos:', imagePos) # slighlty off???
 		print('  slabPos:', slabPos)
 		'''
-		
+
 		'''
 		print('  self.viewRange():', self.viewRange()) # [[xmin,xmax], [ymin,ymax]]
 
@@ -824,7 +913,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		x = imagePos.x()
 		y = imagePos.y()
 		z = self.currentSlice
-		
+
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
 		isControl = modifiers == QtCore.Qt.ControlModifier # on macOS, this is 'command' (e.g. open-apple)
@@ -833,20 +922,20 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		oldSelectedEdge = self.selectedEdge()
 		if nKeyIsDown and oldSelectedNode is not None:
 			print('  onMouseClicked_scene() new edge from oldSelectedNode:', oldSelectedNode)
-			
+
 			#newNodeIdx = self.mySimpleStack.slabList.newNode(x, y, self.currentSlice)
 			newNodeEvent = {'type':'newNode','x':x,'y':y,'z':z}
 			newNodeIdx = self.myEvent(newNodeEvent)
-			
+
 			#newEdgeIdx = self.mySimpleStack.slabList.newEdge(oldSelectedNode, newNodeIdx)
 			newEdgeEvent = {'type':'newEdge','srcNode':oldSelectedNode, 'dstNode':newNodeIdx}
 			newEdgeIdx = self.myEvent(newEdgeEvent)
-			
+
 			self.selectNode(None) # cancel self.selectedNode()
 			self.selectEdge(newEdgeIdx) # select the new edge
 
 			self._preComputeAllMasks()
-			
+
 		elif isShift:
 			if self.selectedEdge() is not None:
 				if self.options['Panels']['showLineProfile']:
@@ -930,14 +1019,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		item: self.myNodePlot
 		points: [<pyqtgraph.graphicsItems.ScatterPlotItem.SpotItem object at 0x13cdb6f10>]
 		"""
-		
+
 		# check if 'n' key is down
 		#modifiers = QtWidgets.QApplication.keyboardModifiers()
 		#isShift = modifiers == QtCore.Qt.ShiftModifier
 		nKeyIsDown = self.keyIsDown == 'n'
 
 		oldSelectedNodeIdx = self.selectedNode()
-		
+
 		print('=== onMouseClicked_nodes() nKeyIsDown:', nKeyIsDown)
 
 		# this works gives me the point number!!!!

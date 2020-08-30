@@ -3,6 +3,8 @@
 Display x/y and intensity as mouse moves over bStackView
 """
 
+import numpy as np
+
 #from PyQt5 import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
@@ -54,7 +56,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		hBoxLayout2 = QtWidgets.QHBoxLayout()
 
 		fixedWidth = 35
-		
+
 		selectedNode_ = QtWidgets.QLabel("Node")
 		self.selectedNode = QtWidgets.QLabel("None")
 		selectedNode_.setFixedWidth(fixedWidth)
@@ -84,12 +86,12 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			print('      theWidget:', theWidget)
 			theWidget.setFixedWidth(fixedWidth)
 		'''
-		
+
 		vBoxLayout = QtWidgets.QVBoxLayout(self)
 		vBoxLayout.addLayout(hBoxLayout)
 		vBoxLayout.addLayout(hBoxLayout2)
-		
-			
+
+
 		# finish
 		#myGroupBox.setLayout(hBoxLayout)
 		#self.addWidget(myGroupBox)
@@ -115,7 +117,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			edgeListStr = str(myEvent.edgeList)
 			self.selectedEdge.setText(edgeListStr)
 			self.repaint()
-			
+
 	def slot_select(self, myEvent):
 		myEvent.printSlot('bStatusToolbarWidget.slot_select()')
 		if myEvent.eventType == 'select node':
@@ -123,7 +125,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			nodeIdxStr = str(nodeIdx)
 			self.selectedNode.setText(nodeIdxStr)
 			self.repaint()
-			
+
 		elif myEvent.eventType == 'select edge':
 			edgeIdx = myEvent.edgeIdx
 			edgeIdxStr = str(edgeIdx)
@@ -149,13 +151,20 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		# todo: update pixel intensity
 		# self.mainWindow.myStackView
 		channel = 1
+		pixelIntensity = self.mainWindow.getStackView().mySimpleStack.getPixel(channel, sliceNumber, x, y)
+		if np.isnan(pixelIntensity):
+			pixelIntensityStr = ''
+		else:
+			pixelIntensityStr = str(pixelIntensity)
+		'''
 		image = self.mainWindow.getStackView().mySimpleStack.getImage2(channel=channel, sliceNum=sliceNumber)
 		if x <0 or y < 0:
 			return
 		if x > image.shape[0] or y > image.shape[1]:
 			return
 		pixelIntensity = image[x, y] # NOT swapped
+		'''
+
 		#print('image.shape:', image.shape, image[x, y], image[y, x])
-		self.pixelIntensity.setText(str(pixelIntensity))
+		self.pixelIntensity.setText(pixelIntensityStr)
 		self.pixelIntensity.repaint()
-		
