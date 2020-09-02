@@ -902,7 +902,7 @@ class bStackWidget(QtWidgets.QWidget):
 		#self.menu = QtWidgets.QMenu()
 
 		numChannels = self.mySimpleStack.numChannels # number of channels in stack
-		maxNumChannels = self.mySimpleStack.maxNumChannels 
+		maxNumChannels = self.mySimpleStack.maxNumChannels
 		#actions = ['Channel 1', 'Channel 2', 'Channel 3', 'RGB', 'Channel 1 Mask', 'Channel 2 Mask', 'Channel 3 Mask']
 		actionsList = []
 		isEnabledList = []
@@ -919,12 +919,18 @@ class bStackWidget(QtWidgets.QWidget):
 			isEnabledList.append(True)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1+maxNumChannels
 			isCheckedList.append(isChecked)
+		for i in range(numChannels):
+			chanNumber = i + 1
+			actionsList.append(f'Channel {chanNumber} Skel')
+			isEnabledList.append(True)
+			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1+maxNumChannels
+			isCheckedList.append(isChecked)
 		if numChannels>1:
 			actionsList.append('RGB')
 			isEnabledList.append(True)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == 'rgb' # lower case !!!
 			isCheckedList.append(isChecked)
-		
+
 		for i, actionStr in enumerate(actionsList):
 			# make an action
 			currentAction = QtWidgets.QAction(actionStr, self, checkable=True)
@@ -1056,17 +1062,27 @@ class bStackWidget(QtWidgets.QWidget):
 		elif userActionStr == 'Channel 3':
 			self.getStackView().displayStateDict['displayThisStack'] = 3
 			doStackRefresh = True
-		
+
 		elif userActionStr == 'Channel 1 Mask':
-			self.getStackView().displayStateDict['displayThisStack'] = 5
+			self.getStackView().displayStateDict['displayThisStack'] = 4
 			doStackRefresh = True
 		elif userActionStr == 'Channel 2 Mask':
-			self.getStackView().displayStateDict['displayThisStack'] = 5+1
+			self.getStackView().displayStateDict['displayThisStack'] = 4+1
 			doStackRefresh = True
 		elif userActionStr == 'Channel 3 Mask':
-			self.getStackView().displayStateDict['displayThisStack'] = 5+2
+			self.getStackView().displayStateDict['displayThisStack'] = 4+2
 			doStackRefresh = True
-		
+
+		elif userActionStr == 'Channel 1 Skel':
+			self.getStackView().displayStateDict['displayThisStack'] = 7
+			doStackRefresh = True
+		elif userActionStr == 'Channel 2 Skel':
+			self.getStackView().displayStateDict['displayThisStack'] = 7+1
+			doStackRefresh = True
+		elif userActionStr == 'Channel 3 Skel':
+			self.getStackView().displayStateDict['displayThisStack'] = 7+2
+			doStackRefresh = True
+
 		elif userActionStr == 'RGB':
 			self.getStackView().displayStateDict['displayThisStack'] = 'rgb'
 			doStackRefresh = True

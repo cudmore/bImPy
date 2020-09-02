@@ -42,21 +42,23 @@ class bStack:
 		# header
 		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
 
-		self._maxNumChannels = 4 # leave this for now
+		self._maxNumChannels = 3 # leave this for now
 		# pixel data, each channel is element in list
-		self._stackList = [None for tmp in range(self._maxNumChannels * 2)] # *2 because we have a mask for each stack
+		# *3 because we have (raw, mask, skel) for each stack#
+		self._stackList = [None for tmp in range(self._maxNumChannels * 3)]
 
 		#
 		# load image data
 		if loadImages:
 			self.loadStack2() # loads data into self._stackList
 			self.loadLabeled() # loads data into _labeledList
+			self.loadSkel() # loads data into _labeledList
 
 		#
 		# load _annotationList.csv
 		self.annotationList = bimpy.bAnnotationList(self.path)
 		self.annotationList.load() # will fail when not already saved
-		
+
 		# load vesselucida analysis from .xml file
 		self.slabList = bimpy.bVascularTracing(self, self.path)
 
@@ -121,19 +123,19 @@ class bStack:
 	def getPixel(self, channel, sliceNum, x, y):
 		"""
 		channel is 1 based !!!!
-		
+
 		channel: (1,2,3, ... 5,6,7)
 		"""
 		#print('bStack.getPixel()', channel, sliceNum, x, y)
-		
+
 		theRet = np.nan
-		
+
 		# channel can be 'RGB'
 		if not isinstance(channel, int):
 			return theRet
-		
+
 		channelIdx = channel - 1
-		
+
 		if self._stackList[channelIdx] is None:
 			#print('getPixel() returning np.nan'
 			theRet = np.nan
@@ -147,16 +149,37 @@ class bStack:
 
 		#
 		return theRet
-		
+
+	def getStack(self, type, channel):
+		"""
+		Can be none
+
+		Parameters:
+			type: (raw, mask, skel)
+			channel: 1 based
+		"""
+		if not type in ['raw', 'mask', 'skel']:
+			print('  error: bStack.getStack() expeting type in [raw, mask, skel], got:', type)
+			return None
+
+		channelIdx =  channel - 1
+		maxChannel = self.maxNumChannels
+		if type == 'mask':
+			channelIdx += maxChannel
+		elif type == 'skel':
+			channelIdx += 2 * maxChannel
+		theRet = self._stackList[channelIdx]
+		return theRet
+
 	def getImage2(self, channel=1, sliceNum=None):
 		"""
 		new with each channel in list self._stackList
-		
+
 		channel: (1,2,3,...) maps to channel-1
 					(5,6,7,...) maps to self._maskList
 		"""
 		#print('  getImage2() channel:', channel, 'sliceNum:', sliceNum)
-		
+
 		channelIdx = channel - 1
 		if self._stackList[channelIdx] is None:
 			#print('   error: 0 bStack.getImage2() got None _stackList for channel:', channel, 'sliceNum:', sliceNum)
@@ -169,11 +192,11 @@ class bStack:
 		else:
 			#print('   error: 1 bStack.getImage2() got bad _stackList shape for channel:', channel, 'sliceNum:', sliceNum)
 			return None
-			
+
 	def getSlidingZ2(self, channel, sliceNumber, upSlices, downSlices):
 		"""
 		leaving thisStack (ch1, ch2, ch3, rgb) so we can implement rgb later
-		
+
 		channel: 1 based
 		"""
 
@@ -181,7 +204,7 @@ class bStack:
 
 		if self._stackList[channelIdx] is None:
 			return None
-		
+
 		if self.numImages>1:
 			startSlice = sliceNumber - upSlices
 			if startSlice < 0:
@@ -218,27 +241,27 @@ class bStack:
 		load _labeled.tif for each (_ch1, _ch2, _ch3)
 		make mask from labeled
 		"""
-		
+
 		maxNumChannels = self._maxNumChannels # 4
-		
+
 		baseFilePath, ext = os.path.splitext(self.path)
 		baseFilePath = baseFilePath.replace('_ch1', '')
 		baseFilePath = baseFilePath.replace('_ch2', '')
-		
+
 		# load mask
 		#labeledPath = dvMaskPath + '_mask.tif'
 		#labeledData = tifffile.imread(labeledPath)
-		
+
 		maskFromLabelGreaterThan = 0
 
 		# load labeled
 		for channelIdx in range(maxNumChannels):
 			channelNumber = channelIdx + 1 # for _ch1, _ch2, ...
 			stackListIdx = maxNumChannels + channelIdx # for index into self._stackList
-			
+
 			chStr = '_ch' + str(channelNumber)
 			labeledPath = baseFilePath + chStr + '_labeled.tif'
-			
+
 			if os.path.isfile(labeledPath):
 				print('  bStack.loadLabeled() loading channelNumber:', channelNumber, 'labeledPath:', labeledPath)
 				labeledData = tifffile.imread(labeledPath)
@@ -250,9 +273,43 @@ class bStack:
 
 		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
-		
-		# bVascularTracing.loadDeepVess() uses mask to make skel		
-		
+
+		# bVascularTracing.loadDeepVess() uses mask to make skel
+
+	def loadSkel(self):
+		"""
+		load _skel.tif for each (_ch1, _ch2, _ch3)
+
+		_skel.tif is 1-pixel skeleton stack returned from
+			skimage.morphology.skeletonize_3d(maskData)
+		"""
+
+		maxNumChannels = self._maxNumChannels # 4
+
+		baseFilePath, ext = os.path.splitext(self.path)
+		baseFilePath = baseFilePath.replace('_ch1', '')
+		baseFilePath = baseFilePath.replace('_ch2', '')
+
+		# load _skel
+		for channelIdx in range(maxNumChannels):
+			channelNumber = channelIdx + 1 # for _ch1, _ch2, ...
+			stackListIdx = 2 * maxNumChannels + channelIdx # for index into self._stackList
+
+			chStr = '_ch' + str(channelNumber)
+			skelPath = baseFilePath + chStr + '_skel.tif'
+
+			if os.path.isfile(skelPath):
+				print('  bStack.loadSkel() loading channelNumber:', channelNumber, 'skelPath:', skelPath)
+				skelData = tifffile.imread(skelPath)
+				# mask is made of all labels
+				self._stackList[stackListIdx] = skelData
+			else:
+				print('  bStack.loadSkel() did not find _skel path:', skelPath)
+
+
+		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
+		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
+
 	# abb aics
 	def loadStack2(self, verbose=False):
 		basename, tmpExt = os.path.splitext(self.path)
@@ -285,10 +342,10 @@ class bStack:
 			h5FilePath = self.slabList.save()
 		else:
 			print('WARNING: bStack.saveAnnotations() did not save as annotation slabList is None')
-		
+
 		# 20200831, save generic bAnnotationList
 		self.annotationList.save()
-		
+
 		return h5FilePath
 
 	def loadAnnotations(self):
@@ -343,7 +400,7 @@ if __name__ == '__main__':
 		path = '/Users/cudmore/box/data/bImpy-Data/rr30a/raw/rr30a_s1_ch1.tif'
 
 		path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
-		
+
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 

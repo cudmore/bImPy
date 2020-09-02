@@ -13,8 +13,6 @@ except (Exception) as e:
 	#print('exception: bStackBrowser failed to import bioformats e:', e)
 	bioformats = None
 
-#from bimpy.interface.WaitingSpinner import WaitingSpinner
-
 import bimpy
 #from bimpy import bJavaBridge
 #from bimpy.interface import bStackWidget
@@ -165,22 +163,6 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			stack.raise_()
 			'''
 		else:
-			#tmp = bimpy.interface.bStackWidget(path=path)
-			'''
-			print('starting spinner')
-			spinner = WaitingSpinner(self.myTreeWidget)
-			spinner.setRoundness(70.0)
-			spinner.setMinimumTrailOpacity(15.0)
-			spinner.setTrailFadePercentage(70.0)
-			spinner.setNumberOfLines(12)
-			spinner.setLineLength(10)
-			spinner.setLineWidth(5)
-			spinner.setInnerRadius(10)
-			spinner.setRevolutionsPerSecond(1)
-			spinner.setColor(QtGui.QColor(81, 4, 71))
-			spinner.start()
-			'''
-
 			tmp = bimpy.interface.bStackWidget(path=path, mainWindow=self)
 			#self.myStackList.append(tmp)
 			self.myStackList[rowIdx] = tmp
@@ -195,12 +177,6 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			updateItem.setText(nNodesCol, str(nNodes))
 			nEdgesCol = self.myColumnNames.index('nEdges') # this sometimes throws an exception
 			updateItem.setText(nEdgesCol, str(nEdges))
-
-			'''
-			print('stopping spinner')
-			spinner.stop()
-			'''
-
 
 	def appendStack(self, path):
 		print('appendStack() path:', path)
@@ -330,7 +306,8 @@ if __name__ == '__main__':
 	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
 
 	# tryin z-expanded stack 'a'
-	path = '/Users/cudmore/Box/data/20200717/aicsAnalysis/20200717__A01_G001_0014a_ch2.tif'
+	#path = '/Users/cudmore/Box/data/20200717/aicsAnalysis/20200717__A01_G001_0014a_ch2.tif'
+
 	try:
 		if useBioformats:
 			mjb = bimpy.bJavaBridge()

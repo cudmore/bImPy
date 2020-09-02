@@ -33,6 +33,7 @@ setup(
         'pandas',
         'chart_studio',
         'plotly',
+        'pyqtgraph',
         #'javabridge',
         #'python-bioformats',
     ]

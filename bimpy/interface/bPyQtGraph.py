@@ -818,7 +818,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				# mask + image ... need to set contrast of [0,1] mask !!!
 				sliceMaskImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
 				if sliceMaskImage is not None:
-					imageChannel = displayThisStack-maxNumChannels
+					#imageChannel = displayThisStack-maxNumChannels
+					imageChannel = displayThisStack % maxNumChannels # remainder after division
 					sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
 					m = sliceMaskImage.shape[0]
 					n = sliceMaskImage.shape[1]

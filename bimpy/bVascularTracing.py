@@ -45,7 +45,7 @@ class bVascularTracing:
 		self.parentStack = parentStack
 		self.path = path
 
-		self._dvMask = None # created in loadDeepVess
+		#self._dvMask = None # created in loadDeepVess
 		self._initTracing()
 
 		self.hasFile = {'h5f':False, 'vesselucida':False, 'deepvess':False}
@@ -1059,8 +1059,10 @@ class bVascularTracing:
 		doAics = True
 		if doAics:
 			# load _labeled, 16-bit
+			'''
 			labeledPath = dvMaskPath + '_labeled.tif'
 			labeledData = tifffile.imread(labeledPath)
+			'''
 			# make mask from one label
 
 			'''
@@ -1070,12 +1072,15 @@ class bVascularTracing:
 			print(' !!!!! aics self._dvMask after including label', thisOneLabel, self._dvMask.shape, self._dvMask.dtype)
 			'''
 
-			self._dvMask = labeledData>0
+			#self._dvMask = labeledData > 0
 
 			# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
-			self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
+			#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
 
-			print(' !!!!! aics self._dvMask', self._dvMask.shape, self._dvMask.dtype)
+			dvMask = self.parentStack.getStack('mask', 2)
+			dvMask = dvMask.copy() # we might blank some slices
+
+			print('  !!!!! aics dvMask', dvMask.shape, dvMask.dtype)
 
 		else:
 			dvMaskPath += '_dvMask.tif'
@@ -1088,6 +1093,25 @@ class bVascularTracing:
 
 		## abb aics analysis
 		if doAics:
+			tmpBasePath, tmpExt = os.path.splitext(self.path)
+			tmpBasePath, tmpBaseName = os.path.split(tmpBasePath)
+			tmpBaseName = tmpBaseName.replace('_ch1', '')
+			tmpBaseName = tmpBaseName.replace('_ch2', '')
+			uFirstSlice = None
+			uLastSlice = None
+			try:
+				print('tmpBaseName:', tmpBaseName)
+				trimDict = bVascularTracingAics.stackDatabase[tmpBaseName]
+				uFirstSlice = trimDict['uFirstSlice']
+				uLastSlice = trimDict['uLastSlice']
+			except (KeyError) as e:
+				print('did not find stack tmpBaseName:', tmpBaseName, 'in bVascularTracingAics.stackDatabase ---->>>> NO PRUNING/BLANKING')
+			if uFirstSlice is not None and uLastSlice is not None:
+				print('    loadDeepVess() aics pruning/blanking slices:', uFirstSlice, uLastSlice)
+				dvMask[0:uFirstSlice-1,:,:] = 0
+				dvMask[uLastSlice:-1,:,:] = 0
+
+			'''
 			uFirstSlice = 44 # /Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif
 			uFirstSlice = 1 + uFirstSlice * 3 # for z-expanded file 'a'
 			uLastSlice = 64
@@ -1098,6 +1122,7 @@ class bVascularTracing:
 				print('    loadDeepVess() aics pruning slices:', uFirstSlice, uLastSlice)
 				self._dvMask[0:uFirstSlice-1,:,:] = 0
 				self._dvMask[uLastSlice:-1,:,:] = 0
+			'''
 		else:
 			print('    loading _dvMask file:', dvMaskPath)
 			self._dvMask = tifffile.imread(dvMaskPath)
@@ -1105,7 +1130,9 @@ class bVascularTracing:
 
 		# 20200901 laptop
 		#parentStack = self.parentStack.getStack('ch1')
-		parentStack = self.parentStack._stackList[1] # vasc channel
+		vascChannel = 2
+		parentStack = self.parentStack.getStack('raw', vascChannel) # vasc channel
+		print('parentStack:', parentStack.shape)
 		#
 		# convert the deepvess mask to a skeleton (same as deepves postprocess)
 		print('    making skeleton from binary stack dvMask ...')
@@ -1120,7 +1147,7 @@ class bVascularTracing:
 			skeleton0 = tifffile.imread(dvSkelPath)
 		else:
 			print('    - generating skeleton from dvMask using morphology.skeletonize_3d ... might be too slow')
-			skeleton0 = morphology.skeletonize_3d(self._dvMask)
+			skeleton0 = morphology.skeletonize_3d(dvMask)
 		print('    skeleton0:', type(skeleton0), skeleton0.dtype, skeleton0.shape, np.min(skeleton0), np.max(skeleton0))
 		print('        took:', round(time.time()-startSeconds,2), 'seconds')
 
