@@ -26,24 +26,26 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 		hBoxLayout = QtWidgets.QHBoxLayout()
 
+		myAlign = QtCore.Qt.AlignLeft
+		
 		currentSliceStr = 'Slice 0 /' + str(self.numSlices)
 		self.currentSliceLabel = QtWidgets.QLabel(currentSliceStr)
-		hBoxLayout.addWidget(self.currentSliceLabel)
+		hBoxLayout.addWidget(self.currentSliceLabel, myAlign)
 
 		xMousePosition_ = QtWidgets.QLabel("X (pixel)")
 		self.xMousePosition = QtWidgets.QLabel("None")
 		hBoxLayout.addWidget(xMousePosition_)
-		hBoxLayout.addWidget(self.xMousePosition)
+		hBoxLayout.addWidget(self.xMousePosition, myAlign)
 
 		yMousePosition_ = QtWidgets.QLabel("Y (pixel)")
 		self.yMousePosition = QtWidgets.QLabel("None")
 		hBoxLayout.addWidget(yMousePosition_)
-		hBoxLayout.addWidget(self.yMousePosition)
+		hBoxLayout.addWidget(self.yMousePosition, myAlign)
 
 		pixelIntensity_ = QtWidgets.QLabel("Intensity")
 		self.pixelIntensity = QtWidgets.QLabel("None")
 		hBoxLayout.addWidget(pixelIntensity_)
-		hBoxLayout.addWidget(self.pixelIntensity)
+		hBoxLayout.addWidget(self.pixelIntensity, myAlign)
 
 		'''
 		self.lastActionLabel = QtWidgets.QLabel("Last Action: None")
@@ -59,24 +61,24 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 		selectedNode_ = QtWidgets.QLabel("Node")
 		self.selectedNode = QtWidgets.QLabel("None")
-		selectedNode_.setFixedWidth(fixedWidth)
-		self.selectedNode.setFixedWidth(fixedWidth)
+		#selectedNode_.setFixedWidth(fixedWidth)
+		#self.selectedNode.setFixedWidth(fixedWidth)
 		hBoxLayout2.addWidget(selectedNode_)
-		hBoxLayout2.addWidget(self.selectedNode)
+		hBoxLayout2.addWidget(self.selectedNode, myAlign)
 
 		selectedEdge_ = QtWidgets.QLabel("Edge")
 		self.selectedEdge = QtWidgets.QLabel("None")
-		selectedEdge_.setFixedWidth(fixedWidth)
-		self.selectedEdge.setFixedWidth(fixedWidth)
+		#selectedEdge_.setFixedWidth(fixedWidth)
+		#self.selectedEdge.setFixedWidth(fixedWidth)
 		hBoxLayout2.addWidget(selectedEdge_)
-		hBoxLayout2.addWidget(self.selectedEdge)
+		hBoxLayout2.addWidget(self.selectedEdge, myAlign)
 
 		selectedSlab_ = QtWidgets.QLabel("Slab")
 		self.selectedSlab = QtWidgets.QLabel("None")
-		selectedSlab_.setFixedWidth(fixedWidth)
-		self.selectedSlab.setFixedWidth(fixedWidth)
+		#selectedSlab_.setFixedWidth(fixedWidth)
+		#self.selectedSlab.setFixedWidth(fixedWidth)
 		hBoxLayout2.addWidget(selectedSlab_)
-		hBoxLayout2.addWidget(self.selectedSlab)
+		hBoxLayout2.addWidget(self.selectedSlab, myAlign)
 
 		# works but does not actually resize widgets?
 		'''numWidgets = hBoxLayout2.count()
@@ -87,15 +89,54 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			theWidget.setFixedWidth(fixedWidth)
 		'''
 
+		#
+		# third row
+		hBoxLayout3 = QtWidgets.QHBoxLayout()
+		
+		spinBoxWidth = 64
+		
+		# here we set one value for both
+		showTracingAboveSlices = self.mainWindow.options['Tracing']['showTracingAboveSlices']
+		
+		plusMinusLabel_ = QtWidgets.QLabel("+/- Slices")
+		self.plusMinusSpinBox = QtWidgets.QSpinBox()
+		self.plusMinusSpinBox.setMaximumWidth(spinBoxWidth)
+		self.plusMinusSpinBox.setMinimum(0)
+		self.plusMinusSpinBox.setMaximum(1e6)
+		self.plusMinusSpinBox.setValue(showTracingAboveSlices)
+		self.plusMinusSpinBox.setProperty('bobID_1', 'Tracing')
+		self.plusMinusSpinBox.setProperty('bobID_2', 'showTracingAboveSlices')
+		self.plusMinusSpinBox.valueChanged.connect(self.valueChanged)
+		hBoxLayout3.addWidget(plusMinusLabel_, myAlign)
+		hBoxLayout3.addWidget(self.plusMinusSpinBox, myAlign)
+
+		#
+		# add all rows to vBoxLayout
 		vBoxLayout = QtWidgets.QVBoxLayout(self)
 		vBoxLayout.addLayout(hBoxLayout)
 		vBoxLayout.addLayout(hBoxLayout2)
+		vBoxLayout.addLayout(hBoxLayout3)
 
 
 		# finish
 		#myGroupBox.setLayout(hBoxLayout)
 		#self.addWidget(myGroupBox)
 
+	def valueChanged(self, value):
+		"""
+		Set value in our local copy of options, self.localOptions
+		"""
+		bobID_1 = self.sender().property('bobID_1')
+		bobID_2 = self.sender().property('bobID_2')
+		print(f'valueChanged() value: {value} type(value), bobID_1:{bobID_1}, bobID_2:{bobID_2}')
+
+		if bobID_2 == 'showTracingAboveSlices':
+			self.mainWindow.options['Tracing']['showTracingAboveSlices'] = value
+			self.mainWindow.options['Tracing']['showTracingBelowSlices'] = value
+			# todo: make this either a main window event() or a signal/slot
+			self.mainWindow.getStackView()._preComputeAllMasks()
+			self.mainWindow.getStackView().setSlice()
+			
 	def slot_StateChange(self, signalName, signalValue):
 		"""
 		signalValue: can be int, str, dict , ...
@@ -138,11 +179,13 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 			self.repaint()
 
-	def setMousePosition(self, channel, sliceNumber, point):
-		channel = channel - 1
+	def setMousePosition(self, channel, sliceNumber, x, y):
+		#channel = channel - 1
 		
-		x = round(point.x(),0)
-		y = round(point.y(),0)
+		#x = round(point.x(),0)
+		#y = round(point.y(),0)
+		x = int(x)
+		y = int(y)
 		self.xMousePosition.setText(str(x))
 		self.xMousePosition.repaint()
 		self.yMousePosition.setText(str(y))

@@ -76,7 +76,6 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.setMaximumHeight(200)
 
 		self.myDoUpdate = True # set to false to not update on signal/slot
-		self.mySlice = 0
 		self.plotLogHist = True
 		
 		#self._minColor = None
@@ -107,7 +106,6 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		myEvent: 'set slice'
 		"""
 		#print('bStackContrastWidget.slot_setSlice() myEvent:', myEvent, 'myValue:', myValue)
-		self.mySlice = myValue
 		self.setSlice(myValue)
 
 	def slot_UpdateSlice2(self, myEvent):
@@ -115,29 +113,28 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		eventType = myEvent.eventType
 		if eventType in ['select node', 'select edge']:
 			sliceIdx = myEvent.sliceIdx
-			self.mySlice = sliceIdx
 			self.setSlice(sliceIdx)
 
-	def setSlice(self, sliceNumber = None):
+	def setSlice(self, sliceNumber):
 		if not self.myDoUpdate:
 			return
-		if sliceNumber is None:
-			sliceNumber = self.mySlice
-
-		self.mySlice = sliceNumber
 		
-		channel = 1
-		#data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
-		#data = self.mainWindow.getStackView().mySimpleStack.getImage(channel=channel, sliceNum=sliceNumber)
-		data = self.mainWindow.getStackView().mySimpleStack.getImage2(channel=channel, sliceNum=sliceNumber)
+		# this should be a slot_ like slot_updateChannel()
+		# channel is (1,2,3,...) can also be 'rgb'
+		channel = self.mainWindow.getStackView().displayStateDict['displayThisStack']
 
-		data = data.ravel() # returns a copy
-		#print('data:', type(data), data.shape)
-		'''
-		hist, bin_edges = np.histogram(data, bins=1024)
-		print('hist:', type(hist), 'len:', len(hist))
-		'''
-
+		#print('bStackContrastWidget.setSlice() channel:', channel)
+		
+		maxNumChannels = self.mainWindow.getStackView().mySimpleStack.maxNumChannels
+		if isinstance(channel,int) and channel < maxNumChannels:
+			#data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
+			#data = self.mainWindow.getStackView().mySimpleStack.getImage(channel=channel, sliceNum=sliceNumber)
+			data = self.mainWindow.getStackView().mySimpleStack.getImage2(channel=channel, sliceNum=sliceNumber)
+			if data is not None:
+				data = data.ravel() # returns a copy
+		else:
+			data = None
+		
 		#self.axes.plot(x, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
 		# see: https://stackoverflow.com/questions/35738199/matplotlib-pyplot-hist-very-slow
 		#num_bins = 2 ** 13
@@ -157,11 +154,14 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.axes.patch.set_facecolor("black")
 
 		# we need histtype='stepfilled', otherwise is SUPER SLOW
-		doLog = self.plotLogHist
-		n, bins, patches = self.axes.hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=1.0)
-
-		#self.canvasHist.draw()
-		self.canvasHist.draw_idle()
+		if data is not None:
+			doLog = self.plotLogHist
+			n, bins, patches = self.axes.hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=1.0)
+	
+		
+		#
+		self.canvasHist.draw()
+		#self.canvasHist.draw_idle()
 		
 	def emitChange(self):
 		myEvent = bimpy.interface.bEvent('contrast change')

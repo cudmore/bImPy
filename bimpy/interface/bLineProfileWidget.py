@@ -130,19 +130,19 @@ class bLineProfileWidget(QtWidgets.QWidget):
 	def lineWidth_Callback(self, value):
 		self.lineWidth = value
 		if self.updateDict is not None:
-			self.update(self.updateDict)
+			self.updateLineProfile(self.updateDict)
 
 	def medianFilter_Callback(self, value):
 		self.medianFilter = value
 		if self.updateDict is not None:
-			self.update(self.updateDict)
+			self.updateLineProfile(self.updateDict)
 
 	def halfHeight_Callback(self, value):
 		self.halfHeight = value
 		if self.updateDict is not None:
-			self.update(self.updateDict)
+			self.updateLineProfile(self.updateDict)
 
-	def update(self, updateDict):
+	def updateLineProfile(self, updateDict):
 		"""
 		Update the line profile
 		We need too much info here ???
@@ -154,10 +154,14 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		xSlabPlot = updateDict['xSlabPlot']
 		ySlabPlot = updateDict['ySlabPlot']
+		displayThisStack = updateDict['displayThisStack'] # (1,2,3, ...)
 		slice = updateDict['slice']
-		#print('bLineProfileWidget.update() xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot, 'slice:', slice)
+		#print('bLineProfileWidget.updateLineProfile() xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot, 'slice:', slice)
 
-		imageSlice = self.mainWindow.getStack().getImage2(channel=1, sliceNum=slice)
+		if not displayThisStack in [1,2,3,4]:
+			return
+		
+		imageSlice = self.mainWindow.getStack().getImage2(channel=displayThisStack, sliceNum=slice)
 
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])
@@ -165,7 +169,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			# abb aics added mode='constant'
 			intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=self.lineWidth, mode='constant')
 		except(ValueError) as e:
-			print('abb aics bLineProfileWidget.update() got nan???')
+			print('abb aics bLineProfileWidget.updateLineProfile() got nan???')
 			return
 
 		# smooth it

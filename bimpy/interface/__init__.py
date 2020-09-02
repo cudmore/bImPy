@@ -10,6 +10,7 @@ from .bNapari import bNapari
 #from .bAnnotationTables import bEditTableWidget, bTableWidget, bAnnotationTable
 from .bStatusToolbarWidget import bStatusToolbarWidget
 from .bTableWidget2 import bTableWidget2
+from .bTableWidget2 import bAnnotationTableWidget # 20200831
 from .bDialog import *
 #from .bShapeAnalysisWidget import bShapeAnalysisWidget
 #from .bMenu import bMenu

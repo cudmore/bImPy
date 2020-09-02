@@ -26,19 +26,6 @@ logging.basicConfig(filename=filename,
 
 import bimpy
 
-class bLockFile:
-	"""
-	Create a .lock file while processing an input file.
-	Other programs (e.g. Igor Pro) use this to determine if work is being done on an input file
-	   and can wait until .lock file is gone (e.g. work is done)
-	"""
-	def __init__(self, filePath):
-		self.myLockFile = filePath + '.lock'
-		fid = open(self.myLockFile, 'a')
-		fid.close()
-
-	def unlock(self):
-		os.remove(self.myLockFile)
 
 class bStack:
 	"""
@@ -50,44 +37,27 @@ class bStack:
 		#logging.info('constructor')
 		self.path = path # path to file
 
-		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
-		#self._fileName = os.path.basename(path)
-
-		self.currentSlice = 0
 		self._numChannels = None
-
-		#self._imagesMask = None # create with self.slabList.makeVolumeMask()
-
-		# todo: switch this to @property so we can dynamically self.saveAs(newpath)
-		'''
-		self.fileNameWithoutExtension = ''
-		if os.path.isfile(path):
-			fileName = os.path.split(self.path)[1]
-			self.fileNameWithoutExtension, tmpExtension = fileName.split('.')
-		'''
 
 		# header
 		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
-		self.stack = None
 
+		self._maxNumChannels = 4 # leave this for now
 		# pixel data, each channel is element in list
-		self._maxNumChannels = 4
-		#self.stack = None
-		self._stackList = [None for tmp in range(self._maxNumChannels)]
+		self._stackList = [None for tmp in range(self._maxNumChannels * 2)] # *2 because we have a mask for each stack
 
-		self.maxProjectImage = None
-
-		# was for vessel lucida
-		#if len(self.slabList.x) == 0:
-		#	self.slabList = None
-
+		#
 		# load image data
 		if loadImages:
-			#self.loadStack()
-			self.loadStack2()
+			self.loadStack2() # loads data into self._stackList
+			self.loadLabeled() # loads data into _labeledList
 
+		#
+		# load _annotationList.csv
+		self.annotationList = bimpy.bAnnotationList(self.path)
+		self.annotationList.load() # will fail when not already saved
+		
 		# load vesselucida analysis from .xml file
-		#self.slabList = bimpy.bSlabList(self.path)
 		self.slabList = bimpy.bVascularTracing(self, self.path)
 
 		self.analysis = bimpy.bAnalysis(self)
@@ -100,53 +70,10 @@ class bStack:
 		savePath = os.path.join(path, os.path.splitext(filename)[0])
 		return savePath
 
-	@property
-	def _fileName(self):
-		return os.path.basename(self.path)
 
 	@property
-	def fileNameWithoutExtension(self):
-		if os.path.isfile(self.path):
-			fileName = os.path.split(self.path)[1]
-			theRet, tmpExtension = fileName.split('.')
-			return theRet
-		else:
-			return 'NOT FOUND ???'
-
-	def print(self):
-		'''
-		for idx, channel in enumerate(self._stackList):
-			if channel is None:
-				continue
-			else:
-		'''
-		if 1:
-			if 1:
-				shape = self.stack.shape #channel.shape
-				pixelType = type(self.stack.shape) #channel.dtype
-				""" print basic properties of a stack """
-				print('   === bStack.print() fileName:', self.fileName)
-				print('      numChannels:', self.numChannels,
-					'numImages:', self.numImages,
-					'pixelsPerLine:', self.pixelsPerLine,
-					'linesPerFrame:', self.linesPerFrame,
-					'shape:', shape,
-					)
-				print('      zoom:', self.getHeaderVal('zoom'),
-					'umWidth:', self.getHeaderVal('umWidth'),
-					'umHeight:', self.getHeaderVal('umHeight'),
-					)
-				print('      xVoxel', self.xVoxel,
-					'yVoxel:', self.yVoxel,
-					'zVoxel:', self.zVoxel,
-					)
-				print('      bitDepth:', self.bitDepth,
-					'pixel type:', pixelType,
-					)
-				print('      xMotor:', self.header.xMotor,
-					'yMotor:', self.header.yMotor,
-					)
-
+	def maxNumChannels(self):
+		return self._maxNumChannels
 	@property
 	def fileName(self):
 		return self._fileName
@@ -188,190 +115,73 @@ class bStack:
 			print('error: bStack.getHeaderVal() did not find key "' + key + '" in self.header.header. Available keys are:', self.header.header.keys())
 			return None
 
-	def convert(self):
-		try:
-			myLock = bLockFile(self.path)
-
-			self.loadHeader()
-			self.header.prettyPrint()
-
-			self.loadStack()
-			self.loadMax()
-
-			self.saveHeader()
-			self.saveStack()
-			self.saveMax()
-
-		finally:
-			myLock.unlock()
-
 	#
 	# Display
 	#
-	def setSlice(self, sliceNum):
-		if sliceNum < self.header.numImages:
-			self.currentSlice = sliceNum
+	def getPixel(self, channel, sliceNum, x, y):
+		"""
+		channel is 1 based !!!!
+		
+		channel: (1,2,3, ... 5,6,7)
+		"""
+		#print('bStack.getPixel()', channel, sliceNum, x, y)
+		
+		theRet = np.nan
+		
+		# channel can be 'RGB'
+		if not isinstance(channel, int):
+			return theRet
+		
+		channelIdx = channel - 1
+		
+		if self._stackList[channelIdx] is None:
+			#print('getPixel() returning np.nan'
+			theRet = np.nan
 		else:
-			print('warning bStack.setSlice()', sliceNum, 'but stack only has', self.header.numImages)
+			m = self._stackList[channelIdx].shape[1]
+			n = self._stackList[channelIdx].shape[2]
+			if x<0 or x>m-1 or y<0 or y>n-1:
+				theRet = np.nan
+			else:
+				theRet = self._stackList[channelIdx][sliceNum,x,y]
 
-	def getStackData(self, channel=1):
-		channelIdx = channel - 1
-		if len(self.stack.shape)==3:
-			# single plane image
-			return self.stack[channelIdx,:,:]
-		elif len(self.stack.shape)==4:
-			return self.stack[channelIdx,:,:,:]
-
-	def getDeepVessMask(self):
-		theRet = None
-		if self.slabList is not None:
-			theRet = self.slabList._dvMask
+		#
 		return theRet
-
+		
 	def getImage2(self, channel=1, sliceNum=None):
+		"""
+		new with each channel in list self._stackList
+		
+		channel: (1,2,3,...) maps to channel-1
+					(5,6,7,...) maps to self._maskList
+		"""
+		#print('  getImage2() channel:', channel, 'sliceNum:', sliceNum)
+		
 		channelIdx = channel - 1
-		self._stackList
-		if len(self._stackList[channelIdx].shape)==2:
+		if self._stackList[channelIdx] is None:
+			#print('   error: 0 bStack.getImage2() got None _stackList for channel:', channel, 'sliceNum:', sliceNum)
+			return None
+		elif len(self._stackList[channelIdx].shape)==2:
 			# single plane image
 			return self._stackList[channelIdx]
 		elif len(self._stackList[channelIdx].shape)==3:
 			return self._stackList[channelIdx][sliceNum,:,:]
 		else:
-			print('   error: bStack.getImage() got bad stack shape:', self.stack.shape)
-
-	def getPixel(self, channel, sliceNum, x, y):
-		m = self._stackList[channel][sliceNum].shape[0]
-		n = self._stackList[channel][sliceNum].shape[1]
-		if x<0 or x>m or y<0 or y>n:
-			return np.nan
-		else:
-			return self._stackList[channel][sliceNum,x,y]
-
-	def getImage(self, channel=1, sliceNum=None):
-		channelIdx = channel - 1
-		if sliceNum is None:
-			sliceNum = self.currentSlice
-		#print('getImage() returning sliceNum:', sliceNum, 'from shape:', self.stack.shape)
-		if len(self.stack.shape)==3:
-			# single plane image
-			return self.stack[channelIdx,:,:]
-		elif len(self.stack.shape)==4:
-			return self.stack[channelIdx,sliceNum,:,:]
-		else:
-			print('   error: bStack.getImage() got bad stack shape:', self.stack.shape)
-
-	def getMaskVolume(self):
-		if self.slabList._volumeMask is None:
-			self.slabList.makeVolumeMask()
-		volumeMask = self.slabList._volumeMask
-		print('volumeMask min:', np.min(volumeMask), np.max(volumeMask))
-		#
-		# make another mask from image where volumeMask==1 is set to 0
-		print('self._subMask')
-		channel = 0
-		self._subMask = self.stack[channel,:,:,:].copy()
-		print('   min:', np.min(self._subMask), np.max(self._subMask), np.mean(self._subMask))
-		self._subMask[volumeMask==1] = 0
-		print('   min:', np.min(self._subMask), np.max(self._subMask), np.mean(self._subMask))
-
-		savePath = self._getSavePath() # full path to file without extension
-
-		# save mask
-		#self._save('/Users/cudmore/mask.tif', volumeMask) #, includeSpacing
-
-		# save subtracted mask
-		#self._save('/Users/cudmore/subMask.tif', self._subMask) #, includeSpacing
-		subMaskPath = savePath + '_subMask.tif'
-		print('bStack.getMaskVolume() saving', subMaskPath)
-		from skimage.external import tifffile as tif
-		tif.imsave(subMaskPath, self._subMask, bigtiff=True)
-
-		return volumeMask
-
-	def getStack(self, thisStack):
-		stack = None
-		if thisStack == 'ch1':
-			stack = self.stack[0,:,:,:] # abb 20200305
-		elif thisStack == 'mask':
-			stack = self.getMaskVolume()
-		elif thisStack == 'skel':
-			stack = self._imagesSkel
-		else:
-			print('error: getStack() got bad thisStack:', thisStack)
-		return stack
-
-	def makeSlidingZ(self, thisStack, upSlices, downSlices):
-		print('makeSlidingZ up/down:', upSlices, downSlices)
-		if self.numImages>1:
-			img = np.ndarray(self.stack[0,:,:,:].shape).astype(self.stack.dtype)
-			print('img:', img.shape)
-			for currentSlice in range(self.numSlices):
-				startSlice = currentSlice - upSlices
-				if startSlice < 0:
-					startSlice = 0
-				stopSlice = currentSlice + downSlices
-				if stopSlice > self.numSlices - 1:
-					stopSlice = self.numSlices - 1
-
-				if thisStack == 'ch1':
-					tmp = self.stack[0, startSlice:stopSlice, :, :]
-					img[currentSlice,:,:] = np.max(tmp, axis=0)
-				elif thisStack == 'mask':
-					tmp = self.getMaskVolume()[startSlice:stopSlice, :, :]
-					img[currentSlice,:,:] = np.max(tmp, axis=0)
-				elif thisStack == 'skel':
-					tmp = self._imagesSkel[startSlice:stopSlice, :, :]
-					img[currentSlice,:,:] = np.max(tmp, axis=0)
-				else:
-					print('error: getSlidingZ() got bad thisStack:', thisStack)
-
-				#img = np.max(img, axis=0)
-		else:
-			# single image stack
-			if thisStack == 'ch1':
-				img = self.stack[0,:,:].copy()
-			elif thisStack == 'mask':
-				img = self.getMaskVolume()[0, :, :].copy()
-			elif thisStack == 'skel':
-				img = self._imagesSkel[0, :, :].copy()
-			else:
-				print('error: getSlidingZ() got bad thisStack:', thisStack)
-
-		self._slidingz = img
-		print('   done: _slidingz')
-
-	# todo: replace this with one time creation of sliding-z volume
-	def getSlidingZ(self, sliceNumber, thisStack, upSlices, downSlices, minContrast, maxContrast):
-
-		if self.numImages>1:
-			startSlice = sliceNumber - upSlices
-			if startSlice < 0:
-				startSlice = 0
-			stopSlice = sliceNumber + downSlices
-			if stopSlice > self.numImages - 1:
-				stopSlice = self.numImages - 1
-
-			if thisStack == 'ch1':
-				img = self.stack[0, startSlice:stopSlice, :, :].copy()
-			elif thisStack == 'mask':
-				img = self.getMaskVolume()[startSlice:stopSlice, :, :].copy()
-			elif thisStack == 'skel':
-				img = self._imagesSkel[startSlice:stopSlice, :, :].copy()
-			else:
-				print('error: getSlidingZ() got bad thisStack:', thisStack)
-
-			img = np.max(img, axis=0)
-		else:
-			# single image stack
-			img = self.stack[0,:,:].copy()
-
-		return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
-
-	def getSlidingZ2(self, sliceNumber, thisStack, upSlices, downSlices):
+			#print('   error: 1 bStack.getImage2() got bad _stackList shape for channel:', channel, 'sliceNum:', sliceNum)
+			return None
+			
+	def getSlidingZ2(self, channel, sliceNumber, upSlices, downSlices):
 		"""
 		leaving thisStack (ch1, ch2, ch3, rgb) so we can implement rgb later
+		
+		channel: 1 based
 		"""
 
+		channelIdx = channel - 1
+
+		if self._stackList[channelIdx] is None:
+			return None
+		
 		if self.numImages>1:
 			startSlice = sliceNumber - upSlices
 			if startSlice < 0:
@@ -380,128 +190,17 @@ class bStack:
 			if stopSlice > self.numImages - 1:
 				stopSlice = self.numImages - 1
 
-			print('    startSlice:', startSlice, 'stopSlice:', stopSlice)
+			print('    getSlidingZ2() startSlice:', startSlice, 'stopSlice:', stopSlice)
 
-			if thisStack == 'ch1':
-				channel = 0
-				img = self._stackList[channel][startSlice:stopSlice, :, :] #.copy()
-			elif thisStack == 'ch2':
-				channel = 1
-				img = self._stackList[channel][startSlice:stopSlice, :, :] #.copy()
-			elif thisStack == 'ch3':
-				channel = 2
-				img = self._stackList[channel][startSlice:stopSlice, :, :] #.copy()
-			elif thisStack == 'mask':
-				img = self.getMaskVolume()[startSlice:stopSlice, :, :] #.copy()
-			elif thisStack == 'skel':
-				img = self._imagesSkel[startSlice:stopSlice, :, :] #.copy()
-			else:
-				print('error: getSlidingZ() got bad thisStack:', thisStack)
-
-			#print('    img.shape:', img.shape)
+			img = self._stackList[channelIdx][startSlice:stopSlice, :, :] #.copy()
 			img = np.max(img, axis=0)
-			#print('    img.shape:', img.shape)
 		else:
 			print('  bStack.getSlidingZ2() is broken !!!')
 			# single image stack
-			img = self.stack[0,:,:].copy()
 			img = self._stackList[0][sliceNumber,:,:].copy()
 
-		#return self.setSliceContrast(sliceNumber, minContrast=minContrast, maxContrast=maxContrast, img=img)
 		return img
 
-	def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
-		"""
-		thisStack in ['ch1', 'ch2', 'ch3', 'mask', 'skel']
-
-		img: pass this in to contrast adjust an existing image, e.g. from sliding z-projection
-
-		autoContrast: probably not working
-		"""
-
-		#print('setSliceContrast()')
-
-		# we are making a copy so we can modify the contrast
-		if img is None:
-			#print(thisStack, self.stack.shape)
-			if thisStack == 'ch1':
-				if len(self.stack.shape)==3:
-					img = self.stack[sliceNumber, :, :].copy()
-				else:
-					img = self.stack[0, sliceNumber, :, :].copy()
-			elif thisStack == 'mask':
-				#print('tmp self.getMaskVolume():', self.getMaskVolume().shape)
-				img = self.getMaskVolume()[sliceNumber, :, :].copy()
-			elif thisStack == 'skel':
-				img = self._imagesSkel[sliceNumber, :, :].copy()
-			else:
-				print('error: setSliceContrast() got bad thisStack:', thisStack)
-
-		#print('setSliceContrast() BEFORE min:', img.min(), 'max:', img.max(), 'mean:', img.mean(), 'dtype:', img.dtype)
-
-		# this works, removing it does not anything faster !!!
-		maxInt = 2 ** self.bitDepth - 1
-
-		#print('   setSliceContrast() maxInt:', maxInt, type(maxInt), 'self.bitDepth:', self.bitDepth)
-
-		if minContrast is None:
-			minContrast = 0
-		if maxContrast is None:
-			maxContrast = maxInt #2 ** self.bitDepth - 1
-		if autoContrast:
-			minContrast = np.min(img)
-			maxContrast = np.max(img)
-
-		#print('   setSliceContrast() sliceNumber:', sliceNumber, 'maxInt:', maxInt, 'lowContrast:', lowContrast, 'highContrast:', highContrast)
-
-		#mult = maxInt / abs(highContrast - lowContrast)
-		denominator = abs(maxContrast - minContrast)
-		if denominator != 0:
-			mult = maxInt / denominator
-		else:
-			mult = maxInt
-
-		img[img < minContrast] = minContrast
-		img[img > maxContrast] = maxContrast
-		img -= minContrast
-
-		img = img * mult
-
-		return img
-
-		# if i remove all from above, this is not any faster?
-		#return self._images[sliceNumber, :, :]
-
-	def _display0(self, image, display_min, display_max): # copied from Bi Rico
-		# Here I set copy=True in order to ensure the original image is not
-		# modified. If you don't mind modifying the original image, you can
-		# set copy=False or skip this step.
-		image = np.array(image, dtype=np.uint8, copy=True)
-		image.clip(display_min, display_max, out=image)
-		image -= display_min
-		np.floor_divide(image, (display_max - display_min + 1) / (2**self.bitDepth), out=image, casting='unsafe')
-		#np.floor_divide(image, (display_max - display_min + 1) / 256,
-		#				out=image, casting='unsafe')
-		#return image.astype(np.uint8)
-		return image
-
-	#def setSliceContrast(self, sliceNumber, thisStack='ch1', minContrast=None, maxContrast=None, autoContrast=False, img=None):
-	def getImage_ContrastEnhanced(self, display_min, display_max, channel=1, sliceNum=None, useMaxProject=False) :
-		"""
-		sliceNum: pass None to use self.currentImage
-		"""
-		#lut = np.arange(2**16, dtype='uint16')
-		lut = np.arange(2**self.bitDepth, dtype='uint8')
-		lut = self._display0(lut, display_min, display_max) # get a copy of the image
-		if useMaxProject:
-			# need to specify channel !!!!!!
-			#print('self.maxProjectImage.shape:', self.maxProjectImage.shape, 'max:', np.max(self.maxProjectImage))
-			if self.maxProjectImage is not None:
-				return np.take(lut, self.maxProjectImage)
-			else:
-				return None
-		else:
-			return np.take(lut, self.getImage(channel=channel, sliceNum=sliceNum))
 
 	#
 	# Loading
@@ -513,43 +212,47 @@ class bStack:
 			else:
 				print('bStack.loadHeader() did not find self.path:', self.path)
 
-	def loadMax(self, channel=1, convertTo8Bit=False):
-		#print('bStack.loadMax() channel:', channel, 'self.path:', self.path)
-		fu = bimpy.bFileUtil()
-		maxFile = fu.getMaxFileFromRaw(self.path, theChannel=channel)
-		#print('bStack.loadMax() maxFile:', maxFile)
+	# abb aics
+	def loadLabeled(self):
+		"""
+		load _labeled.tif for each (_ch1, _ch2, _ch3)
+		make mask from labeled
+		"""
+		
+		maxNumChannels = self._maxNumChannels # 4
+		
+		baseFilePath, ext = os.path.splitext(self.path)
+		baseFilePath = baseFilePath.replace('_ch1', '')
+		baseFilePath = baseFilePath.replace('_ch2', '')
+		
+		# load mask
+		#labeledPath = dvMaskPath + '_mask.tif'
+		#labeledData = tifffile.imread(labeledPath)
+		
+		maskFromLabelGreaterThan = 0
 
-		# load the file
-		if os.path.isfile(maxFile):
-			print('loadMax() max file in:', maxFile)
-			with tifffile.TiffFile(maxFile) as tif:
-				theArray = tif.asarray()
-			if convertTo8Bit:
-				print('   convert to 8-bit self.header.bitDepth', self.header.bitDepth)
-				theArray = skimage.img_as_ubyte(theArray, force_copy=False)
-			# need to specify channel !!!!!!
-			print('   theArray.shape', theArray.shape, np.max(theArray))
-			self.maxProjectImage = theArray
-			#return theArray
-		else:
-			print('loadMax() ERROR max file in:', maxFile, 'path:', self.path)
-			self.maxProjectImage = self.makeMaxProject()
-			return None
-
-	def makeMaxProject(self):
-		maxProject = None
-		if self.stack is None:
-			print('   makeMaxProject() found self.stack is None')
-		else:
-			print('   makeMaxProject() taking max from self.data.size:', self.stack.size)
-			size = self.stack.shape
-			lenSize = len(size)
-			if lenSize == 2:
-				maxProject = self.stack.copy
+		# load labeled
+		for channelIdx in range(maxNumChannels):
+			channelNumber = channelIdx + 1 # for _ch1, _ch2, ...
+			stackListIdx = maxNumChannels + channelIdx # for index into self._stackList
+			
+			chStr = '_ch' + str(channelNumber)
+			labeledPath = baseFilePath + chStr + '_labeled.tif'
+			
+			if os.path.isfile(labeledPath):
+				print('  bStack.loadLabeled() loading channelNumber:', channelNumber, 'labeledPath:', labeledPath)
+				labeledData = tifffile.imread(labeledPath)
+				# mask is made of all labels
+				self._stackList[stackListIdx] = labeledData > maskFromLabelGreaterThan
 			else:
-				maxProject = np.max(self.stack, axis=0)
-		return maxProject
+				print('  bStack.loadLabeled() did not find _labeled path:', labeledPath)
 
+
+		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
+		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
+		
+		# bVascularTracing.loadDeepVess() uses mask to make skel		
+		
 	# abb aics
 	def loadStack2(self, verbose=False):
 		basename, tmpExt = os.path.splitext(self.path)
@@ -561,267 +264,20 @@ class bStack:
 		self._numChannels = 0
 
 		path_ch1 = basename + '_ch1.tif'
-		print('bStack.loadStack2() path_ch1:', path_ch1)
+		print('  bStack.loadStack2() path_ch1:', path_ch1)
 		if os.path.exists(path_ch1):
-			print('  loadStack2() path_ch1:', path_ch1)
+			print('    loadStack2() path_ch1:', path_ch1)
 			stackData = tifffile.imread(path_ch1)
 			self._stackList[0] = stackData
 			self._numChannels += 1
 		path_ch2 = basename + '_ch2.tif'
-		print('bStack.loadStack2() path_ch2:', path_ch2)
+		print('  bStack.loadStack2() path_ch2:', path_ch2)
 		if os.path.exists(path_ch2):
-			print('  loadStack2() path_ch2:', path_ch2)
+			print('    loadStack2() path_ch2:', path_ch2)
 			stackData = tifffile.imread(path_ch2)
 			self._stackList[1] = stackData
 			self._numChannels += 1
 
-	def loadStack(self, verbose=False):
-		#print('   bStack.loadStack() Images:', self.numImages, 'pixelsPerLine:', self.pixelsPerLine, 'linesPerFrame:', self.linesPerFrame, 'path:', self.path)
-		#verbose = True
-		if verbose: print('   bStack.loadStack()', self.path)
-
-		self.loadHeader()
-
-		rows = self.linesPerFrame
-		cols = self.pixelsPerLine
-		slices = self.numImages
-		channels = self.numChannels
-
-		if channels is None:
-			channels = 1
-			#print('error: bStack.loadStack() -->> None channels -->> set channels = 1')
-
-		# if it is a Tiff file use tifffile, otherwise, use bioformats
-		if self.path.endswith('.tif'):
-			if verbose: print('   bStack.loadStack() is using tifffile...')
-
-			with tifffile.TiffFile(self.path) as tif:
-				xVoxel = 1 # um/pixel
-				yVoxel = 1
-				zVoxel = 1
-				try:
-					tag = tif.pages[0].tags['XResolution']
-					#print('   XResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
-					if tag.value[0]>0 and tag.value[1]>0:
-						xVoxel = tag.value[1] / tag.value[0]
-					else:
-						#print('   error, got zero tag value?')
-						xVoxel = 1
-					if verbose: print('   bStack.loadStack() xVoxel from TIFF XResolutions:', xVoxel)
-
-					tag = tif.pages[0].tags['YResolution']
-					#print('   YResolution tag.value:', tag.value, 'name:', tag.name, 'code:', tag.code, 'dtype:', tag.dtype, 'valueoffset:', tag.valueoffset)
-					if tag.value[0]>0 and tag.value[1]>0:
-						yVoxel = tag.value[1] / tag.value[0]
-					else:
-						#print('   error, got zero tag value?')
-						yVoxel = 1
-					if verbose: print('   bStack.loadStack() yVoxel from TIFF YResolutions:', yVoxel)
-
-					imagej_metadata = tif.imagej_metadata
-					#print('imagej_metadata["spacing"]:', imagej_metadata['spacing'])
-					try:
-						zVoxel = imagej_metadata['spacing0']
-					except (TypeError) as e:
-						# TypeError: 'NoneType' object is not subscriptable
-						pass
-					except (KeyError) as e:
-						pass
-
-					'''
-					for tmpKey in tif.pages[0].tags.keys():
-						tmpTag = tif.pages[0].tags[tmpKey]
-						print('   tmpKey:', tmpKey, 'tmpTag:', tmpTag)
-						if tmpKey == 'PageName':
-							tmpTag2 = tif.pages[1].tags[tmpKey]
-							print('      tmpTag2:', tmpTag2)
-					'''
-
-					#print('tif.NIH_IMAGE_HEADER:', tif.NIH_IMAGE_HEADER)
-
-				except (KeyError) as e:
-					if verbose: print('KeyError exception reading XResolution/YResolution/Spacing from TIff')
-
-				#print('   tif.imagej_metadata:', tif.imagej_metadata)
-				#print('   tif.tags:', tif.is_nih)
-
-				#print('   tif[0].image_description:', tif.image_description)
-				#print('   tif.nih_metadata:', tif.nih_metadata)
-				thisChannel = 0
-				#print('bStack.loadStack() type(tif)', type(tif))
-				loaded_shape = tif.asarray().shape
-				loaded_dtype = tif.asarray().dtype
-				if verbose: print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype)
-				newShape = (channels,) + loaded_shape
-				self.stack = np.zeros(newShape, dtype=loaded_dtype)
-
-				if len(loaded_shape)==2:
-					# single plane image
-					self.stack[thisChannel, :, :] = tif.asarray()
-				elif len(loaded_shape)==3:
-					#3d stack
-					self.stack[thisChannel, :, :, :] = tif.asarray()
-				else:
-					if verbose: print('   error: got bad shape:', loaded_shape)
-				self.header.assignToShape(self.stack)
-				#print('      after load tiff, self.stack.shape:', self.stack.shape)
-		else:
-			if bioformats is None:
-				print('error: bStack.loadStack() bioformats was not imported, can only open .tif files.')
-				return False
-
-			verbose = True
-			if verbose: print('bStack.loadStack() using bioformats ...', 'channels:', channels, 'slices:', slices, 'rows:', rows, 'cols:', cols)
-
-			'''
-			mjb = bimpy.bJavaBridge()
-			mjb.start()
-			'''
-
-			#with bioformats.GetImageReader(self.path) as reader:
-			with bioformats.ImageReader(self.path) as reader:
-				for channelIdx in range(self.numChannels):
-					c = channelIdx
-					for imageIdx in range(self.numImages):
-						if self.header.stackType == 'ZStack':
-							z = imageIdx
-							t = 0
-						elif self.header.stackType == 'TSeries':
-							z = 0
-							t = imageIdx
-						else:
-							print('      ****** Error: bStack.loadStack() did not get valid self.header.stackType:', self.header.stackType)
-							z = 0
-							t = imageIdx
-						#print('imageIdx:', imageIdx)
-						image = reader.read(c=c, t=t, z=z, rescale=False) # returns numpy.ndarray
-						#image = reader.read(c=c, rescale=False) # returns numpy.ndarray
-						loaded_shape = image.shape # we are loading single image, this will be something like (512,512)
-						loaded_dtype = image.dtype
-						newShape = (channels,self.numImages) + loaded_shape
-						# resize
-						#print('      oir loaded_shape:', loaded_shape, self.path)
-						if channelIdx==0 and imageIdx == 0:
-							print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype, 'newShape:', newShape)
-							self.stack = np.zeros(newShape, dtype=loaded_dtype)
-						# assign
-						self.stack[channelIdx,imageIdx,:,:] = image
-			self.header.assignToShape(self.stack)
-
-			'''
-			mjb.stop()
-			'''
-		return True
-
-	#
-	# Saving
-	#
-	def saveHeader(self):
-		"""
-		Save header as .txt file
-		"""
-		savePath = self.convert_makeSavePath()
-		headerFileName = self.fileNameWithoutExtension + '.txt'
-		headerFilePath = os.path.join(savePath, headerFileName)
-
-		self.header.saveHeader(headerFilePath)
-
-	def saveStackCopy(self, type):
-		if type == 'ch1':
-			typeStr = '_ch1'
-		elif type == 'ch2':
-			typeStr = '_ch2'
-		elif type == 'ch3':
-			typeStr = '_ch3'
-		elif type == 'mask':
-			typeStr = '_mask'
-
-		enclosingPath, fileName = os.path.split(self.path)
-		fileName = self.fileNameWithoutExtension + typeStr + '.tif'
-		saveFilePath = os.path.join(enclosingPath, fileName)
-		print('saveStackCopy() saveFilePath:', saveFilePath)
-		return saveFilePath
-
-	def saveStack(self, path=''):
-		"""
-		Save stack as .tif file
-
-		to add meta data, see
-		   https://github.com/CellProfiler/python-bioformats/issues/106
-		todo: this is savng as if we are converting oir to tif !!!
-				we now also have self.saveAs()
-		"""
-
-		#
-		# save each channel using tifffile
-		for channelIdx in range(self.numChannels):
-			saveFilePath = self.convert_getSaveFile(channelNumber=channelIdx+1)
-			# self.stack is czxy
-			#tifffile.imwrite(saveFilePath, self.stack[channelIdx,:,:,:], imagej=True, resolution=resolution, metadata=metadata, ijmetadata=ijmetadata)
-			self._save(saveFilePath, self.stack[channelIdx,:,:,:])
-
-	def saveVideoAs(self, savePath):
-		""" used when we import a video snapshot from video camera """
-		self.path = savePath
-		channelIdx = 0
-		self._save(self.path, self.stack[channelIdx,:,:])
-
-	def _save(self, fullFilePath, imageData, includeSpacing=True):
-		"""
-		Save a volume with xyz voxel size 2.6755 x 2.6755 x 3.9474 µm^3 to an ImageJ file:
-
-		>>> volume = numpy.random.randn(57*256*256).astype('float32')
-		>>> volume.shape = 1, 57, 1, 256, 256, 1  # dimensions in TZCYXS order
-		>>> imwrite('temp.tif', volume, imagej=True, resolution=(1./2.6755, 1./2.6755), metadata={'spacing': 3.947368, 'unit': 'um'})
-		"""
-
-		#print('imageData.dtype:', imageData.dtype)
-
-		# get metadata from StackHeader
-		ijmetadata = {}
-		ijmetadataStr = self.header.getMetaData()
-		ijmetadata['Info'] = ijmetadataStr
-
-		resolution = (1./self.header.xVoxel, 1./self.header.yVoxel)
-		zVoxel = self.header.zVoxel
-		metadata = {
-			'spacing': zVoxel if includeSpacing else 1,
-			'unit': 'um'
-		}
-		# my volumes are zxy, fiji wants TZCYXS
-		#volume.shape = 1, 57, 1, 256, 256, 1  # dimensions in TZCYXS order
-		if len(imageData.shape) == 2:
-			numSlices = 1
-			numx = imageData.shape[0]
-			numy = imageData.shape[1]
-		elif len(imageData.shape) == 3:
-			numSlices = imageData.shape[0]
-			numx = imageData.shape[1]
-			numy = imageData.shape[2]
-		else:
-			print('error, we can only save 2d or 3d images and stacks!')
-		tmpStack = imageData
-		tmpStack.shape = 1, numSlices, 1, numx, numy, 1
-		tifffile.imwrite(fullFilePath, tmpStack, imagej=True, resolution=resolution, metadata=metadata, ijmetadata=ijmetadata)
-
-	def saveMax(self):
-		savePath = self.convert_makeSavePath()
-		savePath = os.path.join(savePath, 'max')
-		if not os.path.isdir(savePath):
-			os.makedirs(savePath, exist_ok=True)
-
-		for channelIdx in range(self.numChannels):
-			maxFileName = 'max_' + self.fileNameWithoutExtension + '_ch' + str(channelIdx+1) + '.tif'
-			maxFilePath = os.path.join(savePath, maxFileName)
-
-			#
-			# self.stack is czxy, we specify axis=0 because we are explicitly slicing by channel channelIdx (c)
-			maxIntensityProjection = np.max(self.stack[channelIdx,:,:,:],axis=0)
-			#
-
-			#tifffile.imwrite(maxFilePath, maxIntensityProjection, ijmetadata=ijmetadata)
-			#tifffile.imwrite(maxFilePath, maxIntensityProjection)
-			self._save(maxFilePath, maxIntensityProjection, includeSpacing=False)
 
 	def saveAnnotations(self):
 		h5FilePath = None
@@ -829,6 +285,10 @@ class bStack:
 			h5FilePath = self.slabList.save()
 		else:
 			print('WARNING: bStack.saveAnnotations() did not save as annotation slabList is None')
+		
+		# 20200831, save generic bAnnotationList
+		self.annotationList.save()
+		
 		return h5FilePath
 
 	def loadAnnotations(self):
@@ -844,34 +304,6 @@ class bStack:
 		if self.slabList is not None:
 			self.slabList.loadVesselucida_xml()
 
-	#
-	# File name utilities
-	#
-	def convert_makeSavePath(self):
-		"""
-		Given full path to src file, return full path to destination directory.
-		The destination directory is a new folder inside the enclosing src folder <srcFolder>.
-		Its name is '<srcFolder>_tif'
-
-		"""
-		enclosingPath, fileName = os.path.split(self.path)
-		tmpPath, enclosingFolder = os.path.split(enclosingPath)
-
-		dstFolder = enclosingFolder + '_tif'
-		savePath = os.path.join(enclosingPath, dstFolder)
-		if not os.path.isdir(savePath):
-			print('   bStack.convert_makeSavePath() making output folder:', savePath)
-			os.mkdir(savePath)
-
-		return savePath
-
-	def convert_getSaveFile(self, channelNumber):
-		"""
-		Return full path to the dst file
-		"""
-		savePath = self.convert_makeSavePath() # full path to output folder we will save in
-		saveFileName = self.fileNameWithoutExtension + '_ch' + str(channelNumber) + '.tif'
-		return os.path.join(savePath, saveFileName)
 
 if __name__ == '__main__':
 
@@ -910,14 +342,16 @@ if __name__ == '__main__':
 
 		path = '/Users/cudmore/box/data/bImpy-Data/rr30a/raw/rr30a_s1_ch1.tif'
 
+		path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
+		
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 
-		print('--- bstack __main__ is printing stack')
-		myStack.print()
+		#print('--- bstack __main__ is printing stack')
+		#myStack.print()
 
-		print('--- bstack main is loading max')
-		myStack.loadMax()
+		#print('--- bstack main is loading max')
+		#myStack.loadMax()
 
 		'''
 		with javabridge.vm(

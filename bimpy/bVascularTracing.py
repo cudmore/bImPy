@@ -145,6 +145,10 @@ class bVascularTracing:
 		"""
 		#print('!!! getSlabEdgeIdx() slabIdx:', slabIdx)
 		#print('   self.edgeIdx[slabIdx]:', self.edgeIdx[slabIdx])
+		
+		if slabIdx is None or np.isnan(slabIdx):
+			return None
+		slabIdx = int(slabIdx)
 		edgeIdx = self.edgeIdx[slabIdx]
 		if np.isnan(edgeIdx):
 			return None

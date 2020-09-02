@@ -16,6 +16,7 @@ from qtpy import QtGui, QtCore, QtWidgets
 
 import bimpy
 
+######################################################
 class bTableWidget2(QtWidgets.QTableWidget):
 
 	# signals
@@ -29,7 +30,8 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		self.mainWindow = parent
 
-		if type not in {'nodes', 'edges', 'node search', 'edge search'}:
+		# todo: remove this, I am now explicitly deriving. For example, see bAnnotationTableWidget
+		if type not in {'nodes', 'edges', 'node search', 'edge search', 'annotations'}:
 			print('error: bTableWidget2 type is incorrect:', type)
 			return
 
@@ -196,11 +198,13 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			self.repaint()
 
 		elif myEvent.eventType == 'deleteNode' and self._type == 'nodes':
-			self.deleteRow(myEvent.nodeDict)
+			#self.deleteRow(myEvent.nodeDict)
+			self.deleteRowByIndex(myEvent.nodeIdx)
 			self.repaint()
 
 		elif myEvent.eventType == 'deleteEdge' and self._type == 'edges':
-			self.deleteRow(myEvent.edgeDict)
+			#self.deleteRow(myEvent.edgeDict)
+			self.deleteRowByIndex(myEvent.edgeIdx)
 			self.repaint()
 
 		elif myEvent.eventType == 'updateNode' and self._type == 'nodes':
@@ -248,11 +252,37 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		return rowIdx
 
+	def deleteRowByIndex(self, deleteRowIdx):
+		"""
+		this is super freaking sloppy
+		"""
+		print('bTableWidget2.deleteRowByIndex()', self._type, 'deleteRowIdx:', deleteRowIdx)
+		
+		self.stopSelectionPropogation = True
+		
+		rowIdx = self._findRow(theIdx=deleteRowIdx, theDict=None)
+		if rowIdx is None:
+			print('   \n\n\n                    !!! !!! THIS IS A BUG: bTableWidget2.deleteRowByIndex() rowIdx', rowIdx, 'theDict:', theDict)
+			print('\n\n\n')
+		else:
+			self.removeRow(rowIdx)
+			# decriment remaining ['idx']
+			for row in range(self.rowCount()):
+				idx = self.getCellValue_int('idx', row)
+				if idx > deleteRowIdx:
+					# decriment 'idx' of remaining
+					idx -= 1
+					item = QtWidgets.QTableWidgetItem()
+					myString = str(idx)
+					item.setData(QtCore.Qt.EditRole, myString)
+					self.setItem(row, 0, item) # assuming col 0 is 'idx' !!!!!!!!!
+		#
+		self.repaint()
+		
+	'''
 	def deleteRow(self, theDict):
 		"""
 		this is super freaking sloppy
-
-		todo: need to decrement remaining 'idx'
 		"""
 		if theDict is None:
 			print('warning: bTableWidget2.deleteRow()', self._type, 'got None dict')
@@ -279,7 +309,8 @@ class bTableWidget2(QtWidgets.QTableWidget):
 					myString = str(idx)
 					item.setData(QtCore.Qt.EditRole, myString)
 					self.setItem(row, 0, item) # assuming col 0 is 'idx' !!!!!!!!!
-
+	'''
+	
 	def setRow(self, rowDict):
 		"""
 		Assume: rowDict['Idx']
@@ -328,13 +359,16 @@ class bTableWidget2(QtWidgets.QTableWidget):
 					item.setData(myItemRole, int(theDict[header]))
 				elif isinstance(theDict[header], np.float64):
 					item.setData(myItemRole, float(theDict[header]))
+				elif isinstance(theDict[header], str):
+					item.setData(myItemRole, str(theDict[header]))
 				else:
 					if theDict[header] is None:
 						item.setData(myItemRole, '')
 					elif str(theDict[header]) == 'nan':
 						item.setData(myItemRole, '')
 					else:
-						item.setData(myItemRole, theDict[header])
+						#item.setData(myItemRole, theDict[header])
+						item.setData(myItemRole, theDict[header]) # DON'T PUT STR() HERE !!! abb 20200831
 				#myString = str(theDict[header])
 				#item.setData(QtCore.Qt.EditRole, myString)
 			except (KeyError) as e:
@@ -664,6 +698,9 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		self.mainWindow.getStackView().myEvent(myEvent)
 
 	def getCellValue_int(self, colName, row=None):
+		"""
+		row: pass none to use current selected row with self.currentRow()
+		"""
 		theRet = None
 		if row is None:
 			row = self.currentRow()
@@ -692,6 +729,75 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			else:
 				theRet = myItem.text()
 		return theRet
+
+######################################################
+class bAnnotationTableWidget(bTableWidget2):
+	def __init__(self, listOfDict, parent=None):
+		type = 'annotations'
+		super(bAnnotationTableWidget, self).__init__(type, listOfDict, parent)
+
+	def on_clicked_row(self):
+		row = self.currentRow()
+		
+		myItem = self.item(row, 0) # 0 is idx column
+		myIdx = myItem.text()
+		if myIdx=='':
+			return
+		myIdx = int(myIdx)
+
+		modifiers = QtWidgets.QApplication.keyboardModifiers()
+		isShift = modifiers == QtCore.Qt.ShiftModifier
+
+		# emit a signal
+		if self.stopSelectionPropogation:
+			self.stopSelectionPropogation = False
+		else:
+			print('=== bAnnotationTableWidget.on_clicked_row() type:', self._type, 'row:', row, 'myIdx:', myIdx, 'isShift:', isShift)
+			myEvent = bimpy.interface.bEvent('select annotation', nodeIdx=myIdx, snapz=True, isShift=isShift)
+			colIdx = self._getColumnIdx('z')
+			myItem = self.item(row, colIdx)
+			myEvent._sliceIdx = int(float(myItem.text()))
+			print('   emit myEvent:', myEvent)
+			self.selectRowSignal.emit(myEvent)
+
+	def keyPressEvent(self, event):
+		key = event.key()
+		print('=== bAnnotationTableWidget.keyPressEvent() in', self._type, 'key:', event.text())
+		
+		if key in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
+			print('bAnnotationTableWidget delete not implemented ... please delete from the image')
+			'''
+			selectedObjectIdx = self.getCellValue_int('idx') #, row=None):
+			event = {'type':'deleteAnnotation', 'objectType': 'annotation', 'objectIdx':selectedObjectIdx}
+			self.mainWindow.getStackView().myEvent(event)
+			'''
+		else:
+			super(bAnnotationTableWidget, self).keyPressEvent(event)
+
+	def slot_select(self, myEvent):
+		myEvent.printSlot('bAnnotationTableWidget.slot_select()')
+
+		if myEvent.eventType == 'select annotation':
+			annotationIdx = myEvent.nodeIdx
+			if annotationIdx is None:
+				return # happens on user key 'esc'
+			self.mySelectRow(itemIdx=annotationIdx)
+
+	def slot_updateTracing(self, myEvent):
+		"""
+		respond to edits
+		"""
+
+		myEvent.printSlot('bAnnotationTableWidget.slot_updateTracing()')
+		
+		if myEvent.eventType == 'newAnnotation':
+			newRowIdx = self.appendRow(myEvent.nodeDict)
+			self.mySelectRow(rowIdx=newRowIdx)
+			self.repaint()
+
+		elif myEvent.eventType == 'deleteAnnotation':
+			self.deleteRowByIndex(myEvent.nodeIdx)
+			self.repaint()
 
 def main():
 	import sys
