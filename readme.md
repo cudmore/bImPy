@@ -18,20 +18,19 @@ We are developing **bImPy** in the open but the project is still in an early alp
 
 ## Screenshots
 
-**Figure 1. Stack window with a vascular tracing.** **(a)** Control image contrast with sliders and a pixel intensity histogram. **(b)** The current slice and interface to toggle different aspects of the tracing. **(c)** Image (grayscale) and annotation/tracing interface. This is a 3D .tif stack looking at one image slice with the tracing overlaid. The tracing includes vessels (cyan), branch points (red), a vessel selection specified by the user (yellow), and a single point selection with an automatically drawn line to measure diameter (megenta). **(d)** Each point in the tracing has an automatically generated perpendicular line (megenta) and the line intensity profile is used to automatically generated best fits for diameter (blue). **(e)** Feedback on mouse position and pixel intensity as well as the last annotation edit.
-
 <!-- <IMG SRC="https://github.com/cudmore/bImPy/blob/master/docs/img/vascular-tracing-example.png"> -->
 <IMG WIDTH=800 SRC="docs/img/bimpy-figure.png">
 
+**Figure 1. Stack window with a vascular tracing.** **(a)** Control image contrast with sliders and a pixel intensity histogram. **(b)** The current slice and interface to toggle different aspects of the tracing. **(c)** Image (grayscale) and annotation/tracing interface. This is a 3D .tif stack looking at one image slice with the tracing overlaid. The tracing includes vessels (cyan), branch points (red), a vessel selection specified by the user (yellow), and a single point selection with an automatically drawn line to measure diameter (megenta). **(d)** Each point in the tracing has an automatically generated perpendicular line (megenta) and the line intensity profile is used to automatically generated best fits for diameter (blue). **(e)** Feedback on mouse position and pixel intensity as well as the last annotation edit.
 
-**Figure 2. Stack window using the 3D Napari viewer.** bImPy is also using the excellent 3D visualization tool [Napari][napari]. Here is a Napari 3D view of the image volume (green) with tracing (cyan) and a user selection (yellow).
 
 <IMG WIDTH=600 SRC="docs/img/napari-example.png">
 
-**Figure 3. Stack window using interactive and sortable annotation lists.** Because tracings usually get large with more than 10,000 individual points and many hundreds of vessel segments, it is often useful to have a list of annotation objects. In this screenshot, we have a list of branch points (1st list) and vessel segments (2nd list). Selecting an annotation from a list or in the image will highlight that annotation in all other views. Each annotation in the lists is analyzed and the list can be sorted by, for example, vessel length. Here, we have selected a longer vessel with length of 314.26 (Len 3D) in the list and it is selected in the image (yellow).
+**Figure 2. Stack window using the 3D Napari viewer.** bImPy is also using the excellent 3D visualization tool [Napari][napari]. Here is a Napari 3D view of the image volume (green) with tracing (cyan) and a user selection (yellow).
 
 <IMG WIDTH=700 SRC="docs/img/bimpy-annotation-tables.png">
 
+**Figure 3. Stack window using interactive and sortable annotation lists.** Because tracings usually get large with more than 10,000 individual points and many hundreds of vessel segments, it is often useful to have a list of annotation objects. In this screenshot, we have a list of branch points (1st list) and vessel segments (2nd list). Selecting an annotation from a list or in the image will highlight that annotation in all other views. Each annotation in the lists is analyzed and the list can be sorted by, for example, vessel length. Here, we have selected a longer vessel with length of 314.26 (Len 3D) in the list and it is selected in the image (yellow).
 
 ## Download, Install, Run ...
 
