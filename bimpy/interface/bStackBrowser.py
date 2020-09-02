@@ -329,6 +329,8 @@ if __name__ == '__main__':
 	# abb aics
 	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
 
+	# tryin z-expanded stack 'a'
+	path = '/Users/cudmore/Box/data/20200717/aicsAnalysis/20200717__A01_G001_0014a_ch2.tif'
 	try:
 		if useBioformats:
 			mjb = bimpy.bJavaBridge()

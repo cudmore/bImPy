@@ -145,7 +145,7 @@ class bVascularTracing:
 		"""
 		#print('!!! getSlabEdgeIdx() slabIdx:', slabIdx)
 		#print('   self.edgeIdx[slabIdx]:', self.edgeIdx[slabIdx])
-		
+
 		if slabIdx is None or np.isnan(slabIdx):
 			return None
 		slabIdx = int(slabIdx)
@@ -1089,7 +1089,9 @@ class bVascularTracing:
 		## abb aics analysis
 		if doAics:
 			uFirstSlice = 44 # /Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif
+			uFirstSlice = 1 + uFirstSlice * 3 # for z-expanded file 'a'
 			uLastSlice = 64
+			uLastSlice = 1 + uLastSlice * 3 # for z-expanded file 'a'
 			#uFirstSlice = 56 # /Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0015_ch2.tif
 			#uLastSlice = 61
 			if uFirstSlice is not None and uLastSlice is not None:
@@ -1101,8 +1103,9 @@ class bVascularTracing:
 			self._dvMask = tifffile.imread(dvMaskPath)
 
 
-		parentStack = self.parentStack.getStack('ch1')
-
+		# 20200901 laptop
+		#parentStack = self.parentStack.getStack('ch1')
+		parentStack = self.parentStack._stackList[1] # vasc channel
 		#
 		# convert the deepvess mask to a skeleton (same as deepves postprocess)
 		print('    making skeleton from binary stack dvMask ...')
@@ -2614,7 +2617,7 @@ class bVascularTracing:
 		print(timeIt.elapsed())
 
 		return self.maskedEdgesDict
-		
+
 if __name__ == '__main__':
 	#path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
