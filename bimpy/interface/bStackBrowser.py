@@ -312,8 +312,8 @@ if __name__ == '__main__':
 
 	# tryin z-expanded stack 'a'
 	#path = '/Users/cudmore/Box/data/20200717/aicsAnalysis/20200717__A01_G001_0014a_ch2.tif'
-
-	path = '/Users/cudmore/data/bigData/20200717_ch2.tif'
+	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
+	#path = '/Users/cudmore/data/bigData/20200717_ch2.tif'
 
 	try:
 		if useBioformats:
