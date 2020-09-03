@@ -44,3 +44,7 @@ switch displayStateDict['displayThisStack'] = 'ch1' to
 	displayStateDict['displayThisStack'] = 'rgb'
 	...
 
+- I am saving then loading (h5f and pickle) with _ch1/_ch2, save without ch1/ch2
+
+implement increase/decrease tracing with +/-
+

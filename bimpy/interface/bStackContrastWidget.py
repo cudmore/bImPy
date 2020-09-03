@@ -86,10 +86,10 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			print('\n\n\tFIX THIS bit Depth BUG !!!!!!!!!!', 'self.bitDepth:', self.bitDepth, type(self.bitDepth), '\n\n')
 			self.bitDepth = int(self.bitDepth)
 		elif self.bitDepth is None:
-			print('  ERROR: bStackContrastWidget() got None bitDepth -->> setting to 8')
+			print('  WARNING: bStackContrastWidget() got None bitDepth -->> setting to 8')
 			self.bitDepth = 8
 
-		print('  bStackContrastWidget.__init__() self.bitDepth:', self.bitDepth, type(self.bitDepth))
+		#print('  bStackContrastWidget.__init__() self.bitDepth:', self.bitDepth, type(self.bitDepth))
 
 		self.contrastDict = {
 			'minContrast': 0,

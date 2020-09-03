@@ -179,7 +179,7 @@ class bStackBrowser(QtWidgets.QMainWindow):
 			updateItem.setText(nEdgesCol, str(nEdges))
 
 	def appendStack(self, path):
-		print('appendStack() path:', path)
+		print('  bStackBrowser.appendStack() path:', path)
 
 		try:
 			existingIndex = self.myFileList.index(path)
@@ -305,8 +305,15 @@ if __name__ == '__main__':
 	# abb aics
 	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
 
+	# padded/expanded stack
+	path = '/Users/cudmore/data/testing/aicsAnalysis/20200717__A01_G001_0014a_ch2.tif'
+	# stack after compression (and _skel made from compression)
+	path = '/Users/cudmore/data/testing/aicsAnalysis/20200717__A01_G001_0014ab_ch2.tif'
+
 	# tryin z-expanded stack 'a'
 	#path = '/Users/cudmore/Box/data/20200717/aicsAnalysis/20200717__A01_G001_0014a_ch2.tif'
+
+	path = '/Users/cudmore/data/bigData/20200717_ch2.tif'
 
 	try:
 		if useBioformats:

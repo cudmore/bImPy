@@ -41,6 +41,9 @@ class bOptionsDialog(QtWidgets.QDialog):
 			if key1 == 'Panels':
 				col += 1
 				row = 0
+			if key1 == 'Window':
+				col += 1
+				row = 0
 			groupBox = QtWidgets.QGroupBox(key1)
 			layout = QtWidgets.QFormLayout()
 			for key2 in self.localOptions[key1].keys():

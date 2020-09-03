@@ -48,24 +48,28 @@ class bVascularTracing:
 		#self._dvMask = None # created in loadDeepVess
 		self._initTracing()
 
-		self.hasFile = {'h5f':False, 'vesselucida':False, 'deepvess':False}
-		loaded_h5f = self.load()
-		if loaded_h5f:
-			self.hasFile['h5f'] = True
-		else:
-			loadedVesselucida = self.loadVesselucida_xml()
-			if loadedVesselucida:
-				self.hasFile['vesselucida'] = True
+		doLoad = True
+		if doLoad:
+			self.hasFile = {'h5f':False, 'vesselucida':False, 'deepvess':False}
+			loaded_h5f = self.load()
+			if loaded_h5f:
+				self.hasFile['h5f'] = True
 			else:
-				loadedDeepVess = self.loadDeepVess()
-				if loadedDeepVess:
-					self.hasFile['deepvess'] = True
-			#
-			# todo: combine the next two into one function
-			self.analyzeEdgeDeadEnds() # mark edges coming from Vesseluica that has pre/post None
-			self.fixMissingNodes() # fill in missing pre/post nodes coming from vesselucia
-			self._analyze()
-			self.colorize()
+				donotloadForNow = False
+				if donotloadForNow:
+					loadedVesselucida = self.loadVesselucida_xml()
+					if loadedVesselucida:
+						self.hasFile['vesselucida'] = True
+					else:
+						loadedDeepVess = self.loadDeepVess()
+						if loadedDeepVess:
+							self.hasFile['deepvess'] = True
+					#
+					# todo: combine the next two into one function
+					self.analyzeEdgeDeadEnds() # mark edges coming from Vesseluica that has pre/post None
+					self.fixMissingNodes() # fill in missing pre/post nodes coming from vesselucia
+					self._analyze()
+					self.colorize()
 		#
 		self.makeGraph() # always make the graph
 
@@ -711,6 +715,11 @@ class bVascularTracing:
 	def _printStats(self):
 		self._printInfo()
 
+	def _printInfo2(self):
+		print('    slabs:', self.numSlabs(),
+			'nodes:', self.numNodes(),
+			'edges:', self.numEdges())
+
 	def _printInfo(self):
 		'''
 		print('file:', self.parentStack)
@@ -1285,8 +1294,8 @@ class bVascularTracing:
 
 		self._analyze()
 
-		# abb aics
-		bimpy.bVascularTracingAics.detectEdgesAndNodesToRemove(self)
+		# abb aics, this just prints stats
+		#bimpy.bVascularTracingAics.detectEdgesAndNodesToRemove(self)
 
 		print('    done loadDeepVess()')
 		return True
@@ -2356,7 +2365,7 @@ class bVascularTracing:
 				print('makeGraph() skipping edge:', idx, 'pre/post:', preNode, postNode)
 
 				#print('        error: edge idx:', idx, 'preNode:', preNode, 'postNode:', postNode)
-		print('bVascularTracing.makeGraph() created self.G with ')
+		print('  bVascularTracing.makeGraph() created self.G with:')
 		print('    nodeDictList:', len(self.nodeDictList), 'edgeDictList:', len(self.edgeDictList))
 		print('    number_of_nodes:', self.G.number_of_nodes())
 		print('    number_of_edges:', self.G.number_of_edges())
@@ -2581,7 +2590,7 @@ class bVascularTracing:
 			#self.edgeIdx[idx] = idx
 
 	def _preComputeAllMasks(self, verbose=False):
-		print('_preComputeAllMasks2()')
+		print('  bVascularTracing._preComputeAllMasks2()')
 
 		timeIt = bimpy.util.bTimer('  _preComputeAllMasks2')
 
@@ -2641,7 +2650,7 @@ class bVascularTracing:
 
 		}
 
-		print(timeIt.elapsed())
+		print('  ', timeIt.elapsed())
 
 		return self.maskedEdgesDict
 

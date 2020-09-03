@@ -26,7 +26,6 @@ logging.basicConfig(filename=filename,
 
 import bimpy
 
-
 class bStack:
 	"""
 	Manages a 3D image stack or time-series movie of images
@@ -60,9 +59,21 @@ class bStack:
 		self.annotationList.load() # will fail when not already saved
 
 		# load vesselucida analysis from .xml file
+		self.slabList = None
 		self.slabList = bimpy.bVascularTracing(self, self.path)
 
 		self.analysis = bimpy.bAnalysis(self)
+
+	def print(self):
+		print('bStack.print() path:', self.path)
+		print('  stacks')
+		for idx, stack in enumerate(self._stackList):
+			if stack is None:
+				print('    ', idx, 'None')
+			else:
+				print('    ', idx, stack.shape)
+		print('  slabList')
+		print(self.slabList._printInfo2())
 
 	def _getSavePath(self):
 		"""
@@ -193,6 +204,11 @@ class bStack:
 			#print('   error: 1 bStack.getImage2() got bad _stackList shape for channel:', channel, 'sliceNum:', sliceNum)
 			return None
 
+	def hasChannelLoaded(self, channel):
+		channel -= 1
+		theRet = self._stackList[channel] is not None
+		return theRet
+
 	def getSlidingZ2(self, channel, sliceNumber, upSlices, downSlices):
 		"""
 		leaving thisStack (ch1, ch2, ch3, rgb) so we can implement rgb later
@@ -268,8 +284,8 @@ class bStack:
 				# mask is made of all labels
 				self._stackList[stackListIdx] = labeledData > maskFromLabelGreaterThan
 			else:
-				print('  bStack.loadLabeled() did not find _labeled path:', labeledPath)
-
+				#print('  bStack.loadLabeled() did not find _labeled path:', labeledPath)
+				pass
 
 		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
@@ -304,8 +320,8 @@ class bStack:
 				# mask is made of all labels
 				self._stackList[stackListIdx] = skelData
 			else:
-				print('  bStack.loadSkel() did not find _skel path:', skelPath)
-
+				#print('  bStack.loadSkel() did not find _skel path:', skelPath)
+				pass
 
 		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
@@ -326,15 +342,14 @@ class bStack:
 			print('    loadStack2() path_ch1:', path_ch1)
 			stackData = tifffile.imread(path_ch1)
 			self._stackList[0] = stackData
-			self._numChannels += 1
+			self._numChannels =1 #+= 1
 		path_ch2 = basename + '_ch2.tif'
 		print('  bStack.loadStack2() path_ch2:', path_ch2)
 		if os.path.exists(path_ch2):
 			print('    loadStack2() path_ch2:', path_ch2)
 			stackData = tifffile.imread(path_ch2)
 			self._stackList[1] = stackData
-			self._numChannels += 1
-
+			self._numChannels = 2 #+= 1
 
 	def saveAnnotations(self):
 		h5FilePath = None

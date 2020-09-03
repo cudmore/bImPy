@@ -28,6 +28,11 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 		myAlign = QtCore.Qt.AlignLeft
 		
+		image_ = QtWidgets.QLabel("Channel")
+		self.imageLabel = QtWidgets.QLabel("")
+		hBoxLayout.addWidget(image_)
+		hBoxLayout.addWidget(self.imageLabel, myAlign)
+
 		currentSliceStr = 'Slice 0 /' + str(self.numSlices)
 		self.currentSliceLabel = QtWidgets.QLabel(currentSliceStr)
 		hBoxLayout.addWidget(self.currentSliceLabel, myAlign)
@@ -137,6 +142,16 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			self.mainWindow.getStackView()._preComputeAllMasks()
 			self.mainWindow.getStackView().setSlice()
 			
+	def slot_DisplayStateChange(self, key, theDict):
+		"""
+		update based on theDict myQtGraphPlotWidget.displayStateDict
+		"""
+		print('bStatusToolbarWidget.slot_DisplayStateChange() key:', key, 'theDict:', theDict)
+		if key == 'displayThisStack':
+			theStr = str(theDict[key])
+			self.imageLabel.setText(theStr)
+			#self.repaint()
+
 	def slot_StateChange(self, signalName, signalValue):
 		"""
 		signalValue: can be int, str, dict , ...

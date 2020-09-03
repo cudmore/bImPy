@@ -139,7 +139,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 							connect='finite',
 							pxMode = pxMode,
 							clickable=True)
+		#self.mySlabPlot = self.plot([], [], self.slabPlotParams, connect='finite')
+
 		self.mySlabPlot.sigPointsClicked.connect(self.onMouseClicked_slabs)
+		# should be faster but does not seem to work?
 		#self.mySlabPlot.setClipToView(True)
 
 		pen = pg.mkPen(color='y', width=3)
@@ -351,12 +354,44 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		pxMode = True #(default is True) # TOO SLOW IF False !!!!
 		tracingPenSize = self.options['Tracing']['tracingPenSize'] # slabs symbolSize
 		tracingPenWidth = self.options['Tracing']['tracingPenWidth'] # lines between slabs, pen width
-		if self.myZoom > 5:
-			tracingPenSize *= 3
-			tracingPenWidth *= 3
+		#if self.myZoom > 5:
+		#	tracingPenSize *= 3
+		#	tracingPenWidth *= 3
 		pen = pg.mkPen(color='c', width=tracingPenWidth) # want to update this to change with user options
-		self.mySlabPlot.setData(yEdgeMasked, xEdgeMasked, pen=pen, pxMode=pxMode, symbolSize=tracingPenSize, connected='finite') # flipped
+		# self.slabPlotParams
+		try:
+			self.mySlabPlot.setData(yEdgeMasked, xEdgeMasked,
+						pen=pen, pxMode=pxMode,
+						symbolSize=tracingPenSize, connected='finite') # flipped
+			#self.mySlabPlot.setData(yEdgeMasked, xEdgeMasked,
+			#			self.slabPlotParams, connected='finite')  # flipped
+		except (ValueError) as e:
+			print('my ValueError in _drawEdges()')
+			print('  e:', e)
+			print('  yEdgeMasked:', yEdgeMasked)
+			print('  xEdgeMasked:', xEdgeMasked)
 
+	def incrementDecrimentTracing(self, doThis='increase'):
+		if doThis == 'increase':
+			increment = +1
+		elif doThis == 'decrease':
+			increment = -1
+		else:
+			increment = 0
+		# nodes
+		self.options['Tracing']['nodePenSize'] += increment
+		if self.options['Tracing']['nodePenSize'] < 0:
+			self.options['Tracing']['nodePenSize'] = 0
+		# edges
+		self.options['Tracing']['tracingPenSize'] += increment
+		if self.options['Tracing']['tracingPenSize'] < 0:
+			self.options['Tracing']['tracingPenSize'] = 0
+		self.options['Tracing']['tracingPenWidth'] += increment
+		if self.options['Tracing']['tracingPenWidth'] < 0:
+			self.options['Tracing']['tracingPenWidth'] = 0
+
+		# update
+		self.setSlice()
 
 	def _drawAnnotation(self):
 		#print('myPyQtGraphPlotWidget.drawNodes()')
@@ -817,16 +852,20 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			elif displayThisStack > maxNumChannels: #in [5,6,7,8]:
 				# mask + image ... need to set contrast of [0,1] mask !!!
 				sliceMaskImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
-				if sliceMaskImage is not None:
+				if sliceMaskImage is None:
+					print('warning: got None sliceMaskImage for displayThisStack:', displayThisStack)
+				else:
 					#imageChannel = displayThisStack-maxNumChannels
 					imageChannel = displayThisStack % maxNumChannels # remainder after division
 					sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
+					skelChannel = displayThisStack + maxNumChannels
+					sliceSkelImage = self.mySimpleStack.getImage2(channel=skelChannel, sliceNum=thisSlice)
 					m = sliceMaskImage.shape[0]
 					n = sliceMaskImage.shape[1]
 					sliceImage = np.zeros((m,n,3), dtype=np.uint8)
 					# assuming we want channel 1 as green and channel 2 as magenta
 					sliceImage[:,:,0] = sliceChannelImage # red
-					sliceImage[:,:,1] = sliceMaskImage # green
+					sliceImage[:,:,1] = sliceSkelImage # green
 					sliceImage[:,:,2] = sliceMaskImage # blue
 					# contrast for [0,1] mask
 					autoLevels = False
@@ -881,6 +920,61 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		self.displayStateDict['displayThisStack'] = stackNumber
 		self.setSlice() # just refresh
+
+	def editNote(self):
+		'''
+		windowTitle = 'xxx'
+		dialogLabel = 'yyy'
+		text = 'zzz'
+		text, ok = QtWidgets.QInputDialog.getText(self, windowTitle, dialogLabel, text=text)
+		if ok:
+			print('text:', text)
+		else:
+			print('cancelled by user')
+		'''
+
+		selectedNodeIdx = self.selectedNode()
+		selectedEdgeIdx = self.selectedEdge()
+		selectedAnnotationIdx = self.selectedAnnotation()
+		if selectedNodeIdx is not None:
+			dialogTitle = f'Edit note for node {selectedNodeIdx}'
+			dialogLabel = dialogTitle
+			existingNote = self.mySimpleStack.slabList.getNode(selectedNodeIdx)['note']
+			text, ok = QtWidgets.QInputDialog.getText(self, dialogTitle, dialogLabel, text=existingNote)
+			if ok:
+				self.mySimpleStack.slabList.getNode(selectedNodeIdx)['note'] = text
+				#
+				newNodeDict = self.mySimpleStack.slabList.getNode(selectedNodeIdx)
+				myEvent = bimpy.interface.bEvent('updateNode', nodeIdx=selectedNodeIdx, nodeDict=newNodeDict)
+				self.tracingEditSignal.emit(myEvent)
+			else:
+				print('cancelled by user')
+		elif selectedEdgeIdx is not None:
+			dialogTitle = f'Edit note for edge {selectedEdgeIdx}'
+			dialogLabel = dialogTitle
+			existingNote = self.mySimpleStack.slabList.getEdge(selectedEdgeIdx)['note']
+			text, ok = QtWidgets.QInputDialog.getText(self, dialogTitle, dialogLabel, text=existingNote)
+			if ok:
+				self.mySimpleStack.slabList.getEdge(selectedEdgeIdx)['note'] = text
+				#
+				newEdgeDict = self.mySimpleStack.slabList.getEdge(selectedEdgeIdx)
+				myEvent = bimpy.interface.bEvent('updateEdge', edgeIdx=selectedEdgeIdx, edgeDict=newEdgeDict)
+				self.tracingEditSignal.emit(myEvent)
+			else:
+				print('cancelled by user')
+		elif selectedAnnotationIdx is not None:
+			dialogTitle = f'Edit note for annotation {selectedAnnotationIdx}'
+			dialogLabel = dialogTitle
+			existingNote = self.mySimpleStack.annotationList.getItemDict(selectedAnnotationIdx)['note']
+			text, ok = QtWidgets.QInputDialog.getText(self, dialogTitle, dialogLabel, text=existingNote)
+			if ok:
+				self.mySimpleStack.annotationList.getItemDict(selectedAnnotationIdx)['note'] = text
+				#
+				newAnnotationDict = self.mySimpleStack.annotationList.getItemDict(selectedAnnotationIdx)
+				myEvent = bimpy.interface.bEvent('updateAnnotation', nodeIdx=selectedAnnotationIdx, nodeDict=newAnnotationDict)
+				self.tracingEditSignal.emit(myEvent)
+			else:
+				print('cancelled by user')
 
 	def _zoomToPoint(self, x, y):
 		"""
@@ -965,7 +1059,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		# event.key() is a number
 		if event.text() != 'e':
-			print(f'=== keyPressEvent() event.text() "{event.text()}"')
+			print(f'=== myPyQtGraphPlotWidget.keyPressEvent() event.text() "{event.text()}"')
 
 		# this works to print 'left', 'right' etc etc
 		# but raises 'UnicodeEncodeError' for others
@@ -1069,6 +1163,13 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#		self.displayStateDict['displayThisStack'] = 'mask'
 		#		self.setSlice() # just refresh
 
+		elif event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
+			# increase tracing
+			self.incrementDecrimentTracing('increase')
+		elif event.key() == QtCore.Qt.Key_Minus:
+			# increase tracing
+			self.incrementDecrimentTracing('decrease')
+
 		elif event.key() == QtCore.Qt.Key_J:
 			event = {'type':'joinTwoEdges'}
 			self.myEvent(event)
@@ -1084,57 +1185,19 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.mainWindow.signal('save')
 
 		elif event.key() in [QtCore.Qt.Key_T]:
+			# todo: use this after adding deferUpdate=True
+			#  self.displayStateChange('showNodes', toggle=True)
 			self.displayStateDict['showNodes'] = not self.displayStateDict['showNodes']
 			self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
 			self.displayStateDict['showAnnotations'] = not self.displayStateDict['showAnnotations']
 			self.setSlice() # refresh
 
+		elif event.key() in [QtCore.Qt.Key_Z]:
+			self.displayStateChange('displaySlidingZ', toggle=True)
+
 		else:
 			# if not handled by *this, this will continue propogation
 			event.setAccepted(False)
-
-	def editNote(self):
-		'''
-		windowTitle = 'xxx'
-		dialogLabel = 'yyy'
-		text = 'zzz'
-		text, ok = QtWidgets.QInputDialog.getText(self, windowTitle, dialogLabel, text=text)
-		if ok:
-			print('text:', text)
-		else:
-			print('cancelled by user')
-		'''
-
-		selectedNodeIdx = self.selectedNode()
-		selectedEdgeIdx = self.selectedEdge()
-		selectedAnnotationIdx = self.selectedAnnotation()
-		if selectedNodeIdx is not None:
-			dialogTitle = f'Edit note for node {selectedNodeIdx}'
-			dialogLabel = dialogTitle
-			existingNote = self.mySimpleStack.slabList.getNode(selectedNodeIdx)['note']
-			text, ok = QtWidgets.QInputDialog.getText(self, dialogTitle, dialogLabel, text=existingNote)
-			if ok:
-				self.mySimpleStack.slabList.getNode(selectedNodeIdx)['note'] = text
-			else:
-				print('cancelled by user')
-		if selectedEdgeIdx is not None:
-			dialogTitle = f'Edit note for edge {selectedEdgeIdx}'
-			dialogLabel = dialogTitle
-			existingNote = self.mySimpleStack.slabList.getEdge(selectedEdgeIdx)['note']
-			text, ok = QtWidgets.QInputDialog.getText(self, dialogTitle, dialogLabel, text=existingNote)
-			if ok:
-				self.mySimpleStack.slabList.getEdge(selectedEdgeIdx)['note'] = text
-			else:
-				print('cancelled by user')
-		if selectedAnnotationIdx is not None:
-			dialogTitle = f'Edit note for annotation {selectedAnnotationIdx}'
-			dialogLabel = dialogTitle
-			existingNote = self.mySimpleStack.annotationList.getItemDict(selectedAnnotationIdx)['note']
-			text, ok = QtWidgets.QInputDialog.getText(self, dialogTitle, dialogLabel, text=existingNote)
-			if ok:
-				self.mySimpleStack.annotationList.getItemDict(selectedAnnotationIdx)['note'] = text
-			else:
-				print('cancelled by user')
 
 	def keyReleaseEvent(self, event):
 		#print(f'=== keyReleaseEvent() event.text() {event.text()}')
@@ -1169,10 +1232,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			# zoom in/out with mouse
 			super(myPyQtGraphPlotWidget, self).wheelEvent(event)
 
+			'''
 			viewRect = self.viewRect()
 			print('  - viewRect:', viewRect)
 			print('  viewRect.width():', viewRect.width())
 			print('  viewRect.height():', viewRect.height())
+			'''
 
 			'''
 			sceneViewRect = self.scene().sceneRect() # does not change
@@ -1184,7 +1249,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				self.myZoom += 1
 			elif mouseDown:
 				self.myZoom -= 1
-			print('  self.myZoom:', self.myZoom)
+			#print('  self.myZoom:', self.myZoom)
 
 		else:
 			# set slice
@@ -1217,26 +1282,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#imagePos = self.myImage.mapFromScene(event.pos())
 		imagePos = self.myImage.mapFromScene(event.pos())
 		slabPos = self.mySlabPlot.mapFromScene(event.pos())
-		'''
-		print('  event.pos():', event.pos())
-		print('  imagePos:', imagePos) # slighlty off???
-		print('  slabPos:', slabPos)
-		'''
 
-		'''
-		print('  self.viewRange():', self.viewRange()) # [[xmin,xmax], [ymin,ymax]]
-
-		xRange = self.viewRange()[0]
-		yRange = self.viewRange()[1]
-		xWidth = xRange[1] - xRange[0]
-
-		xRange[0] += 100
-		xRange[1] += 200
-
-		self.setRange(xRange=xRange, yRange=yRange)
-		'''
-
-		print('  self.getViewBox():', self.getViewBox())
+		#print('  self.getViewBox():', self.getViewBox())
 
 		x = imagePos.x()
 		y = imagePos.y()
@@ -1503,6 +1550,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.selectAnnotation(annotationIdx, snapz=snapz, isShift=isShift)
 
 	def displayStateChange(self, key1, value=None, toggle=False):
+		#print('displayStateChange() key1:', key1, 'value:', value, 'toggle:', toggle)
 		if toggle:
 			value = not self.displayStateDict[key1]
 		self.displayStateDict[key1] = value
@@ -1860,6 +1908,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		print(f'myPyQtGraphPlotWidget.newAnnotation() x:{x}, y:{y}, z:{z}')
 		newAnnotationIdx = self.mySimpleStack.annotationList.addAnnotation(x, y, z)
+
+		#print('newAnnotationIdx:', newAnnotationIdx)
 
 		self.setSlice()
 

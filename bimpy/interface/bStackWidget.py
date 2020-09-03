@@ -48,6 +48,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.options_defaults()
 
 		self.path = path
+		self.mySearchAnnotation = None
 
 		basename = os.path.basename(self.path)
 		self.setWindowTitle(basename)
@@ -238,6 +239,9 @@ class bStackWidget(QtWidgets.QWidget):
 		self.editTable2.selectRowSignal.connect(self.myStackView2.slot_selectNode)
 		self.editTable2.selectRowSignal.connect(self.myStackView2.slot_selectEdge)
 
+		self.myStackView2.displayStateChangeSignal.connect(self.statusToolbarWidget.slot_DisplayStateChange)
+		self.myStackView2.displayStateChangeSignal.connect(self.myFeedbackWidget.slot_DisplayStateChange)
+		#
 		self.myStackView2.setSliceSignal.connect(self.mySliceSlider.slot_UpdateSlice)
 		self.myStackView2.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
 		self.myStackView2.selectNodeSignal.connect(self.nodeTable2.slot_select)
@@ -249,11 +253,11 @@ class bStackWidget(QtWidgets.QWidget):
 		#
 		# new annotation table using bAnnotationList (from bStack)
 		self.myStackView2.selectAnnotationSignal.connect(self.annotationTable.slot_select)
-		self.myStackView2.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
 		self.annotationTable.selectRowSignal.connect(self.myStackView2.slot_selectAnnotation)
 
 		self.myStackView2.tracingEditSignal.connect(self.nodeTable2.slot_updateTracing)
 		self.myStackView2.tracingEditSignal.connect(self.edgeTable2.slot_updateTracing)
+		self.myStackView2.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
 		# end abb PyQtGraph
 		##
 		##
@@ -680,7 +684,8 @@ class bStackWidget(QtWidgets.QWidget):
 		#self.editTable2.populate(self.mySimpleStack.slabList.edgeDictList)
 
 	def keyPressEvent(self, event):
-		#print('=== bStackWidget.keyPressEvent() event.key():', event.key())
+		print('=== bStackWidget.keyPressEvent() event.key():', event.key())
+
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
 		isControl = modifiers == QtCore.Qt.ControlModifier
@@ -717,7 +722,8 @@ class bStackWidget(QtWidgets.QWidget):
 
 		elif event.key() in [QtCore.Qt.Key_Q]:
 			# quit search
-			self.mySearchAnnotation.continueSearch = False
+			if self.mySearchAnnotation is not None:
+				self.mySearchAnnotation.continueSearch = False
 
 		elif event.text() == 'i':
 			self.mySimpleStack.print()
@@ -753,7 +759,7 @@ class bStackWidget(QtWidgets.QWidget):
 		print(' ' )
 
 	def optionsVersion(self):
-		return 1.2
+		return 1.3
 
 	def options_defaults(self):
 		print('bStackWidget.options_defaults()')
@@ -779,12 +785,6 @@ class bStackWidget(QtWidgets.QWidget):
 		twilight_shifted_r, viridis, viridis_r, winter, winter_r
 		"""
 
-		#self.options['Code'] = OrderedDict()
-		self.options['Code'] = OrderedDict({
-			'optionsVersion': self.optionsVersion(),
-			'_verboseSlots': False
-		})
-
 		self.options['Warnings'] = OrderedDict()
 		self.options['Warnings'] = OrderedDict({
 			'warnOnNewNode': True,
@@ -799,7 +799,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
 			'allowEdit': True,
-			'nodePenSize': 5, #**2,
+			'nodePenSize': 15, #**2,
 			'nodeColor': 'r',
 			'nodeSelectionPenSize': 5, #**2, # make this smaller than nodePenSize (should always be on top) ????
 			'nodeSelectionColor': 'y',
@@ -807,8 +807,8 @@ class bStackWidget(QtWidgets.QWidget):
 			'nodeSelectionFlashColor': 'm',
 			'showTracingAboveSlices': 5,
 			'showTracingBelowSlices': 5,
-			'tracingPenWidth': 3, # lines between slabs
-			'tracingPenSize': 5, # slabs
+			'tracingPenWidth': 5, # lines between slabs
+			'tracingPenSize': 10, # slabs
 			'tracingColor': 'c',
 			'tracingSelectionPenSize': 2,
 			'tracingSelectionColor': 'y',
@@ -828,7 +828,7 @@ class bStackWidget(QtWidgets.QWidget):
 			'showNodeList': False,
 			'showEdgeList': False,
 			'showSearch': False,
-			'showAnnotations': True,
+			'showAnnotations': False,
 			'showContrast': False,
 			#'showFeedback': True,
 			'showStatus': True,
@@ -838,8 +838,8 @@ class bStackWidget(QtWidgets.QWidget):
 		self.options['Stack'] = OrderedDict()
 		self.options['Stack'] = OrderedDict({
 			'colorLut': 'gray',
-			'upSlidingZSlices': 5,
-			'downSlidingZSlices': 5,
+			'upSlidingZSlices': 2,
+			'downSlidingZSlices': 2,
 			})
 
 		# window position and size
@@ -850,6 +850,12 @@ class bStackWidget(QtWidgets.QWidget):
 			'left': 5,
 			'top': 5,
 			})
+
+		#self.options['Code'] = OrderedDict()
+		self.options['Code'] = OrderedDict({
+			'optionsVersion': self.optionsVersion(),
+			'_verboseSlots': False
+		})
 
 		# this is hard coded in bEvent class
 		'''
@@ -868,7 +874,7 @@ class bStackWidget(QtWidgets.QWidget):
 	def optionsLoad(self):
 		optionsFilePath = self.optionsFile()
 		if os.path.exists(optionsFilePath):
-			print('bStackWidget.optionsLoad()', optionsFilePath)
+			print('  bStackWidget.optionsLoad()', optionsFilePath)
 			with open(optionsFilePath) as f:
 				self.options = json.load(f)
 			#print(self.options)
@@ -910,19 +916,24 @@ class bStackWidget(QtWidgets.QWidget):
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber}')
-			isEnabledList.append(True)
+			isEnabled = self.mySimpleStack.hasChannelLoaded(chanNumber)
+			isEnabledList.append(isEnabled)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1
 			isCheckedList.append(isChecked)
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber} Mask')
-			isEnabledList.append(True)
+			actualChanNumber = maxNumChannels + i
+			isEnabled = self.mySimpleStack.hasChannelLoaded(actualChanNumber)
+			isEnabledList.append(isEnabled)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1+maxNumChannels
 			isCheckedList.append(isChecked)
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber} Skel')
-			isEnabledList.append(True)
+			actualChanNumber = 2 * maxNumChannels + i
+			isEnabled = self.mySimpleStack.hasChannelLoaded(actualChanNumber)
+			isEnabledList.append(isEnabled)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1+maxNumChannels
 			isCheckedList.append(isChecked)
 		if numChannels>1:
@@ -1053,39 +1064,50 @@ class bStackWidget(QtWidgets.QWidget):
 		doStackRefresh = False
 
 		# image
+		maxNumChannels = self.mySimpleStack.maxNumChannels
 		if userActionStr == 'Channel 1':
-			self.getStackView().displayStateDict['displayThisStack'] = 1
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 1
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=1)
 		elif userActionStr == 'Channel 2':
-			self.getStackView().displayStateDict['displayThisStack'] = 2
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 2
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=2)
 		elif userActionStr == 'Channel 3':
-			self.getStackView().displayStateDict['displayThisStack'] = 3
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 3
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=3)
 
 		elif userActionStr == 'Channel 1 Mask':
-			self.getStackView().displayStateDict['displayThisStack'] = 4
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 4
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=4)
 		elif userActionStr == 'Channel 2 Mask':
-			self.getStackView().displayStateDict['displayThisStack'] = 4+1
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 4+1
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=4+1)
 		elif userActionStr == 'Channel 3 Mask':
-			self.getStackView().displayStateDict['displayThisStack'] = 4+2
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 4+2
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=4+2)
 
 		elif userActionStr == 'Channel 1 Skel':
-			self.getStackView().displayStateDict['displayThisStack'] = 7
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 7
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=7)
 		elif userActionStr == 'Channel 2 Skel':
-			self.getStackView().displayStateDict['displayThisStack'] = 7+1
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 7+1
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=7+1)
 		elif userActionStr == 'Channel 3 Skel':
-			self.getStackView().displayStateDict['displayThisStack'] = 7+2
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 7+2
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value=7+2)
 
 		elif userActionStr == 'RGB':
-			self.getStackView().displayStateDict['displayThisStack'] = 'rgb'
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displayThisStack'] = 'rgb'
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displayThisStack', value='rgb')
 
 		#
 		# view of tracing
@@ -1094,8 +1116,9 @@ class bStackWidget(QtWidgets.QWidget):
 			doStackRefresh = True
 			#self.displayStateDict['showImage'] = not self.displayStateDict['showImage']
 		elif userActionStr == 'Sliding Z':
-			self.getStackView().displayStateDict['displaySlidingZ'] = not self.getStackView().displayStateDict['displaySlidingZ']
-			doStackRefresh = True
+			#self.getStackView().displayStateDict['displaySlidingZ'] = not self.getStackView().displayStateDict['displaySlidingZ']
+			#doStackRefresh = True
+			self.getStackView().displayStateChange('displaySlidingZ', toggle=True)
 		elif userActionStr == 'Nodes':
 			#optionsChange('Panels', 'showLeftToolbar', toggle=True, doEmit=True)
 			self.getStackView().displayStateDict['showNodes'] = not self.getStackView().displayStateDict['showNodes']

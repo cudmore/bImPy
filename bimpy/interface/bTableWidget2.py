@@ -105,8 +105,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		numRows = len(newDictList)
 
 		if numRows == 0:
-			#print('warning: bTableWidget2.populate() type:', self._type, 'got 0 length dict list?')
-			print('    warning: bTableWidget2.populate() adding num rows:', numRows, self._type)
+			#print('    warning: bTableWidget2.populate() type:', self._type, 'adding num rows:', numRows, self._type)
 			return
 
 		# headers
@@ -798,6 +797,9 @@ class bAnnotationTableWidget(bTableWidget2):
 		elif myEvent.eventType == 'deleteAnnotation':
 			self.deleteRowByIndex(myEvent.nodeIdx)
 			self.repaint()
+
+		elif myEvent.eventType == 'updateAnnotation':
+			self.setRow(myEvent.nodeDict)
 
 def main():
 	import sys
