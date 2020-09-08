@@ -12,6 +12,9 @@ We are currently using **bImPy** to visualize and edit vascular tracing that are
 The roadmap is that by providing highly interactive 3D image volume (and time-series) visualization integrated with precise editing of annotations, **bImPy** will be able to leverage the ever growing automatic tracing that uses artificial intelligence (AI). Although AI is great, it always comes with an unknown error rate. For many biological image analysis tasks, error is not acceptable and the analysis must approach the ground truth. With **bImPy** we hope to achieve this.
 
 
+## Documentation
+
+See [https://cudmore.github.io/bImPy/](https://cudmore.github.io/bImPy/)
 ## Disclaimer
 
 We are developing **bImPy** in the open but the project is still in an early alpha stage and there will be **breaking changes** with each release. Please follow along as we develop this exciting new software and feel free to try it out and contribute ideas and code.
