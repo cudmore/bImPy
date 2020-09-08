@@ -15,7 +15,7 @@ class MainWindow(QtWidgets.QMainWindow):
 		super(MainWindow, self).__init__(*args, **kwargs)
 
 		self.setWindowTitle("My Awesome App")
-		self.setGeometry(50, 50, 500, 300)
+		self.setGeometry(50, 50, 1200, 300)
 		self.setWindowIcon(QtGui.QIcon('pythonlogo.png'))
 
 		label = QtWidgets.QLabel("THIS IS AWESOME!!!")
