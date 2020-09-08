@@ -1,5 +1,6 @@
 # ignore mkdocs
 docs/site
+site
 
 bImPy_env
 

@@ -295,7 +295,8 @@ if __name__ == '__main__':
 
 	# http://127.0.0.1:8000/interface/
 	import webbrowser
-	webbrowser.open('http://google.co.kr', new=2)
+	urlStr = 'https://cudmore.github.io/bImPy'
+	webbrowser.open(urlStr, new=2)
 
 	# set the icon of the application
 	tmpPath = os.path.dirname(os.path.abspath(__file__))
