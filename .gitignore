@@ -1,3 +1,6 @@
+# ignore mkdocs
+docs/site
+
 bImPy_env
 
 *.DS_Store
