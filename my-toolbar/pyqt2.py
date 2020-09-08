@@ -7,6 +7,8 @@ import functools
 
 from qtpy import QtGui, QtCore, QtWidgets
 
+import qdarkstyle #see: https://github.com/ColinDuquesnoy/QDarkStyleSheet
+
 class MainWindow(QtWidgets.QMainWindow):
 
 	def __init__(self, *args, **kwargs):
@@ -21,7 +23,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		self.setCentralWidget(label)
 
-		#
+		# menus
 		menubar = self.menuBar()
 		menubar.setNativeMenuBar(False)
 		bimpyMenu = menubar.addMenu('bImPy')
@@ -32,19 +34,23 @@ class MainWindow(QtWidgets.QMainWindow):
 		#
 		toolbar = QtWidgets.QToolBar("My main toolbar")
 		toolbar.setIconSize(QtCore.QSize(32,32))
+		toolbar.setToolButtonStyle( QtCore.Qt.ToolButtonTextUnderIcon )
+		'''
+		toolbar.setStyleSheet("""QToolBar {
+			background-color: #32414B;
+		}""")
+		'''
 		self.addToolBar(toolbar)
 
-		saveIcon = QtGui.QIcon("icons/save.png")
-		saveAction = QtWidgets.QAction(saveIcon, "Save", self)
-		saveAction.setStatusTip("Save")
-		saveAction.triggered.connect(self.saveActionCallback)
-		toolbar.addAction(saveAction)
-
-		optionsAction = QtWidgets.QAction(QtGui.QIcon("icons/settings.png"), "Options", self)
-		optionsAction.setStatusTip("Options")
-		optionsAction.triggered.connect(self.optionsActionCallback)
-		#optionsAction.setCheckable(True)
-		toolbar.addAction(optionsAction)
+		toolNameList = ['Save', 'Options']
+		for toolName in toolNameList:
+			saveIcon = QtGui.QIcon('icons/' + toolName + '-16.png')
+			saveAction = QtWidgets.QAction(saveIcon, toolName, self)
+			saveAction.setStatusTip(toolName)
+			saveAction.setCheckable(False)
+			callbackFn = functools.partial(self.oneCallback, toolName)
+			saveAction.triggered.connect(callbackFn)
+			toolbar.addAction(saveAction)
 
 		toolbar.addSeparator()
 
@@ -56,53 +62,27 @@ class MainWindow(QtWidgets.QMainWindow):
 		toolbar.addAction(button_action2)
 		'''
 
-		toolList = ['Branch Points', 'Vessels', 'Annotations', 'Search', 'Contrast', 'Line Profile']
-		for toolName in toolList:
-			theIcon = QtGui.QIcon('icons/' + toolName + '.png')
+		iconSizeStr = '16'
+
+
+		toolListNames = ['Branch Points', 'Vessels', 'Annotations', 'Search', 'Contrast', 'Line Profile']
+		self.toolList = []
+		for index, toolName in enumerate(toolListNames):
+			theIcon = QtGui.QIcon('icons/' + toolName + '-' + iconSizeStr + '.png')
+
+			# see: https://stackoverflow.com/questions/45511056/pyqt-how-to-make-a-toolbar-button-appeared-as-pressed
 			theAction = QtWidgets.QAction(theIcon, toolName, self)
+			theAction.setCheckable(True)
 			theAction.setStatusTip(toolName)
-			callbackFn = functools.partial(self.oneCallback, toolName)
-			theAction.triggered.connect(callbackFn)
-			'''
-			theAction.setStyleSheet("""
-			    QMenuBar {
-			        background-color: rgb(49,49,49);
-			        color: rgb(255,255,255);
-			        border: 1px solid ;
-			    }
+			theAction.triggered.connect(lambda checked, index=index: self.oneCallback3(index))
 
-			    QAction::item {
-			        background-color: rgb(49,49,49);
-			        color: rgb(255,255,255);
-			    }
-
-			    QAction::item::selected {
-			        background-color: rgb(30,30,30);
-			    }
-			""")
-			'''
+			self.toolList.append(theAction)
 			toolbar.addAction(theAction)
 
 		toolbar.addSeparator()
 
 		toolName = 'Help'
-		theIcon = QtGui.QIcon('icons/' + toolName + '.png')
-		theAction = QtWidgets.QAction(theIcon, toolName, self)
-		theAction.setStatusTip(toolName)
-		callbackFn = functools.partial(self.oneCallback, toolName)
-		theAction.triggered.connect(callbackFn)
-		toolbar.addAction(theAction)
-
-		# invert
-		toolName = 'Help'
-		pixmap = QtGui.QPixmap('icons/' + toolName + '.png')
-		mask = pixmap.createMaskFromColor(QtGui.QColor('black'), QtCore.Qt.MaskOutColor)
-		pixmap.fill((QtGui.QColor('black')))
-		pixmap.setMask(mask)
-
-		toolName = 'Help'
-		#theIcon = QtGui.QIcon('icons/' + toolName + '.png')
-		theIcon = QtGui.QIcon(pixmap)
+		theIcon = QtGui.QIcon('icons/' + toolName + '-16.png')
 		theAction = QtWidgets.QAction(theIcon, toolName, self)
 		theAction.setStatusTip(toolName)
 		callbackFn = functools.partial(self.oneCallback, toolName)
@@ -111,8 +91,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		toolbar.addSeparator()
 
-		toolbar.addWidget(QtWidgets.QLabel("Selected"))
+		selectedLabel = QtWidgets.QLabel("Selected")
+		selectedLabel.setStyleSheet("""
+			QLabel {
+				background-color: #19232D;
+				border: 0px solid #32414B;
+				padding: 2px;
+				margin: 0px;
+				color: #F0F0F0;
+			}
+		""")
+		toolbar.addWidget(selectedLabel)
 		toolbar.addWidget(QtWidgets.QLabel("Node"))
+
 
 		self.badCheckBox = QtWidgets.QCheckBox()
 		self.badCheckBox.stateChanged.connect(self.checkboxChange)
@@ -134,7 +125,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		self.setStatusBar(QtWidgets.QStatusBar(self))
 
-	def oneCallback(self, id):
+	def oneCallback3(self, index):
+		print('oneCallback3() index:', index)
+		action = self.toolList[index]
+		print(action.statusTip(), action.isChecked())
+
+	def oneCallback2(self, obj):
+		print(' oneCallback2() toolTip:', obj.toolTip(), 'isChecked:', obj.isChecked())
+
+	def oneCallback(self, id, checked):
 		print('oneCallback() id:', id)
 
 	def optionsMenu(self):
@@ -172,6 +171,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
 	app = QtWidgets.QApplication([])
+	app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 	mw = MainWindow()
 	mw.show()
 	app.exec_()
