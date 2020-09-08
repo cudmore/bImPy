@@ -724,7 +724,7 @@ class bStackWidget(QtWidgets.QWidget):
 			self.options['Panels']['showToolbar'] = not self.options['Panels']['showToolbar']
 			self.updateDisplayedWidgets()
 		'''
-		
+
 		if event.text() == '[':
 			self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
 			self.updateDisplayedWidgets()

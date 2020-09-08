@@ -59,6 +59,7 @@ class bStackBrowser(QtWidgets.QMainWindow):
 	def __init__(self, parent=None):
 		super(bStackBrowser, self).__init__()
 
+
 		self.myFileList = [] # list of files that have been dropped
 		self.myStackList = [] # stacks we have opened in a window
 
@@ -291,6 +292,18 @@ if __name__ == '__main__':
 			useBioformats = True
 
 	app = QtWidgets.QApplication(sys.argv)
+
+	# http://127.0.0.1:8000/interface/
+	import webbrowser
+	webbrowser.open('http://google.co.kr', new=2)
+
+	# set the icon of the application
+	tmpPath = os.path.dirname(os.path.abspath(__file__))
+	iconsFolderPath = os.path.join(tmpPath, 'icons')
+	iconPath = os.path.join(iconsFolderPath, 'bImpy.png')
+	print('bStackBrowser() iconPath:', iconPath)
+	appIcon = QtGui.QIcon(iconPath)
+	app.setWindowIcon(appIcon)
 
 	#
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'

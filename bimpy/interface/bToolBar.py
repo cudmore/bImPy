@@ -1,6 +1,7 @@
 """
 """
 
+import os
 import functools
 
 from qtpy import QtGui, QtCore, QtWidgets
@@ -8,6 +9,12 @@ from qtpy import QtGui, QtCore, QtWidgets
 class bToolBar(QtWidgets.QToolBar):
 	def __init__(self, parent=None):
 		super(bToolBar, self).__init__(parent)
+
+		tmpPath = os.path.dirname(os.path.abspath(__file__))
+		iconsFolderPath = os.path.join(tmpPath,'icons')
+
+		#print('bToolBar() tmpPath:', tmpPath)
+		#print('bToolBar() iconsFolderPath:', iconsFolderPath)
 
 		self.setWindowTitle('xxx toolbar')
 
@@ -20,7 +27,8 @@ class bToolBar(QtWidgets.QToolBar):
 
 		toolNameList = ['Save']
 		for toolName in toolNameList:
-			saveIcon = QtGui.QIcon('icons/' + toolName + '-16.png')
+			iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
+			saveIcon = QtGui.QIcon(iconPath)
 			saveAction = QtWidgets.QAction(saveIcon, toolName, self)
 			saveAction.setStatusTip(toolName)
 			saveAction.setCheckable(False)
@@ -35,7 +43,8 @@ class bToolBar(QtWidgets.QToolBar):
 		toolListNames = ['Branch Points', 'Vessels', 'Annotations', 'Search', 'Contrast', 'Line Profile']
 		self.toolList = []
 		for index, toolName in enumerate(toolListNames):
-			theIcon = QtGui.QIcon('icons/' + toolName + '-' + iconSizeStr + '.png')
+			iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
+			theIcon = QtGui.QIcon(iconPath)
 
 			# see: https://stackoverflow.com/questions/45511056/pyqt-how-to-make-a-toolbar-button-appeared-as-pressed
 			theAction = QtWidgets.QAction(theIcon, toolName, self)
@@ -50,7 +59,8 @@ class bToolBar(QtWidgets.QToolBar):
 
 		toolNameList = ['Options', 'Help']
 		for toolName in toolNameList:
-			saveIcon = QtGui.QIcon('icons/' + toolName + '-16.png')
+			iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
+			saveIcon = QtGui.QIcon(iconPath)
 			saveAction = QtWidgets.QAction(saveIcon, toolName, self)
 			saveAction.setStatusTip(toolName)
 			saveAction.setCheckable(False)

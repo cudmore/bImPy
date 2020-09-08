@@ -36,3 +36,6 @@ plotly
 
 #20200829
 PyQtGraph
+
+#20200908
+qdarkstyle

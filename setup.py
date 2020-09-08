@@ -34,6 +34,7 @@ setup(
         'chart_studio',
         'plotly',
         'pyqtgraph',
+        'qdarkstyle',
         #'javabridge',
         #'python-bioformats',
     ]
