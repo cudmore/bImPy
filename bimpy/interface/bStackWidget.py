@@ -361,6 +361,11 @@ class bStackWidget(QtWidgets.QWidget):
 			self.annotationTable.hide()
 		'''
 
+		if self.options['Panels']['showToolbar']:
+			self.myToolbar.show()
+		else:
+			self.myToolbar.hide()
+
 		if self.options['Panels']['showLeftToolbar']:
 			self.myFeedbackWidget.show()
 		else:
@@ -712,6 +717,14 @@ class bStackWidget(QtWidgets.QWidget):
 		'''
 
 		#elif event.key() == QtCore.Qt.Key_BraceLeft: # '['
+
+		# pyqtgraph widget uses 't' to show/hide tracing
+		'''
+		if event.text() == 't':
+			self.options['Panels']['showToolbar'] = not self.options['Panels']['showToolbar']
+			self.updateDisplayedWidgets()
+		'''
+		
 		if event.text() == '[':
 			self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
 			self.updateDisplayedWidgets()
@@ -840,6 +853,7 @@ class bStackWidget(QtWidgets.QWidget):
 		# hide and show various interface widgets
 		self.options['Panels'] = OrderedDict({
 			#'showAnnotations': False,
+			'showToolbar': True,
 			'showLeftToolbar': False,
 			'showNodeList': False,
 			'showEdgeList': False,
