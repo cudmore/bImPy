@@ -1,0 +1,9 @@
+site_name: bImPy
+
+nav:
+    - Home: index.md
+    - Interface: interface.md
+    - About: about.md
+
+theme:
+  name: material
