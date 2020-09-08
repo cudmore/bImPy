@@ -13,6 +13,8 @@ except (Exception) as e:
 	#print('exception: bStackBrowser failed to import bioformats e:', e)
 	bioformats = None
 
+import qdarkstyle #see: https://github.com/ColinDuquesnoy/QDarkStyleSheet
+
 import bimpy
 #from bimpy import bJavaBridge
 #from bimpy.interface import bStackWidget
@@ -321,6 +323,7 @@ if __name__ == '__main__':
 			mjb.start()
 
 		myBrowser = bimpy.interface.bStackBrowser()
+		myBrowser.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 		myBrowser.show()
 
 		if os.path.isfile(path):
