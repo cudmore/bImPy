@@ -27,6 +27,8 @@ import pickle # to save masks
 # testing, remember to remove
 #import pyqtgraph as pg
 
+import qdarkstyle #see: https://github.com/ColinDuquesnoy/QDarkStyleSheet
+
 import bimpy
 
 ################################################################################
@@ -41,6 +43,8 @@ class bStackWidget(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None, parent=None, path=''):
 		super(bStackWidget, self).__init__()
 
+		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
+
 		self.mainWindow = mainWindow
 
 		self.options = None
@@ -54,6 +58,7 @@ class bStackWidget(QtWidgets.QWidget):
 		self.setWindowTitle(basename)
 
 		self.setObjectName('bStackWidget0')
+		'''
 		self.setStyleSheet("""
 			#bStackWidget0 {
 				background-color: #222;
@@ -65,6 +70,7 @@ class bStackWidget(QtWidgets.QWidget):
 				color: #bbb;
 			}
 		""")
+		'''
 
 		# only used by GroupBox
 		myPath = os.path.dirname(os.path.abspath(__file__))
@@ -81,9 +87,19 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.napariViewer = None
 
+		# to hold horizontal toolbar then the rest
+		self.myMainVBoxLayout = QtWidgets.QVBoxLayout(self)
+
+		#
+		self.myToolbar = bimpy.interface.bToolBar(self)
+		#self.addToolBar(self.myToolbar)
+		self.myMainVBoxLayout.addWidget(self.myToolbar)#, stretch=2)
+
 		# holds (left toolbar, vertical), vertical has (contrast/image/feedback)
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
-		#self.myHBoxLayout.setAlignment(QtCore.Qt.AlignTop)
+
+		self.myMainVBoxLayout.addLayout(self.myHBoxLayout)#, stretch=2)
+
 
 		#
 		#
