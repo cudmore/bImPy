@@ -41,6 +41,7 @@ class bStack:
 		self.path = path # path to file
 
 		self._numChannels = None
+		self.slabList = None
 
 		# header
 		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
@@ -49,6 +50,7 @@ class bStack:
 		# pixel data, each channel is element in list
 		# *3 because we have (raw, mask, skel) for each stack#
 		self._stackList = [None for tmp in range(self._maxNumChannels * 3)]
+		self._maxList = [None for tmp in range(self._maxNumChannels * 3)]
 
 		#
 		# load image data
@@ -63,13 +65,17 @@ class bStack:
 		self.annotationList.load() # will fail when not already saved
 
 		# load vesselucida analysis from .xml file
-		self.slabList = None
 		self.slabList = bimpy.bVascularTracing(self, self.path, loadTracing=loadTracing)
 
 		self.analysis = bimpy.bAnalysis(self)
 
 	def print(self):
 		print('bStack.print() path:', self.path)
+		print('  self.numChannels:', self.numChannels)
+		print('  self.numSlices:', self.numSlices)
+		print('  self.numImages:', self.numImages)
+		print('  self.linesPerFrame:', self.linesPerFrame)
+		print('  self.pixelsPerLine:', self.pixelsPerLine)
 		print('  stacks')
 		for idx, stack in enumerate(self._stackList):
 			if stack is None:
@@ -77,7 +83,10 @@ class bStack:
 			else:
 				print('    ', idx, stack.shape)
 		print('  slabList')
-		print(self.slabList._printInfo2())
+		if self.slabList is None:
+			print('self.slabList is None')
+		else:
+			print(self.slabList._printInfo2())
 
 	def printHeader(self):
 		print('bStack.printHeader() path:', self.path)
@@ -220,6 +229,38 @@ class bStack:
 			#print('   error: 1 bStack.getImage2() got bad _stackList shape for channel:', channel, 'sliceNum:', sliceNum)
 			return None
 
+	def old_getImage_ContrastEnhanced(self, display_min, display_max, channel=1, sliceNum=None, useMaxProject=False) :
+		"""
+		sliceNum: pass None to use self.currentImage
+		"""
+		#lut = np.arange(2**16, dtype='uint16')
+		lut = np.arange(2**self.bitDepth, dtype='uint8')
+		lut = self.old_display0(lut, display_min, display_max) # get a copy of the image
+		if useMaxProject:
+			# need to specify channel !!!!!!
+			#print('self.maxProjectImage.shape:', self.maxProjectImage.shape, 'max:', np.max(self.maxProjectImage))
+			maxProject = self.loadMax(channel=channel)
+			if maxProject is not None:
+				return np.take(lut, maxProject)
+			else:
+				print('warning: bStack.old_getImage_ContrastEnhanced() did not get max project for channel:', channel)
+				return None
+		else:
+			return np.take(lut, self.getImage2(channel=channel, sliceNum=sliceNum))
+
+	def old_display0(self, image, display_min, display_max): # copied from Bi Rico
+		# Here I set copy=True in order to ensure the original image is not
+		# modified. If you don't mind modifying the original image, you can
+		# set copy=False or skip this step.
+		image = np.array(image, dtype=np.uint8, copy=True)
+		image.clip(display_min, display_max, out=image)
+		image -= display_min
+		np.floor_divide(image, (display_max - display_min + 1) / (2**self.bitDepth), out=image, casting='unsafe')
+		#np.floor_divide(image, (display_max - display_min + 1) / 256,
+		#				out=image, casting='unsafe')
+		#return image.astype(np.uint8)
+		return image
+
 	def hasChannelLoaded(self, channel):
 		channel -= 1
 		theRet = self._stackList[channel] is not None
@@ -343,7 +384,13 @@ class bStack:
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
 
 	# abb canvas
-	def loadMax(self, channel=1, convertTo8Bit=True):
+	def getMax(self, channel=1):
+		channel -= 1
+		theRet = self._maxList[channel]
+		return theRet
+
+	# abb canvas
+	def _makeMax(self, channel=1, convertTo8Bit=True):
 		channel -= 1
 		theMax = None
 		if self._stackList[channel] is None:
@@ -351,7 +398,9 @@ class bStack:
 			pass
 		else:
 			theMax = np.max(self._stackList[channel], axis=0)
-		return theMax
+		if theMax is not None and convertTo8Bit:
+			theMax = theMax.astype(np.uint8)
+		self._maxList[channel] = theMax
 
 	# abb aics
 	def loadStack2(self, verbose=False):
@@ -365,28 +414,106 @@ class bStack:
 
 		# no channel
 		path_noChannel = basename + '.tif'
-		print('  bStack.loadStack2() path_noChannel:', path_noChannel)
+		#print('  bStack.loadStack2() path_noChannel:', path_noChannel)
 		if os.path.exists(path_noChannel):
 			print('    loadStack2() path_noChannel:', path_noChannel)
 			stackData = tifffile.imread(path_noChannel)
 			self._stackList[0] = stackData
+			self._makeMax(0)
 			self._numChannels = 1 #+= 1
 		# 1
 		path_ch1 = basename + '_ch1.tif'
-		print('  bStack.loadStack2() path_ch1:', path_ch1)
+		#print('  bStack.loadStack2() path_ch1:', path_ch1)
 		if os.path.exists(path_ch1):
 			print('    loadStack2() path_ch1:', path_ch1)
 			stackData = tifffile.imread(path_ch1)
 			self._stackList[0] = stackData
+			self._makeMax(0)
 			self._numChannels = 1 #+= 1
 		# 2
 		path_ch2 = basename + '_ch2.tif'
-		print('  bStack.loadStack2() path_ch2:', path_ch2)
+		#print('  bStack.loadStack2() path_ch2:', path_ch2)
 		if os.path.exists(path_ch2):
 			print('    loadStack2() path_ch2:', path_ch2)
 			stackData = tifffile.imread(path_ch2)
 			self._stackList[1] = stackData
+			self._makeMax(0)
 			self._numChannels = 2 #+= 1
+
+		# oir
+		path_oir = basename + '.oir'
+		if os.path.exists(path_oir):
+			print('  bStack.loadStack2() path_oir:', path_oir)
+			self.loadBioFormats_Oir() # sinfle oir file (can have multiple channels)
+
+	def loadBioFormats_Oir(self):
+		if bioformats is None:
+			print('error: bStack.loadBioFormats_Oir() bioformats was not imported, can only open .tif files.')
+			return False
+
+		self.loadHeader()
+
+		rows = self.linesPerFrame
+		cols = self.pixelsPerLine
+		#slices = self.numImages
+
+		# get channel from oir header
+		# channels = self.numChannels
+		numChannels = self.header.numChannels
+		numImages = self.header.numImages
+
+		verbose = True
+		if verbose: print('bStack.loadBioFormats_Oir() using bioformats ...', 'numChannels:', numChannels, 'numImages:', numImages, 'rows:', rows, 'cols:', cols)
+
+		#with bioformats.GetImageReader(self.path) as reader:
+		with bioformats.ImageReader(self.path) as reader:
+			for channelIdx in range(numChannels):
+				c = channelIdx
+				numImagesLoaded = 0
+				for imageIdx in range(numImages):
+					if self.header.stackType == 'ZStack':
+						z = imageIdx
+						t = 0
+					elif self.header.stackType == 'TSeries':
+						z = 0
+						t = imageIdx
+					else:
+						print('      ****** Error: bStack.loadStack() did not get valid self.header.stackType:', self.header.stackType)
+						z = 0
+						t = imageIdx
+					#print('imageIdx:', imageIdx)
+					image = reader.read(c=c, t=t, z=z, rescale=False) # returns numpy.ndarray
+					#image = reader.read(c=c, rescale=False) # returns numpy.ndarray
+					loaded_shape = image.shape # we are loading single image, this will be something like (512,512)
+					loaded_dtype = image.dtype
+					newShape = (numImages, loaded_shape[0], loaded_shape[1])
+					# resize
+					#print('      oir loaded_shape:', loaded_shape, self.path)
+
+					# abb canvas removed
+					#if channelIdx==0 and imageIdx == 0:
+					#	print('      loaded_shape:', loaded_shape, 'loaded_dtype:', loaded_dtype, 'newShape:', newShape)
+					#	self.stack = np.zeros(newShape, dtype=loaded_dtype)
+					if imageIdx == 0:
+						self._stackList[channelIdx] = np.zeros(newShape, dtype=loaded_dtype)
+					# assign
+					#self.stack[channelIdx,imageIdx,:,:] = image
+					self._stackList[channelIdx][imageIdx,:,:] = image
+					self._numChannels = channelIdx + 1
+
+					numImagesLoaded += 1
+
+				#
+				# abb canvas, this is redundant
+				self.header.assignToShape2(self._stackList[channelIdx])
+		#
+		#self.header.assignToShape(self.stack)
+
+		print('  bStack.loadBioFormats_Oir() is done with ...')
+		self.print()
+		#sys.exit()
+
+		return True
 
 	def saveAnnotations(self):
 		h5FilePath = None
@@ -422,65 +549,26 @@ if __name__ == '__main__':
 
 	#import javabridge
 
-	try:
 
-		# work
-		path = '/Volumes/fourt0/Dropbox/data/arsalan/20190416/20190416_b_0021.oir'
+	path = '/Users/cudmore/Box/data/canvas/20191226/20191226_tst1/20190429_tst2_0001.oir'
 
-		# home
-		path = '/Users/cudmore/Dropbox/data/arsalan/20190416/20190416_b_0021.oir'
-		#path = '/Users/cudmore/Dropbox/data/arsalan/20190416/20190416_b_0001.oir'
-		#path = '/Users/cudmore/Dropbox/data/arsalan/20190416/20190416_b_0019.oir'
-		path = '/Users/cudmore/Dropbox/data/arsalan/20190416/20190416_b_0005.oir'
-
-		# ZStack
-		path = '/Users/cudmore/Dropbox/data/nathan/20190401/tmp/20190401__0011.oir'
-
-		path = '/Volumes/t3/data/20190429/20190429_tst2/20190429_tst2_0006.oir'
-
-		path = 'E:\\cudmore\\data\\20190429\\20190429_tst2\\20190429_tst2_0002.oir'
-
-		path = '/Users/cudmore/box/data/testoir/20190514_0001.oir'
-		path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/ca-smooth-muscle-oir_tif/20190514_0003_ch1.tif'
-		path = '/Users/cudmore/Sites/bImpy-Data/ca-smooth-muscle-oir/20190514_0003.oir'
-		# good to test caiman alignment
-		#path = '/Users/cudmore/box/data/nathan/030119/030119_HCN4-GCaMP8_SAN_phen10uM.oir'
-
-		path = '/Users/cudmore/box/data/nathan/vesselucida/20191017__0001.tif'
-		#path = '/Users/cudmore/box/data/nathan/vesselucida/vesselucida_tif/20191017__0001_ch1.tif'
-
-		path = '/Users/cudmore/box/data/bImpy-Data/rr30a/raw/rr30a_s1_ch1.tif'
-
-		path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
-
+	if 0:
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 
-		#print('--- bstack __main__ is printing stack')
-		#myStack.print()
+	if 1:
+		from bJavaBridge import bJavaBridge
 
-		#print('--- bstack main is loading max')
-		#myStack.loadMax()
+		myJavaBridge = bJavaBridge()
+		myJavaBridge.start()
 
-		'''
-		with javabridge.vm(
-				run_headless=True,
-				class_path=bioformats.JARS
-				):
+		try:
+			myStack = bStack(path)
 
-			# turn off logging, see:
-			# ./bStack_env/lib/python3.7/site-packages/bioformats/log4j.py
-			log4j = javabridge.JClassWrapper("loci.common.Log4jTools")
-			log4j.enableLogging()
-			log4j.setRootLevel("WARN")
+			myStack.print()
+			myStack.printHeader()
 
-			print('--- bstack main is calling convert()')
-			myStack.convert()
-		'''
-
-	finally:
-		#print('__main__ finally')
-		#javabridge.kill_vm()
-		pass
+		finally:
+			myJavaBridge.stop()
 
 	print('bstack __main__ finished')

@@ -625,9 +625,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#	#continue
 
 		# todo: specify channel (1,2,3,4,...)
-		stackMax = newScopeFile.loadMax(channel=1, convertTo8Bit=True) # stackMax can be None
+		stackMax = newScopeFile.getMax(channel=1) # stackMax can be None
 		if stackMax is None:
-			print('myQGraphicsView.appendScopeFile() got stackMax None. path:', path)
+			print('  myQGraphicsView.appendScopeFile() got stackMax None. path:', path)
+			print('    myQGraphicsView.appendScopeFile is not appending file')
+			return False
 
 		# stackMax can be None
 		imageStackHeight, imageStackWidth = stackMax.shape
@@ -1691,7 +1693,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 				# each scope stack needs to know if it is diplaying a real stack OR just a max project
 				# where do I put this ???????
-				videoImage = videoFile.getImage_ContrastEnhanced(theMin, theMax, useMaxProject=useMaxProject) # return the original as an nd_array
+				videoImage = videoFile.old_getImage_ContrastEnhanced(theMin, theMax, useMaxProject=useMaxProject) # return the original as an nd_array
 
 				if videoImage is None:
 					# error
@@ -1819,7 +1821,7 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 
 		item = QtWidgets.QTreeWidgetItem(self)
 		item.setText(self.myColumns['Index'], str(myIndex+1))
-		item.setText(self.myColumns['File'], theStack._fileName)
+		item.setText(self.myColumns['File'], theStack.getFileName())
 		if type == 'Video Layer':
 			item.setText(self.myColumns['Type'], 'v')
 		elif type == '2P Max Layer':

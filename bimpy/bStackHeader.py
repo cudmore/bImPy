@@ -371,7 +371,7 @@ class bStackHeader:
 		self.header['olympusFileVersion'] = '' # Of the Olympus software
 		self.header['olympusProgramVersion'] = '' # Of the Olympus software
 
-	def assignToShape(self, stack):
+	def old_assignToShape(self, stack):
 		"""shape is (channels, slices, x, y)"""
 		#print('=== === bStackHeader.assignToShape()')
 		shape = stack.shape
@@ -387,6 +387,39 @@ class bStackHeader:
 			self.header['numImages'] = shape[1]
 			self.header['xPixels'] = shape[2]
 			self.header['yPixels'] = shape[3]
+		else:
+			print('   error: bStackHeader.assignToShape() got bad shape:', shape)
+		#print('self.header:', self.header)
+		#bitDepth = self.header['bitDepth']
+		bitDepth = self.bitDepth # this will trigger warning if not already assigned
+		#if bitDepth is not None:
+		if type(self.bitDepth) is not 'NoneType':
+			#print('bStackHeader.assignToShape() bitDepth is already', self.bitDepth, type(self.bitDepth))
+			pass
+		else:
+			dtype = stack.dtype
+			if dtype == 'uint8':
+				bitDepth = 8
+			else:
+				bitDepth = 16
+			self.header['bitDepth'] = bitDepth
+
+	def assignToShape2(self, stack):
+		"""shape is (channels, slices, x, y)"""
+		#print('=== === bStackHeader.assignToShape()')
+		shape = stack.shape
+		if len(shape)==2:
+			# single plane image
+			#self.header['numChannels'] = shape[0]
+			self.header['numImages'] = 1
+			self.header['xPixels'] = shape[0]
+			self.header['yPixels'] = shape[1]
+		elif len(shape)==3:
+			# 3d image volume
+			#self.header['numChannels'] = shape[0]
+			self.header['numImages'] = shape[0]
+			self.header['xPixels'] = shape[1]
+			self.header['yPixels'] = shape[2]
 		else:
 			print('   error: bStackHeader.assignToShape() got bad shape:', shape)
 		#print('self.header:', self.header)
@@ -603,7 +636,7 @@ class bStackHeader:
 				self.header['frameSpeed'] = frameSpeed3
 
 		except Exception as e:
-			print('exception in bStackHEader.readOirHeader()', e)
+			print('EXCEPTION in bStackHeader.readOirHeader()', e)
 			raise
 		finally:
 			pass

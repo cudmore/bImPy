@@ -13,6 +13,51 @@ pip install -e ../.
 
 pip install -r requirements.txt
 
+## Javabridge (mac)
+
+1) Download JDK (and maybe JRE)
+
+2) Set JAVA_HOME to the correct path
+
+see: https://github.com/LeeKamentsky/python-javabridge/issues/168?email_token=AAFBH5O4WSHTLYHZLG73SRDQJKEHTA5CNFSM4IWIFORKYY3PNVWWK3TUL52HS4DFUVEXG43VMWVGG33NNVSW45C7NFSM4HLCCG2A
+
+```
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.0.8.jdk/Contents/Home
+```
+
+3) install
+
+```
+pip install javabridge
+```
+```
+To use the "javac" command-line tool you need to install a JDK
+
+see: https://www.oracle.com/java/technologies/javase-downloads.html
+
+Java SE 11 (LTS)
+Java SE 11.0.8 is the latest release for the Java SE 11 Platform
+
+https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
+
+Java SE Development Kit 11.0.8
+
+https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
+
+https://www.oracle.com/java/technologies/javase-jdk11-downloads.html#license-lightbox
+
+
+```
+
+```
+java -version
+
+# return
+java version "11.0.8" 2020-07-14 LTS
+Java(TM) SE Runtime Environment 18.9 (build 11.0.8+10-LTS)
+Java HotSpot(TM) 64-Bit Server VM 18.9 (build 11.0.8+10-LTS, mixed mode)
+
+```
 ## Screenshots
 
 Example Canvas interface. This is another bad example, keep in tune as it will get better.

@@ -45,14 +45,14 @@ class bCanvas:
 
 	def findByName(self, filename):
 		for file in self._videoFileList:
-			if file._fileName == filename:
+			if file.getFileName() == filename:
 				return file
 		return None
 
 	'''
 	def findScopeFileByName(self, filename):
 		for file in self._scopeFileList:
-			if file._fileName == filename:
+			if file.getFileName() == filename:
 				return file
 		return None
 	'''
@@ -68,13 +68,19 @@ class bCanvas:
 		newStackList = [] # build a list of new files
 		listDir = os.listdir(self._folderPath)
 		thisFileExtension = '.oir'
+
+		print('bCanvas.importNewScopeFiles()')
+		print('  Looking in self._folderPath:', self._folderPath)
+		print('  looking for files ending in thisFileExtension:', thisFileExtension)
+
 		for potentialNewFile in listDir:
 			if not potentialNewFile.endswith(thisFileExtension):
 				continue
-			print('bCanvas.importNewScopeFiles() considering file:', potentialNewFile)# check if file is in self.scopeFileList
+			print('  bCanvas.importNewScopeFiles() considering file:', potentialNewFile)# check if file is in self.scopeFileList
 			isInList = False
 			for loadedScopeFile in self.scopeFileList:
-				if loadedScopeFile._fileName == potentialNewFile:
+				if loadedScopeFile.getFileName() == potentialNewFile:
+					print('    already in self.scopeFileList, potentialNewFile:', potentialNewFile)
 					isInList = True
 					break
 			if not isInList:
@@ -82,7 +88,8 @@ class bCanvas:
 				# we need to find it in bLogFilePosition
 				print('   New file:', potentialNewFile, 'find it in bLogFilePosition')
 				newFilePath = os.path.join(self._folderPath, potentialNewFile)
-				newScopeStack = bimpy.bStack(newFilePath, loadImages=False)
+				# abb canvas, we need a way to load header or max of .oir files?
+				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
 				print('   newScopeStack:', newScopeStack.print())
 				#print('      ', newScopeStack.header.prettyPrint())
 				#print('      todo: fix this, adding fake motor !!! get motor position of file from bLogFilePosition !!!')
@@ -390,9 +397,11 @@ class bCanvas:
 			elif key =='scopeFiles':
 				for fileName, fileDict in item.items():
 					scopeFilePath = os.path.join(self._folderPath, fileName)
-					# todo: keep track of number and print out at end
-					#print('bCanvas.load() scopeFilePath:', scopeFilePath)
-					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
+					print('bCanvas.load() is loading scopeFilePath:', scopeFilePath)
+
+					# abb canvas, we need a way to just load oir max?
+					scopeStack = bimpy.bStack(scopeFilePath, loadImages=True)
+
 					#scopeStack.loadHeader() # at least makes default bStackHeader()
 					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
 

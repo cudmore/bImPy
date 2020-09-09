@@ -254,16 +254,16 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 
 if __name__ == '__main__':
+	print('bCanvasApp __main__')
 	import sys
-	#import bJavaBridge
-
 	import logging
 	import traceback
 
 	try:
 
-		#from bJavaBridge import bJavaBridge
+		print('bCanvasApp __main__ intantiation bimpy.bJavaBridge()')
 		myJavaBridge = bimpy.bJavaBridge()
+		print('bCanvasApp __main__ starting bimpy.bJavaBridge() with start()')
 		myJavaBridge.start()
 
 		app = QtWidgets.QApplication(sys.argv)
