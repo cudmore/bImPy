@@ -19,6 +19,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		"""
 		parent: bCanvasApp
 		"""
+		print('bCanvasWidget.__init__() filePath:', filePath)
 		super(bCanvasWidget, self).__init__(parent)
 		self.filePath = filePath
 		self.myCanvasApp = parent
@@ -606,7 +607,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# pixMapItem.setZValue(numItems)
 
 		# THESE ARE FUCKING STRINGS !!!!!!!!!!!!!!!!!!!!
-		fileName = newScopeFile._fileName
+		path = newScopeFile.path
+		fileName = newScopeFile.getFileName()
 		xMotor = newScopeFile.header.header['xMotor']
 		yMotor = newScopeFile.header.header['yMotor']
 		umWidth = newScopeFile.header.header['umWidth']
@@ -624,10 +626,16 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		# todo: specify channel (1,2,3,4,...)
 		stackMax = newScopeFile.loadMax(channel=1, convertTo8Bit=True) # stackMax can be None
-		#imageStackHeight, imageStackWidth = stackMax.shape
-		imageStackWidth = newScopeFile.pixelsPerLine
-		imageStackHeight = newScopeFile.linesPerFrame
-		#print('imageStackWidth:', imageStackWidth, 'imageStackHeight:', imageStackHeight)
+		if stackMax is None:
+			print('myQGraphicsView.appendScopeFile() got stackMax None. path:', path)
+
+		# stackMax can be None
+		imageStackHeight, imageStackWidth = stackMax.shape
+
+		print('myQGraphicsView.appendScopeFile() path:', path)
+		print('  xMotor:', xMotor, 'yMotor:', yMotor)
+		print('  umWidth:', umWidth, 'umHeight:', umHeight)
+		print('  imageStackHeight:', imageStackHeight, 'imageStackWidth:', imageStackWidth)
 
 		if stackMax is None:
 			print('myQGraphicsView.appendScopeFile() is making zero max image for newScopeFile:', newScopeFile)
@@ -670,7 +678,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# pixMapItem.setZValue(numItems)
 
 		path = newVideoStack.path
-		fileName = newVideoStack._fileName
+		fileName = newVideoStack.getFileName()
 		#videoFileHeader = videoFile.getHeader()
 		xMotor = newVideoStack.header.header['xMotor']
 		yMotor = newVideoStack.header.header['yMotor']
@@ -680,11 +688,14 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		xMotor = float(xMotor)
 		yMotor = float(yMotor)
 
-		#print('myQGraphicsView.appendVideo() xMotor:', xMotor, 'yMotor:', yMotor)
-
-		#videoImage = videoFile.getVideoImage() # ndarray
-		videoImage = newVideoStack.getImage() # ndarray
+		channel = 1
+		videoImage = newVideoStack.getStack('video', channel) # ndarray
 		imageStackHeight, imageStackWidth = videoImage.shape
+
+		print('myQGraphicsView.appendVideo() path:', path)
+		print('  xMotor:', xMotor, 'yMotor:', yMotor)
+		print('  umWidth:', umWidth, 'umHeight:', umHeight)
+		print('  imageStackHeight:', imageStackHeight, 'imageStackWidth:', imageStackWidth)
 
 		myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 		#myQImage = QtGui.QImage(videoImage, imageStackWidth, imageStackHeight, QtGui.QImage.Format_RGB32)

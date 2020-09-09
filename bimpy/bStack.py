@@ -32,7 +32,11 @@ class bStack:
 
 	Image data is in self.stack
 	"""
-	def __init__(self, path='', loadImages=True):
+	def __init__(self, path='', loadImages=True, loadTracing=True):
+		"""
+		path:
+		"""
+		print('bStack.__init__() path:', path)
 		#logging.info('constructor')
 		self.path = path # path to file
 
@@ -60,7 +64,7 @@ class bStack:
 
 		# load vesselucida analysis from .xml file
 		self.slabList = None
-		self.slabList = bimpy.bVascularTracing(self, self.path)
+		self.slabList = bimpy.bVascularTracing(self, self.path, loadTracing=loadTracing)
 
 		self.analysis = bimpy.bAnalysis(self)
 
@@ -74,6 +78,12 @@ class bStack:
 				print('    ', idx, stack.shape)
 		print('  slabList')
 		print(self.slabList._printInfo2())
+
+	def printHeader(self):
+		print('bStack.printHeader() path:', self.path)
+		#print(self.header.header)
+		for k,v in self.header.header.items():
+			print('  ', k, v)
 
 	def _getSavePath(self):
 		"""
@@ -89,7 +99,13 @@ class bStack:
 		return self._maxNumChannels
 	@property
 	def fileName(self):
-		return self._fileName
+		# abb canvas
+		# return self._fileName
+		return os.path.split(self.path)[1]
+	def getFileName(self):
+		# abb canvas
+		# return self._fileName
+		return os.path.split(self.path)[1]
 	@property
 	def numChannels(self):
 		#return self.header.numChannels
@@ -169,7 +185,7 @@ class bStack:
 			type: (raw, mask, skel)
 			channel: 1 based
 		"""
-		if not type in ['raw', 'mask', 'skel']:
+		if not type in ['raw', 'mask', 'skel', 'video']:
 			print('  error: bStack.getStack() expeting type in [raw, mask, skel], got:', type)
 			return None
 
@@ -326,6 +342,17 @@ class bStack:
 		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
 
+	# abb canvas
+	def loadMax(self, channel=1, convertTo8Bit=True):
+		channel -= 1
+		theMax = None
+		if self._stackList[channel] is None:
+			print('bStack.loadMax() is returning None for channel:', channel)
+			pass
+		else:
+			theMax = np.max(self._stackList[channel], axis=0)
+		return theMax
+
 	# abb aics
 	def loadStack2(self, verbose=False):
 		basename, tmpExt = os.path.splitext(self.path)
@@ -336,13 +363,23 @@ class bStack:
 
 		self._numChannels = 0
 
+		# no channel
+		path_noChannel = basename + '.tif'
+		print('  bStack.loadStack2() path_noChannel:', path_noChannel)
+		if os.path.exists(path_noChannel):
+			print('    loadStack2() path_noChannel:', path_noChannel)
+			stackData = tifffile.imread(path_noChannel)
+			self._stackList[0] = stackData
+			self._numChannels = 1 #+= 1
+		# 1
 		path_ch1 = basename + '_ch1.tif'
 		print('  bStack.loadStack2() path_ch1:', path_ch1)
 		if os.path.exists(path_ch1):
 			print('    loadStack2() path_ch1:', path_ch1)
 			stackData = tifffile.imread(path_ch1)
 			self._stackList[0] = stackData
-			self._numChannels =1 #+= 1
+			self._numChannels = 1 #+= 1
+		# 2
 		path_ch2 = basename + '_ch2.tif'
 		print('  bStack.loadStack2() path_ch2:', path_ch2)
 		if os.path.exists(path_ch2):

@@ -365,7 +365,7 @@ class bCanvas:
 		for key, item in data.items():
 			#print(key,item)
 			if key == 'canvasOptions':
-				print(item)
+				print('bCanvas.load() key:', key, 'item:', item)
 			elif key=='videoFiles':
 				for fileName, fileDict in item.items():
 					videoFilePath = os.path.join(self.videoFolderPath, fileName)

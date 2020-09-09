@@ -38,7 +38,7 @@ import bimpy
 from bimpy import bVascularTracingAics
 
 class bVascularTracing:
-	def __init__(self, parentStack, path):
+	def __init__(self, parentStack, path, loadTracing=True):
 		"""
 		path: path to file
 		"""
@@ -48,8 +48,7 @@ class bVascularTracing:
 		#self._dvMask = None # created in loadDeepVess
 		self._initTracing()
 
-		doLoad = True
-		if doLoad:
+		if loadTracing:
 			self.hasFile = {'h5f':False, 'vesselucida':False, 'deepvess':False}
 			loaded_h5f = self.load()
 			if loaded_h5f:

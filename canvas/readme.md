@@ -3,6 +3,16 @@
 
 Canvas is a pure python application allowing images from two different light paths on a microscope to be visual/spatially displayed in an interactive canvas
 
+## Install
+
+1) nistall bImPy
+
+pip install -e ../.
+
+2) install canvas
+
+pip install -r requirements.txt
+
 ## Screenshots
 
 Example Canvas interface. This is another bad example, keep in tune as it will get better.
