@@ -1,0 +1,4 @@
+-r ../requirements.txt
+
+opencv-python
+pyserial #for canvas
