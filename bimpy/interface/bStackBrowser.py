@@ -293,11 +293,6 @@ if __name__ == '__main__':
 
 	app = QtWidgets.QApplication(sys.argv)
 
-	# http://127.0.0.1:8000/interface/
-	import webbrowser
-	urlStr = 'https://cudmore.github.io/bImPy'
-	webbrowser.open(urlStr, new=2)
-
 	# set the icon of the application
 	tmpPath = os.path.dirname(os.path.abspath(__file__))
 	iconsFolderPath = os.path.join(tmpPath, 'icons')

@@ -41,7 +41,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 			if key1 == 'Panels':
 				col += 1
 				row = 0
-			if key1 == 'Window':
+			if key1 == 'Warnings':
 				col += 1
 				row = 0
 			groupBox = QtWidgets.QGroupBox(key1)
@@ -86,7 +86,14 @@ class bOptionsDialog(QtWidgets.QDialog):
 					layout.addRow(QtWidgets.QLabel(key2), aLineEdit)
 
 			groupBox.setLayout(layout)
-			mainLayout.addWidget(groupBox, row, col)
+
+			if key1 == 'Tracing':
+				rowSpan = 3
+				colSpan = 1
+			else:
+				rowSpan = 1
+				colSpan = 1
+			mainLayout.addWidget(groupBox, row, col, rowSpan, colSpan)
 			row += 1
 		#self.formGroupBox = QtWidgets.QGroupBox("")
 		#layout = QtWidgets.QFormLayout()

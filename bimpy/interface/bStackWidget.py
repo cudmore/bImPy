@@ -32,8 +32,9 @@ import qdarkstyle #see: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 import bimpy
 
 ################################################################################
-#class bStackWidget(QtWidgets.QMainWindow):
-class bStackWidget(QtWidgets.QWidget):
+# 20200908 switched over to QMainWindow (finally) just needed to make QWidget and set as CentralWidget
+# #class bStackWidget(QtWidgets.QWidget):
+class bStackWidget(QtWidgets.QMainWindow):
 	"""
 	A widget to display a stack. This includes a bStackView and a bAnnotationTable.
 	"""
@@ -87,6 +88,14 @@ class bStackWidget(QtWidgets.QWidget):
 
 		self.napariViewer = None
 
+		# abb to QMainWindow
+		centralWidget = QtWidgets.QWidget(self)
+		self.setCentralWidget(centralWidget)
+
+		self.myToolbar = bimpy.interface.bToolBar(self, parent=None)
+		self.myToolbar.syncWithOptions(self.options)
+		self.addToolBar(self.myToolbar)
+		'''
 		# to hold horizontal toolbar then the rest
 		self.myMainVBoxLayout = QtWidgets.QVBoxLayout(self)
 
@@ -94,12 +103,16 @@ class bStackWidget(QtWidgets.QWidget):
 		self.myToolbar = bimpy.interface.bToolBar(self)
 		#self.addToolBar(self.myToolbar)
 		self.myMainVBoxLayout.addWidget(self.myToolbar)#, stretch=2)
+		'''
 
 		# holds (left toolbar, vertical), vertical has (contrast/image/feedback)
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
 
-		self.myMainVBoxLayout.addLayout(self.myHBoxLayout)#, stretch=2)
+		centralWidget.setLayout(self.myHBoxLayout)
 
+		'''
+		self.myMainVBoxLayout.addLayout(self.myHBoxLayout)#, stretch=2)
+		'''
 
 		#
 		#
@@ -146,17 +159,18 @@ class bStackWidget(QtWidgets.QWidget):
 		self.nodeTable2 = bimpy.interface.bTableWidget2('nodes', self.mySimpleStack.slabList.nodeDictList, parent=self)
 		self.nodeTable2.hideColumns(['x', 'y', 'skelID', 'slabIdx'])
 		self.myHBoxLayout.addWidget(self.nodeTable2, stretch=2)
+
 		# edges
 		self.edgeTable2 = bimpy.interface.bTableWidget2('edges', self.mySimpleStack.slabList.edgeDictList, parent=self)
 		self.edgeTable2.hideColumns(['skelID', 'color', 'slabList'])
 		self.myHBoxLayout.addWidget(self.edgeTable2, stretch=2)
+
 		# edits/search
-		#searchGroupBox = QtWidgets.QGroupBox('Search')
-		#searchGroupBox.setStyleSheet(myStyleSheet)
-		self.editTable2 = bimpy.interface.bTableWidget2('node search', self.mySimpleStack.slabList.editDictList, parent=self)
-		#searchGroupBox.setLayout(self.editTable2)
-		self.myHBoxLayout.addWidget(self.editTable2, stretch=3)
-		#self.myHBoxLayout.addWidget(searchGroupBox, stretch=3)
+		self.searchWidget = bimpy.interface.bSearchWidget(self)
+		self.myHBoxLayout.addWidget(self.searchWidget, stretch=3)
+		#self.editTable2 = bimpy.interface.bTableWidget2('node search', self.mySimpleStack.slabList.editDictList, parent=self)
+		#self.myHBoxLayout.addWidget(self.editTable2, stretch=3)
+
 		#
 		# annotation list
 		self.annotationTable = bimpy.interface.bAnnotationTableWidget(self.mySimpleStack.annotationList.myList, parent=self)
@@ -225,14 +239,15 @@ class bStackWidget(QtWidgets.QWidget):
 		#self.editTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_StateChange2)
 		self.nodeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
 		self.edgeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
-		self.editTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
+
+		self.searchWidget.searchTable().selectRowSignal.connect(self.statusToolbarWidget.slot_select)
 
 		self.nodeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.nodeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		self.edgeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
-		self.editTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
+		self.searchWidget.searchTable().selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		#
 		# listen to edit table, self.
 		'''
@@ -252,8 +267,8 @@ class bStackWidget(QtWidgets.QWidget):
 		self.mySliceSlider.updateSliceSignal.connect(self.myStackView2.slot_StateChange)
 		self.nodeTable2.selectRowSignal.connect(self.myStackView2.slot_selectNode)
 		self.edgeTable2.selectRowSignal.connect(self.myStackView2.slot_selectEdge)
-		self.editTable2.selectRowSignal.connect(self.myStackView2.slot_selectNode)
-		self.editTable2.selectRowSignal.connect(self.myStackView2.slot_selectEdge)
+		self.searchWidget.searchTable().selectRowSignal.connect(self.myStackView2.slot_selectNode)
+		self.searchWidget.searchTable().selectRowSignal.connect(self.myStackView2.slot_selectEdge)
 
 		self.myStackView2.displayStateChangeSignal.connect(self.statusToolbarWidget.slot_DisplayStateChange)
 		self.myStackView2.displayStateChangeSignal.connect(self.myFeedbackWidget.slot_DisplayStateChange)
@@ -382,9 +397,9 @@ class bStackWidget(QtWidgets.QWidget):
 			self.edgeTable2.hide()
 
 		if self.options['Panels']['showSearch']:
-			self.editTable2.show()
+			self.searchWidget.show()
 		else:
-			self.editTable2.hide()
+			self.searchWidget.hide()
 
 		if self.options['Panels']['showAnnotations']:
 			self.annotationTable.show()
@@ -558,7 +573,7 @@ class bStackWidget(QtWidgets.QWidget):
 								fn = bimpy.bSearchAnnotations.searchDisconnectedEdges,
 								params = None,
 								searchType='edge search')
-			self.mySearchAnnotation.searchFinishedSignal.connect(self.editTable2.slot_SearchFinished)
+			self.mySearchAnnotation.searchFinishedSignal.connect(self.searchWidget.searchTable().slot_SearchFinished)
 			self.mySearchAnnotation.start()
 
 		elif signal == 'search 1':
@@ -574,7 +589,7 @@ class bStackWidget(QtWidgets.QWidget):
 								fn = bimpy.bSearchAnnotations.searchDeadEnd,
 								params = thresholdDist,
 								searchType='edge search')
-			self.mySearchAnnotation.searchFinishedSignal.connect(self.editTable2.slot_SearchFinished)
+			self.mySearchAnnotation.searchFinishedSignal.connect(self.searchWidget.searchTable().slot_SearchFinished)
 			self.mySearchAnnotation.start()
 
 		elif signal == 'search 1_1':
@@ -684,8 +699,9 @@ class bStackWidget(QtWidgets.QWidget):
 							fn = fn,
 							params = params,
 							searchType = searchType)
-		self.mySearchAnnotation.searchFinishedSignal.connect(self.editTable2.slot_SearchFinished)
-		self.mySearchAnnotation.searchNewHitSignal.connect(self.editTable2.slot_newSearchHit)
+		# self.searchWidget.searchTable()
+		self.mySearchAnnotation.searchFinishedSignal.connect(self.searchWidget.searchTable().slot_SearchFinished)
+		self.mySearchAnnotation.searchNewHitSignal.connect(self.searchWidget.searchTable().slot_newSearchHit)
 		self.mySearchAnnotation.start()
 
 	def optionsChange(self, key1, key2, value=None, toggle=False, doEmit=False):
@@ -788,7 +804,7 @@ class bStackWidget(QtWidgets.QWidget):
 		print(' ' )
 
 	def optionsVersion(self):
-		return 1.3
+		return 1.4
 
 	def options_defaults(self):
 		print('bStackWidget.options_defaults()')
@@ -813,17 +829,6 @@ class bStackWidget(QtWidgets.QWidget):
 		tab20b_r, tab20c, tab20c_r, terrain, terrain_r, twilight, twilight_r, twilight_shifted,
 		twilight_shifted_r, viridis, viridis_r, winter, winter_r
 		"""
-
-		self.options['Warnings'] = OrderedDict()
-		self.options['Warnings'] = OrderedDict({
-			'warnOnNewNode': True,
-			'warnOnNewEdge': True,
-			'warnOnNewSlab': True,
-			#
-			'warnOnDeleteNode': True,
-			'warnOnDeleteEdge': True,
-			'warnOnDeleteSlab': True,
-		})
 
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
@@ -880,6 +885,17 @@ class bStackWidget(QtWidgets.QWidget):
 			'left': 5,
 			'top': 5,
 			})
+
+		self.options['Warnings'] = OrderedDict()
+		self.options['Warnings'] = OrderedDict({
+			'warnOnNewNode': True,
+			'warnOnNewEdge': True,
+			'warnOnNewSlab': True,
+			#
+			'warnOnDeleteNode': True,
+			'warnOnDeleteEdge': True,
+			'warnOnDeleteSlab': True,
+		})
 
 		#self.options['Code'] = OrderedDict()
 		self.options['Code'] = OrderedDict({

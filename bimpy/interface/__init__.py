@@ -19,3 +19,4 @@ from .bDialog import *
 # abb 20200828
 from .bPyQtGraph import myPyQtGraphPlotWidget
 from .bToolBar import bToolBar
+from .bSearchWidget import bSearchWidget

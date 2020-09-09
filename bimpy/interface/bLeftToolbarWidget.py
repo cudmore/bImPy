@@ -396,6 +396,124 @@ class bLeftToolbarWidget(QtWidgets.QWidget):
 		# was this
 		searchGroupBox.setLayout(searchGridLayout)
 		mainLayout.addWidget(searchGroupBox)
+		#
+		# search group
+		searchGroupBox = QtWidgets.QGroupBox('Search Parameters')
+		searchGroupBox.setStyleSheet(myStyleSheet)
+
+		searchGroupBox2 = QtWidgets.QGroupBox('Search')
+		searchGroupBox2.setStyleSheet(myStyleSheet)
+
+		searchGridLayout = QtWidgets.QGridLayout()
+		searchGridLayout2 = QtWidgets.QGridLayout()
+
+		row = 0
+
+		spinBoxWidth = 64
+
+		minLabel = QtWidgets.QLabel("Distance Threshold (um)")
+		self.minSpinBox = QtWidgets.QSpinBox()
+		self.minSpinBox.setMaximumWidth(spinBoxWidth)
+		self.minSpinBox.setMinimum(0)
+		self.minSpinBox.setMaximum(1e6)
+		self.minSpinBox.setValue(10)
+
+		nodeLabel = QtWidgets.QLabel("Nodes")
+		nodeLabel.setMaximumWidth(spinBoxWidth)
+		self.node1SpinBox = QtWidgets.QSpinBox()
+		self.node1SpinBox.setMaximumWidth(spinBoxWidth)
+		self.node1SpinBox.setMinimum(0)
+		self.node1SpinBox.setMaximum(1e6)
+		self.node1SpinBox.setValue(10)
+		#
+		self.node2SpinBox = QtWidgets.QSpinBox()
+		self.node2SpinBox.setMaximumWidth(spinBoxWidth)
+		self.node2SpinBox.setMinimum(0)
+		self.node2SpinBox.setMaximum(1e6)
+		self.node2SpinBox.setValue(20)
+
+		searchGridLayout.addWidget(minLabel, row, 0)
+		searchGridLayout.addWidget(self.minSpinBox, row, 1)
+		#
+		row += 1
+		searchGridLayout.addWidget(nodeLabel, row, 0)
+		searchGridLayout.addWidget(self.node1SpinBox, row, 1)
+		searchGridLayout.addWidget(self.node2SpinBox, row, 2)
+
+		row += 1
+
+		button7 = QtWidgets.QPushButton("Dead end near other slab")
+		button7.setToolTip('search for dead end nodes near a slab')
+		button8 = QtWidgets.QPushButton("All Dead Ends")
+		button8.setToolTip('search for all dead end edges')
+		#
+		button7_1 = QtWidgets.QPushButton("Dead end near other nodes")
+		button7_2 = QtWidgets.QPushButton("Slab Gaps")
+		#
+		button8_1 = QtWidgets.QPushButton("Close Nodes")
+		button8_1.setToolTip('Close Nodes')
+		button8_2 = QtWidgets.QPushButton("Close Slabs")
+		button8_2.setToolTip('Close Slabs')
+
+		disconnectedEdgesButton = QtWidgets.QPushButton('Disconnected Edges')
+		disconnectedEdgesButton.clicked.connect(self.button_callback)
+
+		#
+		button9 = QtWidgets.QPushButton("Shortest Path")
+		button9.setToolTip('search for shortest path between nodes')
+		button10 = QtWidgets.QPushButton("All Paths")
+		button10.setToolTip('search for all paths between nodes')
+		#
+		button7.clicked.connect(self.button_callback)
+		button7_1.clicked.connect(self.button_callback)
+		button7_2.clicked.connect(self.button_callback)
+		button8.clicked.connect(self.button_callback)
+		button8_1.clicked.connect(self.button_callback)
+		button8_2.clicked.connect(self.button_callback)
+		button9.clicked.connect(self.button_callback)
+		button10.clicked.connect(self.button_callback)
+		#
+
+		row = 0
+		searchGridLayout2.addWidget(button7, row, 0)
+		searchGridLayout2.addWidget(button8, row, 1)
+		row += 1
+		searchGridLayout2.addWidget(button7_1, row, 0)
+		searchGridLayout2.addWidget(button7_2, row, 1)
+		row += 1
+		searchGridLayout2.addWidget(button8_1, row, 0)
+		searchGridLayout2.addWidget(button8_2, row, 1)
+		row += 1
+		searchGridLayout2.addWidget(disconnectedEdgesButton, row, 0)
+		# these are graph operation, todo: allow user to cancel
+		row += 1
+		searchGridLayout2.addWidget(button9, row, 0)
+		searchGridLayout2.addWidget(button10, row, 1)
+
+		row += 1
+		button11 = QtWidgets.QPushButton("All Subgraphs")
+		button11.setToolTip('Shortest All Subgraphs')
+		'''
+		button11 = QtWidgets.QPushButton("Shortest Loop")
+		button11.setToolTip('Shortest Loop')
+		button11.setEnabled(False) # shortest loop does not work, use "All Loops"
+		'''
+		button12 = QtWidgets.QPushButton("All Loops (slow)")
+		button12.setToolTip('All Loops (slow)')
+		#
+		button11.clicked.connect(self.button_callback)
+		button12.clicked.connect(self.button_callback)
+		#
+		searchGridLayout2.addWidget(button11, row, 0)
+		searchGridLayout2.addWidget(button12, row, 1)
+
+		# finalize
+		# was this
+		searchGroupBox.setLayout(searchGridLayout)
+		mainLayout.addWidget(searchGroupBox)
+
+		searchGroupBox2.setLayout(searchGridLayout2)
+		mainLayout.addWidget(searchGroupBox2)
 
 		searchGroupBox2.setLayout(searchGridLayout2)
 		mainLayout.addWidget(searchGroupBox2)
