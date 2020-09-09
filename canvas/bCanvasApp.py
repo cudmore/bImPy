@@ -10,6 +10,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 import bimpy
 from canvas import bCanvasWidget, bMenu
+import bCanvas
 import bMotor
 
 #from bCameraStream import VideoStreamWidget
@@ -30,7 +31,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		loadIgorCanvas: path to folder of converted Igor canvas
 		path: path to text file of a saved Python canvas
 		"""
-		print('bCanvasApp.__init__()')
+		print('bCanvasApp.__init__() path:', path)
 		super(bCanvasApp, self).__init__()
 
 		self.myApp = parent
@@ -46,19 +47,18 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.assignMotor(motorName, isReal)
 
 		self.canvasDict = {}
-		'''
+
 		if loadIgorCanvas is not None:
 			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
 			#tmpCanvasFolderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
-			self.canvas = bimpy.bCanvas(folderPath=loadIgorCanvas)
+			self.canvas = bCanvas.bCanvas(folderPath=loadIgorCanvas)
 
 			# this is only for import from igor
 			self.canvas.importIgorCanvas()
 
 			self.canvas.buildFromScratch()
 		else:
-			self.canvas = bCanvas(filePath=path)
-		'''
+			self.canvas = bCanvas.bCanvas(filePath=path)
 
 		# todo: only needed on windows
 		self.show()
@@ -269,23 +269,22 @@ if __name__ == '__main__':
 		app = QtWidgets.QApplication(sys.argv)
 		app.setQuitOnLastWindowClosed(False)
 
-		'''
-		loadIgorCanvas = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
-		w = bCanvasApp(loadIgorCanvas=loadIgorCanvas)
-		w.resize(640, 480)
-		w.show()
+		if 0:
+			loadIgorCanvas = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
+			w = bCanvasApp(loadIgorCanvas=loadIgorCanvas)
+			w.resize(640, 480)
+			w.show()
+			w.save()
 
-		w.save()
-		'''
-
-		# make a new canvas and load what we just saved
-		#savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
-		#savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
-		#w2 = bCanvasApp(path=savedCanvasPath)
-		myCanvasApp = bCanvasApp(parent=app)
-		#w2.load(thisFile=savedCanvasPath)
-		#print('bCanvasApp.__main__() myCanvasApp.optionsFile:', myCanvasApp.optionsFile)
-		#myCanvasApp.resize(1024, 768)
+		if 1:
+			# make a new canvas and load what we just saved
+			#savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
+			#savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
+			#w2 = bCanvasApp(path=savedCanvasPath)
+			myCanvasApp = bCanvasApp(parent=app)
+			#w2.load(thisFile=savedCanvasPath)
+			#print('bCanvasApp.__main__() myCanvasApp.optionsFile:', myCanvasApp.optionsFile)
+			#myCanvasApp.resize(1024, 768)
 
 		# working
 		#w2.newCanvas('tst2')
