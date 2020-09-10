@@ -4,18 +4,27 @@
 """
 Important, this is using imageio.imsave instead of the older scipy.misc.imwrite
 I think imageio is getting imported/installed by napari?
+
+newer opencv give conflicit with versions of PyQt5.
+DO NOT use python-opencv but use 'opencv-python-headless' instead
+
+    pip install opencv-python-headless
 """
 
 import os, sys, time
 
-from PyQt5 import QtCore, QtWidgets, QtGui
+#from PyQt5 import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtWidgets, QtGui
 import numpy as np
+print('bQtCameraStream importing cv2')
 import cv2
+print('cv2.__version__:', cv2.__version__)
+
 import imageio
 
 # todo: create this kind of thread for PointGray camera on Olympus scope
 class myVideoThread(QtCore.QThread):
-	changePixmap2 = QtCore.pyqtSignal(np.ndarray)
+	changePixmap2 = QtCore.Signal(np.ndarray)
 
 	def run(self):
 		cap = cv2.VideoCapture(0)
@@ -44,16 +53,19 @@ class myVideoWidget(QtWidgets.QWidget):
 		self.saveImageAtInterval = True
 		self.saveIntervalSeconds = 1
 		self.lastSaveSeconds = None
-		
+
 		# save oneimage.tif in the same folder as source code
 		myPath = os.path.dirname(os.path.abspath(__file__))
 		self.mySaveFilePath = os.path.join(myPath, 'oneimage.tif')
-	
+
 		print('myVideoWidget.mySaveFilePath:', self.mySaveFilePath)
-	
+
 		self.initUI()
 
 		#self.show()
+
+	def getCurentImage(self):
+		return self.myCurrentImage
 
 	def resizeEvent(self, event):
 		"""
@@ -68,11 +80,11 @@ class myVideoWidget(QtWidgets.QWidget):
 			h = self.width() / self.aspectRatio
 			self.resize(w, h)
 
-	@QtCore.pyqtSlot(np.ndarray)
+	#@QtCore.Slot(np.ndarray)
 	def setImage2(self, image):
 		"""
 		We got a new image from the camera.
-		
+
 		Parameters:
 			image: type is numpy.ndarray, shape is (height,width,3), dtype is 'uint8'
 		"""
@@ -82,15 +94,15 @@ class myVideoWidget(QtWidgets.QWidget):
 		h, w, ch = rgbImage.shape
 		bytesPerLine = ch * w
 		myQtImage = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
-			
-		
+
+
 		# this does not work, i think because my webcam has 3 image planes, roughly RGB
 		'''
 		width = image.shape[1]
 		height = image.shape[0]
 		myQtImage = QtGui.QImage(image[:,:,0], width, height, QtGui.QImage.Format_Indexed8)
 		'''
-		
+
 		# update qt interface
 		pixmap = QtGui.QPixmap.fromImage(myQtImage)
 		# scale pixmap
@@ -106,12 +118,12 @@ class myVideoWidget(QtWidgets.QWidget):
 		if self.saveImageAtInterval:
 			now = time.time()
 			if self.lastSaveSeconds is None or ((now-self.lastSaveSeconds) > self.saveIntervalSeconds):
-				print(now, 'saving type(image)', type(image), image.shape, image.dtype, self.mySaveFilePath)
+				#print(now, 'saving type(image)', type(image), image.shape, image.dtype, self.mySaveFilePath)
 				self.lastSaveSeconds = now
 				# todo: make it so we receive a single plane grayscale image?
 				#cv2.imwrite(self.mySaveFilePath, image[:,:,0])
 				imageio.imwrite(self.mySaveFilePath, image[:,:,0])
-					
+
 	def initUI(self):
 		self.setWindowTitle(self.title)
 		self.setGeometry(self.myleft, self.mytop, self.mywidth, self.myheight)
@@ -120,6 +132,8 @@ class myVideoWidget(QtWidgets.QWidget):
 		self.label = QtWidgets.QLabel(self)
 		self.label.move(0, 0)
 		self.label.resize(640, 480)
+
+		print('myVideoWidget.initUI() creating myVideoThread()')
 		th = myVideoThread(self)
 		#th.changePixmap.connect(self.setImage)
 		th.changePixmap2.connect(self.setImage2)

@@ -1,17 +1,20 @@
 # Author: Robert Cudmore
 # Date: 20190630
 
-import os, sys, json #, subprocess
-#from functools import partial
+import os, sys, json
 from collections import OrderedDict
 from datetime import datetime
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
+import qdarkstyle
+
 import bimpy
-from canvas import bCanvasWidget, bMenu
+
+import canvas
 import bCanvas
 import bMotor
+import bCamera
 
 #from bCameraStream import VideoStreamWidget
 
@@ -34,12 +37,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		print('bCanvasApp.__init__() path:', path)
 		super(bCanvasApp, self).__init__()
 
+		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
+
 		self.myApp = parent
 
 		self.optionsFile = ''
 		self.optionsLoad()
 
-		self.myMenu = bMenu(self)
+		self.myMenu = canvas.bMenu(self)
 
 		motorName = self._optionsDict['motor']['name'] # = 'bPrior'
 		isReal = self._optionsDict['motor']['isReal'] #= False
@@ -62,6 +67,21 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		# todo: only needed on windows
 		self.show()
+
+		# start a camera Thread
+		self.camera = bCamera.myVideoWidget()
+		self.showingCamera = False
+		#self.camera.show()
+
+	def toggleVideo(self):
+		self.showingCamera = not self.showingCamera
+		if self.showingCamera:
+			self.camera.show()
+		else:
+			self.camera.hide()
+
+	def getCurentImage(self):
+		return self.camera.getCurentImage()
 
 	def assignMotor(self, motorName, isReal):
 		"""
@@ -123,7 +143,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 				os.mkdir(videoFolderPath)
 
 			# finally, make the canvas
-			self.canvasDict[fileName] = bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
+			self.canvasDict[fileName] = canvas.bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
 
 	def save(self):
 		"""
@@ -149,7 +169,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 			# this is causing waste of time problems
 			# if I pass self to constructor, the canvas widget end up with multiple copies of its sub widgets?
-			loadedCanvas = bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
+			loadedCanvas = canvas.bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
 			#loadedCanvas = bCanvasWidget(filePath) #bCanvas(filePath=filePath)
 
 			#loadedCanvas.buildUI()
@@ -295,9 +315,15 @@ if __name__ == '__main__':
 		myCanvasApp.optionsLoad()
 		'''
 
+		# 20200909 working
+		'''
 		path = '/Users/cudmore/box/data/canvas/20191226/20191226_tst1/20191226_tst1_canvas.txt'
 		if os.path.isfile(path):
 			myCanvasApp.load(path)
+		'''
+
+		# start a thread with videoFolderPath
+		#bCamera.myVideoWidget()
 
 		#video_stream_widget = VideoStreamWidget()
 
