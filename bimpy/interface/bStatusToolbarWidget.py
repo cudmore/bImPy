@@ -146,7 +146,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		"""
 		update based on theDict myQtGraphPlotWidget.displayStateDict
 		"""
-		print('bStatusToolbarWidget.slot_DisplayStateChange() key:', key, 'theDict:', theDict)
+		print('  bStatusToolbarWidget.slot_DisplayStateChange() key:', key) #, 'theDict:', theDict)
 		if key == 'displayThisStack':
 			theStr = str(theDict[key])
 			self.imageLabel.setText(theStr)

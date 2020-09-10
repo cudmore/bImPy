@@ -915,12 +915,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# force update?
 		self.update()
 
+	'''
 	def setStackDisplay(self, stackNumber):
 		"""
 		stackNumber: (1,2,3, ... 5,6,7)
 		"""
 		self.displayStateDict['displayThisStack'] = stackNumber
 		self.setSlice() # just refresh
+	'''
 
 	def editNote(self):
 		'''
@@ -1133,18 +1135,22 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				'''
 		# choose which stack to display
 		elif event.key() == QtCore.Qt.Key_1:
-			self.setStackDisplay(1)
+			self.displayStateChange('displayThisStack', value=1)
+			#self.setStackDisplay(1)
 		elif event.key() == QtCore.Qt.Key_2:
-			self.setStackDisplay(2)
-		# todo: put this back in
-		#elif event.key() == QtCore.Qt.Key_3:
-		#	self.setStackDisplay(3)
+			self.displayStateChange('displayThisStack', value=2)
+			#self.setStackDisplay(2)
+		elif event.key() == QtCore.Qt.Key_3:
+			self.displayStateChange('displayThisStack', value=2)
+			#self.setStackDisplay(3)
 
 		# masks
 		elif event.key() == QtCore.Qt.Key_5:
-			self.setStackDisplay(5)
+			self.displayStateChange('displayThisStack', value=5)
+			#self.setStackDisplay(5)
 		elif event.key() == QtCore.Qt.Key_6:
-			self.setStackDisplay(6)
+			self.displayStateChange('displayThisStack', value=6)
+			#self.setStackDisplay(6)
 		# todo: put this back in
 		#elif event.key() == QtCore.Qt.Key_7:
 		#	self.setStackDisplay(7)

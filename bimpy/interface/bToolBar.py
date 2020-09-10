@@ -46,20 +46,28 @@ class bToolBar(QtWidgets.QToolBar):
 		iconSizeStr = '16'
 
 		# checkable e.g. two state buttons
-		toolListNames = ['Branch Points', 'Vessels', 'Annotations', 'Search', 'Contrast', 'Line Profile']
+		toolListNames = ['1', '2', '3', 'rgb', 'separator', 'z', 'max', 'separator',
+						 'Branch Points', 'Vessels', 'Annotations',
+						 'Search', 'Contrast', 'Line Profile', 'Analysis',
+						 ]
 		self.toolList = []
+		toolIndex = 0
 		for index, toolName in enumerate(toolListNames):
-			iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
-			theIcon = QtGui.QIcon(iconPath)
+			if toolName == 'separator':
+				self.addSeparator()
+			else:
+				iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
+				theIcon = QtGui.QIcon(iconPath)
 
-			# see: https://stackoverflow.com/questions/45511056/pyqt-how-to-make-a-toolbar-button-appeared-as-pressed
-			theAction = QtWidgets.QAction(theIcon, toolName, self)
-			theAction.setCheckable(True)
-			theAction.setStatusTip(toolName)
-			theAction.triggered.connect(lambda checked, index=index: self.oneCallback3(index))
+				# see: https://stackoverflow.com/questions/45511056/pyqt-how-to-make-a-toolbar-button-appeared-as-pressed
+				theAction = QtWidgets.QAction(theIcon, toolName, self)
+				theAction.setCheckable(True)
+				theAction.setStatusTip(toolName)
+				theAction.triggered.connect(lambda checked, index=toolIndex: self.oneCallback3(index))
 
-			self.toolList.append(theAction)
-			self.addAction(theAction)
+				self.toolList.append(theAction)
+				self.addAction(theAction)
+				toolIndex += 1
 
 		self.addSeparator()
 
@@ -73,6 +81,11 @@ class bToolBar(QtWidgets.QToolBar):
 			callbackFn = functools.partial(self.oneCallback, toolName)
 			saveAction.triggered.connect(callbackFn)
 			self.addAction(saveAction)
+
+	def slot_DisplayStateChange(self, key, displayStateDict):
+		print('    bToolbar.slot_DisplayStateChange() key:', key)
+		if key == 'displayThisStack':
+			print('  toggle channel 1/2/3/rgb to displayStateDict[key]', displayStateDict[key])
 
 	def syncWithOptions(self, options):
 		"""

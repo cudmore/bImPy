@@ -186,33 +186,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		# listen to bStackWidget
 		self.optionsStateChange.connect(self.myFeedbackWidget.slot_OptionsStateChange)
+		#self.optionsStateChange.connect(self.myToolbar.slot_OptionsStateChange)
 
-		#
-		# listen to self.bLeftToolbarWidget
-		#self.bLeftToolbarWidget.clickStateChange.connect(self.myStackView.slot_StateChange)
-		#
-		# listen to self.myStackView
-		if self.myStackView is not None:
-			self.myStackView.displayStateChangeSignal.connect(self.myFeedbackWidget.slot_DisplayStateChange)
-			self.myStackView.setSliceSignal.connect(self.mySliceSlider.slot_UpdateSlice)
-			#self.myStackView.setSliceSignal.connect(self.bLeftToolbarWidget.slot_StateChange)
-			self.myStackView.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
-			self.myStackView.selectNodeSignal.connect(self.nodeTable2.slot_select)
-			self.myStackView.selectNodeSignal.connect(self.statusToolbarWidget.slot_select)
-			self.myStackView.selectEdgeSignal.connect(self.statusToolbarWidget.slot_select)
-			self.myStackView.selectEdgeSignal.connect(self.nodeTable2.slot_select)
-			self.myStackView.selectEdgeSignal.connect(self.edgeTable2.slot_select)
-			self.myStackView.tracingEditSignal.connect(self.nodeTable2.slot_updateTracing)
-			self.myStackView.tracingEditSignal.connect(self.edgeTable2.slot_updateTracing)
-
-			if self.myFeedbackWidget is not None:
-				self.myStackView.selectNodeSignal.connect(self.myFeedbackWidget.slot_selectNode)
-				self.myStackView.selectEdgeSignal.connect(self.myFeedbackWidget.slot_selectEdge)
-			'''
-			# todo: implement this in bTableWidget2
-			self.myStackView.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)
-			'''
-			self.myStackView.setSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 		#
 		# listen to self.mySliceSlider
 		if self.myStackView is not None:
@@ -272,6 +247,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		self.myStackView2.displayStateChangeSignal.connect(self.statusToolbarWidget.slot_DisplayStateChange)
 		self.myStackView2.displayStateChangeSignal.connect(self.myFeedbackWidget.slot_DisplayStateChange)
+		self.myStackView2.displayStateChangeSignal.connect(self.myToolbar.slot_DisplayStateChange)
+		#self.myStackView2.displayStateChangeSignal.connect(self.myToolbar.slot_DisplayStateChange)
 		#
 		self.myStackView2.setSliceSignal.connect(self.mySliceSlider.slot_UpdateSlice)
 		self.myStackView2.setSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
@@ -1114,7 +1091,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 		if userActionStr == 'Channel 1':
 			#self.getStackView().displayStateDict['displayThisStack'] = 1
 			#doStackRefresh = True
-			self.getStackView().displayStateChange('displayThisStack', value=1)
+			self.optionsChange('Panels', 'displayThisStack', value=1, doEmit=True)
+			#self.getStackView().displayStateChange('displayThisStack', value=1)
 		elif userActionStr == 'Channel 2':
 			#self.getStackView().displayStateDict['displayThisStack'] = 2
 			#doStackRefresh = True
