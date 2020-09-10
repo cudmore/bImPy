@@ -400,7 +400,7 @@ class bCanvas:
 					print('bCanvas.load() is loading scopeFilePath:', scopeFilePath)
 
 					# abb canvas, we need a way to just load oir max?
-					scopeStack = bimpy.bStack(scopeFilePath, loadImages=True)
+					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
 
 					#scopeStack.loadHeader() # at least makes default bStackHeader()
 					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)

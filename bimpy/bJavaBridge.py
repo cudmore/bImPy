@@ -13,6 +13,13 @@ try:
 	import javabridge
 	import bioformats
 
+
+	'''
+	log4j = javabridge.JClassWrapper("loci.common.Log4jTools")
+	log4j.enableLogging()
+	log4j.setRootLevel("WARN")
+	'''
+
 	"""
 	If you get
 	    "Could not find Java JRE compatible with x86_64 architecture"
@@ -60,14 +67,17 @@ class bJavaBridge:
 				log4j.enableLogging()
 				log4j.setRootLevel("WARN")
 				# 2
-				print('  loci.formats.FormatHandler')
-				log4j = javabridge.JClassWrapper("loci.formats.FormatHandler")
+				print('  loci.common.DebugTools')
+				log4j = javabridge.JClassWrapper("loci.common.DebugTools")
 				log4j.enableLogging()
 				log4j.setRootLevel("WARN")
+
 			except (AttributeError) as e:
 				print('EXCEPTION in bJavaBridge.start() trying to turn off logging?')
 				print('  e:', e)
 				print(traceback.format_exc())
+
+			#sys.exit()
 
 	def stop(self):
 		if javabridge is None:

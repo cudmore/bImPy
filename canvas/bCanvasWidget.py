@@ -624,15 +624,15 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#	print('bCanvasWidget.myQGraphicsView() not inserting scopeFile -->> xMotor or yMotor is None ???')
 		#	#continue
 
-		# todo: specify channel (1,2,3,4,...)
+		# stackMax can be None
 		stackMax = newScopeFile.getMax(channel=1) # stackMax can be None
 		if stackMax is None:
 			print('  myQGraphicsView.appendScopeFile() got stackMax None. path:', path)
 			print('    myQGraphicsView.appendScopeFile is not appending file')
-			return False
-
-		# stackMax can be None
-		imageStackHeight, imageStackWidth = stackMax.shape
+			imageStackHeight = newScopeFile.header.header['xPixels']
+			imageStackWidth = newScopeFile.header.header['yPixels']
+		else:
+			imageStackHeight, imageStackWidth = stackMax.shape
 
 		print('myQGraphicsView.appendScopeFile() path:', path)
 		print('  xMotor:', xMotor, 'yMotor:', yMotor)
@@ -640,7 +640,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		print('  imageStackHeight:', imageStackHeight, 'imageStackWidth:', imageStackWidth)
 
 		if stackMax is None:
-			print('myQGraphicsView.appendScopeFile() is making zero max image for newScopeFile:', newScopeFile)
+			print('  myQGraphicsView.appendScopeFile() is making zero max image for newScopeFile:', newScopeFile)
 			stackMax = np.zeros((imageStackWidth, imageStackHeight), dtype=np.uint8)
 
 		myQImage = QtGui.QImage(stackMax, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
@@ -1870,6 +1870,11 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		elif event.key() == QtCore.Qt.Key_B:
 			#print('b for send to back')
 			self.myCanvasWidget.getGraphicsView().changeOrder('send to back')
+
+		elif event.key() == QtCore.Qt.Key_I:
+			selectedItems = self.selectedItems()
+			print('key i selectedItems:', selectedItems)
+			self.myCanvasWidget.userEvent('print stack info')
 
 		elif event.key() == QtCore.Qt.Key_Left:
 			super(myTreeWidget, self).keyPressEvent(event)

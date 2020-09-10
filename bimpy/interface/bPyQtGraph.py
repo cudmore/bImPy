@@ -839,7 +839,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				sliceImage2 = self.mySimpleStack.getImage2(channel=2, sliceNum=thisSlice)
 				m = sliceImage1.shape[0]
 				n = sliceImage1.shape[1]
-				sliceImage = np.ndarray((m,n,3), dtype=np.uint8)
+				dtype = sliceImage1.dtype # assuming both have same dtype
+				sliceImage = np.ndarray((m,n,3), dtype=dtype)
 				# assuming we want channel 1 as green and channel 2 as magenta
 				sliceImage[:,:,0] = sliceImage2 # red
 				sliceImage[:,:,1] = sliceImage1 # green
