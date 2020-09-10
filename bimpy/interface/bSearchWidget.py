@@ -2,7 +2,7 @@ import os
 import functools
 
 from qtpy import QtGui, QtCore, QtWidgets
-from PyQt5.QtCore import QObject, pyqtSlot
+#from PyQt5.QtCore import QObject, pyqtSlot
 #from qtpy.QtCore import pyqtSlot
 
 import bimpy
