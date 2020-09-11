@@ -1,0 +1,1 @@
+from .bQtCameraStream import myVideoWidget
