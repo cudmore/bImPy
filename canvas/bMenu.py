@@ -5,6 +5,9 @@ import sys # to make menus on osx, sys.platform == 'darwin'
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
+import logging
+bLogger = logging.getLogger('canvasApp')
+
 class bMenu:
 	def __init__(self, parent):
 		"""
@@ -53,11 +56,12 @@ class bMenu:
 		self.myCanvasApp.load(askUser=True)
 
 	def save(self):
-		print('bMenu.save() does nothing')
+		print('bMenu.save()')
+		self.myCanvasApp.save()
 
 	def quit(self):
 		print('bMenu.quit')
-		#self.myCanvasApp.myApp.
+		bLogger.info('quit menu')
 		self.myCanvasApp.myApp.quit()
 
 	def loadScopeConfig(self):
@@ -65,5 +69,5 @@ class bMenu:
 		self.myCanvasApp.optionsLoad(askUser=True)
 
 	def loadUserConfig(self):
-		print('bMenu.loadUserConfig')
+		print('bMenu.loadUserConfig() not implemented')
 		#self.myCanvasApp.optionsLoad(askUser=True)

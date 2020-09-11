@@ -3,8 +3,8 @@
 
 import time
 import traceback
-import logging
-logger = logging.getLogger(__name__)
+#import logging
+#logger = logging.getLogger(__name__)
 
 import skimage # this is needed or else javabridge fails to import ???
 

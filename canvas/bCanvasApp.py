@@ -1,7 +1,7 @@
 # Author: Robert Cudmore
 # Date: 20190630
 
-import os, sys, json
+import os, sys, json, traceback
 from collections import OrderedDict
 from datetime import datetime
 
@@ -9,14 +9,14 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 
 import qdarkstyle
 
+from bLogger import bLogger
+
+import logging
+bLogger = logging.getLogger('canvasApp')
+
 import bimpy
 
-import canvas
-import bCanvas
-import bMotor
-import bCamera
-
-#from bCameraStream import VideoStreamWidget
+import canvas # for (bCanvs, bMotor, bCamera)
 
 # todo: put this in scope config json (along with motor name like 'Prior')
 #gMotorIsReal = False
@@ -34,14 +34,15 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		loadIgorCanvas: path to folder of converted Igor canvas
 		path: path to text file of a saved Python canvas
 		"""
-		print('bCanvasApp.__init__() path:', path)
 		super(bCanvasApp, self).__init__()
+
+		bLogger.info(f'path: {path}')
 
 		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 
 		self.myApp = parent
 
-		self.optionsFile = ''
+		self.optionsFile = self.defaultOptionsFile()
 		self.optionsLoad()
 
 		self.myMenu = canvas.bMenu(self)
@@ -53,35 +54,69 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.canvasDict = {}
 
+		self.canvas = None
 		if loadIgorCanvas is not None:
 			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
 			#tmpCanvasFolderPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
-			self.canvas = bCanvas.bCanvas(folderPath=loadIgorCanvas)
+			self.canvas = canvas.bCanvas(folderPath=loadIgorCanvas)
 
 			# this is only for import from igor
 			self.canvas.importIgorCanvas()
 
 			self.canvas.buildFromScratch()
 		else:
-			self.canvas = bCanvas.bCanvas(filePath=path)
+			self.canvas = canvas.bCanvas(filePath=path)
 
 		# todo: only needed on windows
-		self.show()
+		#self.show()
 
+		# todo: self.camera = None and then create it when user first opens it
 		# start a camera Thread
-		self.camera = bCamera.myVideoWidget()
+		self.camera = None #bCamera.myVideoWidget()
 		self.showingCamera = False
 		#self.camera.show()
 
 	def toggleVideo(self):
 		self.showingCamera = not self.showingCamera
 		if self.showingCamera:
+			if self.camera is None:
+				left = self._optionsDict['video']['left']
+				top  = self._optionsDict['video']['top']
+				pos = (left,top)
+				w = self._optionsDict['video']['width'] # actual video pixels
+				h = self._optionsDict['video']['height']
+				videoSize = (w,h)
+				scaleMult = self._optionsDict['video']['scaleMult']
+				self.camera = canvas.bCamera.myVideoWidget(parent=self,
+					videoSize=videoSize,
+					videoPos = pos,
+					scaleMult = scaleMult)
+				self.camera.videoWindowSignal.connect(self.slot_VideoChanged)
 			self.camera.show()
 		else:
-			self.camera.hide()
+			if self.camera is not None:
+				self.camera.hide()
+
+	def slot_VideoChanged(self, videoDict):
+		#print('bCanvasApp.slot_VideoChanged() videoDict:', videoDict)
+		event = videoDict['event']
+		if event == 'Close Window':
+			# actual video window is already closed (thread is still running)
+			self.showingCamera = False
+		elif event == 'Resize Window':
+			# save the scaleMult (never change w/h)
+			scaleMult = videoDict['scaleMult']
+			self._optionsDict['video']['scaleMult'] = scaleMult
+		elif event == 'Move Window':
+			# save the (t,l)
+			self._optionsDict['video']['left'] = videoDict['left']
+			self._optionsDict['video']['top'] = videoDict['top']
 
 	def getCurentImage(self):
-		return self.camera.getCurentImage()
+		if self.camera is not None:
+			return self.camera.getCurentImage()
+		else:
+			return None
 
 	def assignMotor(self, motorName, isReal):
 		"""
@@ -93,19 +128,20 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		# we will import user defined motor class using a string
 		# see: https://stackoverflow.com/questions/4821104/dynamic-instantiation-from-string-name-of-a-class-in-dynamically-imported-module
 		# on sutter this is x/y/x !!!
-		class_ = getattr(bMotor, motorName) # class_ is a module
+		class_ = getattr(canvas.bMotor, motorName) # class_ is a module
 		#print('class_:', class_)
 		#class_ = getattr(class_, motorName) # class_ is a class
 		self.xyzMotor = class_(isReal=isReal)
 
-
 	def mousePressEvent(self, event):
 		print('=== bCanvasApp.mousePressEvent()')
+		bLogger.info('===')
 		super().mousePressEvent(event)
 		#event.setAccepted(False)
 
 	def keyPressEvent(self, event):
 		print('myApp.keyPressEvent() event:', event)
+		bLogger.info(f'event:{event}')
 		self.myGraphicsView.keyPressEvent(event)
 
 	def newCanvas(self, shortName=''):
@@ -151,12 +187,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		"""
 		self.canvas.save()
 
+		self.optionsSave()
+
 	def load(self, filePath='', askUser=False):
 		"""
 		Load a canvas
 		"""
 		if askUser:
-			dataFolder = '/Users/cudmore/box/data/canvas' #os.path.join(self._getCodeFolder(), 'config')
+			dataFolder = '/Users/cudmore/data/canvas' #os.path.join(self._getCodeFolder(), 'config')
 			if not os.path.isdir(dataFolder):
 				dataFolder = ''
 			filePath = QtWidgets.QFileDialog.getOpenFileName(caption='xxx load canvas file', directory=dataFolder, filter="Canvas Files (*.txt)")
@@ -211,10 +249,13 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		return optionsFilePath
 	'''
 
+	def optionsVersion(self):
+		return 0.2
+
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
-		self._optionsDict['version'] = 0.1
-		self._optionsDict['savePath'] = '/Users/cudmore/box/data/canvas'
+		self._optionsDict['version'] = self.optionsVersion() #0.1
+		self._optionsDict['savePath'] = '/Users/cudmore/data/canvas'
 
 		self._optionsDict['motor'] = OrderedDict()
 		self._optionsDict['motor']['name'] = 'bPrior' # the name of the class derived from bMotor
@@ -223,13 +264,21 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		# on olympus, camera is 1920 x 1200
 		self._optionsDict['video'] = OrderedDict()
 		self._optionsDict['video']['oneimage'] = 'bCamera/oneimage.tif'
+		self._optionsDict['video']['left'] = 100
+		self._optionsDict['video']['top'] = 100
+		self._optionsDict['video']['width'] = 1280 # set this to actual video pixels
+		self._optionsDict['video']['height'] = 720
+		self._optionsDict['video']['scaleMult'] = 1.0
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
-		self._optionsDict['video']['stepFraction'] = 0.1
+		self._optionsDict['video']['stepFraction'] = 0.2 # for motor moves
 
 		self._optionsDict['scanning'] = OrderedDict()
 		self._optionsDict['scanning']['zoomOneWidthHeight'] = 509.116882454314
 		self._optionsDict['scanning']['stepFraction'] = 0.2
+
+		self._optionsDict['Interface'] = OrderedDict()
+		self._optionsDict['Interface']['wheelZoom'] = 1.1
 
 	def optionsLoad(self, askUser=False):
 		if askUser:
@@ -252,8 +301,16 @@ class bCanvasApp(QtWidgets.QMainWindow):
 				print('bCanvasApp.optionsLoad() loading:', self.optionsFile)
 				with open(self.optionsFile) as f:
 					self._optionsDict = json.load(f)
+				# check if it is old
+				loadedVersion = self._optionsDict['version']
+				if self.optionsVersion() > loadedVersion:
+					print('  optionsLoad() loaded older options file, making new one')
+					print('  self.optionsVersion()', self.optionsVersion())
+					print('  loadedVersion:', loadedVersion)
+					self.optionsDefault()
 
 	def optionsSave(self):
+		print('bCanvasApp.optionsSave() self.optionsFile:', self.optionsFile)
 		with open(self.optionsFile, 'w') as outfile:
 			json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
 
@@ -275,10 +332,6 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
 	print('bCanvasApp __main__')
-	import sys
-	import logging
-	import traceback
-
 	try:
 
 		print('bCanvasApp __main__ intantiation bimpy.bJavaBridge()')

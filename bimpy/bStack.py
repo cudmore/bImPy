@@ -176,12 +176,26 @@ class bStack:
 			#print('getPixel() returning np.nan'
 			theRet = np.nan
 		else:
-			m = self._stackList[channelIdx].shape[1]
-			n = self._stackList[channelIdx].shape[2]
+			nDim = len(self._stackList[channelIdx].shape)
+			if nDim == 2:
+				m = self._stackList[channelIdx].shape[0]
+				n = self._stackList[channelIdx].shape[1]
+			elif nDim == 3:
+				m = self._stackList[channelIdx].shape[1]
+				n = self._stackList[channelIdx].shape[2]
+			else:
+				print('bStack.getPixel() got bad dimensions:', self._stackList[channelIdx].shape)
 			if x<0 or x>m-1 or y<0 or y>n-1:
 				theRet = np.nan
 			else:
-				theRet = self._stackList[channelIdx][sliceNum,x,y]
+				if nDim == 2:
+					theRet = self._stackList[channelIdx][x,y]
+				elif nDim == 3:
+					theRet = self._stackList[channelIdx][sliceNum,x,y]
+				else:
+					pass
+					# never get here
+					#print('bStack.getPixel() got bad dimensions:', self._stackList[channelIdx].shape)
 
 		#
 		return theRet

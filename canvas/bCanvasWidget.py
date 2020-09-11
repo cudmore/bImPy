@@ -190,9 +190,19 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			'''
 
 			imageData = self.myCanvasApp.getCurentImage()
-			imageData = imageData[:,:,0]
+			if imageData is None:
+				return
+			imageDataShape = imageData.shape
 
-			print('imageData.shape', imageData.shape)
+			print('  imageData.shape', imageData.shape)
+
+			if len(imageDataShape) == 3:
+				imageData = imageData[:,:,0]
+			elif len(imageDataShape) == 2:
+				pass
+			else:
+				print('error: bCanvasWidget.userEvent() "Grab Image" got bad shape:', imageDataShape)
+
 			#m, n, s = imageData.shape
 			m, n = imageData.shape
 
@@ -960,18 +970,23 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
 		'''
 
+		wheelZoom = self.myCanvasWidget.getOptions()['Interface']['wheelZoom'] # 1.25
+
 		oldPos = self.mapToScene(event.pos())
 		if event.angleDelta().y() > 0:
 			#self.zoom('in')
-			scale = 1.25
+			scale = 1 * wheelZoom
 		elif event.angleDelta().y() < 0:
 			#self.zoom('out')
-			scale = 1/1.25
+			scale = 1 / wheelZoom
 		else:
 			return
 		self.scale(scale,scale)
 		newPos = self.mapToScene(event.pos())
 		delta = newPos - oldPos
+
+		print('myQGraphicsView.wheelEvent() delta:', delta)
+
 		self.translate(delta.y(), delta.x())
 		'''
 		if self._zoom > 0:
@@ -1101,7 +1116,7 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		self.myLayer = 'crosshair'
 		theFont = QtGui.QFont("Times", self.fontSize, QtGui.QFont.Bold)
 		self.setFont(theFont)
-		self.setPlainText('+')
+		self.setPlainText('XXX')
 		self.setDefaultTextColor(QtCore.Qt.red)
 		self.document().setDocumentMargin(0)
 		# hide until self.setMotorPosition
@@ -1110,7 +1125,7 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 	def setMotorPosition(self, x, y):
 		if x is None or y is None:
 			self.hide()
-			print('setMotorPosition() hid crosshair')
+			print('myCrosshair.setMotorPosition() hid crosshair')
 			return
 
 		self.show()
@@ -1122,6 +1137,7 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		print('myCrosshair.setMotorPosition() x:', x, 'y:', y)
 
 		newPnt = self.mapToScene(x, y)
+		newPnt = self.mapToScene(y, x)
 
 		#print('   after mapToScene x:', newPnt.x(), 'y:', newPnt.y())
 
@@ -1593,7 +1609,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		layersHBoxLayout.addWidget(self.showVideoCheckBox)
 
 		checkBoxName = '2P Max Layer'
-		self.show2pMaxCheckBox = QtWidgets.QCheckBox('Scanning Max Project')
+		self.show2pMaxCheckBox = QtWidgets.QCheckBox('Scanning')
 		self.show2pMaxCheckBox.setToolTip('Toggle scanning layer on and off')
 		self.show2pMaxCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.show2pMaxCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.show2pMaxCheckBox))
@@ -1601,7 +1617,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		layersHBoxLayout.addWidget(self.show2pMaxCheckBox)
 
 		checkBoxName = '2P Squares Layer'
-		self.show2pSquaresCheckBox = QtWidgets.QCheckBox('Scanning Squares')
+		self.show2pSquaresCheckBox = QtWidgets.QCheckBox('Squares')
 		self.show2pSquaresCheckBox.setToolTip('Toggle scanning squares on and off')
 		self.show2pSquaresCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.show2pSquaresCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.show2pSquaresCheckBox))
@@ -1619,8 +1635,8 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 		contrastRadioHBoxLayout = QtWidgets.QHBoxLayout()
 		self.selectedContrast = QtWidgets.QRadioButton('Selected')
-		self.videoLayerContrast = QtWidgets.QRadioButton('Video Layer')
-		self.scopeLayerContrast = QtWidgets.QRadioButton('Scope Layer')
+		self.videoLayerContrast = QtWidgets.QRadioButton('Video')
+		self.scopeLayerContrast = QtWidgets.QRadioButton('Scope')
 
 		# default to selecting 'Selected' image (for contrast adjustment)
 		self.selectedContrast.setChecked(True)

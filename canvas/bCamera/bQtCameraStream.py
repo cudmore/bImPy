@@ -16,9 +16,10 @@ import os, sys, time
 #from PyQt5 import QtCore, QtWidgets, QtGui
 from qtpy import QtCore, QtWidgets, QtGui
 import numpy as np
-print('bQtCameraStream importing cv2')
+
+#print('bQtCameraStream importing cv2')
 import cv2
-print('cv2.__version__:', cv2.__version__)
+#print('cv2.__version__:', cv2.__version__)
 
 import imageio
 
@@ -36,29 +37,55 @@ class myVideoThread(QtCore.QThread):
 
 # todo: this will always be used by canvas
 class myVideoWidget(QtWidgets.QWidget):
-	def __init__(self):
+
+	videoWindowSignal = QtCore.Signal(object)
+
+	def getVideoDict():
+		"""
+		pass this in self.videoWindowSignal.emit()
+		"""
+		theRet = {
+		'event': ''
+		}
+		return theRet
+
+	def __init__(self, parent=None, videoSize=None, videoPos=None, scaleMult=1.0):
+		"""
+		videoSize: (w,h) of actual video (pixels)
+		videoPos: (left,top) position on screen
+		scaleMult: final width is w * scaleMult
+		"""
 		super().__init__()
-		#[...]
+
 		self.title = 'myVideoWidget'
-		self.myleft = 100
-		self.mytop = 100
-		self.mywidth = 640
-		self.myheight = 480
 
-		# put this in so parent app (e.g. bCanvasApp) can grab the last image!
-		#self.mypixmap = None
-		self.myCurrentImage = None
-		self.aspectRatio = 640/480
+		if videoSize is not None:
+			self.myWidth = videoSize[0]
+			self.myHeight = videoSize[1]
+		else:
+			self.myWidth = 640
+			self.myHeight = 480
 
+		self.aspectRatio = self.myWidth / self.myHeight #640/480
+
+		# set on self.moveEvent
+		if videoPos is not None:
+			self.videoPos = videoPos
+		else:
+			self.videoPos = (100,100)
+
+		self.scaleMult = scaleMult # set on self.resizeEvent
+
+		self.myCurrentImage = None # updated with new images (in thread)
+
+		# save an image at an interval
 		self.saveImageAtInterval = True
 		self.saveIntervalSeconds = 1
 		self.lastSaveSeconds = None
-
 		# save oneimage.tif in the same folder as source code
 		myPath = os.path.dirname(os.path.abspath(__file__))
 		self.mySaveFilePath = os.path.join(myPath, 'oneimage.tif')
-
-		print('myVideoWidget.mySaveFilePath:', self.mySaveFilePath)
+		print('  myVideoWidget.mySaveFilePath:', self.mySaveFilePath)
 
 		self.initUI()
 
@@ -66,6 +93,20 @@ class myVideoWidget(QtWidgets.QWidget):
 
 	def getCurentImage(self):
 		return self.myCurrentImage
+
+	def moveEvent(self, event):
+		print('moveEvent()')
+		left = self.frameGeometry().left()
+		top = self.frameGeometry().top()
+		#w = self.frameGeometry().width()
+		#h = self.frameGeometry().height()
+
+		# emit
+		videoDict = myVideoWidget.getVideoDict()
+		videoDict['event'] = 'Move Window'
+		videoDict['left'] = left
+		videoDict['top'] = top
+		self.videoWindowSignal.emit(videoDict)
 
 	def resizeEvent(self, event):
 		"""
@@ -80,6 +121,12 @@ class myVideoWidget(QtWidgets.QWidget):
 			h = self.width() / self.aspectRatio
 			self.resize(w, h)
 
+		# emit
+		videoDict = myVideoWidget.getVideoDict()
+		videoDict['event'] = 'Resize Window'
+		videoDict['scaleMult'] = w / self.myWidth # myWidth does not change
+		self.videoWindowSignal.emit(videoDict)
+
 	#@QtCore.Slot(np.ndarray)
 	def setImage2(self, image):
 		"""
@@ -88,6 +135,10 @@ class myVideoWidget(QtWidgets.QWidget):
 		Parameters:
 			image: type is numpy.ndarray, shape is (height,width,3), dtype is 'uint8'
 		"""
+
+		# (720, 1280, 3)
+		#print('setImage2() image:', image.shape)
+
 		# convert to Qt
 		# https://stackoverflow.com/a/55468544/6622587
 		rgbImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -124,23 +175,52 @@ class myVideoWidget(QtWidgets.QWidget):
 				#cv2.imwrite(self.mySaveFilePath, image[:,:,0])
 				imageio.imwrite(self.mySaveFilePath, image[:,:,0])
 
+	def closeEvent(self, event):
+		"""
+		called when video window is closed
+		"""
+		print('  bQtCameraStream.closeEvent()')
+		videoDict = myVideoWidget.getVideoDict()
+		videoDict['event'] = 'Close Window'
+		self.videoWindowSignal.emit(videoDict)
+		#if self.canvasApp is not None:
+		#	self.canvasApp.closeVideo()
+
+	def _getScaledWithHeight(self):
+		scaledWidth = self.myWidth * self.scaleMult
+		scaledHeight = self.myHeight * self.scaleMult
+		return scaledWidth, scaledHeight
+
 	def initUI(self):
 		self.setWindowTitle(self.title)
-		self.setGeometry(self.myleft, self.mytop, self.mywidth, self.myheight)
+
+		scaledWith, scaledHeight = self._getScaledWithHeight()
+		self.setGeometry(self.videoPos[0], self.videoPos[1], scaledWith, scaledHeight)
 		#self.resize(640, 480)
 		# create a label
 		self.label = QtWidgets.QLabel(self)
 		self.label.move(0, 0)
-		self.label.resize(640, 480)
+		#self.label.resize(640, 480)
+		self.label.resize(scaledWith, scaledHeight)
 
-		print('myVideoWidget.initUI() creating myVideoThread()')
+		print('  myVideoWidget.initUI() creating myVideoThread()')
 		th = myVideoThread(self)
 		#th.changePixmap.connect(self.setImage)
 		th.changePixmap2.connect(self.setImage2)
 		th.start()
 
 if __name__ == '__main__':
+	w = 1280 #640
+	h = 720 #480
+
 	app = QtWidgets.QApplication(sys.argv)
-	mvw = myVideoWidget()
+	mvw = myVideoWidget(videoSize=(w,h),
+						videoPos=(100,500),
+						scaleMult=0.5)
 	mvw.show()
+
+	def slot_test(videoDict):
+		print('slot_test() videoDict:', videoDict)
+	mvw.videoWindowSignal.connect(slot_test)
+
 	sys.exit(app.exec_())
