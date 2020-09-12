@@ -40,7 +40,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 
-		self.myApp = parent
+		self.myApp = parent # to use activeWindow() or focusWidget()
 
 		self.optionsFile = self.defaultOptionsFile()
 		self.optionsLoad()
@@ -153,7 +153,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		if shortName == '':
 			return
 
-		savePath = self._optionsDict['savePath']
+		savePath = self._optionsDict['userOptions']['savePath']
 		dateStr = datetime.today().strftime('%Y%m%d')
 
 		datePath = os.path.join(savePath, dateStr)
@@ -185,9 +185,32 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		"""
 		Save the canvas
 		"""
-		self.canvas.save()
 
+		print('=== bCanvasApp.save()')
+
+		# need to get the active canvas window
+		# use
+		#self.myApp = parent # to use activeWindow() or focusWidget()
+		activeWindow = self.myApp.activeWindow()
+		#focusWidget = self.myApp.focusWidget()
+
+		print('  activeWindow:', activeWindow)
+		#print('  focusWidget:', focusWidget)
+
+		#if focusWidget is not None:
+		if activeWindow is not None:
+			# todo: double bCanvasWidget.bCanvasWidget is required?
+			if isinstance(activeWindow, canvas.bCanvasWidget):
+				print('  bCanvasApp.save() calling .save() for bCanvasWidget')
+				activeWindow.saveMyCanvas()
+			else:
+				print('  bCanvasApp.save() front window is not a bCanvasWidget.bCanvasWidget')
+		else:
+			print('  bCanvasApp.save() no front widget?')
+		'''
+		self.canvas.save()
 		self.optionsSave()
+		'''
 
 	def load(self, filePath='', askUser=False):
 		"""
@@ -250,15 +273,18 @@ class bCanvasApp(QtWidgets.QMainWindow):
 	'''
 
 	def optionsVersion(self):
-		return 0.2
+		return 0.22
 
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
+
+		self._optionsDict['userOptions'] = OrderedDict()
+		self._optionsDict['userOptions']['savePath'] = '/Users/cudmore/data/canvas'
+
 		self._optionsDict['version'] = self.optionsVersion() #0.1
-		self._optionsDict['savePath'] = '/Users/cudmore/data/canvas'
 
 		self._optionsDict['motor'] = OrderedDict()
-		self._optionsDict['motor']['name'] = 'bPrior' # the name of the class derived from bMotor
+		self._optionsDict['motor']['name'] = 'mp285' #'bPrior' # the name of the class derived from bMotor
 		self._optionsDict['motor']['isReal'] = False
 
 		# on olympus, camera is 1920 x 1200
@@ -369,11 +395,10 @@ if __name__ == '__main__':
 		'''
 
 		# 20200909 working
-		'''
 		path = '/Users/cudmore/box/data/canvas/20191226/20191226_tst1/20191226_tst1_canvas.txt'
+		path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/20200911_aaa_canvas.txt'
 		if os.path.isfile(path):
 			myCanvasApp.load(path)
-		'''
 
 		# start a thread with videoFolderPath
 		#bCamera.myVideoWidget()

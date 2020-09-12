@@ -21,4 +21,8 @@ class bMotor(object):
 		pass
 
 	def move(direction, umDistance):
+		"""
+		- move stage
+		- return self.eadPosition()
+		"""
 		pass

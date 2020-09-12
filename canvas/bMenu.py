@@ -29,7 +29,7 @@ class bMenu:
 
 		file.addAction('Save Canvas', self.save, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_S))
 
-		file.addSeparator()
+		#file.addSeparator()
 
 		file.addAction('Exit', self.quit, QtGui.QKeySequence(QtCore.Qt.CTRL + QtCore.Qt.Key_Q))
 
@@ -56,7 +56,7 @@ class bMenu:
 		self.myCanvasApp.load(askUser=True)
 
 	def save(self):
-		print('bMenu.save()')
+		print('bMenu.save() not implemented, need to save each canvas')
 		self.myCanvasApp.save()
 
 	def quit(self):

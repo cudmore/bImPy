@@ -69,6 +69,14 @@ class bStack:
 
 		self.analysis = bimpy.bAnalysis(self)
 
+	def saveAs(self, newPath=None):
+		"""
+		save entire stack/tracing as a new file name
+		"""
+		if newPath is None:
+			# ask user for new file name/path
+			pass
+
 	def print(self):
 		print('bStack.print() path:', self.path)
 		print('  self.numChannels:', self.numChannels)

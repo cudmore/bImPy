@@ -95,7 +95,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		return self.myCurrentImage
 
 	def moveEvent(self, event):
-		print('moveEvent()')
+		print('myVideoWidget.moveEvent()')
 		left = self.frameGeometry().left()
 		top = self.frameGeometry().top()
 		#w = self.frameGeometry().width()
