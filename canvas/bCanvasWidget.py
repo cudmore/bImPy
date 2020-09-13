@@ -28,13 +28,23 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.myCanvas = canvas.bCanvas(filePath=filePath, parent=self)
 		self.myStackList = [] # a list of open bStack
 
-		folderPath = os.path.dirname(self.filePath)
-		self.myLogFilePosiiton = canvas.bLogFilePosition(folderPath, self.myCanvasApp.xyzMotor)
-		#self.myLogFilePosiiton.run()
+		# on olympus we watch for new files to log motor position from Prior controller
+		self.myLogFilePositon = None
+		useWatchFolder = self.appOptions()['scope']['useWatchFolder']
+		if useWatchFolder:
+			folderPath = os.path.dirname(self.filePath)
+			self.myLogFilePositon = canvas.bLogFilePosition(folderPath, self.myCanvasApp.xyzMotor)
 
 		self.buildUI()
 
 		self.show()
+
+		# has to be done after self.show()
+		# center existing video/tiff
+		self.myGraphicsView.centerOnCrosshair()
+
+	def appOptions(self):
+		return self.myCanvasApp.options
 
 	def saveMyCanvas(self):
 		if self.myCanvas is not None:
@@ -122,7 +132,11 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 	def userEvent(self, event):
 		print('=== myCanvasWidget.userEvent() event:', event)
-		xStep, yStep = self.motorToolbarWidget.getStepSize()
+
+		xStep = yStep = None
+		if self.appOptions()['motor']['useMotor']:
+			xStep, yStep = self.motorToolbarWidget.getStepSize()
+
 		if event == 'move stage right':
 			# todo: read current x/y move distance
 			thePos = self.myCanvasApp.xyzMotor.move('right', xStep) # the pos is (x,y)
@@ -355,8 +369,8 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.title = self.filePath
 		self.left = 50
 		self.top = 50
-		self.width = 1000
-		self.height = 1000
+		self.width = 800
+		self.height = 700
 
 		self.setMinimumSize(640, 640)
 		self.setWindowTitle(self.title)
@@ -380,8 +394,12 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 		# here I am linking the toolbar to the graphics view
 		# i can't figure out how to use QAction !!!!!!
-		self.motorToolbarWidget = bToolbar.myScopeToolbarWidget(parent=self)
-		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
+		useMotor = self.getOptions()['motor']['useMotor']
+		if useMotor:
+			self.motorToolbarWidget = bToolbar.myScopeToolbarWidget(parent=self)
+			self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
+		else:
+			self.motorToolbarWidget = None
 
 		self.toolbarWidget = bToolbar.myToolbarWidget(self)
 		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.toolbarWidget)
@@ -443,6 +461,11 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		# new 20191229
 		self.myStack = theStack # underlying bStack
 
+		# abb 20200913 baltimore
+		self._drawSquare = True
+
+		#self.hide()
+
 	# was trying to not have ot use opacity 0.01
 	'''
 	def shape(self):
@@ -469,6 +492,9 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 
 	def drawMyRect(self, painter):
 		#print('myQGraphicsPixmapItem.drawFocusRect() self.boundingRect():', self.boundingRect())
+		if not self._drawSquare:
+			return
+
 		self.focusbrush = QtGui.QBrush()
 
 		self.focuspen = QtGui.QPen(globalSquare['pen'])
@@ -485,7 +511,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		painter.drawRect(self.boundingRect())
 
 	def drawFocusRect(self, painter):
-		#print('myQGraphicsPixmapItem.drawFocusRect() self.boundingRect():', self.boundingRect())
+		#print('myQGraphicsPixmapItem.drawFocusRect()')
 		self.focusbrush = QtGui.QBrush()
 		'''
 		self.focuspen = QtGui.QPen(QtCore.Qt.SolidLine)
@@ -607,15 +633,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# these work
 		self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
 		self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
-
-		# I want to set the initial videw of the scene to include all items ??????
-		#myScene.setSceneRect(QtCore.QRectF())
-
-		# add an object at really small x/y
-		'''
-		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(-20000, -20000, 100, 100))
-		myScene.addItem(rect_item)
-		'''
+		self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
 
 		numItems = 0 # used to stack items with item.setZValue()
 
@@ -631,41 +649,20 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 
 		# a cross hair and rectangle (size of zoom)
-		# todo: add popup to select 2p zoom (Video, 1, 2, 3, 4)
-		#20191217
-		#self.myCrosshair = myQGraphicsRectItem(self)
-		# abb removed 20200912
-		# 1
-		self.myCrosshair = myQGraphicsRectItem(self)
-		self.myCrosshair.setZValue(10000)
-		self.scene().addItem(self.myCrosshair)
+		useMotor = self.myCanvasWidget.appOptions()['motor']['useMotor']
+		if useMotor:
+			self.myCrosshair = myQGraphicsRectItem(self)
+			self.myCrosshair.setZValue(10000)
+			self.scene().addItem(self.myCrosshair)
+		else:
+			self.myCrosshair = None
 
-		# add an object at really big x/y
-		'''
-		rect_item = myQGraphicsRectItem('video', QtCore.QRectF(20000, 20000, 100, 100))
-		myScene.addItem(rect_item)
-		'''
-
-		self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
-		#self.setScene(self.myScene)
-
-		# trying to snap to the visible objects -- does not work???
-		'''tmpSceneRect = self.scene().sceneRect()
-		print('  myQGraphicsView() is done initializing. self.scene().sceneRect()',
-			tmpSceneRect.left(),
-			tmpSceneRect.top(),
-			tmpSceneRect.right(),
-			tmpSceneRect.bottom(),
-			)
-
-		self.ensureVisible(tmpSceneRect)
-		'''
 
 	def centerOnCrosshair(self):
 		print('myQGraphicsView.centerOnCrosshair()')
 
 		# trying to zoom to full view
-		borderMult = 1.4
+		borderMult = 1.1
 
 		bounds = self.scene().itemsBoundingRect()
 		print('  1 bounds:', bounds)
@@ -674,39 +671,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		print('  2 bounds:', bounds)
 		#self.ensureVisible ( bounds )
 		self.fitInView( bounds, QtCore.Qt.KeepAspectRatio )
-		return
 
-		# works on windows
-		# works when paired with self.scene().update(sceneRect)
-		self.centerOn(self.myCrosshair)
-
-		# kinda works
-		print('self.myCrosshair.rect():', self.myCrosshair.rect())
-		self.ensureVisible(self.myCrosshair.rect(), xMargin=500, yMargin=500)
-		# end works on windows
-
-		'''
-		sceneRect = self.scene().sceneRect() #this is qrectf
-		self.ensureVisible(sceneRect, xMargin=0, yMargin=0)
-		'''
-
-		#sceneRect = self.mapToScene(self.rect()).boundingRect()
-		#self.fitInView(sceneRect)
-		#self.ensureVisible(sceneRect)
-
-		#viewRect = self.mapFromScene(sceneRect)
-		#self.update(sceneRect.toRect()) # update requires QRect, not QRectF
-
-		#self.ensureVisible(sceneRect)
-		#self.fitInView(sceneRect)
-
-		#self.setSceneRect(sceneRect)
-		#self.updateSceneRect(sceneRect)
-		#self.update()
-
-		# needed for update on macos
-		sceneRect = self.scene().sceneRect() #this is qrectf
-		self.scene().update(sceneRect)
+		#return
 
 	def appendScopeFile(self, newScopeFile):
 		"""
@@ -720,9 +686,16 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		fileName = newScopeFile.getFileName()
 		xMotor = newScopeFile.header.header['xMotor']
 		yMotor = newScopeFile.header.header['yMotor']
+
+		# abb 20200912, baltimore
+		# IMPORTANT: If we do not know (umwidth, umHeight) WE CANNOT place iimage in canvas !!!
 		umWidth = newScopeFile.header.header['umWidth']
 		umHeight = newScopeFile.header.header['umHeight']
-		#print('umWidth:', umWidth, 'umHeight:', umHeight)
+		#
+		print('\n')
+		print('bCanvasWidget.appendScopeFile() path:', path)
+		print('  umWidth:', umWidth, 'umHeight:', umHeight)
+		print('\n')
 
 		if xMotor == 'None':
 			xMotor = None
@@ -736,10 +709,13 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# stackMax can be None
 		stackMax = newScopeFile.getMax(channel=1) # stackMax can be None
 		if stackMax is None:
+			print('\n\n')
 			print('  myQGraphicsView.appendScopeFile() got stackMax None. path:', path)
-			print('    myQGraphicsView.appendScopeFile is not appending file')
+			#print('    myQGraphicsView.appendScopeFile is not appending file')
 			imageStackHeight = newScopeFile.header.header['xPixels']
 			imageStackWidth = newScopeFile.header.header['yPixels']
+			print(f'  imageStackWidth {imageStackWidth} imageStackHeight {imageStackHeight}')
+			print('\n\n')
 		else:
 			imageStackHeight, imageStackWidth = stackMax.shape
 
@@ -776,7 +752,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
 
 		pixMapItem.setShapeMode(QtWidgets.QGraphicsPixmapItem.BoundingRectShape)
-		print('appendScopeFile() setting pixMapItem.shapeMode():', pixMapItem.shapeMode())
+		#print('appendScopeFile() setting pixMapItem.shapeMode():', pixMapItem.shapeMode())
 
 		# add to scene
 		self.scene().addItem(pixMapItem)
@@ -875,8 +851,26 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 	def hideShowLayer(self, thisLayer, isVisible):
 		"""
 		if hide/show thisLayer is '2p max layer' then set opacity of '2p max layer'
+
+		layers:
+			Video Layer
+			Video Squares Layer
+			2P Max Layer
+			2P Squares Layer
+
 		"""
 		print('myQGraphicsView.hideShowLayer() thisLayer:', thisLayer, 'isVisible:', isVisible)
+
+		doVideoSquares = False
+		if thisLayer == 'Video Squares Layer':
+			thisLayer = 'Video Layer'
+			doVideoSquares= True
+
+		doTwoPhotonSquares = False
+		if thisLayer == '2P Squares Layer':
+			thisLayer = '2P Max Layer'
+			doTwoPhotonSquares= True
+
 		for item in self.scene().items():
 			#print(item._fileName, item.myLayer)
 			if item.myLayer == thisLayer:
@@ -886,16 +880,21 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 					continue
 				if thisLayer=='Video Layer':
 					# turn off both image and outline
-					item.setOpacity(1.0 if isVisible else 0)
+					if doVideoSquares:
+						item._drawSquare = isVisible
+					else:
+						item.setOpacity(1.0 if isVisible else 0)
 				else:
-					#print('not hiding 2p squares???')
-					item.setOpacity(1.0 if isVisible else 0.01)
-				# not with 0
-				#item.setOpacity(1.0 if isVisible else 0.1)
+					# allow show/hide of both (max, square)
+					if doTwoPhotonSquares:
+						item._drawSquare = isVisible
+					else:
+						item.setOpacity(1.0 if isVisible else 0.01)
 			else:
-				#debug
 				#print('rejected:', item.myLayer)
 				pass
+		#
+		self.scene().update()
 
 	def mouseDoubleClickEvent(self, event):
 		"""
@@ -1066,15 +1065,17 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# zoom
 		if event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
 			self.zoom('in')
-		if event.key() == QtCore.Qt.Key_Minus:
+		elif event.key() == QtCore.Qt.Key_Minus:
 			self.zoom('out')
-		if event.key() == QtCore.Qt.Key_F:
+
+		elif event.key() == QtCore.Qt.Key_F:
 			#print('f for bring to front')
 			self.changeOrder('bring to front')
-		if event.key() == QtCore.Qt.Key_B:
+		elif event.key() == QtCore.Qt.Key_B:
 			#print('b for send to back')
 			self.changeOrder('send to back')
-		if event.key() == QtCore.Qt.Key_H:
+
+		elif event.key() == QtCore.Qt.Key_H:
 			# 'h' for show/hide
 			selectedItem = self.getSelectedItem()
 			if selectedItem is not None:
@@ -1085,14 +1086,17 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 				#todo: this is a prime example of figuring out signal/slot
 				self.myCanvasWidget.toggleVisibleCheck(filename, doShow)
 				#setCheckedState(fileName, doSHow)
-		if event.key() == QtCore.Qt.Key_I:
+		elif event.key() == QtCore.Qt.Key_I:
 			# 'i' is for info
 			self.myCanvasWidget.userEvent('print stack info')
 
-		if event.key() == QtCore.Qt.Key_C:
-			print('todo: set scene centered on crosshair, if no crosshair, center on all images')
+		elif event.key() in [QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return]:
+			#print('todo: set scene centered on crosshair, if no crosshair, center on all images')
+			print('key calling centerOnCrosshair()')
+			self.centerOnCrosshair()
 
-		super(myQGraphicsView, self).keyPressEvent(event)
+		else:
+			super(myQGraphicsView, self).keyPressEvent(event)
 
 	def _getBoundingRect(self):
 		leftMin = float('Inf')
@@ -1209,15 +1213,9 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		self._fileName = ''
 		self.myLayer = 'crosshair'
 
-		#self.myCrosshair = QtWidgets.QGraphicsTextItem(self)
-		#self.myCrosshair.setPlainText('x')
 		self.myCrosshair = myCrosshair(self)
 		self.myQGraphicsView.scene().addItem(self.myCrosshair)
 		self.myCrosshair.setZValue(10001)
-		#self.myCrosshair.setMotorPosition(self.xPos, self.yPos)
-		#self.myCrosshair.setPos(self.xPos, self.yPos)
-
-		#print('self.boundingRect():', self.boundingRect())
 
 	def setWidthHeight(self, width, height):
 		"""Use this to set different 2p zooms and video"""
@@ -1267,10 +1265,11 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		painter.setOpacity(1.0)
 
 		if self.xPos is not None and self.yPos is not None:
-			print('  xxx drawCrosshairRect() self.boundingRect():', self.boundingRect())
+			#print('  xxx drawCrosshairRect() self.boundingRect():', self.boundingRect())
 			painter.drawRect(self.boundingRect())
 		else:
-			print('  !!! myQGraphicsRectItem.drawCrosshairRect() did not draw')
+			#print('  !!! myQGraphicsRectItem.drawCrosshairRect() did not draw')
+			pass
 
 '''
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):

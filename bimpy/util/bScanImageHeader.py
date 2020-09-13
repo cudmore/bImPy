@@ -26,18 +26,58 @@ if __name__ == '__main__':
 		print(data2)
 
 	if 1:
-		path = '/Users/cudmore/Box/data/canvas/512by512by1zoom5/xy512z1zoom5bi_00001_00001.tif'
-		si = ScanImageTiffReader(path)
-		print(si)
+		path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/xy512z1zoom5bi_00001_00010.tif'
+
+		# works
+		#si = ScanImageTiffReader(path)
+		#print(si)
 
 		with tifffile.TiffFile(path) as f:
 			isScanImage = f.is_scanimage
 			if isScanImage:
 				scanimage_metadata = f.scanimage_metadata
 				#print('scanimage_metadata:', scanimage_metadata)
+				'''
 				for idx, (k,v) in enumerate(scanimage_metadata.items()):
 					print(idx)
-					print('  ', k, v)
+					print('k:', k)
+					for k2,v2 in v.items():
+						print('k2:', k2, 'v2:', v2)
+				'''
+
+				k2 = 'SI.VERSION_MAJOR'
+				VERSION_MAJOR = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.VERSION_MINOR'
+				VERSION_MINOR = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.hChannels.channelSave' # like [[1], [2]]
+				channelSave = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.hChannels.channelAdcResolution'
+				adcResolution = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.hRoiManager.linesPerFrame'
+				linesPerFrame = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.hRoiManager.pixelsPerLine'
+				pixelsPerLine = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.hRoiManager.scanZoomFactor'
+				zoom = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.hMotors.motorPosition'
+				motorPosition = scanimage_metadata['FrameData'][k2]
+
+				print('VERSION_MAJOR:', VERSION_MAJOR)
+				print('VERSION_MINOR:', VERSION_MINOR)
+				print('channelSave:', channelSave)
+				print('  num channels:', len(channelSave))
+				print('adcResolution:', adcResolution) # list of channels
+				print('linesPerFrame:', linesPerFrame)
+				print('pixelsPerLine:', pixelsPerLine)
+				print('zoom:', zoom)
+				print('motorPosition:', motorPosition)
 
 		# works (per image)
 		#siDescriptions = ScanImageTiffReader(path).description(0)
@@ -45,9 +85,10 @@ if __name__ == '__main__':
 
 
 		# works
-		siMetadata = ScanImageTiffReader(path).metadata()
-		print(type(siMetadata))
-		#print(siMetadata)
+		if 0:
+			siMetadata = ScanImageTiffReader(path).metadata()
+			print('\n\nsiMetadata:')
+			print(siMetadata)
 
 		#myJson = json.loads(siMetadata)
 		#print('myJson:', myJson)
@@ -57,6 +98,7 @@ if __name__ == '__main__':
 		# SI.hMotors.motorPosition = [-186541 -180967 -651565]
 		# SI.hRoiManager.scanZoomFactor = 5
 		# SI.hStackManager.stackZStepSize = 1.04
+		# SI.hChannels.channelAdcResolution = {14 14}
 
 		# works
 		siData = ScanImageTiffReader(path).data()

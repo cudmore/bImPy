@@ -12,21 +12,18 @@ class bCanvas:
 	"""
 	def __init__(self, filePath=None, folderPath='', parent=None):
 		"""
-		filePath: path to .txt file to load a canvas
+		filePath: path to _canvas.txt file to load a canvas
 		folderPath: to load a converted Igor canvas (DEPRECIATED)
 		"""
 
-		self.myCanvasWidget = parent # use, self.myCanvasWidget.myLogFilePosiiton
-		# need to call self.load()
+		self.myCanvasWidget = parent # use, self.myCanvasWidget.myLogFilePositon
 		self._filePath = None #filePath # todo: not used
 		self._folderPath = None
 
 		if filePath is not None:
 			self._filePath = filePath
 			self._folderPath, tmpFilename = os.path.split(filePath)
-		print('bCanvas.__init__()')
-		print('   self._filePath:', self._filePath)
-		print('   self._folderPath:', self._folderPath)
+		print('bCanvas.__init__() _filePath:', self._filePath, '_folderPath:', self._folderPath)
 
 		'''
 		if len(folderPath)>0:
@@ -67,15 +64,18 @@ class bCanvas:
 		"""
 		newStackList = [] # build a list of new files
 		listDir = os.listdir(self._folderPath)
-		thisFileExtension = '.oir'
+		theseFileExtensions = ['.tif', '.oir']
 
 		print('bCanvas.importNewScopeFiles()')
 		print('  Looking in self._folderPath:', self._folderPath)
-		print('  looking for files ending in thisFileExtension:', thisFileExtension)
+		print('  looking for files ending in theseFileExtensions:', theseFileExtensions)
 
 		for potentialNewFile in listDir:
-			if not potentialNewFile.endswith(thisFileExtension):
+			tmpFile, fileExt = os.path.splitext(potentialNewFile)
+			if not fileExt in theseFileExtensions:
 				continue
+			#if not potentialNewFile.endswith(thisFileExtension):
+			#	continue
 			print('  bCanvas.importNewScopeFiles() considering file:', potentialNewFile)# check if file is in self.scopeFileList
 			isInList = False
 			for loadedScopeFile in self.scopeFileList:
@@ -93,14 +93,16 @@ class bCanvas:
 				print('   newScopeStack:', newScopeStack.print())
 				#print('      ', newScopeStack.header.prettyPrint())
 				#print('      todo: fix this, adding fake motor !!! get motor position of file from bLogFilePosition !!!')
-				xPos, yPos = self.myCanvasWidget.myLogFilePosiiton.getFilePosiiton(potentialNewFile)
-				if xPos is not None and yPos is not None:
-					newScopeStack.header.header['xMotor'] = xPos
-					newScopeStack.header.header['yMotor'] = yPos
-				else:
-					print('error: bCanvas.importNewScopeFiles() did not find file position for file:', potentialNewFile)
-					newScopeStack.header.header['xMotor'] = 0
-					newScopeStack.header.header['yMotor'] = 0
+				useWatchFolder = self.myCanvasWidget.appOptions()['scope']['useWatchFolder']
+				if useWatchFolder:
+					xPos, yPos = self.myCanvasWidget.myLogFilePositon.getFilePositon(potentialNewFile)
+					if xPos is not None and yPos is not None:
+						newScopeStack.header.header['xMotor'] = xPos
+						newScopeStack.header.header['yMotor'] = yPos
+					else:
+						print('error: bCanvas.importNewScopeFiles() did not find file position for file:', potentialNewFile)
+						newScopeStack.header.header['xMotor'] = 0
+						newScopeStack.header.header['yMotor'] = 0
 				# append to return list
 				newStackList.append(newScopeStack)
 
@@ -351,6 +353,8 @@ class bCanvas:
 		"""
 		#loadFilePath = os.path.join(self._folderPath, self.enclosingFolder + '_canvas.txt')
 
+		print('=== bCanvas.load() thisFile:', thisFile)
+
 		if thisFile is not None:
 			if os.path.isfile(thisFile):
 				self._filePath = thisFile
@@ -376,11 +380,8 @@ class bCanvas:
 			elif key=='videoFiles':
 				for fileName, fileDict in item.items():
 					videoFilePath = os.path.join(self.videoFolderPath, fileName)
-					# todo: keep track of number and print out at end
-					#print('bCanvas.load() videoFilePath:', videoFilePath)
+					print('bCanvas.load() is loading videoFilePath:', videoFilePath)
 					videoStack = bimpy.bStack(videoFilePath, loadImages=True)
-					#videoStack.loadHeader() # at least makes default bStackHeader()
-					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
 
 					for headerStr,headerValue in fileDict.items():
 						if headerStr in videoStack.header.header.keys():
@@ -388,9 +389,8 @@ class bCanvas:
 						else:
 							# todo: put this back in
 							#print('warning: bCanvas.load() did not find VideoFile key "' + headerStr + '" in file', fileName)
-							pass
-					#videoStack.loadStack() # load the actual video image
-
+							videoStack.header.header[headerStr] = headerValue
+					videoStack.printHeader()
 					# append to list
 					self._videoFileList.append(videoStack)
 
@@ -398,22 +398,18 @@ class bCanvas:
 				for fileName, fileDict in item.items():
 					scopeFilePath = os.path.join(self._folderPath, fileName)
 					print('bCanvas.load() is loading scopeFilePath:', scopeFilePath)
-
-					# abb canvas, we need a way to just load oir max?
 					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
-
-					#scopeStack.loadHeader() # at least makes default bStackHeader()
-					#videoFile.header.importVideoHeaderFromIgor(self.import_stackDict)
 
 					for headerStr,headerValue in fileDict.items():
 						if headerStr in scopeStack.header.header.keys():
-							scopeStack.header.header[headerStr] = headerValue
+							# don't do this
+							#scopeStack.header.header[headerStr] = headerValue
+							pass
 						else:
 							# todo: put this back in
 							#print('warning: bCanvas.load() did not find ScopeFile key "' + headerStr + '" in file', fileName)
-							pass
-					# don't load actual stacks (until user tells us too)
-					#scopeStack.loadStack() # load the actual video image
+							scopeStack.header.header[headerStr] = headerValue
+					scopeStack.printHeader()
 
 					# append to list
 					self._scopeFileList.append(scopeStack)

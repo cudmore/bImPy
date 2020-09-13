@@ -18,16 +18,6 @@ import bimpy
 
 import canvas # for (bCanvs, bMotor, bCamera)
 
-# todo: put this in scope config json (along with motor name like 'Prior')
-#gMotorIsReal = False
-
-#class bCanvasApp(QtWidgets.QMainWindow):
-#class bCanvasApp(QtWidgets.QApplication):
-# was this
-# widget do not have menus
-#class bCanvasApp(QtWidgets.QWidget):
-# on windows, this needs to be a qmain window so we get menus
-# todo: have the canvas app open stackbrowser (so we get a main window)
 class bCanvasApp(QtWidgets.QMainWindow):
 	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
 		"""
@@ -47,10 +37,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.myMenu = canvas.bMenu(self)
 
+		useMotor = self._optionsDict['motor']['useMotor']
 		motorName = self._optionsDict['motor']['name'] # = 'bPrior'
 		isReal = self._optionsDict['motor']['isReal'] #= False
-		#motorName = 'bPrior'
-		self.assignMotor(motorName, isReal)
+		self.assignMotor(useMotor, motorName, isReal)
 
 		self.canvasDict = {}
 
@@ -118,20 +108,23 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		else:
 			return None
 
-	def assignMotor(self, motorName, isReal):
+	def assignMotor(self, useMotor, motorName, isReal):
 		"""
 		Create a motor controller from a class name
 
 		Parameters:
+			useMotor: False for off scope analysis
 			motorName: A string corresponding to a derived class of bMotor. File is in bimpy/bMotor folder
 		"""
 		# we will import user defined motor class using a string
 		# see: https://stackoverflow.com/questions/4821104/dynamic-instantiation-from-string-name-of-a-class-in-dynamically-imported-module
 		# on sutter this is x/y/x !!!
-		class_ = getattr(canvas.bMotor, motorName) # class_ is a module
-		#print('class_:', class_)
-		#class_ = getattr(class_, motorName) # class_ is a class
-		self.xyzMotor = class_(isReal=isReal)
+		self.xyzMotor = None
+		if useMotor:
+			class_ = getattr(canvas.bMotor, motorName) # class_ is a module
+			#print('class_:', class_)
+			#class_ = getattr(class_, motorName) # class_ is a class
+			self.xyzMotor = class_(isReal=isReal)
 
 	def mousePressEvent(self, event):
 		print('=== bCanvasApp.mousePressEvent()')
@@ -217,29 +210,21 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		Load a canvas
 		"""
 		if askUser:
-			dataFolder = '/Users/cudmore/data/canvas' #os.path.join(self._getCodeFolder(), 'config')
+			dataFolder = self.options['userOptions']['savePath']
+			# '/Users/cudmore/data/canvas' #os.path.join(self._getCodeFolder(), 'config')
 			if not os.path.isdir(dataFolder):
 				dataFolder = ''
-			filePath = QtWidgets.QFileDialog.getOpenFileName(caption='xxx load canvas file', directory=dataFolder, filter="Canvas Files (*.txt)")
+			filePath = QtWidgets.QFileDialog.getOpenFileName(caption='Load a _canvas.txt file',
+							directory=dataFolder, filter="Canvas Files (*.txt)")
 			filePath = filePath[0] # filePath is a tuple
-			print('optionsLoad() got user file:', filePath)
+			print('bCanvasApp.load() got user file:', filePath)
 
 		if os.path.isfile(filePath):
-			#self.canvas.load(thisFile=thisFile)
-			basename = os.path.basename(filePath)
-
-			# this is causing waste of time problems
-			# if I pass self to constructor, the canvas widget end up with multiple copies of its sub widgets?
 			loadedCanvas = canvas.bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
-			#loadedCanvas = bCanvasWidget(filePath) #bCanvas(filePath=filePath)
-
-			#loadedCanvas.buildUI()
 			self.canvasDict[basename] = loadedCanvas
-
 		else:
 			print('Warning: bCanvasApp.load() did not find file:', filePath)
 			return
-
 
 	@property
 	def options(self):
@@ -273,7 +258,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 	'''
 
 	def optionsVersion(self):
-		return 0.22
+		return 0.23
 
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
@@ -281,9 +266,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['userOptions'] = OrderedDict()
 		self._optionsDict['userOptions']['savePath'] = '/Users/cudmore/data/canvas'
 
-		self._optionsDict['version'] = self.optionsVersion() #0.1
+		self._optionsDict['scope'] = OrderedDict()
+		self._optionsDict['scope']['useWatchFolder'] = False # Olympus needs this
+
+		self._optionsDict['version'] = OrderedDict()
+		self._optionsDict['version']['version'] = self.optionsVersion() #0.1
 
 		self._optionsDict['motor'] = OrderedDict()
+		self._optionsDict['motor']['useMotor'] = True
 		self._optionsDict['motor']['name'] = 'mp285' #'bPrior' # the name of the class derived from bMotor
 		self._optionsDict['motor']['isReal'] = False
 
@@ -294,14 +284,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['video']['top'] = 100
 		self._optionsDict['video']['width'] = 1280 # set this to actual video pixels
 		self._optionsDict['video']['height'] = 720
-		self._optionsDict['video']['scaleMult'] = 1.0
+		self._optionsDict['video']['scaleMult'] = 1.0 # as user resizes window
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
 		self._optionsDict['video']['stepFraction'] = 0.2 # for motor moves
 
 		self._optionsDict['scanning'] = OrderedDict()
 		self._optionsDict['scanning']['zoomOneWidthHeight'] = 509.116882454314
-		self._optionsDict['scanning']['stepFraction'] = 0.2
+		self._optionsDict['scanning']['stepFraction'] = 0.2 # for motor moves
 
 		self._optionsDict['Interface'] = OrderedDict()
 		self._optionsDict['Interface']['wheelZoom'] = 1.1
@@ -328,11 +318,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 				with open(self.optionsFile) as f:
 					self._optionsDict = json.load(f)
 				# check if it is old
-				loadedVersion = self._optionsDict['version']
+				loadedVersion = self._optionsDict['version']['version']
 				if self.optionsVersion() > loadedVersion:
 					print('  optionsLoad() loaded older options file, making new one')
-					print('  self.optionsVersion()', self.optionsVersion())
 					print('  loadedVersion:', loadedVersion)
+					print('  self.optionsVersion()', self.optionsVersion())
 					self.optionsDefault()
 
 	def optionsSave(self):
@@ -356,65 +346,53 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		return bundle_dir
 
 
-if __name__ == '__main__':
-	print('bCanvasApp __main__')
+def main(withJavaBridge=False):
 	try:
-
-		print('bCanvasApp __main__ intantiation bimpy.bJavaBridge()')
-		myJavaBridge = bimpy.bJavaBridge()
-		print('bCanvasApp __main__ starting bimpy.bJavaBridge() with start()')
-		myJavaBridge.start()
+		if withJavaBridge:
+			myJavaBridge = bimpy.bJavaBridge()
+			myJavaBridge.start()
 
 		app = QtWidgets.QApplication(sys.argv)
 		app.setQuitOnLastWindowClosed(False)
 
-		if 0:
-			loadIgorCanvas = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2'
-			w = bCanvasApp(loadIgorCanvas=loadIgorCanvas)
-			w.resize(640, 480)
-			w.show()
-			w.save()
+		# set the icon of the application
+		tmpPath = os.path.dirname(os.path.abspath(__file__))
+		iconsFolderPath = os.path.join(tmpPath, 'icons')
+		iconPath = os.path.join(iconsFolderPath, 'canvas-64.png')
+		print('bCanvasApp() iconPath:', iconPath)
+		appIcon = QtGui.QIcon(iconPath)
+		app.setWindowIcon(appIcon)
 
-		if 1:
-			# make a new canvas and load what we just saved
-			#savedCanvasPath = '/Users/cudmore/box/data/nathan/canvas/20190429_tst2/20190429_tst2_canvas.txt'
-			#savedCanvasPath = 'd:/Users/cudmore/data/canvas/20190429_tst2/20190429_tst2_canvas.txt'
-			#w2 = bCanvasApp(path=savedCanvasPath)
-			myCanvasApp = bCanvasApp(parent=app)
-			#w2.load(thisFile=savedCanvasPath)
-			#print('bCanvasApp.__main__() myCanvasApp.optionsFile:', myCanvasApp.optionsFile)
-			#myCanvasApp.resize(1024, 768)
+		myCanvasApp = bCanvasApp(parent=app)
 
-		# working
-		#w2.newCanvas('tst2')
-		#w2.newCanvas('')
-
-		'''
-		myCanvasApp.optionsFile = 'C:/Users/cudmore/Sites/bImPy/canvas/config/Olympus_Options.json'
-		myCanvasApp.optionsLoad()
-		'''
-
-		# 20200909 working
-		path = '/Users/cudmore/box/data/canvas/20191226/20191226_tst1/20191226_tst1_canvas.txt'
+		# load an existing canvas
 		path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/20200911_aaa_canvas.txt'
+		path = ''
 		if os.path.isfile(path):
 			myCanvasApp.load(path)
 
-		# start a thread with videoFolderPath
-		#bCamera.myVideoWidget()
-
-		#video_stream_widget = VideoStreamWidget()
-
 		sys.exit(app.exec_())
 	except Exception as e:
-		print('bCanvasApp __main__ exception')
+		print('EXCEPTION: bCanvasApp.main()')
 		print(traceback.format_exc())
-		#logging.error(traceback.format_exc())
-		myJavaBridge.stop()
-		#sys.exit(app.exec_())
-		#raise
+		if withJavaBridge:
+			myJavaBridge.stop()
 	finally:
-		print('bCanvasApp __main__ finally')
-		myJavaBridge.stop()
-		#sys.exit(app.exec_())
-	print('bCanvasApp __main__ last line')
+		#bLogger.info('bCanvasApp.main() finally')
+		if withJavaBridge:
+			myJavaBridge.stop()
+	bLogger.info('bCanvasApp.main() last line .. bye bye')
+
+
+if __name__ == '__main__':
+	"""
+	call main() with or without javabridge
+	"""
+
+	withJavaBridge = False
+
+	if len(sys.argv) > 1:
+		if sys.argv[1] == 'javabridge':
+			withJavaBridge = True
+
+	main(withJavaBridge)

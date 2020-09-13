@@ -32,7 +32,10 @@ class bLogFilePosition(threading.Thread):
 		"""
 		threading.Thread.__init__(self)
 
-		print('bLogFilePosition() ready to watch folder, need to call run, folderPath:', folderPath)
+		print('bLogFilePosition() ready to watch folder, need to call run')
+		print('  folderPath:', folderPath)
+		print('  stageController:', stageController)
+
 		self.path = folderPath
 
 		# load log file if it exists
@@ -73,9 +76,9 @@ class bLogFilePosition(threading.Thread):
 		self.path = path
 		self.myWatchFolder.setFolder(path)
 
-	def getFilePosiiton(self, fileName):
+	def getFilePositon(self, fileName):
 		if fileName in self.myLogDict.keys():
-			print('getFilePosiiton()', fileName, self.myLogDict[fileName])
+			print('getFilePositon()', fileName, self.myLogDict[fileName])
 			xPos = self.myLogDict[fileName]['xPos']
 			yPos = self.myLogDict[fileName]['yPos']
 			return xPos, yPos

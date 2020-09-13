@@ -166,7 +166,7 @@ class bPrior(bMotor):
 
 			stopTime = time.time()
 			elapsedTime = stopTime - startTime
-			print('priorMove() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
+			print('prior.move() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
 			if self.isReal:
 				#todo: print current motor coordinates
 				pass

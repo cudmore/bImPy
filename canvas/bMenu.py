@@ -8,6 +8,8 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 import logging
 bLogger = logging.getLogger('canvasApp')
 
+import canvas
+
 class bMenu:
 	def __init__(self, parent):
 		"""
@@ -40,6 +42,9 @@ class bMenu:
 		options.addAction('Load Scope Config ...', self.loadScopeConfig)
 		options.addSeparator()
 		options.addAction('Load Users Config ...', self.loadUserConfig)
+		options.addSeparator()
+		options.addAction('Canvas Options ...', self.showOptionsDialog)
+
 		self.myMenuBar.addMenu(options)
 
 	'''
@@ -60,7 +65,6 @@ class bMenu:
 		self.myCanvasApp.save()
 
 	def quit(self):
-		print('bMenu.quit')
 		bLogger.info('quit menu')
 		self.myCanvasApp.myApp.quit()
 
@@ -71,3 +75,8 @@ class bMenu:
 	def loadUserConfig(self):
 		print('bMenu.loadUserConfig() not implemented')
 		#self.myCanvasApp.optionsLoad(askUser=True)
+
+	def showOptionsDialog(self):
+		print('bMenu.showOptionsDialog')
+		optionsDict = self.myCanvasApp.options
+		optionsDialog = canvas.bOptionsDialog(self.myCanvasApp, optionsDict)

@@ -91,6 +91,12 @@ class bStackHeader:
 			#print('warning: bStackHeader.__init__() did not load header')
 			self.loadHeader()
 
+	def print(self):
+		print('  bStackHeader.print()', self.path)
+		printTheseKeys = ['path', 'type', 'numChannels', 'numSlices', 'xVoxel', 'yVoxel', 'zVoxel', 'xMotor', 'yMotor', 'zMotor']
+		for k,v in self.header.items():
+			if k in printTheseKeys:
+				print('  ', k, ':', v)
 	'''
 	def getHeaderFromDict(self, igorImportDict):
 		"""
@@ -184,16 +190,36 @@ class bStackHeader:
 		self.initHeader()
 
 		verbose = False
+		debug = True
+
+		if debug:
+			print('\nbStackHeader.loadHeader()', self.path)
+
+		# make sure this works, if not, then bail
+		try:
+			with tifffile.TiffFile(self.path) as tif:
+				pass
+		except(tifffile.TiffFileError) as e:
+			print('\n\n EXCEPTION: bStackHeader.loadHeader() e:', e)
+			print('  self.path:', self.path, '\n\n')
+			return
 
 		with tifffile.TiffFile(self.path) as tif:
+			isScanImage = tif.is_scanimage
+
 			xVoxel = 1
 			yVoxel = 1
 			zVoxel = 1
+			numChannels = 1
 
 			try:
 				tag = tif.pages[0].tags['XResolution']
 				if tag.value[0]>0 and tag.value[1]>0:
+					xTag_value_1 = tag.value[1] # debug
+					xTag_value_0 = tag.value[0]
 					xVoxel = tag.value[1] / tag.value[0]
+					if isScanImage:
+						xVoxel *= 1e4
 				else:
 					print('   bStackHeader.loadHeader() error, got zero tag value?')
 				if verbose: print('   bStackHeader.loadStack() xVoxel from TIFF XResolutions:', xVoxel)
@@ -203,7 +229,11 @@ class bStackHeader:
 			try:
 				tag = tif.pages[0].tags['YResolution']
 				if tag.value[0]>0 and tag.value[1]>0:
+					yTag_value_1 = tag.value[1] # debug
+					yTag_value_0 = tag.value[0]
 					yVoxel = tag.value[1] / tag.value[0]
+					if isScanImage:
+						yVoxel *= 1e4
 				else:
 					print('   bStackHeader.loadHeader() error, got zero tag value?')
 				if verbose: print('   bStackHeader.loadStack() yVoxel from TIFF YResolutions:', yVoxel)
@@ -228,12 +258,28 @@ class bStackHeader:
 
 			tag = tif.pages[0].tags['ImageWidth']
 			xPixels = tag.value
-
 			tag = tif.pages[0].tags['ImageLength']
 			yPixels = tag.value
 
+			umWidth = yPixels * yVoxel
+			umHeight = xPixels * xVoxel
+
+			# in fiji is voxel 0.0790972
+			# here 7.909722626209259e-06
+			if debug:
+				print(f'  isScanImage {isScanImage}')
+				print(f'  xVoxel {xVoxel} xTag_value_1 {xTag_value_1}  / xTag_value_0 {xTag_value_0}')
+				print(f'  yVoxel {yVoxel} yTag_value_1 {yTag_value_1}  / yTag_value_0 {yTag_value_0}')
+				print(f'  xPixels {xPixels} yPixels {yPixels}')
+				print(f'  umWidth {umWidth} umHeight {umHeight}')
+				print(f'  numImages {numImages}')
+				print('\n')
+
+		self.header['stackType'] = 'Tiff'
+
 		self.header['xPixels'] = xPixels
 		self.header['yPixels'] = yPixels
+		self.header['numChannels'] = numChannels
 		self.header['numImages'] = numImages
 		self.header['numFrames'] = None
 		#
@@ -241,8 +287,70 @@ class bStackHeader:
 		self.header['yVoxel'] = yVoxel
 		self.header['zVoxel'] = zVoxel
 
-		self.header['umWidth'] = None
-		self.header['umHeight'] = None
+		if isScanImage:
+			# sets numChannels
+			self.loadScanImageHeader()
+
+		if yPixels is not None and yVoxel is not None:
+			self.header['umWidth'] = yPixels * yVoxel
+		else:
+			self.header['umWidth'] = None
+
+		if xPixels is not None and xVoxel is not None:
+			self.header['umHeight'] = xPixels * xVoxel
+		else:
+			self.header['umHeight'] = None
+
+	def loadScanImageHeader(self):
+		with tifffile.TiffFile(self.path) as f:
+			isScanImage = f.is_scanimage
+			if not isScanImage:
+				print('error: bStackHeader.xxx() is not a ScanImage file:', self.path)
+			else:
+				self.header['stackType'] = 'ScanImage'
+
+				scanimage_metadata = f.scanimage_metadata
+
+				k2 = 'SI.VERSION_MAJOR'
+				VERSION_MAJOR = scanimage_metadata['FrameData'][k2]
+				self.header['si_VERSION_MAJOR'] = VERSION_MAJOR
+
+				k2 = 'SI.VERSION_MINOR'
+				VERSION_MINOR = scanimage_metadata['FrameData'][k2]
+				self.header['si_VERSION_MINOR'] = VERSION_MINOR
+
+				k2 = 'SI.hChannels.channelSave' # like [[1], [2]]
+				channelSave = scanimage_metadata['FrameData'][k2]
+				numChannels = len(channelSave)
+				self.header['numChannels'] = numChannels
+
+				'''
+				k2 = 'SI.hStackManager.numSlices'
+				numSlices = scanimage_metadata['FrameData'][k2]
+				self.header['numImages'] = numChannels
+				'''
+				
+				k2 = 'SI.hChannels.channelAdcResolution'
+				bitDepth = scanimage_metadata['FrameData'][k2]
+				bitDepth = bitDepth[0] # assuming all channels the same
+				self.header['bitDepth'] = bitDepth
+
+				#k2 = 'SI.hRoiManager.linesPerFrame'
+				#linesPerFrame = scanimage_metadata['FrameData'][k2]
+
+				#k2 = 'SI.hRoiManager.pixelsPerLine'
+				#pixelsPerLine = scanimage_metadata['FrameData'][k2]
+
+				k2 = 'SI.hRoiManager.scanZoomFactor'
+				zoom = scanimage_metadata['FrameData'][k2]
+				self.header['zoom'] = zoom
+
+				# SI.hMotors.motorPosition: [-186541, -180967, -651565]
+				k2 = 'SI.hMotors.motorPosition'
+				motorPosition = scanimage_metadata['FrameData'][k2]
+				self.header['xMotor'] = motorPosition[0]
+				self.header['yMotor'] = motorPosition[1]
+				self.header['zMotor'] = motorPosition[2]
 
 	def _loadHeaderFromConverted(self, convertedStackHeaderPath):
 		"""Load header from coverted header .txt file"""
@@ -640,3 +748,11 @@ class bStackHeader:
 			raise
 		finally:
 			pass
+
+if __name__ == '__main__':
+	print('tifffile.__version__', tifffile.__version__)
+
+	path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/xy512z1zoom5bi_00001_00010.tif'
+	sh = bStackHeader(path=path)
+	for k,v in sh.header.items():
+		print(k,':',v)

@@ -7,3 +7,5 @@ from .bCanvas import bCanvas
 from .bLogFilePosition import bLogFilePosition
 from .bWatchFolder import bWatchFolder
 #from .bLogger import bLogger
+
+from .bOptionsDialog import bOptionsDialog

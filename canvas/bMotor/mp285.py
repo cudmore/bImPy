@@ -12,8 +12,8 @@ class mp285(bMotor):
 		self.encoding = 'utf-8'
 
 		self.isReal = isReal
-		self.fake_x = -4811.0 #-9811.7 #185
-		self.fake_y = -10079.0 #-20079.0 #-83
+		self.fake_x = -186541.0 #-9811.7 #185 # [-186541 -180967 -651565]
+		self.fake_y = -180967.0 #-20079.0 #-83
 
 		self.ser = None
 
@@ -92,7 +92,7 @@ class mp285(bMotor):
 
 			stopTime = time.time()
 			elapsedTime = stopTime - startTime
-			print('priorMove() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
+			print('mp285.mode() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
 			if self.isReal:
 				#todo: print current motor coordinates
 				pass

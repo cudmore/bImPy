@@ -27,8 +27,9 @@ class bAnnotationList:
 		elif baseFileName.endswith('_ch2'):
 			channel = 3
 		else:
-			print('bAnnotationList.__init__() got bad baseFileName:', baseFileName, 'no (_ch1,_ch2,_ch3)')
-			print('  self.path:', self.path)
+			pass
+			#print('bAnnotationList.__init__() got bad baseFileName:', baseFileName, 'no (_ch1,_ch2,_ch3)')
+			#print('  self.path:', self.path)
 		self.channel = channel
 
 		# remove _ch1/_ch2
@@ -44,8 +45,8 @@ class bAnnotationList:
 		self.myList = [] # list of defaultDict
 
 		self.plotDict = None
-		
-		print('  bAnnotationList() self.saveFilePath:', self.saveFilePath)
+
+		#print('  bAnnotationList() self.saveFilePath:', self.saveFilePath)
 
 	def numItems(self):
 		return len(self.myList)
@@ -82,7 +83,7 @@ class bAnnotationList:
 		loadPath = self.saveFilePath
 
 		if not os.path.isfile(loadPath):
-			print('  warning: bAnnotationList.load() did not find file:', loadPath)
+			#print('  warning: bAnnotationList.load() did not find file:', loadPath)
 			return
 
 		self.myList = []

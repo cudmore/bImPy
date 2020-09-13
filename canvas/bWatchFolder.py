@@ -33,7 +33,7 @@ class bWatchFolder(threading.Thread):
 		self.outQueue = outQueue
 		self.errorQueue = errorQueue
 
-		self.theseFileExtensions = set(['.oir']) # passing a list to constructor is important
+		self.theseFileExtensions = set(['.oir', '.tif']) # passing a list to constructor is important
 		print('bWatchFolder will be watching for file extensions:', self.theseFileExtensions)
 		#self.ignoreList = [] # keep track of file names we have already rejected
 

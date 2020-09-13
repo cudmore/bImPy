@@ -2221,10 +2221,10 @@ class bVascularTracing:
 		"""
 		h5FilePath = self._getSavePath() + '.h5f'
 
-		print('=== bVascularTracing.load()', h5FilePath)
+		#print('=== bVascularTracing.load()', h5FilePath)
 
 		if not os.path.isfile(h5FilePath):
-			print('   file not found:', h5FilePath)
+			#print('   file not found:', h5FilePath)
 			return None
 
 		maxNodeIdx = -1
@@ -2328,7 +2328,7 @@ class bVascularTracing:
 
 		print('    done fixMissingNodes() numNodes:', self.numNodes())
 
-	def makeGraph(self):
+	def makeGraph(self, verbose=False):
 		"""
 		Make a networkx graph
 
@@ -2364,16 +2364,17 @@ class bVascularTracing:
 				print('makeGraph() skipping edge:', idx, 'pre/post:', preNode, postNode)
 
 				#print('        error: edge idx:', idx, 'preNode:', preNode, 'postNode:', postNode)
-		print('  bVascularTracing.makeGraph() created self.G with:')
-		print('    nodeDictList:', len(self.nodeDictList), 'edgeDictList:', len(self.edgeDictList))
-		print('    number_of_nodes:', self.G.number_of_nodes())
-		print('    number_of_edges:', self.G.number_of_edges())
-		cc = list(nx.connected_components(self.G))
-		print('    connected_components:', len(cc))
-		'''
-		allSimplePaths = nx.all_simple_paths(self.G, source=None, target=None)
-		print('    number of simple paths:', len(list(allSimplePaths)))
-		'''
+		if verbose:
+			print('  bVascularTracing.makeGraph() created self.G with:')
+			print('    nodeDictList:', len(self.nodeDictList), 'edgeDictList:', len(self.edgeDictList))
+			print('    number_of_nodes:', self.G.number_of_nodes())
+			print('    number_of_edges:', self.G.number_of_edges())
+			cc = list(nx.connected_components(self.G))
+			print('    connected_components:', len(cc))
+			'''
+			allSimplePaths = nx.all_simple_paths(self.G, source=None, target=None)
+			print('    number of simple paths:', len(list(allSimplePaths)))
+			'''
 
 	def plotGraph2(self):
 		"""

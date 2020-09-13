@@ -78,29 +78,28 @@ class bStack:
 			pass
 
 	def print(self):
-		print('bStack.print() path:', self.path)
-		print('  self.numChannels:', self.numChannels)
-		print('  self.numSlices:', self.numSlices)
-		print('  self.numImages:', self.numImages)
-		print('  self.linesPerFrame:', self.linesPerFrame)
-		print('  self.pixelsPerLine:', self.pixelsPerLine)
-		print('  stacks')
+		self.printHeader()
 		for idx, stack in enumerate(self._stackList):
 			if stack is None:
-				print('    ', idx, 'None')
+				#print('    ', idx, 'None')
+				pass
 			else:
-				print('    ', idx, stack.shape)
+				print('    channel:', idx, stack.shape)
+		'''
 		print('  slabList')
 		if self.slabList is None:
 			print('self.slabList is None')
 		else:
 			print(self.slabList._printInfo2())
+		'''
 
 	def printHeader(self):
-		print('bStack.printHeader() path:', self.path)
+		#print('bStack.printHeader() path:', self.path)
 		#print(self.header.header)
-		for k,v in self.header.header.items():
-			print('  ', k, v)
+		#for k,v in self.header.header.items():
+		#	print('  ', k, v)
+		#
+		self.header.print()
 
 	def _getSavePath(self):
 		"""
@@ -407,22 +406,27 @@ class bStack:
 
 	# abb canvas
 	def getMax(self, channel=1):
+		"""
+		channel: 1 based
+		"""
 		channel -= 1
 		theRet = self._maxList[channel]
 		return theRet
 
 	# abb canvas
-	def _makeMax(self, channel=1, convertTo8Bit=True):
-		channel -= 1
+	def _makeMax(self, channelIdx, convertTo8Bit=True):
+		"""
+		channelIdx: 0 based
+		"""
 		theMax = None
-		if self._stackList[channel] is None:
-			print('bStack.loadMax() is returning None for channel:', channel)
+		if self._stackList[channelIdx] is None:
+			print('bStack._makeMax() is returning None for channelIdx:', channelIdx)
 			pass
 		else:
-			theMax = np.max(self._stackList[channel], axis=0)
+			theMax = np.max(self._stackList[channelIdx], axis=0)
 		if theMax is not None and convertTo8Bit:
 			theMax = theMax.astype(np.uint8)
-		self._maxList[channel] = theMax
+		self._maxList[channelIdx] = theMax
 
 	# abb aics
 	def loadStack2(self, verbose=False):
@@ -439,10 +443,40 @@ class bStack:
 		#print('  bStack.loadStack2() path_noChannel:', path_noChannel)
 		if os.path.exists(path_noChannel):
 			print('    loadStack2() path_noChannel:', path_noChannel)
-			stackData = tifffile.imread(path_noChannel)
-			self._stackList[0] = stackData
-			self._makeMax(0)
-			self._numChannels = 1 #+= 1
+			try:
+				stackData = tifffile.imread(path_noChannel)
+			except (tifffile.TiffFileError) as e:
+				print('\nEXCEPTION: bStack.loadStack2() e:', e)
+				print('  self.path:', self.path, '\n\n')
+			else:
+				# if ScanImage and numChannels>1 ... deinterleave
+				if self.header.stackType == 'ScanImage':
+					numChannels = self.header.numChannels
+					self._numChannels = numChannels
+					if numChannels > 1:
+						for channelIdx in range(numChannels):
+							start = channelIdx
+							if stackData.shape[0] % numChannels != 0:
+								prnit('error: bStack.load() scanimage num slices error')
+							#stop = int(stackData.shape[0] / numChannels) # assuming we get an integer
+							stop = stackData.shape[0]
+							step = numChannels
+							sliceRange = range(start, stop, step)
+							'''
+							print('bStack.load() ScanImage channelIdx:', channelIdx)
+							print('  ', 'start:', start, 'stop:', stop, 'step:', step)
+							print('  sliceRange:', list(sliceRange))
+							'''
+							self._stackList[channelIdx] = stackData[sliceRange, :, :]
+							self._makeMax(channelIdx)
+					else:
+						self._stackList[0] = stackData
+						self._makeMax(0)
+						#self._numChannels = 1 #+= 1
+				else:
+					self._stackList[0] = stackData
+					self._makeMax(0)
+					self._numChannels = 1 #+= 1
 		# 1
 		path_ch1 = basename + '_ch1.tif'
 		#print('  bStack.loadStack2() path_ch1:', path_ch1)
@@ -459,7 +493,7 @@ class bStack:
 			print('    loadStack2() path_ch2:', path_ch2)
 			stackData = tifffile.imread(path_ch2)
 			self._stackList[1] = stackData
-			self._makeMax(0)
+			self._makeMax(1)
 			self._numChannels = 2 #+= 1
 
 		# oir
@@ -573,12 +607,19 @@ if __name__ == '__main__':
 
 
 	path = '/Users/cudmore/Box/data/canvas/20191226/20191226_tst1/20190429_tst2_0001.oir'
+	path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/xy512z1zoom5bi_00001_00010.tif'
 
 	if 0:
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 
 	if 1:
+		myStack = bStack(path)
+
+		myStack.print()
+		myStack.printHeader()
+
+	if 0:
 		from bJavaBridge import bJavaBridge
 
 		myJavaBridge = bJavaBridge()

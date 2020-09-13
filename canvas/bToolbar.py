@@ -10,9 +10,12 @@ class myStatusToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, parent):
 		print('myStatusToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
+
 		self.myCanvasWidget = parent
 
 		self.setMovable(False)
+
+		myAlign = QtCore.Qt.AlignLeft # for HBoxLayout
 
 		myGroupBox = QtWidgets.QGroupBox()
 		myGroupBox.setTitle('')
@@ -23,14 +26,15 @@ class myStatusToolbarWidget(QtWidgets.QToolBar):
 		hBoxLayout.addWidget(self.lastActionLabel)
 
 		xMousePosition_ = QtWidgets.QLabel("X (um)")
+		xMousePosition_.setMaximumWidth(20)
 		self.xMousePosition = QtWidgets.QLabel("None")
-		hBoxLayout.addWidget(xMousePosition_)
-		hBoxLayout.addWidget(self.xMousePosition)
+		hBoxLayout.addWidget(xMousePosition_, myAlign)
+		hBoxLayout.addWidget(self.xMousePosition, myAlign)
 
 		yMousePosition_ = QtWidgets.QLabel("X (um)")
 		self.yMousePosition = QtWidgets.QLabel("None")
-		hBoxLayout.addWidget(yMousePosition_)
-		hBoxLayout.addWidget(self.yMousePosition)
+		hBoxLayout.addWidget(yMousePosition_, myAlign)
+		hBoxLayout.addWidget(self.yMousePosition, myAlign)
 
 		# finish
 		myGroupBox.setLayout(hBoxLayout)
@@ -55,12 +59,14 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		"""
 		print('myScopeToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
+
 		self.myCanvasWidget = parent
 
 		# works but butons become stupid
 		#self.setStyleSheet("""background-color: #19232D;""")
 
 		myVerticalSpacer = 12
+		myAlign = QtCore.Qt.AlignLeft # for HBoxLayout
 
 		myGroupBox = QtWidgets.QGroupBox()
 		myGroupBox.setTitle('Scope Controller')
@@ -78,6 +84,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		iconPath = self.myCanvasWidget._getIcon('left-arrow.png')
 		icon  = QtGui.QIcon(iconPath)
 		leftButton = QtWidgets.QPushButton()
+		leftButton.setCheckable(False)
 		leftButton.setIcon(icon)
 		leftButton.setToolTip('Move stage left')
 		leftButton.clicked.connect(partial(self.on_button_click,buttonName))
@@ -86,6 +93,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		iconPath = self.myCanvasWidget._getIcon('right-arrow.png')
 		icon  = QtGui.QIcon(iconPath)
 		rightButton = QtWidgets.QPushButton()
+		rightButton.setCheckable(False)
 		rightButton.setIcon(icon)
 		rightButton.setToolTip('Move stage right')
 		rightButton.clicked.connect(partial(self.on_button_click,buttonName))
@@ -94,6 +102,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		iconPath = self.myCanvasWidget._getIcon('up-arrow.png')
 		icon  = QtGui.QIcon(iconPath)
 		backButton = QtWidgets.QPushButton()
+		backButton.setCheckable(False)
 		backButton.setIcon(icon)
 		backButton.setToolTip('Move stage back')
 		backButton.clicked.connect(partial(self.on_button_click,buttonName))
@@ -102,6 +111,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		iconPath = self.myCanvasWidget._getIcon('down-arrow.png')
 		icon  = QtGui.QIcon(iconPath)
 		frontButton = QtWidgets.QPushButton()
+		frontButton.setCheckable(False)
 		frontButton.setIcon(icon)
 		frontButton.setToolTip('Move stage front')
 		frontButton.clicked.connect(partial(self.on_button_click,buttonName))
@@ -144,13 +154,13 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 
 		#
 		# read position and report x/y position
-		gridReadPosition = QtWidgets.QGridLayout()
+		readPositionHBoxLayout = QtWidgets.QHBoxLayout()
+		#gridReadPosition = QtWidgets.QGridLayout()
 
 		buttonName = 'read motor position'
-		#icon  = QtGui.QIcon('icons/down-arrow.png')
 		readPositionButton = QtWidgets.QPushButton('Read Position')
-		#readPositionButton.setIcon(icon)
 		readPositionButton.setToolTip('Read Motor Position')
+		readPositionButton.setCheckable(False)
 		readPositionButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		# we will need to set these from code
@@ -159,14 +169,21 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		yStagePositionLabel_ = QtWidgets.QLabel("Y (um)")
 		self.yStagePositionLabel = QtWidgets.QLabel("Y (um)")
 
+		'''
 		gridReadPosition.addWidget(readPositionButton, 0, 0) # row, col
 		gridReadPosition.addWidget(xStagePositionLabel_, 0, 1) # row, col
 		gridReadPosition.addWidget(self.xStagePositionLabel, 0, 2) # row, col
 		gridReadPosition.addWidget(yStagePositionLabel_, 0, 3) # row, col
 		gridReadPosition.addWidget(self.yStagePositionLabel, 0, 4) # row, col
+		'''
+		readPositionHBoxLayout.addWidget(readPositionButton, myAlign) # row, col
+		readPositionHBoxLayout.addWidget(xStagePositionLabel_, myAlign) # row, col
+		readPositionHBoxLayout.addWidget(self.xStagePositionLabel, myAlign) # row, col
+		readPositionHBoxLayout.addWidget(yStagePositionLabel_, myAlign) # row, col
+		readPositionHBoxLayout.addWidget(self.yStagePositionLabel, myAlign) # row, col
 
 		vBoxLayout.addSpacing(myVerticalSpacer) # space before video
-		vBoxLayout.addLayout(gridReadPosition)
+		vBoxLayout.addLayout(readPositionHBoxLayout)
 
 		#
 		# center crosshair
@@ -174,9 +191,12 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		buttonName = 'center canvas on motor position'
 		iconPath = self.myCanvasWidget._getIcon('focus.png')
 		icon  = QtGui.QIcon(iconPath)
+		# QToolButton
 		centerCrosshairButton = QtWidgets.QPushButton('Center')
+		#centerCrosshairButton = QtWidgets.QToolButton('Center')
 		centerCrosshairButton.setToolTip('Center canvas on curent motor position')
 		centerCrosshairButton.setIcon(icon)
+		centerCrosshairButton.setCheckable(False)
 		centerCrosshairButton.clicked.connect(partial(self.on_button_click,buttonName))
 		crosshair_hBoxLayout.addWidget(centerCrosshairButton)
 
@@ -220,6 +240,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		iconPath = self.myCanvasWidget._getIcon('camera.png')
 		icon  = QtGui.QIcon(iconPath)
 		grabVideoButton = QtWidgets.QPushButton(buttonName)
+		grabVideoButton.setCheckable(False)
 		grabVideoButton.setToolTip('Grab image from video')
 		grabVideoButton.setIcon(icon)
 		grabVideoButton.clicked.connect(partial(self.on_button_click,buttonName))
@@ -238,12 +259,12 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		iconPath = self.myCanvasWidget._getIcon('import.png')
 		icon  = QtGui.QIcon(iconPath)
 		importScopeFilesButton = QtWidgets.QPushButton(buttonName)
+		importScopeFilesButton.setCheckable(False)
 		importScopeFilesButton.setIcon(icon)
 		importScopeFilesButton.setToolTip('Import images from scope')
 		importScopeFilesButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		buttonName = 'Canvas Folder'
-		#iconPath = os.path.join(os.path.join(self.myParentApp.getCodeFolder(), 'icons/folder.png'))
 		iconPath = self.myCanvasWidget._getIcon('folder.png')
 		icon  = QtGui.QIcon(iconPath)
 		showCanvasFolderButton = QtWidgets.QPushButton('Show Folder')
@@ -322,7 +343,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, parent=None):
 		"""
 		"""
-		print('myToolbarWidget.__init__')
+		print('bToolbar.py myToolbarWidget.__init__')
 		super(myToolbarWidget, self).__init__(parent)
 
 		# works but buttons become stupid
@@ -337,12 +358,19 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		layersHBoxLayout = QtWidgets.QHBoxLayout()
 
 		checkBoxName = 'Video Layer'
-		self.showVideoCheckBox = QtWidgets.QCheckBox('Video')
+		self.showVideoCheckBox = QtWidgets.QCheckBox('Image')
 		self.showVideoCheckBox.setToolTip('Toggle video layer on and off')
 		self.showVideoCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
 		self.showVideoCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.showVideoCheckBox))
 		#self.addWidget(self.showVideoCheckBox)
 		layersHBoxLayout.addWidget(self.showVideoCheckBox)
+
+		checkBoxName = 'Video Squares Layer'
+		self.showVideoSquaresCheckBox = QtWidgets.QCheckBox('Squares')
+		self.showVideoSquaresCheckBox.setToolTip('Toggle video squares on and off')
+		self.showVideoSquaresCheckBox.setCheckState(2) # Really annoying it is not 0/1 False/True but 0:False/1:Intermediate/2:True
+		self.showVideoSquaresCheckBox.clicked.connect(partial(self.on_checkbox_click, checkBoxName, self.showVideoSquaresCheckBox))
+		layersHBoxLayout.addWidget(self.showVideoSquaresCheckBox)
 
 		checkBoxName = '2P Max Layer'
 		self.show2pMaxCheckBox = QtWidgets.QCheckBox('Scanning')
@@ -410,13 +438,23 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 		self.addWidget(self.fileList)
 
-		itemList = []
-		for videoFile in self.myCanvasWidget.getCanvas().videoFileList:
+		#itemList = []
+		numVideoFiles = len(self.myCanvasWidget.getCanvas().videoFileList)
+		for idx, videoFile in enumerate(self.myCanvasWidget.getCanvas().videoFileList):
 			#print('   myToolbarWidget appending videoFile to fileList (tree):', videoFile._fileName)
+			'''
+			print('  ', idx, 'of', numVideoFiles, 'myToobarWidget videoFile:')
+			print('  ', videoFile.print())
+			'''
 			self.fileList.appendStack(videoFile, 'Video Layer')
 
-		for scopeFile in self.myCanvasWidget.getCanvas().scopeFileList:
+		numScopeFiles = len(self.myCanvasWidget.getCanvas().scopeFileList)
+		for idx, scopeFile in enumerate(self.myCanvasWidget.getCanvas().scopeFileList):
 			#print('   myToolbarWidget appending scopeFile to fileList (tree):', scopeFile._fileName)
+			'''
+			print('  ', idx, 'of', numScopeFiles, 'myToobarWidget scopeFile:')
+			print('  ', scopeFile.print())
+			'''
 			self.fileList.appendStack(scopeFile, '2P Max Layer')
 
 	def appendScopeFile(self, newStack):
@@ -603,13 +641,12 @@ class myToolbarWidget(QtWidgets.QToolBar):
 
 		if name == 'Video Layer':
 			self.myCanvasWidget.getGraphicsView().hideShowLayer('Video Layer', checkState==2)
-			#self.myQGraphicsView.hideShowLayer('Video Layer', checkState==2)
+		if name =='Video Squares Layer':
+			self.myCanvasWidget.getGraphicsView().hideShowLayer('Video Squares Layer', checkState==2)
 		if name == '2P Max Layer':
 			self.myCanvasWidget.getGraphicsView().hideShowLayer('2P Max Layer', checkState==2)
-			#self.myQGraphicsView.hideShowLayer('2P Max Layer', checkState==2)
 		if name == '2P Squares Layer':
 			self.myCanvasWidget.getGraphicsView().hideShowLayer('2P Squares Layer', checkState==2)
-			#self.myQGraphicsView.hideShowLayer('2P Squares Layer', checkState==2)
 
 class myTreeWidget(QtWidgets.QTreeWidget):
 	def __init__(self, parent=None):

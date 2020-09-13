@@ -9,7 +9,7 @@ import traceback
 import skimage # this is needed or else javabridge fails to import ???
 
 try:
-	print('bJavaBridge.py is trying "import javabridge" ...')
+	#print('bJavaBridge.py is trying "import javabridge" ...')
 	import javabridge
 	import bioformats
 
@@ -31,8 +31,8 @@ try:
 except (ImportError) as e:
 	javabridge = None
 	bioformats = None
-	print('bImPy bJavaBridge.py Exception: bJavaBridge failed to import javabridge or bioformats e:', e)
-	print(traceback.format_exc())
+	print('Warning: bImPy bJavaBridge.py exception: failed to import javabridge or bioformats e:', e)
+	#print(traceback.format_exc())
 
 class bJavaBridge:
 	"""
