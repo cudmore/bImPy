@@ -3,6 +3,7 @@ site_name: bImPy
 nav:
     - Home: index.md
     - Interface: interface.md
+    - Canvas: canvas.md
     - About: about.md
 
 theme:

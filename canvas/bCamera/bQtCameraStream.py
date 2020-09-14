@@ -49,7 +49,8 @@ class myVideoWidget(QtWidgets.QWidget):
 		}
 		return theRet
 
-	def __init__(self, parent=None, videoSize=None, videoPos=None, scaleMult=1.0):
+	def __init__(self, parent=None, videoSize=None, videoPos=None, scaleMult=1.0,
+					saveIntervalSeconds=None):
 		"""
 		videoSize: (w,h) of actual video (pixels)
 		videoPos: (left,top) position on screen
@@ -79,13 +80,15 @@ class myVideoWidget(QtWidgets.QWidget):
 		self.myCurrentImage = None # updated with new images (in thread)
 
 		# save an image at an interval
-		self.saveImageAtInterval = True
-		self.saveIntervalSeconds = 1
+		#self.saveImageAtInterval = True
+		self.saveIntervalSeconds = saveIntervalSeconds #1
 		self.lastSaveSeconds = None
 		# save oneimage.tif in the same folder as source code
 		myPath = os.path.dirname(os.path.abspath(__file__))
 		self.mySaveFilePath = os.path.join(myPath, 'oneimage.tif')
-		print('  myVideoWidget.mySaveFilePath:', self.mySaveFilePath)
+
+		print('  saveIntervalSeconds:', self.saveIntervalSeconds)
+		print('  mySaveFilePath:', self.mySaveFilePath)
 
 		self.initUI()
 
@@ -95,7 +98,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		return self.myCurrentImage
 
 	def moveEvent(self, event):
-		print('myVideoWidget.moveEvent()')
+		#print('myVideoWidget.moveEvent()')
 		left = self.frameGeometry().left()
 		top = self.frameGeometry().top()
 		#w = self.frameGeometry().width()
@@ -166,7 +169,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		# this can be grabbed by other code
 		self.myCurrentImage = image
 
-		if self.saveImageAtInterval:
+		if self.saveIntervalSeconds is not None:
 			now = time.time()
 			if self.lastSaveSeconds is None or ((now-self.lastSaveSeconds) > self.saveIntervalSeconds):
 				#print(now, 'saving type(image)', type(image), image.shape, image.dtype, self.mySaveFilePath)
@@ -179,7 +182,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		"""
 		called when video window is closed
 		"""
-		print('  bQtCameraStream.closeEvent()')
+		#print('  bQtCameraStream.closeEvent()')
 		videoDict = myVideoWidget.getVideoDict()
 		videoDict['event'] = 'Close Window'
 		self.videoWindowSignal.emit(videoDict)

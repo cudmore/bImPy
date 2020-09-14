@@ -1,7 +1,7 @@
 # Robert Cudmore
 # 20191117
 
-import sys # to make menus on osx, sys.platform == 'darwin'
+import os, sys # to make menus on osx, sys.platform == 'darwin'
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 
@@ -39,13 +39,55 @@ class bMenu:
 
 		# options menu
 		options = self.myMenuBar.addMenu("Options")
-		options.addAction('Load Scope Config ...', self.loadScopeConfig)
-		options.addSeparator()
-		options.addAction('Load Users Config ...', self.loadUserConfig)
-		options.addSeparator()
+		#options.addAction('Load Scope Config ...', self.loadScopeConfig)
+		#options.addSeparator()
+		#options.addAction('Load Users Config ...', self.loadUserConfig)
+		#options.addSeparator()
 		options.addAction('Canvas Options ...', self.showOptionsDialog)
+		options.addSeparator()
+		options.addAction('Save Canvas Options ...', self.saveOption)
 
 		self.myMenuBar.addMenu(options)
+
+		# windows menu
+		self.windowMenu = self.myMenuBar.addMenu("Window")
+
+		canvasDict = {}
+		self.buildCanvasMenu(canvasDict)
+
+	def buildCanvasMenu(self, canvasDict):
+		self.windowMenu.clear()
+
+		canvasList = canvasDict.keys()
+		print('buildCanvasMenu() canvasList:', canvasList)
+
+		# get the path to file of the front canvas window
+		frontWindow = self.myCanvasApp.myApp.activeWindow()
+		activeFile = ''
+		if isinstance(frontWindow, canvas.bCanvasWidget):
+			activeFile = frontWindow.filePath
+			activeFile = os.path.split(activeFile)[1]
+			activeFile = os.path.splitext(activeFile)[0]
+
+		if len(canvasList) == 0:
+			# one 'None' item
+			item = self.windowMenu.addAction('None')
+			item.setDisabled(True)
+		else:
+			for canvasName in canvasList:
+				item = self.windowMenu.addAction(canvasName)
+				item.setCheckable(True)
+				if canvasName == activeFile:
+					item.setChecked(True)
+				else:
+					item.setChecked(False)
+				item.triggered.connect(lambda chk, item=canvasName: self.doStuff(chk, item))
+				#item = windowMenu.addAction(c, lambda item=item: self.doStuff(item))
+				#self.connect(entry,QtCore.SIGNAL('triggered()'), lambda item=item: self.doStuff(item))
+
+	def doStuff(self, checked, item):
+		print('doStuff() checked:', checked, 'item:', item)
+		self.myCanvasApp.bringCanvasToFront(item)
 
 	'''
 	def processtrigger(self,q):
@@ -68,15 +110,27 @@ class bMenu:
 		bLogger.info('quit menu')
 		self.myCanvasApp.myApp.quit()
 
+	'''
 	def loadScopeConfig(self):
 		print('bMenu.loadScopeConfig')
 		self.myCanvasApp.optionsLoad(askUser=True)
+	'''
 
+	'''
 	def loadUserConfig(self):
 		print('bMenu.loadUserConfig() not implemented')
 		#self.myCanvasApp.optionsLoad(askUser=True)
+	'''
 
 	def showOptionsDialog(self):
 		print('bMenu.showOptionsDialog')
 		optionsDict = self.myCanvasApp.options
 		optionsDialog = canvas.bOptionsDialog(self.myCanvasApp, optionsDict)
+		optionsDialog.acceptOptionsSignal.connect(self.myCanvasApp.slot_UpdateOptions)
+
+		if optionsDialog.exec_():
+			#print(optionsDialog.localOptions)
+			pass
+
+	def saveOption(self):
+		self.myCanvasApp.optionsSave()

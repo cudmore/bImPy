@@ -6,15 +6,14 @@ import serial, time
 from bMotor import bMotor
 
 class bPrior(bMotor):
-	def __init__(self, isReal=True):
+	def __init__(self, port='COM5'):
 		bMotor.__init__(self, type='bPrior')
 
 		self.eol = '\r\n'
-		self.port = 'COM5'
+		self.port = port
 		self.timeout = 1 # seconddef
 		self.encoding = 'utf-8'
 
-		self.isReal = isReal
 		self.fake_x = -4811.0 #-9811.7 #185
 		self.fake_y = -10079.0 #-20079.0 #-83
 
@@ -26,22 +25,15 @@ class bPrior(bMotor):
 		if self.ser is not None:
 			print('port already opened')
 		else:
-			if self.isReal:
-				self.ser = serial.Serial(port=self.port, timeout=self.timeout)
-			else:
-				self.ser = 1
+			self.ser = serial.Serial(port=self.port, timeout=self.timeout)
 		return self.ser
 
 	def close(self):
 		if self.ser is None:
-			if self.isReal:
-				print ('bPrior.close(), port not opened')
+			print ('bPrior.close(), port not opened')
 		else:
-			if self.isReal:
-				self.ser.close()
-				self.ser = None
-			else:
-				pass
+			self.ser.close()
+			self.ser = None
 
 	def writeLine(self, str):
 		if self.ser is None:
@@ -49,61 +41,54 @@ class bPrior(bMotor):
 			return
 		outStr = str + self.eol # add end of line
 		outStr = outStr.encode('utf-8') # encode as utf-8
-		if self.isReal:
-			self.ser.write(outStr)
-		else:
-			pass
+
+		self.ser.write(outStr)
 
 	def readLine(self):
 		if self.ser is None:
 			print('error in bPrior.read(), port not opened')
 			return
-		if self.isReal:
-			resp = self.ser.readline()
-			resp = resp.decode(self.encoding)
-		else:
-			resp = "111,222,333"
+
+		resp = self.ser.readline()
+		resp = resp.decode(self.encoding)
+
 		return resp
 
 	def readPosition(self):
 		try:
-			if self.isReal:
-				# open port
-				self.open()
+			# open port
+			self.open()
 
-				self.writeLine('p') # write 'p' to ask for position
-				resp = self.readLine() # read response
+			self.writeLine('p') # write 'p' to ask for position
+			resp = self.readLine() # read response
 
-				print('   bPrior.readPosition() resp:', resp)
-				try:
-					xPos, yPos, zPos = resp.split(',')
+			print('   bPrior.readPosition() resp:', resp)
+			try:
+				xPos, yPos, zPos = resp.split(',')
 
-					print(xPos)
-					# when prior is at -18937.0 um we get -189370
-					xPos = float(xPos)
-					yPos = float(yPos)
-					xPos /= 10
-					yPos /= 10
+				print(xPos)
+				# when prior is at -18937.0 um we get -189370
+				xPos = float(xPos)
+				yPos = float(yPos)
+				xPos /= 10
+				yPos /= 10
 
-					# step by 500 moves ~50 um
-					# need to *10 the microns we specify in canvas interface
+				# step by 500 moves ~50 um
+				# need to *10 the microns we specify in canvas interface
 
-				except:
-					print('   bPrior.readPosition() exception')
-					xPos = 'Nan'
-					yPos = 'Nan'
-				'''
-				if len(resp) == 3:
-					xPos, yPos, zPos = resp.split(',')
-				else:
-					print('error reading Prior motor position')
-					xPos = 'Nan'
-					yPos = 'Nan'
-				'''
-				#self.close()
+			except:
+				print('   bPrior.readPosition() exception')
+				xPos = 'Nan'
+				yPos = 'Nan'
+			'''
+			if len(resp) == 3:
+				xPos, yPos, zPos = resp.split(',')
 			else:
-				xPos = self.fake_x
-				yPos = self.fake_y
+				print('error reading Prior motor position')
+				xPos = 'Nan'
+				yPos = 'Nan'
+			'''
+			#self.close()
 
 		except Exception as e:
 			print('exception in bPrior.readPosition():', e)
@@ -145,33 +130,19 @@ class bPrior(bMotor):
 			umDistanceStr = str(umDistance)
 			outStr = directionStr + ',' + umDistanceStr
 
-			if self.isReal:
-				self.writeLine(outStr)
-			else:
-				if direction == 'left':
-					self.fake_x -= float(umDistanceStr)
-				elif direction == 'right':
-					self.fake_x += float(umDistanceStr)
-				elif direction == 'front':
-					self.fake_y += float(umDistanceStr)
-				elif direction == 'back':
-					self.fake_y -= float(umDistanceStr)
+			self.writeLine(outStr)
 
 			# wait for response of 'R'
-			if self.isReal:
+			resp = self.readLine()
+			while len(resp)>0:
+				#print('resp:', resp)
 				resp = self.readLine()
-				while len(resp)>0:
-					#print('resp:', resp)
-					resp = self.readLine()
 
 			stopTime = time.time()
 			elapsedTime = stopTime - startTime
 			print('prior.move() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
-			if self.isReal:
-				#todo: print current motor coordinates
-				pass
-			else:
-				print('  fake_x:', self.fake_x, 'fake_y:', self.fake_y)
+
+			#todo: print current motor coordinates
 
 		except Exception as e:
 			print('exception in priorMove():', e)
@@ -184,9 +155,10 @@ class bPrior(bMotor):
 		return theRet
 
 if __name__ == '__main__':
-	isReal = False
 
-	prior = bPrior(isReal=isReal)
+	port = 'COM5'
+
+	prior = bPrior(port=port)
 
 	# test read position
 	if 0:

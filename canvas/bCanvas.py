@@ -91,6 +91,9 @@ class bCanvas:
 				# abb canvas, we need a way to load header or max of .oir files?
 				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
 				print('   newScopeStack:', newScopeStack.print())
+
+				print('  saving max')
+				newScopeStack.saveMax()
 				#print('      ', newScopeStack.header.prettyPrint())
 				#print('      todo: fix this, adding fake motor !!! get motor position of file from bLogFilePosition !!!')
 				useWatchFolder = self.myCanvasWidget.appOptions()['scope']['useWatchFolder']
@@ -107,7 +110,7 @@ class bCanvas:
 				newStackList.append(newScopeStack)
 
 				self._scopeFileList.append(newScopeStack)
-				print('*** importNewScopeFiles() REMEMBER TO SAVE !!!')
+				#print('*** importNewScopeFiles() REMEMBER TO SAVE !!!')
 
 		return newStackList
 
@@ -399,6 +402,7 @@ class bCanvas:
 					scopeFilePath = os.path.join(self._folderPath, fileName)
 					print('bCanvas.load() is loading scopeFilePath:', scopeFilePath)
 					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
+					scopeStack.loadMax()
 
 					for headerStr,headerValue in fileDict.items():
 						if headerStr in scopeStack.header.header.keys():

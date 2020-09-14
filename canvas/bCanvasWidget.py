@@ -37,16 +37,57 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 		self.buildUI()
 
+		# do this after interface is created
+		if self.getOptions()['motor']['useMotor']:
+			print('bCanvasWidget is reading initial motor position')
+			self.userEvent('read motor position')
+
 		self.show()
 
 		# has to be done after self.show()
 		# center existing video/tiff
 		self.myGraphicsView.centerOnCrosshair()
 
+	def event(self, event):
+		"""
+		implemented to catch window activate
+		"""
+		#print('bCanvasWidget.event()', event.type() )
+		if (event.type() == QtCore.QEvent.WindowActivate):
+			#// window was activated
+			print('bCanvasWidget.event() QtCore.QEvent.WindowActivate')
+			self.myCanvasApp.activateCanvas(self.filePath)
+		# see self.closeEvent()
+		#if (event.type() == QtCore.QEvent.Close):
+		#	print('bCanvasWidget.event() QtCore.QEvent.Close')
+
+		return super().event(event)
+
+	def closeEvent(self, event):
+		"""
+		called when window is closed
+		"""
+		# ask user if it is ok
+		close = QtWidgets.QMessageBox()
+		close.setText("Do You Want To Close The Canvas?")
+		close.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
+		close = close.exec()
+
+		if close == QtWidgets.QMessageBox.Yes:
+			# remove
+			self.myCanvasApp.closeCanvas(self.filePath)
+			#
+			event.accept()
+		else:
+			event.ignore()
+
 	def appOptions(self):
 		return self.myCanvasApp.options
 
 	def saveMyCanvas(self):
+		"""
+		save canvas as one text file
+		"""
 		if self.myCanvas is not None:
 			self.myCanvas.save()
 
@@ -75,6 +116,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		return bundle_dir
 
 	def _getIcon(self, name):
+		"""
+		get full path to an icon file (usually a .png)
+		"""
 		codeFolder = self._getCodeFolder()
 		iconPath = os.path.join(codeFolder, 'icons', name)
 		return iconPath
@@ -83,7 +127,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		"""
 		User click on canvas image will select in file list
 		"""
-		print('bCanvasApp.selectInFileList() filename:', filename)
+		print('bCanvasWidget.selectInFileList() filename:', filename)
 		self.toolbarWidget.setSelectedItem(filename)
 
 	def toggleVisibleCheck(self, filename, doShow):
@@ -92,8 +136,6 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		"""
 		self.toolbarWidget.setCheckedState(filename, doShow)
 
-	# This is from bStackBrowser
-	#def showStackWindow(self, path):
 	def openStack(self, filename, layer, channel=1):
 		"""
 		open a stack from the canvas
@@ -255,10 +297,17 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			tmpHeader['xMotor'] = xMotor
 			tmpHeader['yMotor'] = yMotor
 
+			#
 			# save image as .tif
+
+			# make folder
+			videoFolderPath = self.myCanvas.videoFolderPath
+			if not os.path.isdir(videoFolderPath):
+				os.mkdir(videoFolderPath)
+
 			numVideoFiles = len(self.myCanvas.videoFileList)
 			saveVideoFile = 'v' + self.myCanvas.enclosingFolder + '_' + str(numVideoFiles) + '.tif'
-			saveVideoPath = os.path.join(self.myCanvas.videoFolderPath, saveVideoFile)
+			saveVideoPath = os.path.join(videoFolderPath, saveVideoFile)
 			# todo: add header info
 			#newVideoStack.saveVideoAs(saveVideoPath)
 			print('   saving video:', saveVideoPath)
@@ -385,6 +434,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		#
 
 		# main view to hold images
+		# leave at end, it is using self.motorToolbarWidget
 		self.myGraphicsView = myQGraphicsView(self)
 		self.myQVBoxLayout.addWidget(self.myGraphicsView)
 
@@ -409,16 +459,18 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		#self.myStackList = [] # a list of open bStack
 
 	def keyPressEvent(self, event):
-		print('\n=== bCanvasWidget.keyPressEvent()', event.text())
+		#print('\n=== bCanvasWidget.keyPressEvent()', event.text())
 
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		isShift = modifiers == QtCore.Qt.ShiftModifier
 		isControl = modifiers == QtCore.Qt.ControlModifier
 
+		'''
 		if isControl and event.key() == QtCore.Qt.Key_S:
 			#event.accept(True)
 			print('  ... save canvas ...')
 			print('  TODO: reactivate bMenu Save by having canvas window signal app when window takes focus')
+		'''
 
 globalSquare = {
 	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
@@ -428,7 +480,7 @@ globalSquare = {
 globalSelectionSquare = {
 	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
 	'penColor': QtCore.Qt.yellow,
-	'penWidth': 10,
+	'penWidth': 7,
 }
 
 class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
@@ -527,29 +579,36 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 
 		painter.setOpacity(1.0)
 
-		#painter.drawRect(self.focusrect)
-		# ???
 		painter.drawRect(self.boundingRect())
 
+	'''
 	def mousePressEvent(self, event):
-		print('   myQGraphicsPixmapItem.mousePressEvent()')
+		"""
+		needed for mouse click+drag
+		"""
+		#print('   myQGraphicsPixmapItem.mousePressEvent()')
 		super().mousePressEvent(event)
-		# this is necc. to create yellow selection around image but DOES NOT ALLOW DRAGGING ON MOUSE MOVE?
-		#self.setSelected(True)
+		#self.scene().mousePressEvent(event)
+		#event.setAccepted(False)
 
 	def mouseMoveEvent(self, event):
+		"""
+		needed for mouse click+drag
+		"""
 		#print('   myQGraphicsPixmapItem.mouseMoveEvent()')
 		super().mouseMoveEvent(event)
+		#self.scene().mouseMoveEvent(event)
 		#event.setAccepted(False)
-		# i want to somehow tell the view (or maybe the scene) to move?
-		#if self.isSelected():
-		#	print(self.parent)
 
 	def mouseReleaseEvent(self, event):
-		print('   myQGraphicsPixmapItem.mouseReleaseEvent()', 'motor position:', self.pos())
+		"""
+		needed for mouse click+drag
+		"""
+		#print('   myQGraphicsPixmapItem.mouseReleaseEvent()', 'motor position:', self.pos())
 		super().mouseReleaseEvent(event)
-		#self.setSelected(False)
+		#self.scene().mouseReleaseEvent(event)
 		#event.setAccepted(False)
+	'''
 
 	def bringForward(self):
 		"""
@@ -599,13 +658,6 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		else:
 			print('   myQGraphicsPixmapItem.bringToFront() item is already front most')
 
-#
-# amazing post
-#
-# LOOK AT THIS 20190703
-#
-# https://stackoverflow.com/questions/35508711/how-to-enable-pan-and-zoom-in-a-qgraphicsview
-
 class myQGraphicsView(QtWidgets.QGraphicsView):
 	"""
 	Main canvas widget
@@ -654,6 +706,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			self.myCrosshair = myQGraphicsRectItem(self)
 			self.myCrosshair.setZValue(10000)
 			self.scene().addItem(self.myCrosshair)
+			# read initial position (might cause problems)
+			# does not work, not all objects are initialized
+			#print('myQGraphicsView.__init__ is asking myCanvasWidget to read initial motor position')
+			#self.myCanvasWidget.userEvent('read motor position')
 		else:
 			self.myCrosshair = None
 
@@ -707,7 +763,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#	#continue
 
 		# stackMax can be None
-		stackMax = newScopeFile.getMax(channel=1) # stackMax can be None
+		maxChannel = self.myCanvasWidget.getOptions()['scanning']['maxChannel']
+		stackMax = newScopeFile.getMax(channel=maxChannel) # stackMax can be None
 		if stackMax is None:
 			print('\n\n')
 			print('  myQGraphicsView.appendScopeFile() got stackMax None. path:', path)
@@ -883,15 +940,14 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 					if doVideoSquares:
 						item._drawSquare = isVisible
 					else:
-						item.setOpacity(1.0 if isVisible else 0)
-				else:
+						item.setOpacity(1.0 if isVisible else 0.01)
+				elif thisLayer == '2P Max Layer':
 					# allow show/hide of both (max, square)
 					if doTwoPhotonSquares:
 						item._drawSquare = isVisible
 					else:
 						item.setOpacity(1.0 if isVisible else 0.01)
 			else:
-				#print('rejected:', item.myLayer)
 				pass
 		#
 		self.scene().update()
@@ -909,29 +965,43 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			#print('   layer:', layer)
 			self.myCanvasWidget.openStack(fileName, layer)
 
+	'''
 	def mousePressEvent(self, event):
+		print('=== myQGraphicsView.mousePressEvent() x:', event.x(), 'y:', event.y())
 		scenePoint = self.mapToScene(event.x(), event.y())
 		#print('=== myQGraphicsView.mousePressEvent() scene_x:', scenePoint.x(), 'scene_y:', scenePoint.y())
 		super().mousePressEvent(event)
 		#event.setAccepted(False)
+	'''
 
 	def mouseMoveEvent(self, event):
 		#print('=== myQGraphicsView.mouseMoveEvent() x:', event.x(), 'y:', event.y())
+
 		# this is critical, allows dragging view/scene around
 		#scenePoint = self.mapToScene(event.x(), event.y())
 		#print(scenePoint)
 
-		scenePoint = self.mapToScene(event.x(), event.y())
-		self.myCanvasWidget.getStatusToolbar().setMousePosition(scenePoint)
+		super().mouseMoveEvent(event)
 
+		scenePoint = self.mapToScene(event.x(), event.y())
+
+		item = self.scene().itemAt(scenePoint, QtGui.QTransform())
+		filename = ''
+		if item is not None:
+			filename = item._fileName
+		#print('mouseMoveEvent() item:', item._fileName)
+
+		self.myCanvasWidget.getStatusToolbar().setMousePosition(scenePoint, filename=filename)
+
+		# todo: what are these for ?
 		self.myMouse_x = event.x() #scenePoint.x()
 		self.myMouse_y = event.y() #scenePoint.y()
 
-		super().mouseMoveEvent(event)
-		event.setAccepted(True)
+		# abb 20200914
+		#event.setAccepted(True)
 
 	def mouseReleaseEvent(self, event):
-		#print('=== myQGraphicsView.mouseReleaseEvent() event:', event)
+		#print('=== myQGraphicsView.mouseReleaseEvent() x:', event.x(), 'y:', event.y())
 		super().mouseReleaseEvent(event)
 
 		#print('   tell the parent self.myCanvasWidget to select this file in its file list')
@@ -1046,8 +1116,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.translate(xOffset,yOffset)
 
 	def keyPressEvent(self, event):
-		print('\n=== myQGraphicsView.keyPressEvent()', event.text())
-		# QtCore.Qt.Key_Tab
+		#print('\n=== myQGraphicsView.keyPressEvent()', event.text())
 
 		# pan is handled by super
 		'''
@@ -1145,6 +1214,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			else:
 				print('myQGraphicsView.changeOrder() did not find a selected item???')
 
+# this was supposed to be an 'x' in the middle of the dotted red square
+'''
 class myCrosshair(QtWidgets.QGraphicsTextItem):
 	def __init__(self, parent=None):
 		super(myCrosshair, self).__init__(parent)
@@ -1184,6 +1255,7 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 
 		# 20200912, NOW this
 		self.setPos(x, y)
+'''
 
 class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 	"""
@@ -1198,7 +1270,7 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		#-9815.6, -20083.0
 		#self.fake_x = -4811.0 #-9811.7 #185
 		#self.fake_y = -10079.0 #-20079.0 #-83
-		self.penSize = 15
+		self.penSize = 10
 
 		self.xPos = None
 		self.yPos = None
@@ -1213,9 +1285,16 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		self._fileName = ''
 		self.myLayer = 'crosshair'
 
-		self.myCrosshair = myCrosshair(self)
-		self.myQGraphicsView.scene().addItem(self.myCrosshair)
-		self.myCrosshair.setZValue(10001)
+		# tryinig to make scene() itemAt() not report *this
+		#self.setEnabled(False) # should be visible but not selectable
+
+		# abb 20200914 removed self
+		#self.myCrosshair2 = None
+		'''
+		self.myCrosshair2 = myCrosshair()
+		self.myQGraphicsView.scene().addItem(self.myCrosshair2)
+		self.myCrosshair2.setZValue(10001)
+		'''
 
 	def setWidthHeight(self, width, height):
 		"""Use this to set different 2p zooms and video"""
@@ -1240,11 +1319,15 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		if self.xPos is not None and self.yPos is not None:
 			self.setRect(self.xPos, self.yPos, self.width, self.height)
 
-			xCrosshair = self.xPos + (self.width/2)
-			yCrosshair = self.yPos + (self.height/2)
-			self.myCrosshair.setMotorPosition(xCrosshair, yCrosshair)
+			'''
+			if self.myCrosshair2 is not None:
+				xCrosshair = self.xPos + (self.width/2)
+				yCrosshair = self.yPos + (self.height/2)
+				self.myCrosshair2.setMotorPosition(xCrosshair, yCrosshair)
+			'''
 		else:
-			print('setMotorPosition() did not set')
+			pass
+			#print('setMotorPosition() did not set')
 
 	def paint(self, painter, option, widget=None):
 		super().paint(painter, option, widget)

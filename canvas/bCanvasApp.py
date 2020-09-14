@@ -19,6 +19,10 @@ import bimpy
 import canvas # for (bCanvs, bMotor, bCamera)
 
 class bCanvasApp(QtWidgets.QMainWindow):
+	"""
+	One main 'window' for the appication. Keep a list of canvas (bCanvasWidget) in
+	canvasDict.
+	"""
 	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
 		"""
 		loadIgorCanvas: path to folder of converted Igor canvas
@@ -39,10 +43,13 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		useMotor = self._optionsDict['motor']['useMotor']
 		motorName = self._optionsDict['motor']['name'] # = 'bPrior'
-		isReal = self._optionsDict['motor']['isReal'] #= False
-		self.assignMotor(useMotor, motorName, isReal)
+		port = self._optionsDict['motor']['port']
+		#isReal = self._optionsDict['motor']['isReal'] #= False
+		self.assignMotor(useMotor, motorName, port)
 
-		self.canvasDict = {}
+		# dictionary of bCanvasWidget
+		# each key is file name with no extension
+		self.canvasDict = OrderedDict()
 
 		self.canvas = None
 		if loadIgorCanvas is not None:
@@ -70,6 +77,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.showingCamera = not self.showingCamera
 		if self.showingCamera:
 			if self.camera is None:
+				saveIntervalSeconds = self._optionsDict['video']['saveIntervalSeconds']
 				left = self._optionsDict['video']['left']
 				top  = self._optionsDict['video']['top']
 				pos = (left,top)
@@ -80,7 +88,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 				self.camera = canvas.bCamera.myVideoWidget(parent=self,
 					videoSize=videoSize,
 					videoPos = pos,
-					scaleMult = scaleMult)
+					scaleMult = scaleMult,
+					saveIntervalSeconds = saveIntervalSeconds)
 				self.camera.videoWindowSignal.connect(self.slot_VideoChanged)
 			self.camera.show()
 		else:
@@ -108,7 +117,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		else:
 			return None
 
-	def assignMotor(self, useMotor, motorName, isReal):
+	def assignMotor(self, useMotor, motorName, motorPort):
 		"""
 		Create a motor controller from a class name
 
@@ -124,7 +133,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			class_ = getattr(canvas.bMotor, motorName) # class_ is a module
 			#print('class_:', class_)
 			#class_ = getattr(class_, motorName) # class_ is a class
-			self.xyzMotor = class_(isReal=isReal)
+			self.xyzMotor = class_(motorPort)
 
 	def mousePressEvent(self, event):
 		print('=== bCanvasApp.mousePressEvent()')
@@ -137,9 +146,33 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		bLogger.info(f'event:{event}')
 		self.myGraphicsView.keyPressEvent(event)
 
+	def bringCanvasToFront(self, fileNameNoExtension):
+		print('bCanvasApp.bringCanvasToFront() fileNameNoExtension:', fileNameNoExtension)
+		for canvas in self.canvasDict.keys():
+			if canvas == fileNameNoExtension:
+				self.canvasDict[canvas].activateWindow()
+				self.canvasDict[canvas].raise_() # raise is a keyword and can't be used
+
+	def activateCanvas(self, path):
+		self.myMenu.buildCanvasMenu(self.canvasDict)
+
+	def closeCanvas(self, path):
+		fileNameNoExt = os.path.split(path)[1]
+		fileNameNoExt = os.path.splitext(fileNameNoExt)[0]
+
+		#self.canvasDict[fileNameNoExt]
+		removed = self.canvasDict.pop(fileNameNoExt, None)
+		if removed is None:
+			print('warning: bCanvasApp.closeCanvas() did not remove', fileNameNoExt)
+		else:
+			self.myMenu.buildCanvasMenu(self.canvasDict)
+
 	def newCanvas(self, shortName=''):
 		if shortName=='':
-			text, ok = QtWidgets.QInputDialog.getText(self, 'Text Input Dialog', 'Enter your name:')
+			# setInformativeText("This is additional information")
+			text, ok = QtWidgets.QInputDialog.getText(self,
+							'New Canvas', 'Enter a new canvas name (no spaces):')
+			text = text.replace(' ', '')
 			if ok:
 				shortName = str(text)
 
@@ -162,17 +195,39 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		print('bCanvasApp.newCanvas() filePath:', filePath)
 		if os.path.isfile(filePath):
 			print('   error: newCanvas() file exists:', filePath)
+
+			msg = QtWidgets.QMessageBox()
+			msg.setIcon(QtWidgets.QMessageBox.Information)
+
+			msg.setText(f'Canvas "{shortName}" Already Exists')
+			msg.setInformativeText("Please choose a different name")
+			msg.setWindowTitle("Canvas Already Exists")
+			msg.setDetailedText(f'Existing path is:\n {filePath}')
+			msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+			#msg.buttonClicked.connect(msgbtn)
+
+			retval = msg.exec_()
+
 		else:
+			# todo: defer these until we actually save !!!
 			if not os.path.isdir(datePath):
 				os.mkdir(datePath)
 			if not os.path.isdir(folderPath):
 				os.mkdir(folderPath)
 
-			if not os.path.isdir(videoFolderPath):
-				os.mkdir(videoFolderPath)
+			# made when we actually acquire a video
+			#if not os.path.isdir(videoFolderPath):
+			#	os.mkdir(videoFolderPath)
 
 			# finally, make the canvas
-			self.canvasDict[fileName] = canvas.bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
+			newCanvas = canvas.bCanvasWidget(filePath, self)
+
+			# add to list
+			fileNameNoExt, ext = os.path.splitext(fileName)
+			self.canvasDict[fileNameNoExt] = newCanvas
+
+			# update menus
+			self.myMenu.buildCanvasMenu(self.canvasDict)
 
 	def save(self):
 		"""
@@ -220,8 +275,17 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			print('bCanvasApp.load() got user file:', filePath)
 
 		if os.path.isfile(filePath):
+			"""
+			todo: check if already loaded
+			"""
 			loadedCanvas = canvas.bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
+
+			basename = os.path.split(filePath)[1]
+			basename = os.path.splitext(basename)[0]
 			self.canvasDict[basename] = loadedCanvas
+
+			self.myMenu.buildCanvasMenu(self.canvasDict)
+
 		else:
 			print('Warning: bCanvasApp.load() did not find file:', filePath)
 			return
@@ -274,16 +338,18 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self._optionsDict['motor'] = OrderedDict()
 		self._optionsDict['motor']['useMotor'] = True
-		self._optionsDict['motor']['name'] = 'mp285' #'bPrior' # the name of the class derived from bMotor
-		self._optionsDict['motor']['isReal'] = False
+		self._optionsDict['motor']['name'] = 'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
+		self._optionsDict['motor']['port'] = 'COM5'
+		#self._optionsDict['motor']['isReal'] = False
 
 		# on olympus, camera is 1920 x 1200
 		self._optionsDict['video'] = OrderedDict()
+		self._optionsDict['video']['saveIntervalSeconds'] = None #100
 		self._optionsDict['video']['oneimage'] = 'bCamera/oneimage.tif'
 		self._optionsDict['video']['left'] = 100
 		self._optionsDict['video']['top'] = 100
-		self._optionsDict['video']['width'] = 1280 # set this to actual video pixels
-		self._optionsDict['video']['height'] = 720
+		self._optionsDict['video']['width'] = 640 #1280 # set this to actual video pixels
+		self._optionsDict['video']['height'] = 480 #720
 		self._optionsDict['video']['scaleMult'] = 1.0 # as user resizes window
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
@@ -292,6 +358,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['scanning'] = OrderedDict()
 		self._optionsDict['scanning']['zoomOneWidthHeight'] = 509.116882454314
 		self._optionsDict['scanning']['stepFraction'] = 0.2 # for motor moves
+		self._optionsDict['scanning']['maxChannel'] = 1 # for motor moves
 
 		self._optionsDict['Interface'] = OrderedDict()
 		self._optionsDict['Interface']['wheelZoom'] = 1.1
@@ -330,6 +397,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		with open(self.optionsFile, 'w') as outfile:
 			json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
 
+	def slot_UpdateOptions(self, optionsDict):
+		print('bCanvasApp.slot_UpdateOptions()')
+		self._optionsDict = optionsDict
+		self.optionsSave()
+
 	def _getCodeFolder(self):
 		""" get full path to the folder where this file of code lives
 
@@ -358,7 +430,7 @@ def main(withJavaBridge=False):
 		# set the icon of the application
 		tmpPath = os.path.dirname(os.path.abspath(__file__))
 		iconsFolderPath = os.path.join(tmpPath, 'icons')
-		iconPath = os.path.join(iconsFolderPath, 'canvas-64.png')
+		iconPath = os.path.join(iconsFolderPath, 'canvas-color-64.png')
 		print('bCanvasApp() iconPath:', iconPath)
 		appIcon = QtGui.QIcon(iconPath)
 		app.setWindowIcon(appIcon)

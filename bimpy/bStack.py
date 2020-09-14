@@ -405,6 +405,60 @@ class bStack:
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
 
 	# abb canvas
+	def getMaxFile(self, channel):
+		"""
+		get full path to max file
+		"""
+		maxSavePath, fileName = os.path.split(self.path)
+		baseFileName = os.path.splitext(fileName)[0]
+		maxSavePath = os.path.join(maxSavePath, 'max')
+		maxFileName = 'max_' + baseFileName + '_ch' + str(channel) + '.tif'
+		maxFilePath = os.path.join(maxSavePath, maxFileName)
+		return maxFilePath
+
+	# abb canvas
+	def loadMax(self):
+		"""
+		todo: this needs to use self.numChannel !!!
+
+		assumes:
+			1) self.saveMax
+			2) self.numChannels is well formed
+		"""
+		nMax = len(self._maxList)
+		for idx in range(nMax):
+			channelNumber = idx + 1
+			maxFilePath = self.getMaxFile(channelNumber)
+			if os.path.isfile(maxFilePath):
+				print('  bStack.loadMax() loading channel', channelNumber, 'maxFilePath:', maxFilePath)
+				maxData = tifffile.imread(maxFilePath)
+				self._maxList[idx] = maxData
+			else:
+				#print('  warning: bStack.loadMax() did not find max file:', maxFilePath)
+				pass
+
+	# abb canvas
+	def saveMax(self):
+		"""
+		assumes self._makeMax()
+		"""
+		maxSavePath, tmpFileName = os.path.split(self.path)
+		maxSavePath = os.path.join(maxSavePath, 'max')
+		print('  bStack.saveMax() maxSavePath:', maxSavePath)
+		if not os.path.isdir(maxSavePath):
+			os.mkdir(maxSavePath)
+
+		nMax = len(self._maxList)
+		for idx in range(nMax):
+			maxData = self._maxList[idx]
+			if maxData is None:
+				continue
+			channel = idx + 1
+			maxFilePath = self.getMaxFile(channel)
+			print('  bStack.saveMax() saving', idx, 'maxFilePath:', maxFilePath)
+			tifffile.imsave(maxFilePath, maxData)
+
+	# abb canvas
 	def getMax(self, channel=1):
 		"""
 		channel: 1 based
@@ -414,16 +468,23 @@ class bStack:
 		return theRet
 
 	# abb canvas
-	def _makeMax(self, channelIdx, convertTo8Bit=True):
+	def _makeMax(self, channelIdx, convertTo8Bit=False):
 		"""
 		channelIdx: 0 based
 		"""
 		theMax = None
-		if self._stackList[channelIdx] is None:
+		stackData = self._stackList[channelIdx]
+		if stackData is None:
 			print('bStack._makeMax() is returning None for channelIdx:', channelIdx)
 			pass
 		else:
-			theMax = np.max(self._stackList[channelIdx], axis=0)
+			nDim = len(stackData.shape)
+			if nDim == 2:
+				theMax = stackData
+			elif nDim == 3:
+				theMax = np.max(stackData, axis=0)
+			else:
+				print('bStack._makeMax() got bad dimensions for channelIdx', channelIdx, 'nDim:', nDim)
 		if theMax is not None and convertTo8Bit:
 			theMax = theMax.astype(np.uint8)
 		self._maxList[channelIdx] = theMax
@@ -462,6 +523,9 @@ class bStack:
 							stop = stackData.shape[0]
 							step = numChannels
 							sliceRange = range(start, stop, step)
+
+							setNumSlices = len(sliceRange)
+							self.header.header['numImages'] = setNumSlices
 							'''
 							print('bStack.load() ScanImage channelIdx:', channelIdx)
 							print('  ', 'start:', start, 'stop:', stop, 'step:', step)
@@ -605,19 +669,30 @@ if __name__ == '__main__':
 
 	#import javabridge
 
-
-	path = '/Users/cudmore/Box/data/canvas/20191226/20191226_tst1/20190429_tst2_0001.oir'
 	path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/xy512z1zoom5bi_00001_00010.tif'
+	path = '/Users/cudmore/data/canvas/20200913/20200913_aaa/xy512z1zoom5bi_00001_00009.tif'
 
 	if 0:
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 
 	if 1:
-		myStack = bStack(path)
+		myStack = bStack(path, loadImages=False)
 
 		myStack.print()
-		myStack.printHeader()
+		#myStack.printHeader()
+
+		myStack.loadStack2()
+
+		maxFile = myStack.getMaxFile(1)
+		print('maxFile:', maxFile)
+
+		#myStack.saveMax()
+
+		myStack.loadMax()
+
+		theMax = myStack.getMax(1)
+		print('theMax:', theMax)
 
 	if 0:
 		from bJavaBridge import bJavaBridge

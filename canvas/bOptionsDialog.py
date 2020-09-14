@@ -9,13 +9,40 @@ from collections import OrderedDict
 
 from qtpy import QtGui, QtCore, QtWidgets
 
+'''
+class bOkCancelDialog:
+	def __init__(self, title, message):
+		self._ok = False
+
+		msg = QtWidgets.QMessageBox()
+		msg.setIcon(QtWidgets.QMessageBox.Information)
+		msg.setWindowTitle(title)
+		msg.setText(message)
+		#msg.setText("Sure you want to close? Unsaved changes will be lost...")
+		#msg.setInformativeText("This is additional information")
+		msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+		retval = msg.exec_()
+		if retval == QtWidgets.QMessageBox.Cancel:
+			self._ok = False
+		else:
+			self._ok = True
+
+	def ok(self):
+		return self._ok == True
+	def canceled(self):
+		return self._ok == False
+'''
+
 class bOptionsDialog(QtWidgets.QDialog):
+
 	"""
 	General purpose dialog to set tracing display options.
 	For now it is hard coded with pen size and masking
 
 	todo: extend this to handle all options !!!
 	"""
+	acceptOptionsSignal = QtCore.Signal(object) # object can be a dict
+
 	def __init__(self, parent, optionsDict):
 		"""
 		parent is needed, otherwise self.show() does nothing
@@ -25,13 +52,16 @@ class bOptionsDialog(QtWidgets.QDialog):
 		"""
 		super(bOptionsDialog, self).__init__(parent)
 
+		#self.accept.connect(parent.slot_UpdateOptions)
+		#self.acceptOptionsSignal.connect(parent.slot_UpdateOptions)
+
 		# make a copy of options to modify
 		self.localOptions = OrderedDict(optionsDict)
 
 		self.setWindowTitle('Canvas Options')
 
 		numKeys = len(optionsDict.keys())
-		numCols = 2
+		numCols = 3
 
 		mainLayout = QtWidgets.QGridLayout()
 
@@ -47,7 +77,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 			for key2 in self.localOptions[key1].keys():
 				value = self.localOptions[key1][key2]
 				theType = type(value)
-				print(key1, key2, theType, value)
+				#print(key1, key2, theType, value)
 				if isinstance(value, bool):
 					aCheckbox = QtWidgets.QCheckBox(key2)
 					aCheckbox.setChecked(value)
@@ -91,9 +121,10 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 		#
 		row += 1
-		col = 0
-		self.buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Apply |
-			QtWidgets.QDialogButtonBox.Reset |
+		#col = 0
+		self.buttonBox = QtWidgets.QDialogButtonBox(
+			#QtWidgets.QDialogButtonBox.Apply |
+			#QtWidgets.QDialogButtonBox.Reset |
 			QtWidgets.QDialogButtonBox.Cancel |
 			QtWidgets.QDialogButtonBox.Ok)
 
@@ -102,14 +133,14 @@ class bOptionsDialog(QtWidgets.QDialog):
 		self.buttonBox.rejected.connect(self.reject)
 
 		#
-		mainLayout.addWidget(self.buttonBox, row, col)
+		mainLayout.addWidget(self.buttonBox, row, numCols-1)
 		self.setLayout(mainLayout)
 
 		self.show()
 
 	def myClicked(self, button):
 		'''
-		print('myClicked() button:')
+		print('  myClicked() button:')
 		print('   ', self.buttonBox.buttonRole(button))
 		print('   ', QtWidgets.QDialogButtonBox.ApplyRole)
 		'''
@@ -128,20 +159,20 @@ class bOptionsDialog(QtWidgets.QDialog):
 		value 0: unchecked
 		value 2: checked
 		"""
-		print('checkChanged() value:', value, type(value))
+		print('  checkChanged() value:', value, type(value))
 		if value == 0:
 			value = False
 		elif value == 2:
 			value = True
 		else:
-			print('error in checkChanged')
+			print('  error in checkChanged')
 			return
 		bobID_1 = self.sender().property('bobID_1')
 		bobID_2 = self.sender().property('bobID_2')
 		try:
 			self.localOptions[bobID_1][bobID_2] = value
 		except (KeyError) as e:
-			print('error in valueChanged() e:', e)
+			print('  error in valueChanged() e:', e)
 
 	def valueChanged(self, value):
 		"""
@@ -152,7 +183,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 		elif isinstance(value, str):
 			pass
 
-		print('valueChanged() value:', value, type(value), self.sender().property('bobID_1'), self.sender().property('bobID_2'))
+		print('  valueChanged() value:', value, type(value), self.sender().property('bobID_1'), self.sender().property('bobID_2'))
 		bobID_1 = self.sender().property('bobID_1')
 		bobID_2 = self.sender().property('bobID_2')
 		try:
@@ -164,17 +195,8 @@ class bOptionsDialog(QtWidgets.QDialog):
 		"""
 		copy our localOptions back into mainWindow.options
 		"""
-		print('bOptionsDialog.myAccept()')
 
-		'''
-		self.mainWindow.options = self.localOptions
-		self.mainWindow.optionsSave()
-		self.mainWindow.getStackView().setSlice() # refresh
-		'''
-
-		print('localOptions:')
-		print(json.dumps(self.localOptions, indent=4))
-
-		print('tood: SET OPTION IN MAIN CANVAS APP !!!!!!!')
+		# parent needs to ad a slot_updateOptions() function
+		self.acceptOptionsSignal.emit(self.localOptions)
 
 		self.accept() # close the dialog

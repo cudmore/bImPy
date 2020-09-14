@@ -93,7 +93,7 @@ class bStackHeader:
 
 	def print(self):
 		print('  bStackHeader.print()', self.path)
-		printTheseKeys = ['path', 'type', 'numChannels', 'numSlices', 'xVoxel', 'yVoxel', 'zVoxel', 'xMotor', 'yMotor', 'zMotor']
+		printTheseKeys = ['path', 'type', 'numChannels', 'numImages', 'xVoxel', 'yVoxel', 'zVoxel', 'xMotor', 'yMotor', 'zMotor']
 		for k,v in self.header.items():
 			if k in printTheseKeys:
 				print('  ', k, ':', v)
@@ -329,7 +329,7 @@ class bStackHeader:
 				numSlices = scanimage_metadata['FrameData'][k2]
 				self.header['numImages'] = numChannels
 				'''
-				
+
 				k2 = 'SI.hChannels.channelAdcResolution'
 				bitDepth = scanimage_metadata['FrameData'][k2]
 				bitDepth = bitDepth[0] # assuming all channels the same

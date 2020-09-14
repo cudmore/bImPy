@@ -22,8 +22,13 @@ class myStatusToolbarWidget(QtWidgets.QToolBar):
 
 		hBoxLayout = QtWidgets.QHBoxLayout()
 
+		# not used
+		'''
 		self.lastActionLabel = QtWidgets.QLabel("Last Action: None")
 		hBoxLayout.addWidget(self.lastActionLabel)
+		'''
+		self.myFilename = QtWidgets.QLabel("File: None")
+		hBoxLayout.addWidget(self.myFilename)
 
 		xMousePosition_ = QtWidgets.QLabel("X (um)")
 		xMousePosition_.setMaximumWidth(20)
@@ -31,7 +36,7 @@ class myStatusToolbarWidget(QtWidgets.QToolBar):
 		hBoxLayout.addWidget(xMousePosition_, myAlign)
 		hBoxLayout.addWidget(self.xMousePosition, myAlign)
 
-		yMousePosition_ = QtWidgets.QLabel("X (um)")
+		yMousePosition_ = QtWidgets.QLabel("Y (um)")
 		self.yMousePosition = QtWidgets.QLabel("None")
 		hBoxLayout.addWidget(yMousePosition_, myAlign)
 		hBoxLayout.addWidget(self.yMousePosition, myAlign)
@@ -40,11 +45,14 @@ class myStatusToolbarWidget(QtWidgets.QToolBar):
 		myGroupBox.setLayout(hBoxLayout)
 		self.addWidget(myGroupBox)
 
-	def setMousePosition(self, point):
+	def setMousePosition(self, point, filename=None):
 		self.xMousePosition.setText(str(round(point.x(),1)))
 		self.xMousePosition.repaint()
 		self.yMousePosition.setText(str(round(point.y(),1)))
 		self.yMousePosition.repaint()
+
+		if filename is not None:
+			self.myFilename.setText(filename)
 
 class myScopeToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, parent):
@@ -57,7 +65,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 			- capturing single images from video camera
 			- importing scanning files from scope
 		"""
-		print('myScopeToolbarWidget.__init__')
+		#print('myScopeToolbarWidget.__init__')
 		super(QtWidgets.QToolBar, self).__init__(parent)
 
 		self.myCanvasWidget = parent
@@ -132,14 +140,14 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		self.xStepSpinBox.setMinimum(0.0)
 		self.xStepSpinBox.setMaximum(10000.0) # need something here, otherwise max is 100
 		#self.xStepSpinBox.setValue(1000)
-		self.xStepSpinBox.valueChanged.connect(self.stepValueChanged)
+		#self.xStepSpinBox.valueChanged.connect(self.stepValueChanged)
 
 		yStepLabel = QtWidgets.QLabel("Y Step (um)")
 		self.yStepSpinBox = QtWidgets.QDoubleSpinBox()
 		self.yStepSpinBox.setMinimum(0)
 		self.yStepSpinBox.setMaximum(10000) # need something here, otherwise max is 100
 		#self.yStepSpinBox.setValue(500)
-		self.yStepSpinBox.valueChanged.connect(self.stepValueChanged)
+		#self.yStepSpinBox.valueChanged.connect(self.stepValueChanged)
 
 		# set values of x/y step to Video
 		self.crosshairSizeChoice('Video')
@@ -289,7 +297,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		self.addWidget(myGroupBox)
 
 	def crosshairSizeChoice(self, text):
-		print('crosshairSizeChoice() text:', text)
+		print('myScopeToolbarWidget.crosshairSizeChoice() text:', text)
 		options = self.myCanvasWidget.getOptions()
 		if text == 'Hide':
 			umWidth = 0
@@ -328,10 +336,12 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		self.xStepSpinBox.setValue(xStep)
 		self.yStepSpinBox.setValue(yStep)
 
+	'''
 	def stepValueChanged(self):
 		xStep = self.xStepSpinBox.value()
 		yStep = self.yStepSpinBox.value()
 		print('myScopeToolbarWidget.stepValueChanged() xStep:', xStep, 'yStep:', yStep)
+	'''
 
 	@QtCore.pyqtSlot()
 	def on_button_click(self, name):
@@ -343,7 +353,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, parent=None):
 		"""
 		"""
-		print('bToolbar.py myToolbarWidget.__init__')
+		#print('bToolbar.py myToolbarWidget.__init__')
 		super(myToolbarWidget, self).__init__(parent)
 
 		# works but buttons become stupid
@@ -495,7 +505,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		#	selectedItems = self.myCanvasWidget.getGraphicsView().scene().selectedItems()
 		#	print('NOT IMPLEMENTED')
 
-		print('=== myToolbarWidget.on_contrast_slider() adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject, 'theMin:', theMin, 'theMax:', theMax)
+		#print('=== myToolbarWidget.on_contrast_slider() adjustThisLayer:', adjustThisLayer, 'useMaxProject:', useMaxProject, 'theMin:', theMin, 'theMax:', theMax)
 
 		for item in  self.myCanvasWidget.getGraphicsView().scene().items():
 
@@ -630,9 +640,11 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		print('   enable bring to front and send to back')
 	'''
 
+	'''
 	@QtCore.pyqtSlot()
 	def on_button_click(self, name):
 		print('=== myToolbarWidget.on_button_click() name:', name)
+	'''
 
 	@QtCore.pyqtSlot()
 	def on_checkbox_click(self, name, checkBoxObject):
