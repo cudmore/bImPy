@@ -305,6 +305,7 @@ class bCanvas:
 		fileDict['seconds'] = header.header['seconds']
 
 		fileDict['stackType'] = header.stackType
+		fileDict['bitDepth'] = header.bitDepth
 		fileDict['pixelsPerLine'] = header.pixelsPerLine
 		fileDict['linesPerFrame'] = header.linesPerFrame
 		fileDict['numImages'] = header.numImages
@@ -319,7 +320,7 @@ class bCanvas:
 		fileDict['canvasIsVisible'] = True
 		# contrast setting in canvas
 		fileDict['canvasMinContrast'] = 0
-		fileDict['canvasMaxContrast'] = 256
+		fileDict['canvasMaxContrast'] = header.bitDepth
 
 		return fileDict
 
