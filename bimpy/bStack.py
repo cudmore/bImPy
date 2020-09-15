@@ -471,6 +471,7 @@ class bStack:
 	def _makeMax(self, channelIdx, convertTo8Bit=False):
 		"""
 		channelIdx: 0 based
+		convertTo8Bit: not used
 		"""
 		theMax = None
 		stackData = self._stackList[channelIdx]
@@ -485,8 +486,8 @@ class bStack:
 				theMax = np.max(stackData, axis=0)
 			else:
 				print('bStack._makeMax() got bad dimensions for channelIdx', channelIdx, 'nDim:', nDim)
-		if theMax is not None and convertTo8Bit:
-			theMax = theMax.astype(np.uint8)
+		#if theMax is not None and convertTo8Bit:
+		#	theMax = theMax.astype(np.uint8)
 		self._maxList[channelIdx] = theMax
 
 	# abb aics

@@ -94,8 +94,9 @@ class bStackHeader:
 	def print(self):
 		print('  bStackHeader.print()', self.path)
 		printTheseKeys = ['path', 'type', 'numChannels', 'numImages', 'xVoxel', 'yVoxel', 'zVoxel', 'xMotor', 'yMotor', 'zMotor']
+		allKeys = True
 		for k,v in self.header.items():
-			if k in printTheseKeys:
+			if allKeys or k in printTheseKeys:
 				print('  ', k, ':', v)
 	'''
 	def getHeaderFromDict(self, igorImportDict):
@@ -243,6 +244,7 @@ class bStackHeader:
 			# HOLY CRAP, FOUND IT QUICK
 			imagej_metadata = tif.imagej_metadata
 			if imagej_metadata is not None:
+				#print('bStackHeader.imread() xxx yyy imagej_metadata:', imagej_metadata)
 				try:
 					#print('    imagej_metadata["spacing"]:', imagej_metadata['spacing'], type(imagej_metadata['spacing']))
 					zVoxel = imagej_metadata['spacing']
@@ -286,6 +288,11 @@ class bStackHeader:
 		self.header['xVoxel'] = xVoxel # um/pixel
 		self.header['yVoxel'] = yVoxel
 		self.header['zVoxel'] = zVoxel
+
+		# 20200915, this will both OVERWRITE and CONTAMINATE (with ImageJ info)
+		if imagej_metadata is not None:
+			for k,v in imagej_metadata.items():
+				self.header[k] = v
 
 		if isScanImage:
 			# sets numChannels
@@ -450,6 +457,10 @@ class bStackHeader:
 
 		self.header['zoom'] = None # optical zoom of objective
 
+		# abb removed 20200915 working on canvas in Baltimore
+		# maybe tiff headers should be dynamic based on file type?
+		# with some key elements ['xVoxel', 'yVoxel', 'xMotor', 'yMotor', ...]
+		'''
 		self.header['laserWavelength'] = None #
 		self.header['laserPercent'] = None #
 
@@ -472,12 +483,14 @@ class bStackHeader:
 		self.header['lineSpeed'] = None # time of each line scan (ms)
 		self.header['pixelSpeed'] = None #
 
+		self.header['olympusFileVersion'] = '' # Of the Olympus software
+		self.header['olympusProgramVersion'] = '' # Of the Olympus software
+		'''
+
 		self.header['xMotor'] = None
 		self.header['yMotor'] = None
 		self.header['zMotor'] = None
 
-		self.header['olympusFileVersion'] = '' # Of the Olympus software
-		self.header['olympusProgramVersion'] = '' # Of the Olympus software
 
 	def old_assignToShape(self, stack):
 		"""shape is (channels, slices, x, y)"""
@@ -753,6 +766,7 @@ if __name__ == '__main__':
 	print('tifffile.__version__', tifffile.__version__)
 
 	path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/xy512z1zoom5bi_00001_00010.tif'
+	path = '/Users/cudmore/data/canvas/20200914/20200914_ssslllaaa/20200914_ssslllaaa_video/v20200914_ssslllaaa_000.tif'
 	sh = bStackHeader(path=path)
 	for k,v in sh.header.items():
 		print(k,':',v)

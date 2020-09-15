@@ -12,8 +12,4 @@
 
 | Keyboard | Right-Click Menu | Action                      |
 | -------- | ---------------- | --------------------------- |
-| 1/2/3    |                  | View Image Color Channel    |
-|          | rgb              | View multichannel RGB Image |
-| c        | Contrast         | Toggle Image Contrast Panel |
-| l        | Line Profile     | Line Profile                |
-|          |                  |                             |
+| m        |                  | Toggle motor toolbar        |

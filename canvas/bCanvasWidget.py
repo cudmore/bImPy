@@ -1,7 +1,8 @@
 # Robert H Cudmore
 # 20191224
 
-import os, sys, subprocess
+import os, sys, time, subprocess
+from datetime import datetime
 from functools import partial
 from collections import OrderedDict
 
@@ -172,6 +173,141 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			tmp.show()
 			self.myStackList.append(tmp)
 
+	def grabImage(self):
+		"""
+		this grabs from file. we can also grab from thread like:
+		# currentImage = self.myCanvasApp.getCurentImage()
+		"""
+
+		# 1) save stack/tiff with minimal headers
+		# 2) then load from file as a bStack
+
+		print('=== bCanvasWidget.grabImage()')
+
+		# load .tif file that is being repeatdely saved by bCamera
+		# grab (videoWidth, videoHeight) fropm options
+		'''
+		codeFolder = self._getCodeFolder()
+		oneImage = self.myCanvasApp.options['video']['oneimage']
+		oneImagePath = os.path.join(codeFolder, oneImage)
+		if os.path.isfile(oneImagePath):
+			print('   found it', oneImagePath)
+		else:
+			print('   error: did not find file:', oneImagePath)
+			return
+		'''
+
+		imageData = self.myCanvasApp.getCurentImage()
+		if imageData is None:
+			return
+		imageDataShape = imageData.shape
+		#print('  imageData.shape', imageData.shape)
+		if len(imageDataShape) == 3:
+			imageData = imageData[:,:,0] # first plane assuming a monochrome camera
+		elif len(imageDataShape) == 2:
+			pass # already the correct shape
+		else:
+			print('error: bCanvasWidget.grabImage() got bad imiage data shape:', imageDataShape)
+
+		m, n = imageData.shape
+
+		#
+		umWidth = self.myCanvasApp.options['video']['umWidth']
+		umHeight = self.myCanvasApp.options['video']['umHeight']
+
+		# when loading from images that are saved at an interval, this will occassionally file with
+		#   IndexError: list index out of range
+		# presumably because file can not be read at same time as write
+		# maybe add try/except to actual bStack code ?
+		# todo: add try/except clause to catch it
+
+		# get the current motor position
+		xMotor, yMotor = self.myCanvasApp.xyzMotor.readPosition()
+
+		# make folder
+		videoFolderPath = self.myCanvas.videoFolderPath
+		if not os.path.isdir(videoFolderPath):
+			os.mkdir(videoFolderPath)
+
+		# construct file path/name and save
+		numVideoFiles = len(self.myCanvas.videoFileList)
+		fileNumStr = str(numVideoFiles).zfill(3)
+		saveVideoFile = 'v' + self.myCanvas.enclosingFolder + '_' + fileNumStr + '.tif'
+		saveVideoPath = os.path.join(videoFolderPath, saveVideoFile)
+
+		# tweek header
+		# todo: this is not complete
+		#newVideoStack.header.header['bitDepth'] = 8
+		#newVideoStack.header.header['bitDepth'] = 8
+		tmpHeader = OrderedDict()
+		tmpHeader['filename'] = saveVideoPath
+		tmpHeader['date'] = time.strftime('%Y%m%d')
+		tmpHeader['time'] = datetime.now().strftime("%H:%M:%S.%f")[:-4]
+		tmpHeader['seconds'] = time.time()
+		#
+		xVoxel = umHeight / m
+		yVoxel = umWidth / n
+		zVoxel = 1
+		tmpHeader['bitDepth'] = 8
+		tmpHeader['unit'] = 'um'
+		tmpHeader['xVoxel'] = xVoxel
+		tmpHeader['yVoxel'] = yVoxel
+		tmpHeader['zVoxel'] = zVoxel
+		tmpHeader['umWidth'] = umWidth
+		tmpHeader['umHeight'] = umHeight
+		tmpHeader['xMotor'] = xMotor
+		tmpHeader['yMotor'] = yMotor
+
+		#
+		# save image as .tif
+
+		print('   saving video tiff (with header):', saveVideoPath)
+		bimpy.util.bTiffFile.imsave(saveVideoPath, imageData, tifHeader=tmpHeader)
+
+		# load image as a new stack
+		try:
+			print('  loading as a bStack object')
+			newVideoStack = bimpy.bStack(saveVideoPath, loadImages=True)
+		except (IndexError) as e:
+			print('warning: exception while loading stack. this happends when background video stream is saving saving at the same time')
+			print('just try loading again !!!')
+			print(e)
+			return
+
+		'''
+		# tweek header
+		# todo: this is not complete
+		'''
+		# 20200915, removed after adding all metadata to bTiffFile.imsave()
+		newVideoStack.header.header['umWidth'] = umWidth
+		newVideoStack.header.header['umHeight'] = umHeight
+		newVideoStack.header.header['xMotor'] = xMotor # flipped
+		newVideoStack.header.header['yMotor'] = yMotor
+
+		'''
+		print('   bCanvasWidget.grabImage() after reload of video, newVideoStack is:')
+		#print(newVideoStack.print())
+		for k,v in newVideoStack.header.header.items():
+			print('  ', k, v)
+		'''
+		
+		#sys.exit()
+
+		# finalize
+
+		# append to canvas
+		#self.canvas.videoFileList.append(newVideoStack)
+		self.myCanvas.appendVideo(newVideoStack)
+
+		# append to graphics view
+		self.myGraphicsView.appendVideo(newVideoStack)
+
+		# append to toolbar widget (list of files)
+		self.toolbarWidget.appendVideo(newVideoStack)
+
+		# save canvas
+		self.saveMyCanvas()
+
 	def userEvent(self, event):
 		print('=== myCanvasWidget.userEvent() event:', event)
 
@@ -230,147 +366,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			self.myCanvasApp.toggleVideo()
 
 		elif event == 'Grab Image':
-			# this grabs from file. we can also grab from thread, clicked
-			# currentImage = self.myCanvasApp.getCurentImage()
-
-			# 1) save stack/tiff with minimal headers
-			# 2) then load from file as a bStack
-
-			print('=== bCanvasWidget.userEvent() event:', event)
-			# load .tif file that is being repeatdely saved by bCamera
-			# grab (videoWidth, videoHeight) fropm options
-			'''
-			codeFolder = self._getCodeFolder()
-			oneImage = self.myCanvasApp.options['video']['oneimage']
-			oneImagePath = os.path.join(codeFolder, oneImage)
-			if os.path.isfile(oneImagePath):
-				print('   found it', oneImagePath)
-			else:
-				print('   error: did not find file:', oneImagePath)
-				return
-			'''
-
-			imageData = self.myCanvasApp.getCurentImage()
-			if imageData is None:
-				return
-			imageDataShape = imageData.shape
-
-			print('  imageData.shape', imageData.shape)
-
-			if len(imageDataShape) == 3:
-				imageData = imageData[:,:,0]
-			elif len(imageDataShape) == 2:
-				pass
-			else:
-				print('error: bCanvasWidget.userEvent() "Grab Image" got bad shape:', imageDataShape)
-
-			#m, n, s = imageData.shape
-			m, n = imageData.shape
-
-			#
-			umWidth = self.myCanvasApp.options['video']['umWidth']
-			umHeight = self.myCanvasApp.options['video']['umHeight']
-
-			# when loading from images that are saved at an interval, this will occassionally file with
-			#   IndexError: list index out of range
-			# presumably because file can not be read at same time as write
-			# maybe add try/except to actual bStack code ?
-			# todo: add try/except clause to catch it
-
-			# tweek header
-			# todo: this is not complete
-			xMotor, yMotor = self.myCanvasApp.xyzMotor.readPosition()
-			#newVideoStack.header.header['bitDepth'] = 8
-			#newVideoStack.header.header['bitDepth'] = 8
-			tmpHeader = OrderedDict()
-			#tmpHeader['date'] =
-			#tmpHeader['time'] =
-			xVoxel = umHeight / m
-			yVoxel = umWidth / n
-			zVoxel = 1
-			tmpHeader['unit'] = 'um'
-			tmpHeader['xVoxel'] = xVoxel
-			tmpHeader['yVoxel'] = yVoxel
-			tmpHeader['zVoxel'] = zVoxel
-			tmpHeader['umWidth'] = umWidth
-			tmpHeader['umHeight'] = umHeight
-			tmpHeader['xMotor'] = xMotor
-			tmpHeader['yMotor'] = yMotor
-
-			#
-			# save image as .tif
-
-			# make folder
-			videoFolderPath = self.myCanvas.videoFolderPath
-			if not os.path.isdir(videoFolderPath):
-				os.mkdir(videoFolderPath)
-
-			numVideoFiles = len(self.myCanvas.videoFileList)
-			saveVideoFile = 'v' + self.myCanvas.enclosingFolder + '_' + str(numVideoFiles) + '.tif'
-			saveVideoPath = os.path.join(videoFolderPath, saveVideoFile)
-			# todo: add header info
-			#newVideoStack.saveVideoAs(saveVideoPath)
-			print('   saving video:', saveVideoPath)
-			bimpy.util.bTiffFile.imsave(saveVideoPath, imageData, tifHeader=tmpHeader)
-
-			# load image as a new stack
-			try:
-				newVideoStack = bimpy.bStack(saveVideoPath, loadImages=True)
-			except (IndexError) as e:
-				print('warning: exception while loading stack. this happends when background video stream is saving saving at the same time')
-				print('just try loading again !!!')
-				print(e)
-				return
-
-			'''
-			# tweek header
-			# todo: this is not complete
-			xMotor,yMotor = self.myCanvasApp.xyzMotor.readPosition()
-			#newVideoStack.header.header['bitDepth'] = 8
-			#newVideoStack.header.header['bitDepth'] = 8
-			'''
-			newVideoStack.header.header['umWidth'] = umWidth
-			newVideoStack.header.header['umHeight'] = umHeight
-			newVideoStack.header.header['xMotor'] = xMotor # flipped
-			newVideoStack.header.header['yMotor'] = yMotor
-
-			print('   newVideoStack:', newVideoStack.print())
-
-			# save as (in canvas video folder)
-			try:
-				pass
-				'''
-				numVideoFiles = len(self.myCanvas.videoFileList)
-				saveVideoFile = 'v' + self.myCanvas.enclosingFolder + '_' + str(numVideoFiles) + '.tif'
-				saveVideoPath = os.path.join(self.myCanvas.videoFolderPath, saveVideoFile)
-				# todo: add header info
-				#newVideoStack.saveVideoAs(saveVideoPath)
-				print('   saving video:', saveVideoPath)
-				stackData = newVideoStack.getStack('video', channel=1)
-				bimpy.util.bTiffFile.imsave(saveVideoPath, stackData, tifHeader=newVideoStack.header)
-				'''
-				# todo: make bStack 'saveAs'
-				'''
-				newVideoStack.path = saveVideoPath #v20200909_www_0
-				newVideoStack.header.path = saveVideoPath #v20200909_www_0
-				newVideoStack.header.header['path'] = saveVideoPath #v20200909_www_0
-				'''
-			except (TypeError) as e:
-				print('error: exception while trying to save new video stack, canvas has no folder ... FIX THIS')
-
-			# append to canvas
-			#self.canvas.videoFileList.append(newVideoStack)
-			self.myCanvas.appendVideo(newVideoStack)
-
-			# append to graphics view
-			self.myGraphicsView.appendVideo(newVideoStack)
-
-			# append to toolbar widget (list of files)
-			self.toolbarWidget.appendVideo(newVideoStack)
-
-			# save canvas
-			self.saveMyCanvas()
-			#self.myCanvas.save()
+			self.grabImage()
 
 		elif event =='Import From Scope':
 			print('=== bCanvasWidget.userEvent() event:', event)
@@ -444,12 +440,13 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 		# here I am linking the toolbar to the graphics view
 		# i can't figure out how to use QAction !!!!!!
+		self.motorToolbarWidget = bToolbar.myScopeToolbarWidget(parent=self)
+		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
 		useMotor = self.getOptions()['motor']['useMotor']
 		if useMotor:
-			self.motorToolbarWidget = bToolbar.myScopeToolbarWidget(parent=self)
-			self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
+			pass
 		else:
-			self.motorToolbarWidget = None
+			self.motorToolbarWidget.hide()
 
 		self.toolbarWidget = bToolbar.myToolbarWidget(self)
 		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.toolbarWidget)
@@ -457,6 +454,12 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.setCentralWidget(self.centralwidget)
 
 		#self.myStackList = [] # a list of open bStack
+
+	def toggleMotor(self):
+		if self.motorToolbarWidget.isVisible():
+			self.motorToolbarWidget.hide()
+		else:
+			self.motorToolbarWidget.show()
 
 	def keyPressEvent(self, event):
 		#print('\n=== bCanvasWidget.keyPressEvent()', event.text())
@@ -471,6 +474,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			print('  ... save canvas ...')
 			print('  TODO: reactivate bMenu Save by having canvas window signal app when window takes focus')
 		'''
+
+		if event.key() == QtCore.Qt.Key_M:
+			self.toggleMotor()
 
 globalSquare = {
 	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
@@ -748,10 +754,13 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		umWidth = newScopeFile.header.header['umWidth']
 		umHeight = newScopeFile.header.header['umHeight']
 		#
+
+		'''
 		print('\n')
 		print('bCanvasWidget.appendScopeFile() path:', path)
 		print('  umWidth:', umWidth, 'umHeight:', umHeight)
 		print('\n')
+		'''
 
 		if xMotor == 'None':
 			xMotor = None
@@ -829,6 +838,15 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		umWidth = newVideoStack.header.header['umWidth']
 		umHeight = newVideoStack.header.header['umHeight']
 
+		if xMotor is None or yMotor is None:
+			print('error: bCanvasWidget.appendVideo() got bad xMotor/yMotor')
+			print('      -->> ABORTING')
+			return
+		if umWidth is None or umHeight is None:
+			print('error: bCanvasWidget.appendVideo() got bad umWidth/umHeight')
+			print('      -->> ABORTING')
+			return
+
 		xMotor = float(xMotor)
 		yMotor = float(yMotor)
 
@@ -860,7 +878,6 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		# add to scene
 		self.scene().addItem(pixMapItem)
-
 
 	def setSelectedItem(self, fileName):
 		"""

@@ -1,7 +1,8 @@
 # Author: Robert Cudmore
 # Date: 20190703
 
-import os, sys, json
+import os, sys, time, json
+from datetime import datetime
 from collections import OrderedDict
 
 import bimpy
@@ -14,6 +15,7 @@ class bCanvas:
 		"""
 		filePath: path to _canvas.txt file to load a canvas
 		folderPath: to load a converted Igor canvas (DEPRECIATED)
+		parent: myCanvasWidget
 		"""
 
 		self.myCanvasWidget = parent # use, self.myCanvasWidget.myLogFilePositon
@@ -32,7 +34,7 @@ class bCanvas:
 			self._folderPath, tmpFilename = os.path.split(filePath)
 		'''
 
-		self.optionsLoad()
+		#self.optionsLoad()
 
 		self._videoFileList = []
 		self._scopeFileList = [] # images off the scope
@@ -40,11 +42,13 @@ class bCanvas:
 		if filePath is not None and os.path.isfile(filePath):
 			self.load(filePath)
 
+	'''
 	def findByName(self, filename):
 		for file in self._videoFileList:
 			if file.getFileName() == filename:
 				return file
 		return None
+	'''
 
 	'''
 	def findScopeFileByName(self, filename):
@@ -55,6 +59,11 @@ class bCanvas:
 	'''
 
 	def appendVideo(self, newVideoStack):
+		"""
+		used when user acquires a new image from video
+
+		see: bCanvasWidget.grabImage()
+		"""
 		self._videoFileList.append(newVideoStack)
 
 	def importNewScopeFiles(self):
@@ -90,6 +99,10 @@ class bCanvas:
 				newFilePath = os.path.join(self._folderPath, potentialNewFile)
 				# abb canvas, we need a way to load header or max of .oir files?
 				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
+				# append to header
+				newScopeStack.header.header['date'] = time.strftime('%Y%m%d')
+				newScopeStack.header.header['time'] = datetime.now().strftime("%H:%M:%S.%f")[:-4]
+				newScopeStack.header.header['seconds'] = time.time()
 				print('   newScopeStack:', newScopeStack.print())
 
 				print('  saving max')
@@ -275,7 +288,7 @@ class bCanvas:
 
 			self._scopeFileList.append(tmpStack)
 
-	def _saveFile(self, stack):
+	def _saveFileDict(self, stack):
 		"""
 		Generate a dict to save both (video/scope) files to json
 
@@ -286,6 +299,10 @@ class bCanvas:
 		# todo: make sure path get filled in in header !!!
 		fileName = stack.fileName
 		fileDict['filename'] = fileName
+
+		fileDict['date'] = header.header['date']
+		fileDict['time'] = header.header['time']
+		fileDict['seconds'] = header.header['seconds']
 
 		fileDict['stackType'] = header.stackType
 		fileDict['pixelsPerLine'] = header.pixelsPerLine
@@ -325,14 +342,14 @@ class bCanvas:
 		saveDict['videoFiles'] = OrderedDict()
 		for file in self.videoFileList:
 			fileName = file.fileName
-			thisDict = self._saveFile(file)
+			thisDict = self._saveFileDict(file)
 			saveDict['videoFiles'][fileName] = thisDict
 
 		# scope files
 		saveDict['scopeFiles'] = OrderedDict()
 		for file in self.scopeFileList:
 			fileName = file.fileName
-			thisDict = self._saveFile(file)
+			thisDict = self._saveFileDict(file)
 			saveDict['scopeFiles'][fileName] = thisDict
 
 		#print('saveDict:', json.dumps(saveDict, indent=4))
@@ -383,7 +400,7 @@ class bCanvas:
 			elif key=='videoFiles':
 				for fileName, fileDict in item.items():
 					videoFilePath = os.path.join(self.videoFolderPath, fileName)
-					print('bCanvas.load() is loading videoFilePath:', videoFilePath)
+					print('  bCanvas.load() is loading videoFilePath:', videoFilePath)
 					videoStack = bimpy.bStack(videoFilePath, loadImages=True)
 
 					for headerStr,headerValue in fileDict.items():
@@ -393,31 +410,33 @@ class bCanvas:
 							# todo: put this back in
 							#print('warning: bCanvas.load() did not find VideoFile key "' + headerStr + '" in file', fileName)
 							videoStack.header.header[headerStr] = headerValue
-					videoStack.printHeader()
+					#videoStack.printHeader()
 					# append to list
 					self._videoFileList.append(videoStack)
 
 			elif key =='scopeFiles':
 				for fileName, fileDict in item.items():
 					scopeFilePath = os.path.join(self._folderPath, fileName)
-					print('bCanvas.load() is loading scopeFilePath:', scopeFilePath)
+					print('  bCanvas.load() is loading scopeFilePath:', scopeFilePath)
 					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
 					scopeStack.loadMax()
 
 					for headerStr,headerValue in fileDict.items():
 						if headerStr in scopeStack.header.header.keys():
 							# don't do this
-							#scopeStack.header.header[headerStr] = headerValue
+							scopeStack.header.header[headerStr] = headerValue
 							pass
 						else:
 							# todo: put this back in
 							#print('warning: bCanvas.load() did not find ScopeFile key "' + headerStr + '" in file', fileName)
 							scopeStack.header.header[headerStr] = headerValue
-					scopeStack.printHeader()
+					#scopeStack.printHeader()
 
 					# append to list
 					self._scopeFileList.append(scopeStack)
 
+	# abb 20200914, options are in main bCanvasApp
+	'''
 	@property
 	def optionsFile(self):
 		"""
@@ -438,11 +457,11 @@ class bCanvas:
 		self._optionsDict['version'] = 0.1
 
 		# put this in bCanvasApp
-		'''
+		"""
 		self._optionsDict['video'] = OrderedDict()
 		self._optionsDict['video']['umWidth'] = 693
 		self._optionsDict['video']['umHeight'] = 433
-		'''
+		"""
 
 	def optionsLoad(self):
 		if not os.path.isfile(self.optionsFile):
@@ -455,6 +474,7 @@ class bCanvas:
 	def optionsSave(self):
 		with open(self.optionsFile, 'w') as outfile:
 			json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
+	'''
 
 if __name__ == '__main__':
 	try:

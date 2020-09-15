@@ -3,6 +3,8 @@
 
 import os, sys # to make menus on osx, sys.platform == 'darwin'
 
+import webbrowser # to show help
+
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 import logging
@@ -46,14 +48,17 @@ class bMenu:
 		options.addAction('Canvas Options ...', self.showOptionsDialog)
 		options.addSeparator()
 		options.addAction('Save Canvas Options ...', self.saveOption)
+		options.addSeparator()
+		options.addAction('Help ...', self.helpMenu)
 
 		self.myMenuBar.addMenu(options)
 
 		# windows menu
 		self.windowMenu = self.myMenuBar.addMenu("Window")
-
 		canvasDict = {}
 		self.buildCanvasMenu(canvasDict)
+
+		# help
 
 	def buildCanvasMenu(self, canvasDict):
 		self.windowMenu.clear()
@@ -134,3 +139,7 @@ class bMenu:
 
 	def saveOption(self):
 		self.myCanvasApp.optionsSave()
+
+	def helpMenu(self):
+		urlStr = 'https://cudmore.github.io/bImPy/canvas'
+		webbrowser.open(urlStr, new=2)
