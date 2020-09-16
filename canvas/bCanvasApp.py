@@ -442,6 +442,10 @@ def main(withJavaBridge=False):
 
 		myCanvasApp = bCanvasApp(parent=app)
 
+		if sys.platform.startswith('win'):
+			# linden windows machine isreporting 'win32'
+			myCanvasApp.show()
+			
 		# load an existing canvas
 		path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/20200911_aaa_canvas.txt'
 		path = ''
