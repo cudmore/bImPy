@@ -9,4 +9,6 @@ from .bWatchFolder import bWatchFolder
 #from .bLogger import bLogger
 
 from .bOptionsDialog import bOptionsDialog
+from .bOptionsDialog import okCancelDialog
+#from .bOptionsDialog import *
 #from .bOptionsDialog import bOkCancelDialog

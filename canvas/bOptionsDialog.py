@@ -9,6 +9,34 @@ from collections import OrderedDict
 
 from qtpy import QtGui, QtCore, QtWidgets
 
+def okCancelDialog(text, informativeText=''):
+	close = QtWidgets.QMessageBox()
+	close.setText(text)
+	close.setIcon(QtWidgets.QMessageBox.Warning)
+	#close.setDetailedText('detailed text') # don't use this
+	if informativeText:
+		close.setInformativeText(informativeText)
+	close.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
+	close.setDefaultButton(QtWidgets.QMessageBox.Yes)
+	close = close.exec()
+
+	theRet = close == QtWidgets.QMessageBox.Yes
+	return theRet
+
+def okDialog(text, informativeText=''):
+	close = QtWidgets.QMessageBox()
+	close.setText(text)
+	close.setIcon(QtWidgets.QMessageBox.Warning)
+	#close.setDetailedText('detailed text') # don't use this
+	if informativeText:
+		close.setInformativeText(informativeText)
+	close.setStandardButtons(QtWidgets.QMessageBox.Yes)
+	close.setDefaultButton(QtWidgets.QMessageBox.Yes)
+	close = close.exec()
+
+	theRet = close == QtWidgets.QMessageBox.Yes
+	return theRet
+
 '''
 class bOkCancelDialog:
 	def __init__(self, title, message):

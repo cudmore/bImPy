@@ -192,10 +192,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		fileName = dateStr + '_' + shortName + '_canvas.txt'
 		filePath = os.path.join(folderPath, fileName)
 
-		print('bCanvasApp.newCanvas() filePath:', filePath)
+		print('  bCanvasApp.newCanvas() filePath:', filePath)
 		if os.path.isfile(filePath):
 			print('   error: newCanvas() file exists:', filePath)
 
+			text = f'Canvas "{shortName}" Already Exists'
+			informativeText = 'Please choose a different name'
+			tmp = canvas.okDialog(text, informativeText=informativeText)
+			'''
 			msg = QtWidgets.QMessageBox()
 			msg.setIcon(QtWidgets.QMessageBox.Information)
 
@@ -207,8 +211,9 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			#msg.buttonClicked.connect(msgbtn)
 
 			retval = msg.exec_()
-
+			'''
 		else:
+			print('   making new canvas:', filePath)
 			# todo: defer these until we actually save !!!
 			if not os.path.isdir(datePath):
 				os.mkdir(datePath)

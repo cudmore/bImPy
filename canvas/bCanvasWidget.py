@@ -69,12 +69,20 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		called when window is closed
 		"""
 		# ask user if it is ok
+		fileName = os.path.split(self.filePath)[1]
+		fileName = os.path.splitext(fileName)[0]
+		fileNameStr = f'Canvas name is "{fileName}"'
+
+		close = canvas.okCancelDialog('Do You Want To Close The Canvas?',
+									informativeText=fileNameStr)
+		'''
 		close = QtWidgets.QMessageBox()
 		close.setText("Do You Want To Close The Canvas?")
 		close.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
 		close = close.exec()
-
-		if close == QtWidgets.QMessageBox.Yes:
+		'''
+		#if close == QtWidgets.QMessageBox.Yes:
+		if close:
 			# remove
 			self.myCanvasApp.closeCanvas(self.filePath)
 			#
@@ -290,7 +298,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		for k,v in newVideoStack.header.header.items():
 			print('  ', k, v)
 		'''
-		
+
 		#sys.exit()
 
 		# finalize
