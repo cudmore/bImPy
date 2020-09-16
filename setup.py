@@ -21,7 +21,7 @@ setup(
     ],
     install_requires=[
         'napari',
-        'pyside2',
+        'PyQt5',
         'qtpy',
         'numpy>1.18',
         'matplotlib',
@@ -37,5 +37,11 @@ setup(
         'qdarkstyle',
         #'javabridge',
         #'python-bioformats',
-    ]
+    ],
+    entry_points={
+        'console_scripts': [
+            'bimpy=bimpy.interface.bStackBrowser:main',
+        ]
+    },
+
 )

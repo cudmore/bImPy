@@ -1,6 +1,6 @@
 #20190809
 
-import os
+import os, sys
 import traceback
 
 #from PyQt5 import QtGui, QtCore, QtWidgets
@@ -282,6 +282,47 @@ class bStackBrowser(QtWidgets.QMainWindow):
 		else:
 			event.ignore()
 
+def main(useBioformats=False):
+	app = QtWidgets.QApplication(sys.argv)
+
+	# set the icon of the application
+	tmpPath = os.path.dirname(os.path.abspath(__file__))
+	iconsFolderPath = os.path.join(tmpPath, 'icons')
+	iconPath = os.path.join(iconsFolderPath, 'bImpy.png')
+	print('bStackBrowser() iconPath:', iconPath)
+	appIcon = QtGui.QIcon(iconPath)
+	app.setWindowIcon(appIcon)
+
+	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
+
+	try:
+		if useBioformats:
+			mjb = bimpy.bJavaBridge()
+			mjb.start()
+
+		myBrowser = bimpy.interface.bStackBrowser()
+		myBrowser.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
+		myBrowser.show()
+
+		if os.path.isfile(path):
+			myBrowser.appendStack(path)
+			myBrowser.showStackWindow(0)
+		else:
+			print('__main__ did not find path:', path)
+
+		#mjb.stop()
+
+	except (Exception) as e:
+		print('bStackBrowser exception:', e)
+		#print(traceback.format_exc())
+
+		if useBioformats:
+			mjb.stop()
+
+		raise
+
+	sys.exit(app.exec_()) # this will loop
+
 if __name__ == '__main__':
 	import sys
 
@@ -300,18 +341,6 @@ if __name__ == '__main__':
 	print('bStackBrowser() iconPath:', iconPath)
 	appIcon = QtGui.QIcon(iconPath)
 	app.setWindowIcon(appIcon)
-
-	#
-	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
-	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001.tif'
-
-	path = '/Users/cudmore/box/Sites/DeepVess/data/invivo/blur/20190613__0028.tif'
-
-	# this one xml tracing is broekn
-	path = '/Users/cudmore/box/data/nathan/vascular-tracing/20191017/tifs/20191017_0001.tif'
-	path = '/Users/cudmore/box/data/nathan/vascular-tracing/20191017/tifs/20191017_0002.tif'
-
-	path = '/Users/cudmore/box/data/sami/Cell_1/1_5ADVMLEG1L1_ch2.tif'
 
 	# abb aics
 	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'

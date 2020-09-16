@@ -1,4 +1,4 @@
 -r ../requirements.txt
 
-opencv-python
+opencv-python-headless
 pyserial #for canvas

@@ -4,11 +4,14 @@
 # this has to be firs otherwise others often fail?
 numpy
 
+PyQt5
+QtPy
+
 napari
 
 # these are installed by napari
-PySide2
-QtPy
+#PySide2
+#QtPy
 
 
 matplotlib

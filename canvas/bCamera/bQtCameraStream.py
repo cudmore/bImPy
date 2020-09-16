@@ -23,6 +23,8 @@ import cv2
 
 import imageio
 
+import qdarkstyle
+
 # todo: create this kind of thread for PointGray camera on Olympus scope
 class myVideoThread(QtCore.QThread):
 	changePixmap2 = QtCore.Signal(np.ndarray)
@@ -59,6 +61,11 @@ class myVideoWidget(QtWidgets.QWidget):
 		super().__init__()
 
 		self.title = 'myVideoWidget'
+
+		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
+
+		#self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+		self.setWindowFlags(QtCore.Qt.Tool)
 
 		if videoSize is not None:
 			self.myWidth = videoSize[0]

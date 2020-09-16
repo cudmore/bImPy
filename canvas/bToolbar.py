@@ -87,6 +87,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		#
 		# arrows for left/right, front/back
 		grid = QtWidgets.QGridLayout()
+		grid.setSpacing(2)
 
 		buttonName = 'move stage left'
 		iconPath = self.myCanvasWidget._getIcon('left-arrow.png')
@@ -94,6 +95,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		leftButton = QtWidgets.QPushButton()
 		leftButton.setCheckable(False)
 		leftButton.setIcon(icon)
+		leftButton.setFixedWidth(10)
 		leftButton.setToolTip('Move stage left')
 		leftButton.clicked.connect(partial(self.on_button_click,buttonName))
 
@@ -103,6 +105,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		rightButton = QtWidgets.QPushButton()
 		rightButton.setCheckable(False)
 		rightButton.setIcon(icon)
+		rightButton.setFixedWidth(10)
 		rightButton.setToolTip('Move stage right')
 		rightButton.clicked.connect(partial(self.on_button_click,buttonName))
 
@@ -124,10 +127,36 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		frontButton.setToolTip('Move stage front')
 		frontButton.clicked.connect(partial(self.on_button_click,buttonName))
 
+		buttonName = 'move stage up'
+		iconPath = self.myCanvasWidget._getIcon('up-arrow.png')
+		icon  = QtGui.QIcon(iconPath)
+		upButton = QtWidgets.QPushButton()
+		upButton.setCheckable(False)
+		upButton.setIcon(icon)
+		upButton.setToolTip('Move objective up')
+		upButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		buttonName = 'move stage down'
+		iconPath = self.myCanvasWidget._getIcon('down-arrow.png')
+		icon  = QtGui.QIcon(iconPath)
+		downButton = QtWidgets.QPushButton()
+		downButton.setCheckable(False)
+		downButton.setIcon(icon)
+		downButton.setToolTip('Move objective down')
+		downButton.clicked.connect(partial(self.on_button_click,buttonName))
+
+		zStepLabel = QtWidgets.QLabel("Left/Right Step (um)")
+		self.zStepSpinBox = QtWidgets.QDoubleSpinBox()
+		self.zStepSpinBox.setMinimum(0.0)
+		self.zStepSpinBox.setMaximum(10000.0) # need something here, otherwise max is 100
+
 		grid.addWidget(leftButton, 1, 0) # row, col
 		grid.addWidget(rightButton, 1, 2) # row, col
 		grid.addWidget(backButton, 0, 1) # row, col
 		grid.addWidget(frontButton, 2, 1) # row, col
+		grid.addWidget(upButton, 0, 3) # row, col
+		grid.addWidget(self.zStepSpinBox, 1, 3) # (1,3) should be z-step
+		grid.addWidget(downButton, 2, 3) # row, col
 
 		vBoxLayout.addLayout(grid)
 
@@ -135,14 +164,14 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		# x/y step size
 		grid2 = QtWidgets.QGridLayout()
 
-		xStepLabel = QtWidgets.QLabel("X Step (um)")
+		xStepLabel = QtWidgets.QLabel("Left/Right Step (um)")
 		self.xStepSpinBox = QtWidgets.QDoubleSpinBox()
 		self.xStepSpinBox.setMinimum(0.0)
 		self.xStepSpinBox.setMaximum(10000.0) # need something here, otherwise max is 100
 		#self.xStepSpinBox.setValue(1000)
 		#self.xStepSpinBox.valueChanged.connect(self.stepValueChanged)
 
-		yStepLabel = QtWidgets.QLabel("Y Step (um)")
+		yStepLabel = QtWidgets.QLabel("Front/Back Step (um)")
 		self.yStepSpinBox = QtWidgets.QDoubleSpinBox()
 		self.yStepSpinBox.setMinimum(0)
 		self.yStepSpinBox.setMaximum(10000) # need something here, otherwise max is 100
@@ -248,9 +277,9 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		iconPath = self.myCanvasWidget._getIcon('camera.png')
 		icon  = QtGui.QIcon(iconPath)
 		grabVideoButton = QtWidgets.QPushButton(buttonName)
-		grabVideoButton.setCheckable(False)
 		grabVideoButton.setToolTip('Grab image from video')
 		grabVideoButton.setIcon(icon)
+		grabVideoButton.setCheckable(False)
 		grabVideoButton.clicked.connect(partial(self.on_button_click,buttonName))
 
 		video_hBoxLayout.addWidget(liveVideoButton)
@@ -277,6 +306,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		icon  = QtGui.QIcon(iconPath)
 		showCanvasFolderButton = QtWidgets.QPushButton('Show Folder')
 		showCanvasFolderButton.setToolTip('Show canvas folder')
+		showCanvasFolderButton.setCheckable(False)
 		showCanvasFolderButton.setIcon(icon)
 		showCanvasFolderButton.clicked.connect(partial(self.on_button_click,buttonName))
 
@@ -343,7 +373,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		print('myScopeToolbarWidget.stepValueChanged() xStep:', xStep, 'yStep:', yStep)
 	'''
 
-	@QtCore.pyqtSlot()
+	#@QtCore.pyqtSlot()
 	def on_button_click(self, name):
 		print('=== myScopeToolbarWidget.on_button_click() name:', name)
 		self.myCanvasWidget.userEvent(name)
