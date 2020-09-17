@@ -12,7 +12,7 @@ from qtpy import QtGui, QtCore, QtWidgets
 def okCancelDialog(text, informativeText=''):
 	close = QtWidgets.QMessageBox()
 	close.setText(text)
-	close.setIcon(QtWidgets.QMessageBox.Warning)
+	close.setIcon(QtWidgets.QMessageBox.Question)
 	#close.setDetailedText('detailed text') # don't use this
 	if informativeText:
 		close.setInformativeText(informativeText)
@@ -30,8 +30,8 @@ def okDialog(text, informativeText=''):
 	#close.setDetailedText('detailed text') # don't use this
 	if informativeText:
 		close.setInformativeText(informativeText)
-	close.setStandardButtons(QtWidgets.QMessageBox.Yes)
-	close.setDefaultButton(QtWidgets.QMessageBox.Yes)
+	close.setStandardButtons(QtWidgets.QMessageBox.Ok)
+	close.setDefaultButton(QtWidgets.QMessageBox.Ok)
 	close = close.exec()
 
 	theRet = close == QtWidgets.QMessageBox.Yes
@@ -136,6 +136,12 @@ class bOptionsDialog(QtWidgets.QDialog):
 					aLineEdit.textEdited.connect(self.valueChanged)
 					#
 					layout.addRow(QtWidgets.QLabel(key2), aLineEdit)
+
+				elif isinstance(value, list):
+					print('bOptionsDialog() list not implemented:', key1, key2, value)
+
+				else:
+					print('bOptionsDialog() isinstance not handled:', value)
 
 			groupBox.setLayout(layout)
 

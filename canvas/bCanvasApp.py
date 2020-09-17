@@ -20,8 +20,10 @@ import canvas # for (bCanvs, bMotor, bCamera)
 
 class bCanvasApp(QtWidgets.QMainWindow):
 	"""
-	One main 'window' for the appication. Keep a list of canvas (bCanvasWidget) in
-	canvasDict.
+	One main 'window' for the canvas appication.
+		- One instance of video (canvas.bCamera.myVideoWidget)
+		- One instance of motor (canvas.bMotor)
+		- Keep a list of canvas (bCanvasWidget) in canvasDict.
 	"""
 	def __init__(self, loadIgorCanvas=None, path=None, parent=None):
 		"""
@@ -51,6 +53,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		# each key is file name with no extension
 		self.canvasDict = OrderedDict()
 
+		# abb removed baltimore 20200916
+		'''
 		self.canvas = None
 		if loadIgorCanvas is not None:
 			#tmpCanvasFolderPath = '/Users/cudmore/Dropbox/data/20190429/20190429_tst2'
@@ -63,6 +67,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			self.canvas.buildFromScratch()
 		else:
 			self.canvas = canvas.bCanvas(filePath=path)
+		'''
 
 		# todo: only needed on windows
 		#self.show()
@@ -225,7 +230,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			#	os.mkdir(videoFolderPath)
 
 			# finally, make the canvas
-			newCanvas = canvas.bCanvasWidget(filePath, self)
+			newCanvas = canvas.bCanvasWidget(filePath, self, isNew=True)
 
 			# add to list
 			fileNameNoExt, ext = os.path.splitext(fileName)
@@ -280,10 +285,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			print('bCanvasApp.load() got user file:', filePath)
 
 		if os.path.isfile(filePath):
-			"""
-			todo: check if already loaded
-			"""
-			loadedCanvas = canvas.bCanvasWidget(filePath, self) #bCanvas(filePath=filePath)
+			# load
+			loadedCanvas = canvas.bCanvasWidget(filePath, self, isNew=False) #bCanvas(filePath=filePath)
 
 			basename = os.path.split(filePath)[1]
 			basename = os.path.splitext(basename)[0]
@@ -327,7 +330,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 	'''
 
 	def optionsVersion(self):
-		return 0.23
+		return 0.24
 
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
@@ -342,6 +345,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['version']['version'] = self.optionsVersion() #0.1
 
 		self._optionsDict['motor'] = OrderedDict()
+		self._optionsDict['motor']['motorList'] = [motor for motor in dir(canvas.bMotor) if not motor.endswith('__')]
 		self._optionsDict['motor']['useMotor'] = True
 		self._optionsDict['motor']['name'] = 'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
 		self._optionsDict['motor']['port'] = 'COM5'
@@ -445,7 +449,7 @@ def main(withJavaBridge=False):
 		if sys.platform.startswith('win'):
 			# linden windows machine isreporting 'win32'
 			myCanvasApp.show()
-			
+
 		# load an existing canvas
 		path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/20200911_aaa_canvas.txt'
 		path = ''

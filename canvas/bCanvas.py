@@ -25,7 +25,9 @@ class bCanvas:
 		if filePath is not None:
 			self._filePath = filePath
 			self._folderPath, tmpFilename = os.path.split(filePath)
-		print('bCanvas.__init__() _filePath:', self._filePath, '_folderPath:', self._folderPath)
+		print('bCanvas.__init__()')
+		print('  _filePath:', self._filePath)
+		print('  _folderPath:', self._folderPath)
 
 		'''
 		if len(folderPath)>0:
@@ -40,8 +42,12 @@ class bCanvas:
 		self._scopeFileList = [] # images off the scope
 
 		if filePath is not None and os.path.isfile(filePath):
+			print('  bCanvas.__init__() is loading canvas:', filePath)
 			self.load(filePath)
-
+		else:
+			# always save when we create a new canvas
+			print('  bCanvas.__init__() is saving new canvas:', filePath)
+			self.save()
 	'''
 	def findByName(self, filename):
 		for file in self._videoFileList:
@@ -358,6 +364,7 @@ class bCanvas:
 		# write the dictionary to a file
 		if self._folderPath is None or self.enclosingFolder is None:
 			print('error: bCanvas.Save() got None self._folderPath or self.enclosingFolder')
+			print('  -->> not saved')
 			return
 
 		saveFilePath = os.path.join(self._folderPath, self.enclosingFolder + '_canvas.txt')

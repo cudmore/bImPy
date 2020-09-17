@@ -18,15 +18,20 @@ import bToolbar
 # I want this to inherit from QWidget, but that does not have addToolbar ???
 #class bCanvasWidget(QtWidgets.QWidget):
 class bCanvasWidget(QtWidgets.QMainWindow):
-	def __init__(self, filePath, parent=None):
+	def __init__(self, filePath, parent=None, isNew=True):
 		"""
+		filePath:
 		parent: bCanvasApp
 		"""
 		print('bCanvasWidget.__init__() filePath:', filePath)
 		super(bCanvasWidget, self).__init__(parent)
 		self.filePath = filePath
 		self.myCanvasApp = parent
+		self.isNew = isNew # if False then was loaded
+
+		# if filePath exists then will load, otherwise will make new and save
 		self.myCanvas = canvas.bCanvas(filePath=filePath, parent=self)
+
 		self.myStackList = [] # a list of open bStack
 
 		# on olympus we watch for new files to log motor position from Prior controller
@@ -39,7 +44,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.buildUI()
 
 		# do this after interface is created
-		if self.getOptions()['motor']['useMotor']:
+		if self.isNew and self.getOptions()['motor']['useMotor']:
 			print('bCanvasWidget is reading initial motor position')
 			self.userEvent('read motor position')
 
@@ -319,24 +324,30 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 	def userEvent(self, event):
 		print('=== myCanvasWidget.userEvent() event:', event)
 
+		'''
 		xStep = yStep = None
 		if self.appOptions()['motor']['useMotor']:
 			xStep, yStep = self.motorToolbarWidget.getStepSize()
+		'''
 
 		if event == 'move stage right':
 			# todo: read current x/y move distance
+			xStep, yStep = self.motorToolbarWidget.getStepSize()
 			thePos = self.myCanvasApp.xyzMotor.move('right', xStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage left':
 			# todo: read current x/y move distance
+			xStep, yStep = self.motorToolbarWidget.getStepSize()
 			thePos = self.myCanvasApp.xyzMotor.move('left', xStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage front':
 			# todo: read current x/y move distance
+			xStep, yStep = self.motorToolbarWidget.getStepSize()
 			thePos = self.myCanvasApp.xyzMotor.move('front', yStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'move stage back':
 			# todo: read current x/y move distance
+			xStep, yStep = self.motorToolbarWidget.getStepSize()
 			thePos = self.myCanvasApp.xyzMotor.move('back', yStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'read motor position':
@@ -450,8 +461,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		# i can't figure out how to use QAction !!!!!!
 		self.motorToolbarWidget = bToolbar.myScopeToolbarWidget(parent=self)
 		self.addToolBar(QtCore.Qt.LeftToolBarArea, self.motorToolbarWidget)
-		useMotor = self.getOptions()['motor']['useMotor']
-		if useMotor:
+		#useMotor = self.getOptions()['motor']['useMotor']
+		#if useMotor:
+		if self.isNew:
 			pass
 		else:
 			self.motorToolbarWidget.hide()
@@ -466,8 +478,10 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 	def toggleMotor(self):
 		if self.motorToolbarWidget.isVisible():
 			self.motorToolbarWidget.hide()
+			self.myGraphicsView.myCrosshair.hide()
 		else:
 			self.motorToolbarWidget.show()
+			self.myGraphicsView.myCrosshair.show()
 
 	def keyPressEvent(self, event):
 		#print('\n=== bCanvasWidget.keyPressEvent()', event.text())
@@ -485,6 +499,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 		if event.key() == QtCore.Qt.Key_M:
 			self.toggleMotor()
+
+		elif isControl and event.key() == QtCore.Qt.Key_W:
+			self.close() # should trigger self.closeEvent()
 
 globalSquare = {
 	'pen': QtCore.Qt.SolidLine, # could be QtCore.Qt.DotLine
@@ -715,18 +732,19 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 
 		# a cross hair and rectangle (size of zoom)
-		useMotor = self.myCanvasWidget.appOptions()['motor']['useMotor']
-		if useMotor:
-			self.myCrosshair = myQGraphicsRectItem(self)
-			self.myCrosshair.setZValue(10000)
-			self.scene().addItem(self.myCrosshair)
-			# read initial position (might cause problems)
-			# does not work, not all objects are initialized
-			#print('myQGraphicsView.__init__ is asking myCanvasWidget to read initial motor position')
-			#self.myCanvasWidget.userEvent('read motor position')
+		#useMotor = self.myCanvasWidget.appOptions()['motor']['useMotor']
+		#if useMotor:
+		self.myCrosshair = myQGraphicsRectItem(self)
+		self.myCrosshair.setZValue(10000)
+		self.scene().addItem(self.myCrosshair)
+		# read initial position (might cause problems)
+		# does not work, not all objects are initialized
+		#print('myQGraphicsView.__init__ is asking myCanvasWidget to read initial motor position')
+		#self.myCanvasWidget.userEvent('read motor position')
+		if self.myCanvasWidget.isNew:
+			pass
 		else:
-			self.myCrosshair = None
-
+			self.myCrosshair.hide()
 
 	def centerOnCrosshair(self):
 		print('myQGraphicsView.centerOnCrosshair()')

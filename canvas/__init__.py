@@ -10,5 +10,6 @@ from .bWatchFolder import bWatchFolder
 
 from .bOptionsDialog import bOptionsDialog
 from .bOptionsDialog import okCancelDialog
+from .bOptionsDialog import okDialog
 #from .bOptionsDialog import *
 #from .bOptionsDialog import bOkCancelDialog
