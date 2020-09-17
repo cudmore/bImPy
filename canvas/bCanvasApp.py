@@ -149,6 +149,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 	def keyPressEvent(self, event):
 		print('myApp.keyPressEvent() event:', event)
 		bLogger.info(f'event:{event}')
+		# todo: abb hopkins, why is this here?
 		self.myGraphicsView.keyPressEvent(event)
 
 	def bringCanvasToFront(self, fileNameNoExtension):
@@ -336,7 +337,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict = OrderedDict()
 
 		self._optionsDict['userOptions'] = OrderedDict()
-		self._optionsDict['userOptions']['savePath'] = '/Users/cudmore/data/canvas'
+		
+		if sys.platform.startswith('win'):
+			self._optionsDict['userOptions']['savePath'] = 'c:/Users/LindenLab/Desktop/cudmore/data'
+		else:
+			self._optionsDict['userOptions']['savePath'] = '/Users/cudmore/data/canvas'
 
 		self._optionsDict['scope'] = OrderedDict()
 		self._optionsDict['scope']['useWatchFolder'] = False # Olympus needs this

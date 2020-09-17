@@ -26,3 +26,4 @@ class bMotor(object):
 		- return self.eadPosition()
 		"""
 		pass
+

@@ -12,7 +12,13 @@ import numpy as np
 import napari
 
 class bNapari:
-	def __init__(self):
+	def __init__(self, myCanvasWidget):
+		"""
+		myCanvasWidget: bCanvasWidget
+		"""
+		self.myCanvasWidget = myCanvasWidget # bCanvasWidget
+		self.path = myCanvasWidget.filePath
+		
 		stackData = np.random.rand(10,512,512)
 
 		#super(bNapari, self).__init__()#, stackData) #, stackData, ndisplay=3)

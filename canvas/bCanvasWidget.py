@@ -180,10 +180,19 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		else:
 			# if I pass parent=self, all hell break loos (todo: fix this)
 			# when i don't pass parent=self then closing the last stack window quits the application?
+			
+			doNapari = True
+			print('  bCanvasWidget.openStack() doNapari:', doNapari)
+			if doNapari:
+				tmp = canvas.bNapari(self)
+			else:
+				tmp = bimpy.interface.bStackWidget(path=stackPath)
+				tmp.show()
+
 			#tmp = bimpy.interface.bStackWidget(path=stackPath, parent=self)
-			tmp = bimpy.interface.bStackWidget(path=stackPath)
+			
+			
 			#print('done creating bStackWidget')
-			tmp.show()
 			self.myStackList.append(tmp)
 
 	def grabImage(self):

@@ -13,3 +13,5 @@ from .bOptionsDialog import okCancelDialog
 from .bOptionsDialog import okDialog
 #from .bOptionsDialog import *
 #from .bOptionsDialog import bOkCancelDialog
+
+from .bNapari import bNapari
