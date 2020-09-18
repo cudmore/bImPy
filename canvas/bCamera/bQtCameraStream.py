@@ -58,6 +58,10 @@ class myVideoWidget(QtWidgets.QWidget):
 		videoPos: (left,top) position on screen
 		scaleMult: final width is w * scaleMult
 		"""
+
+		# this is causing error on quit
+		# WARNING: QThread: Destroyed while thread is still running
+		#super().__init__(parent)
 		super().__init__()
 
 		self.title = 'myVideoWidget'
@@ -214,10 +218,13 @@ class myVideoWidget(QtWidgets.QWidget):
 		self.label.resize(scaledWith, scaledHeight)
 
 		print('  myVideoWidget.initUI() creating myVideoThread()')
-		th = myVideoThread(self)
-		#th.changePixmap.connect(self.setImage)
-		th.changePixmap2.connect(self.setImage2)
-		th.start()
+
+		# by having the thread as a member (Self.th)
+		# it gets garbage collected on quit and stops dreaded
+		# WARNING: QThread: Destroyed while thread is still running
+		self.th = myVideoThread()
+		self.th.changePixmap2.connect(self.setImage2)
+		self.th.start()
 
 if __name__ == '__main__':
 	w = 1280 #640

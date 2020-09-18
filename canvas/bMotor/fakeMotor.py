@@ -30,7 +30,7 @@ class fakeMotor(bMotor):
 			xPos = float(xPos)
 			yPos = float(yPos)
 			print('fakeMotor.readPosition() returning:', xPos, yPos)
-			return xPos, yPos
+			return xPos, yPos, None
 
 	def move(self, direction, umDistance):
 		"""

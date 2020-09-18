@@ -11,19 +11,29 @@ import numpy as np
 
 import napari
 
+import bimpy
+
 class bNapari:
-	def __init__(self, myCanvasWidget):
+	def __init__(self, path, myCanvasWidget):
 		"""
+		path: path to tiff to open
 		myCanvasWidget: bCanvasWidget
+
+		todo: have canvas manage a list of bStack so we don't need to open every time
+
 		"""
+		self.path = path #myCanvasWidget.filePath
+		self.mySimpleStack = bimpy.bStack(path, loadImages=True, loadTracing=False)
+
 		self.myCanvasWidget = myCanvasWidget # bCanvasWidget
-		self.path = myCanvasWidget.filePath
-		
-		stackData = np.random.rand(10,512,512)
+
+		#stackData = np.random.rand(10,512,512)
 
 		#super(bNapari, self).__init__()#, stackData) #, stackData, ndisplay=3)
 
-		self.viewer = napari.view_image(data=stackData)
+		ch1Data = self.mySimpleStack.getStack('raw', 1)
+
+		self.viewer = napari.view_image(data=ch1Data)
 
 		self.viewer.window._qt_window.closeEvent = self.cleanClose
 
@@ -37,10 +47,13 @@ class bNapari:
 		#self.viewer.window.qt_viewer.close.connect(self.closeEvent)
 
 	def cleanClose(self, event):
-		print('cleanClose()')
+		print('bNapari.cleanClose()')
 
 		# this works but does not sem right?
 		self.viewer.close()
+
+		#self.viewer.window._qt_window.hide()
+		#return False
 
 		# this gives
 		"""

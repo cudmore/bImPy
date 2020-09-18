@@ -99,7 +99,7 @@ class bPrior(bMotor):
 		xPos = float(xPos)
 		yPos = float(yPos)
 		print('bPrior.readPosition() returning:', xPos, yPos)
-		return xPos, yPos
+		return xPos, yPos, None
 
 	def move(self, direction, umDistance):
 		"""
@@ -143,7 +143,9 @@ class bPrior(bMotor):
 			print('prior.move() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
 
 			#todo: print current motor coordinates
-
+			theRet = self.readPosition()
+			return theRet
+			
 		except Exception as e:
 			print('exception in priorMove():', e)
 			raise

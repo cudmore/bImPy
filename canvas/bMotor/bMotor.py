@@ -18,12 +18,12 @@ class bMotor(object):
 		Returns:
 			(x,y): Tuple of float withx and y position, float
 		"""
-		pass
+		return None, None, None
 
 	def move(direction, umDistance):
 		"""
 		- move stage
-		- return self.eadPosition()
+		- return self.readPosition()
 		"""
-		pass
-
+		theRet = self.readPosition()
+		return theRet

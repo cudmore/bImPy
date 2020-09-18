@@ -167,6 +167,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		stackPath = os.path.join(canvasPath, filename)
 		print('   bCanvasWidget.openStack() is opening stackPath:', stackPath)
 
+		#todo: fix the logic here, using stack after loop
+		# add something like *thisStac
+		doNapari = False
 		alreadyOpen = False
 		for stack in self.myStackList:
 			if stack.path == stackPath:
@@ -174,24 +177,33 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 				alreadyOpen = True
 				break
 		if alreadyOpen:
-			stack.show()
-			stack.activateWindow()
-			stack.raise_()
+			#doNapari = True
+			if doNapari:
+				stack.viewer.window._qt_window.show()
+			else:
+				# works for qwidget
+				stack.show()
+				stack.activateWindow()
+				stack.raise_()
 		else:
 			# if I pass parent=self, all hell break loos (todo: fix this)
 			# when i don't pass parent=self then closing the last stack window quits the application?
-			
-			doNapari = True
+
+			"""
+			we should keep a list of open stack (and function to close them)
+			on double-clikc throw loaded data (load if necc) to a viewer
+			"""
+			#doNapari = True
 			print('  bCanvasWidget.openStack() doNapari:', doNapari)
 			if doNapari:
-				tmp = canvas.bNapari(self)
+				tmp = canvas.bNapari(stackPath, self)
 			else:
 				tmp = bimpy.interface.bStackWidget(path=stackPath)
 				tmp.show()
 
 			#tmp = bimpy.interface.bStackWidget(path=stackPath, parent=self)
-			
-			
+
+
 			#print('done creating bStackWidget')
 			self.myStackList.append(tmp)
 
@@ -244,7 +256,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		# todo: add try/except clause to catch it
 
 		# get the current motor position
-		xMotor, yMotor = self.myCanvasApp.xyzMotor.readPosition()
+		xMotor, yMotor, zMotor = self.myCanvasApp.xyzMotor.readPosition()
 
 		# make folder
 		videoFolderPath = self.myCanvas.videoFolderPath
@@ -361,7 +373,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			self.userEvent('read motor position')
 		elif event == 'read motor position':
 			# update the interface
-			x,y = self.myCanvasApp.xyzMotor.readPosition()
+			x,y,z = self.myCanvasApp.xyzMotor.readPosition()
 			self.motorToolbarWidget.xStagePositionLabel.setText(str(round(x,1)))
 			self.motorToolbarWidget.xStagePositionLabel.repaint()
 			self.motorToolbarWidget.yStagePositionLabel.setText(str(round(y,1)))
