@@ -23,6 +23,21 @@ class mp285(bMotor):
 
 		self.ser = None
 
+		#self.setVelocity('fast')
+		self.setVelocity('medium')
+		
+		'''
+		self.open()
+		print('reading 1')
+		r1 = self.ser.read(1)
+		print('  r1:', r1)
+		print('reading 2')
+		r2 = self.ser.read(1)
+		print('  r2:', r2)
+		print('mp285.__init__() done')
+		self.close()
+		'''
+		
 	def open(self):
 		if self.ser is not None:
 			print('mp285.open(), port already opened')
@@ -46,7 +61,7 @@ class mp285(bMotor):
 			self.ser.close()
 			self.ser = None
 
-	def setVelocity(self, fastSlow):
+	def setVelocity(self, fastSlow, openPort=True):
 		"""
 		fastSlow: in ('fast', 'slow')
 
@@ -76,9 +91,14 @@ class mp285(bMotor):
 
 		if fastSlow == 'fast':
 			theVelocity = 30000
-		else:
+		elif fastSlow == 'medium':
+			theVelocity = 6000 #3000
+		elif fastSlow == 'slow':
 			theVelocity = 1500
-
+		else:
+			print('mp285.setVelocity() did not understand fastSlow:', fastSlow)
+			return
+			
 		print('mp285.setVelocity() fastSlow:', fastSlow, 'theVelocity:', theVelocity)
 
 		bVelocity = '{:b}'.format(theVelocity)
@@ -96,16 +116,18 @@ class mp285(bMotor):
 		binaryVelocity = struct.pack('<H', theVelocity)
 
 		try:
-			self.open()
+			if openPort:
+				self.open()
 			self.ser.write(b'V' + binaryVelocity + b'\r')
 			self.ser.read(1)
 		except:
 			print('exception: mp285.setVelocity()')
 			raise
 		finally:
-			self.close()
+			if openPort:
+				self.close()
 
-	def readPosition(self, openPort=True, verbose=False):
+	def readPosition(self, openPort=True, verbose=True):
 		if verbose:
 			print ('mp285.readPosition() openPort:', openPort, 'verbose:', verbose)
 		try:
@@ -114,6 +136,12 @@ class mp285(bMotor):
 			if openPort:
 				self.open()
 
+			'''
+			self.ser.reset_input_buffer()
+			self.ser.reset_output_buffer()
+			time.sleep(1)
+			'''
+			
 			self.ser.write(b'c\r')
 
 			resp = self.ser.read(13) # 12 +1 (3 4-byte signed long numbers + CR)
@@ -123,15 +151,17 @@ class mp285(bMotor):
 				print('  warning: mp285.readPosition() did not get resp')
 			elif b'\t' in resp:
 				# occasional error
-				print('error: mp285.readPosition()  resp contained "\t" resp:', resp)
+				print('  error: mp285.readPosition()  resp contained "\\t" resp:', resp)
 			elif b'%' in resp:
 				# occasional error
-				print('error: mp285.readPosition()  resp contained "\t" resp:', resp)
+				print('  error: mp285.readPosition()  resp contained "%" resp:', resp)
 			else:
 				# > is big-endian
 				# < is little endian
 				stepTuple = struct.unpack('<lll', resp) # < is little-endian
 				micronList = [x*self.stepSize for x in stepTuple]
+				
+				# swapping x/y
 				theRet = (micronList[0], micronList[1], micronList[2])
 		except:
 			print('exceptiopn: mp285.readPosition()')
@@ -141,34 +171,41 @@ class mp285(bMotor):
 				self.close()
 
 		if verbose:
-			print('  ', theRet)
+			print('  mp285.readPosition() returning:', theRet)
 		return theRet
 
 	def moveto(self, direction, umDistance):
+		return self.move(direction, umDistance)
+		
+	def move(self, direction, umDistance):
 		"""
 		direction: str:  in ['left', 'right', 'front', 'back']
 		umDistance: int: Not sure on units yet
 		"""
 
-		print('mp285.moveto() direction:', direction, 'umDistance:', umDistance)
+		print('=== mp285.moveto() direction:', direction, 'umDistance:', umDistance)
 
 		theRet = (None, None, None)
 
 		try:
 			self.open()
+			
+			(x,y,z) = self.readPosition(openPort=False)
+			print('  mp285.move() original position:', x, y, z)
 
-			(x,y,z) = m.readPosition(openPort=False)
-			print('  original position:', x, y, z)
-
+			if x is None or y is None or z is None:
+				print('  error: mp285.move() did not get good original position')
+				return None, None, None
+				
 			# todo: these need to map to correct direction when looking at video
 			if direction == 'left':
-				x -= umDistance
-			elif direction == 'right':
-				x += umDistance
-			elif direction == 'front':
 				y -= umDistance
-			elif direction == 'back':
+			elif direction == 'right':
 				y += umDistance
+			elif direction == 'front':
+				x += umDistance
+			elif direction == 'back':
+				x -= umDistance
 			elif direction == 'up':
 				# polarity is correct?
 				z -= umDistance
@@ -183,7 +220,6 @@ class mp285(bMotor):
 			y = int(y / self.stepSize)
 			z = int(z / self.stepSize)
 
-
 			xyzb = struct.pack('lll',x,y,z) # convert integer values into bytes
 			startt = time.time() # start timer
 			self.ser.write(b'm' + xyzb + b'\r') # send position to controller; add the "m" and the CR to create the move command
@@ -197,8 +233,10 @@ class mp285(bMotor):
 			else:
 				print('  mp285.moveto(): move completed in (%.2f sec)' % (endt-startt))
 
+			print('5 xxx move()')
+
 			print('  after move, reading again')
-			theRet = m.readPosition(openPort=False)
+			theRet = self.readPosition(openPort=False)
 			print('  final position:', x, y, z)
 
 		except:
@@ -212,7 +250,7 @@ class mp285(bMotor):
 if __name__ == '__main__':
 	m = mp285()
 
-	m.setVelocity('fast')
+	#m.setVelocity('fast')
 
 	(x,y,z) = m.readPosition()
 	print('  __main__ readPosition() x:', x, 'y:', y, 'z:', z)

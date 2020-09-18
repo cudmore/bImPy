@@ -105,10 +105,27 @@ class bCanvas:
 				newFilePath = os.path.join(self._folderPath, potentialNewFile)
 				# abb canvas, we need a way to load header or max of .oir files?
 				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
+				
+				# flip xMotor/xMotor for sutter
+				tmp = newScopeStack.header.header['xMotor']
+				newScopeStack.header.header['xMotor'] = newScopeStack.header.header['yMotor']
+				newScopeStack.header.header['yMotor'] = tmp
+				
+				print('FAKE MOTOR POSITION FOR mp285')
+				newScopeStack.header.header['xMotor'] = -2235
+				newScopeStack.header.header['yMotor'] = -844.56
+				
 				# append to header
-				newScopeStack.header.header['date'] = time.strftime('%Y%m%d')
-				newScopeStack.header.header['time'] = datetime.now().strftime("%H:%M:%S.%f")[:-4]
-				newScopeStack.header.header['seconds'] = time.time()
+				# todo: on windows use os.path.getctime(path_to_file)
+				# see: https://stackoverflow.com/questions/237079/how-to-get-file-creation-modification-date-times-in-python
+				cTime = os.path.getctime(newFilePath)
+				dateStr = time.strftime('%Y%m%d', time.localtime(cTime))
+				timeStr = time.strftime('%H:%M:%S', time.localtime(cTime))
+
+				
+				newScopeStack.header.header['date'] = dateStr #time.strftime('%Y%m%d')
+				newScopeStack.header.header['time'] = timeStr #datetime.now().strftime("%H:%M:%S.%f")[:-4]
+				newScopeStack.header.header['seconds'] = cTime #time.time()
 				print('   newScopeStack:', newScopeStack.print())
 
 				print('  saving max')

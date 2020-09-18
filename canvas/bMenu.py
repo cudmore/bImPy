@@ -60,6 +60,13 @@ class bMenu:
 
 		# help
 
+		# video
+		self.videoMenu = self.myMenuBar.addMenu("Video")
+		self.videoMenu.addAction('Video Window ...', self.showVideoWindow)
+		
+	def showVideoWindow(self):
+		self.myCanvasApp.toggleVideo()
+		
 	def buildCanvasMenu(self, canvasDict):
 		self.windowMenu.clear()
 

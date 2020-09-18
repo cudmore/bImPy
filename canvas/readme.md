@@ -88,3 +88,38 @@ image_stack = skimage.img_as_ubyte(image_stack, force_copy=False)
 2) adjust brightness, second copy,
 3) insert brightness adjusted into QPixmap/myGraphicsPixMapItem
 
+### getting time
+
+This works on window
+
+```
+import os, time
+path = 'c:/Users/lindenlab/Desktop/test-time.txt'
+cTime = os.path.getmtime(path)
+dateStr = time.strftime('%Y%m%d', time.localtime(cTime))
+timeStr = time.strftime('%H:%M:%S', time.localtime(cTime))
+```
+
+see: https://stackoverflow.com/questions/237079/how-to-get-file-creation-modification-date-times-in-python
+
+```
+import os
+import platform
+
+def creation_date(path_to_file):
+    """
+    Try to get the date that a file was created, falling back to when it was
+    last modified if that isn't possible.
+    See http://stackoverflow.com/a/39501288/1709587 for explanation.
+    """
+    if platform.system() == 'Windows':
+        return os.path.getctime(path_to_file)
+    else:
+        stat = os.stat(path_to_file)
+        try:
+            return stat.st_birthtime
+        except AttributeError:
+            # We're probably on Linux. No easy way to get creation dates here,
+            # so we'll settle for when its content was last modified.
+            return stat.st_mtime
+```

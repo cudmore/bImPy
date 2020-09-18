@@ -13,14 +13,11 @@ DO NOT use python-opencv but use 'opencv-python-headless' instead
 
 import os, sys, time
 
-#from PyQt5 import QtCore, QtWidgets, QtGui
-from qtpy import QtCore, QtWidgets, QtGui
 import numpy as np
 
-#print('bQtCameraStream importing cv2')
-import cv2
-#print('cv2.__version__:', cv2.__version__)
+from qtpy import QtCore, QtWidgets, QtGui
 
+import cv2
 import imageio
 
 import qdarkstyle
@@ -29,14 +26,21 @@ import qdarkstyle
 class myVideoThread(QtCore.QThread):
 	changePixmap2 = QtCore.Signal(np.ndarray)
 
+	def __init__(self, parent=None):
+		super(myVideoThread, self).__init__(parent)
+		self.myStop = False
+	
 	def run(self):
 		cap = cv2.VideoCapture(0)
-		while True:
+		while not self.myStop:
 			ret, frame = cap.read() # frame is np.ndarray
 			if ret:
 				self.changePixmap2.emit(frame)
 			time.sleep(.02)
 
+	def myStopThread(self):
+		self.myStop = True
+		
 # todo: this will always be used by canvas
 class myVideoWidget(QtWidgets.QWidget):
 
@@ -64,7 +68,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		#super().__init__(parent)
 		super().__init__()
 
-		self.title = 'myVideoWidget'
+		self.title = 'Canvas Video Feed'
 
 		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 
@@ -105,6 +109,12 @@ class myVideoWidget(QtWidgets.QWidget):
 
 		#self.show()
 
+	def myStopThread(self):
+		print('myVideoWidget.stopThread()')
+		self.th.myStopThread()
+		self.th.quit()
+		self.th.wait()
+		
 	def getCurentImage(self):
 		return self.myCurrentImage
 
@@ -150,14 +160,29 @@ class myVideoWidget(QtWidgets.QWidget):
 			image: type is numpy.ndarray, shape is (height,width,3), dtype is 'uint8'
 		"""
 
+		doDebug = False
+		
 		# (720, 1280, 3)
-		#print('setImage2() image:', image.shape)
+		if doDebug: print('setImage2() image:', image.shape)
 
+		doFlip = True
+		if doFlip:
+			image = np.fliplr(image) # flip horizontal (flip on vertical line)
+
+		if doDebug: print('  after flip:', image.shape)
+			
 		# convert to Qt
 		# https://stackoverflow.com/a/55468544/6622587
 		rgbImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 		h, w, ch = rgbImage.shape
 		bytesPerLine = ch * w
+		
+		if doDebug:
+			print('  rgbImage:', rgbImage.shape)
+			print('  w:', w)
+			print('  h:', h)
+			print('  bytesPerLine:', bytesPerLine)
+
 		myQtImage = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
 
 
@@ -168,6 +193,10 @@ class myVideoWidget(QtWidgets.QWidget):
 		myQtImage = QtGui.QImage(image[:,:,0], width, height, QtGui.QImage.Format_Indexed8)
 		'''
 
+		if doDebug:
+			print('  myQtImage.width(), myQtImage.height():', myQtImage.width(), myQtImage.height())
+			print('  self.width(), self.height():', self.width(), self.height())
+		
 		# update qt interface
 		pixmap = QtGui.QPixmap.fromImage(myQtImage)
 		# scale pixmap
@@ -205,6 +234,16 @@ class myVideoWidget(QtWidgets.QWidget):
 		scaledHeight = self.myHeight * self.scaleMult
 		return scaledWidth, scaledHeight
 
+	def keyPressEvent(self, event):
+		print('=== myVideoWidget.keyPressEvent()', event.text())
+
+		modifiers = QtWidgets.QApplication.keyboardModifiers()
+		isShift = modifiers == QtCore.Qt.ShiftModifier
+		isControl = modifiers == QtCore.Qt.ControlModifier
+
+		if event.key() == QtCore.Qt.Key_S:
+			print('  todo: implement grab/save a single image')
+
 	def initUI(self):
 		self.setWindowTitle(self.title)
 
@@ -222,7 +261,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		# by having the thread as a member (Self.th)
 		# it gets garbage collected on quit and stops dreaded
 		# WARNING: QThread: Destroyed while thread is still running
-		self.th = myVideoThread()
+		self.th = myVideoThread(self)
 		self.th.changePixmap2.connect(self.setImage2)
 		self.th.start()
 

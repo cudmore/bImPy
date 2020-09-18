@@ -315,8 +315,11 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		# 20200915, removed after adding all metadata to bTiffFile.imsave()
 		newVideoStack.header.header['umWidth'] = umWidth
 		newVideoStack.header.header['umHeight'] = umHeight
-		newVideoStack.header.header['xMotor'] = xMotor # flipped
-		newVideoStack.header.header['yMotor'] = yMotor
+		print('XXX flipping xMotor/yMotor when acquiring video (required for mp285)')
+		#newVideoStack.header.header['xMotor'] = xMotor # flipped
+		#newVideoStack.header.header['yMotor'] = yMotor
+		newVideoStack.header.header['xMotor'] = yMotor # flipped
+		newVideoStack.header.header['yMotor'] = xMotor
 
 		'''
 		print('   bCanvasWidget.grabImage() after reload of video, newVideoStack is:')
@@ -374,10 +377,31 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		elif event == 'read motor position':
 			# update the interface
 			x,y,z = self.myCanvasApp.xyzMotor.readPosition()
-			self.motorToolbarWidget.xStagePositionLabel.setText(str(round(x,1)))
-			self.motorToolbarWidget.xStagePositionLabel.repaint()
-			self.motorToolbarWidget.yStagePositionLabel.setText(str(round(y,1)))
-			self.motorToolbarWidget.yStagePositionLabel.repaint()
+			
+			# for mp285 swap x/y for diaply
+			tmp = x
+			xDisplay = y
+			yDisplay = tmp
+			
+			if xDisplay is not None:
+				xDisplay = round(xDisplay,1)
+			if yDisplay is not None:
+				yDisplay = round(yDisplay,1)
+			
+			if xDisplay is None:
+				self.motorToolbarWidget.xStagePositionLabel.setStyleSheet("color: red;")
+				self.motorToolbarWidget.xStagePositionLabel.repaint()
+			else:
+				self.motorToolbarWidget.xStagePositionLabel.setStyleSheet("color: white;")
+				self.motorToolbarWidget.xStagePositionLabel.setText(str(xDisplay))
+				self.motorToolbarWidget.xStagePositionLabel.repaint()
+			if yDisplay is None:
+				self.motorToolbarWidget.yStagePositionLabel.setStyleSheet("color: red;")
+				self.motorToolbarWidget.yStagePositionLabel.repaint()
+			else:
+				self.motorToolbarWidget.yStagePositionLabel.setStyleSheet("color: white;")
+				self.motorToolbarWidget.yStagePositionLabel.setText(str(yDisplay))
+				self.motorToolbarWidget.yStagePositionLabel.repaint()
 
 			#self.motorToolbarWidget.setStepSize(x,y)
 
@@ -385,7 +409,8 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			#self.motorToolbarWidget.xStagePositionLabel.update()
 
 			# set red crosshair
-			self.myGraphicsView.myCrosshair.setMotorPosition(x, y)
+			if xDisplay is not None and yDisplay is not None:
+				self.myGraphicsView.myCrosshair.setMotorPosition(xDisplay, yDisplay)
 
 		elif event == 'Canvas Folder':
 			#print('sys.platform:', sys.platform)

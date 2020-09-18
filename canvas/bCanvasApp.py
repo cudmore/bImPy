@@ -36,6 +36,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 
+		# size of singleton 'QApplication' window on MS Windows
+		w = 500
+		h = 200
+		self.resize(w, h)
+		
 		self.myApp = parent # to use activeWindow() or focusWidget()
 
 		self.optionsFile = self.defaultOptionsFile()
@@ -43,6 +48,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 		self.myMenu = canvas.bMenu(self)
 
+		# todo: do this after user modifies options, so they can set motor on fly
 		useMotor = self._optionsDict['motor']['useMotor']
 		motorName = self._optionsDict['motor']['name'] # = 'bPrior'
 		port = self._optionsDict['motor']['port']
@@ -78,6 +84,22 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.showingCamera = False
 		#self.camera.show()
 
+	def closeEvent(self, event):
+		# added this on windows, what does it do on mac? There is no main window?
+		print('bCanvasApp.closeEvent()')
+		
+		# close canvas windows
+		print('  closing canvas widgets/windows')
+		for k in self.canvasDict.keys():
+			self.canvasDict[k].close()
+			
+		# shutdown videothread#
+		
+		# tell the app to quit?
+		print('  calling self.myApp.quit()')
+		self.myApp.quit()
+		event.accept()
+		
 	def toggleVideo(self):
 		self.showingCamera = not self.showingCamera
 		if self.showingCamera:
@@ -146,12 +168,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		super().mousePressEvent(event)
 		#event.setAccepted(False)
 
+	'''
 	def keyPressEvent(self, event):
 		print('myApp.keyPressEvent() event:', event)
 		bLogger.info(f'event:{event}')
 		# todo: abb hopkins, why is this here?
 		self.myGraphicsView.keyPressEvent(event)
-
+	'''
+	
 	def bringCanvasToFront(self, fileNameNoExtension):
 		print('bCanvasApp.bringCanvasToFront() fileNameNoExtension:', fileNameNoExtension)
 		for canvas in self.canvasDict.keys():
@@ -352,8 +376,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['motor'] = OrderedDict()
 		self._optionsDict['motor']['motorList'] = [motor for motor in dir(canvas.bMotor) if not motor.endswith('__')]
 		self._optionsDict['motor']['useMotor'] = True
-		self._optionsDict['motor']['name'] = 'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
-		self._optionsDict['motor']['port'] = 'COM5'
+		self._optionsDict['motor']['name'] = 'mp285' #'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
+		self._optionsDict['motor']['port'] = 'COM4'
 		#self._optionsDict['motor']['isReal'] = False
 
 		# on olympus, camera is 1920 x 1200
@@ -365,8 +389,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['video']['width'] = 640 #1280 # set this to actual video pixels
 		self._optionsDict['video']['height'] = 480 #720
 		self._optionsDict['video']['scaleMult'] = 1.0 # as user resizes window
-		self._optionsDict['video']['umWidth'] = 693
-		self._optionsDict['video']['umHeight'] = 433
+		self._optionsDict['video']['umWidth'] = 455.2 #693
+		self._optionsDict['video']['umHeight'] = 341.4 #433
 		self._optionsDict['video']['stepFraction'] = 0.2 # for motor moves
 
 		self._optionsDict['scanning'] = OrderedDict()
@@ -447,10 +471,19 @@ def main(withJavaBridge=False):
 		iconPath = os.path.join(iconsFolderPath, 'canvas-color-64.png')
 		print('bCanvasApp() iconPath:', iconPath)
 		appIcon = QtGui.QIcon(iconPath)
+		# todo: on windows we need to set a bunch of sizes??? not sure if this is needed
+		'''
+		appIcon.addFile('gui/icons/16x16.png', QtCore.QSize(16,16))
+		appIcon.addFile('gui/icons/24x24.png', QtCore.QSize(24,24))
+		appIcon.addFile('gui/icons/32x32.png', QtCore.QSize(32,32))
+		appIcon.addFile('gui/icons/48x48.png', QtCore.QSize(48,48))
+		appIcon.addFile('gui/icons/256x256.png', QtCore.QSize(256,256))
+		'''
 		app.setWindowIcon(appIcon)
 
 		myCanvasApp = bCanvasApp(parent=app)
 
+		# todo: could also use platform.system() which returns 'Windows'
 		if sys.platform.startswith('win'):
 			# linden windows machine isreporting 'win32'
 			myCanvasApp.show()

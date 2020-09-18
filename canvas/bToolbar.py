@@ -204,7 +204,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		xStagePositionLabel_ = QtWidgets.QLabel("X (um)")
 		self.xStagePositionLabel = QtWidgets.QLabel("None")
 		yStagePositionLabel_ = QtWidgets.QLabel("Y (um)")
-		self.yStagePositionLabel = QtWidgets.QLabel("Y (um)")
+		self.yStagePositionLabel = QtWidgets.QLabel("None")
 
 		'''
 		gridReadPosition.addWidget(readPositionButton, 0, 0) # row, col
