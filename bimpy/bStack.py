@@ -33,35 +33,33 @@ class bStack:
 
 	Image data is in self.stack
 	"""
-	def __init__(self, path='', folderPath='', loadImages=True, loadTracing=True):
+	#def __init__(self, path='', folderPath='', loadImages=True, loadTracing=True):
+	def __init__(self, path='', loadImages=True, loadTracing=True):
 		"""
 		path: full path to file
 		folderPath: path to folder with .tif files
 		"""
 		print('bStack.__init__() path:', path)
 
-		# todo: put into function
-		self.folderPath = folderPath
-		if folderPath:
-			fileList = glob.glob(folderPath + '/*.tif')
-			fileList = sorted(fileList)
-			if len(fileList) < 1:
-				print('error: bStack() did not find any .tif files in folderPath:', folderPath)
-			self.path = os.path.join(folderPath, fileList[0])
-			'''
-			print('fileList:')
-			for file in fileList:
-				print('  ', file)
-			sys.exit()
-			'''
-		else:
-			self.path = path # path to file
-
 		self._numChannels = None
 		self.slabList = None
 
+		self.path = path # path to file
+
+		# todo: put into function
+		if os.path.isdir(path):
+			fileList = glob.glob(path + '/*.tif')
+			fileList = sorted(fileList)
+			numFiles = len(fileList)
+			if numFiles < 1:
+				print('error: bStack() did not find any .tif files in folder path:', path)
+			firstFile = os.path.join(path, fileList[0])
+			self.header = bimpy.bStackHeader(firstFile) #StackHeader.StackHeader(self.path)
+			print(f'bStack() __init__ with {numFiles} from folder path {path}')
+		else:
+			self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
+
 		# header
-		self.header = bimpy.bStackHeader(self.path) #StackHeader.StackHeader(self.path)
 
 		self._maxNumChannels = 3 # leave this for now
 		# pixel data, each channel is element in list
@@ -509,8 +507,8 @@ class bStack:
 
 	# abb aics
 	def loadStack2(self, verbose=False):
-		if self.folderPath:
-			self.loadStackFolder()
+		if os.path.isdir(self.path):
+			self.loadFromFolder()
 			return True
 
 		basename, tmpExt = os.path.splitext(self.path)
@@ -588,14 +586,16 @@ class bStack:
 			print('  bStack.loadStack2() path_oir:', path_oir)
 			self.loadBioFormats_Oir() # sinfle oir file (can have multiple channels)
 
-	def loadStackFolder(self):
+	def loadFromFolder(self):
 		"""
 		load a stack from a folder of .tif files
 		"""
-		stackData = tifffile.imread(self.folderPath + '/*.tif')
-		print('loadStackFolder() stackData:', stackData.shape)
+		stackData = tifffile.imread(self.path + '/*.tif')
 		numChannels = stackData.shape[1] # assuming [slices][channels][x][y]
+		numSlices = stackData.shape[0] # assuming [slices][channels][x][y]
 		self._numChannels = numChannels
+		self.header.header['numImages'] = numSlices
+		print('loadFromFolder() stackData:', stackData.shape)
 		for channel in range(numChannels):
 			self._stackList[channel] = stackData[:, channel, :, :]
 
@@ -709,10 +709,13 @@ if __name__ == '__main__':
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 
+	# test scanimage foolder
 	if 1:
 		folderPath = '/Users/cudmore/data/linden-images/512by512by1zoom5'
-		myStack = bStack(folderPath=folderPath)
+		myStack = bStack(folderPath)
 		myStack.print()
+		bitDepth = myStack.getHeaderVal('bitDepth')
+		print('bitDepth:', bitDepth)
 
 	if 0:
 		myStack = bStack(path, loadImages=False)

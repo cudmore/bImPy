@@ -14,7 +14,7 @@ import napari
 import bimpy
 
 class bNapari:
-	def __init__(self, path, myCanvasWidget):
+	def __init__(self, bStackObject, myCanvasWidget):
 		"""
 		path: path to tiff to open
 		myCanvasWidget: bCanvasWidget
@@ -22,20 +22,43 @@ class bNapari:
 		todo: have canvas manage a list of bStack so we don't need to open every time
 
 		"""
-		self.path = path #myCanvasWidget.filePath
-		self.mySimpleStack = bimpy.bStack(path, loadImages=True, loadTracing=False)
+		print('bNapari.__init__() bStackObject:', bStackObject.print)
+
+		self.path = bStackObject.path
+
+		# assuming already loaded
+		#self.mySimpleStack = bimpy.bStack(path, loadImages=True, loadTracing=False)
+
+		# todo: don't make a reference?
+		self.mySimpleStack = bStackObject
 
 		self.myCanvasWidget = myCanvasWidget # bCanvasWidget
 
-		#stackData = np.random.rand(10,512,512)
 
-		#super(bNapari, self).__init__()#, stackData) #, stackData, ndisplay=3)
-
-		ch1Data = self.mySimpleStack.getStack('raw', 1)
-
-		self.viewer = napari.view_image(data=ch1Data)
-
+		self.viewer = napari.Viewer(title=self.path)
 		self.viewer.window._qt_window.closeEvent = self.cleanClose
+
+		numChannels = self.mySimpleStack.numChannels
+
+		colorList = ['green', 'red', 'blue']
+		if numChannels == 1:
+			colorList = ['gray']
+
+		channelList = list(range(numChannels))
+		channelList.reverse() # reverse is in place
+		for i in channelList:
+			channelNumber = i + 1
+
+			# may be nan if not loaded
+			channelData = self.mySimpleStack.getStack('raw', channelNumber)
+			if channelData is None:
+				continue
+
+			name = 'Channel ' + str(channelNumber)
+			self.viewer.add_image(data=channelData,
+							name=name,
+							blending='additive',
+							colormap=colorList[i])
 
 		#v = self.viewer._qt_window
 		'''
@@ -50,9 +73,10 @@ class bNapari:
 		print('bNapari.cleanClose()')
 
 		# this works but does not sem right?
-		self.viewer.close()
+		# nope, now it does not workk???
+		#self.viewer.close()
 
-		#self.viewer.window._qt_window.hide()
+		self.viewer.window._qt_window.hide()
 		#return False
 
 		# this gives

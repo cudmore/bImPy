@@ -165,21 +165,25 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		print('   canvasPath:', canvasPath)
 
 		stackPath = os.path.join(canvasPath, filename)
-		print('   bCanvasWidget.openStack() is opening stackPath:', stackPath)
+		print('   bCanvasWidget.openStack() is opening viewer for stackPath:', stackPath)
 
 		#todo: fix the logic here, using stack after loop
 		# add something like *thisStac
-		doNapari = False
+		doNapari = self.myCanvasApp.options['Canvas']['useNapariViewer']
 		alreadyOpen = False
 		for stack in self.myStackList:
 			if stack.path == stackPath:
 				# bring to front
 				alreadyOpen = True
 				break
+		print('  alreadyOpen:', alreadyOpen)
 		if alreadyOpen:
 			#doNapari = True
 			if doNapari:
+				# todo: add this to class bNapari
 				stack.viewer.window._qt_window.show()
+				stack.viewer.window._qt_window.activateWindow()
+				stack.viewer.window._qt_window.raise_()
 			else:
 				# works for qwidget
 				stack.show()
@@ -194,15 +198,21 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			on double-clikc throw loaded data (load if necc) to a viewer
 			"""
 			#doNapari = True
-			print('  bCanvasWidget.openStack() doNapari:', doNapari)
+			print('  bCanvasWidget.openStack() opening fresh')
+			print('    doNapari:', doNapari)
 			if doNapari:
-				tmp = canvas.bNapari(stackPath, self)
+				bStackObject = self.myCanvas.findStackByName(filename)
+
+				# make sure channels are load
+				print('  todo: loading stack data each time, fix this ... bStackObject.loadStack2()')
+				bStackObject.loadStack2()
+
+				tmp = canvas.bNapari(bStackObject, self)
 			else:
 				tmp = bimpy.interface.bStackWidget(path=stackPath)
 				tmp.show()
 
 			#tmp = bimpy.interface.bStackWidget(path=stackPath, parent=self)
-
 
 			#print('done creating bStackWidget')
 			self.myStackList.append(tmp)
@@ -702,18 +712,27 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		print('myQGraphicsPixmapItem.myQGraphicsPixmapItem.bringForward()')
 		myScene = self.scene()
 		previousItem = None
+
+		# debug, list all items
+		for idx, item in enumerate(self.scene().items(QtCore.Qt.DescendingOrder)):
+			print(idx, item._fileName, item.zValue())
+
 		for item in self.scene().items(QtCore.Qt.DescendingOrder):
 			if item == self:
 				break
 			previousItem = item
 		if previousItem is not None:
-			print('   myQGraphicsPixmapItem.bringForward() is moving', self._fileName, 'before', previousItem._fileName)
+			print('    myQGraphicsPixmapItem.bringForward() is moving', self._fileName, 'before', previousItem._fileName)
 			# this does not work !!!!
 			#self.stackBefore(previousItem)
 			previous_zvalue = previousItem.zValue()
 			this_zvalue = self.zValue()
+			print('previous_zvalue:', previous_zvalue, 'this_zvalue:', this_zvalue)
 			previousItem.setZValue(this_zvalue)
 			self.setZValue(previous_zvalue)
+			#self.stackBefore(previousItem)
+			#
+			self.update()
 		else:
 			print('   myQGraphicsPixmapItem.bringToFront() item is already front most')
 
@@ -738,6 +757,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 			this_zvalue = self.zValue()
 			nextItem.setZValue(this_zvalue)
 			self.setZValue(next_zvalue)
+			self.update()
 		else:
 			print('   myQGraphicsPixmapItem.bringToFront() item is already front most')
 
@@ -813,6 +833,22 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.fitInView( bounds, QtCore.Qt.KeepAspectRatio )
 
 		#return
+
+	def zoomSelectedItem(self, fileName):
+		print('   myQGraphicsView.zoomSelectedItem() fileName:', fileName)
+		zoomThisItem = None
+		for item in self.scene().items():
+			if item._fileName == fileName:
+				zoomThisItem = item
+		if zoomThisItem is not None:
+			'''
+			bounds = item.boundingRect() # local to item
+			print('  1 type(bounds):', bounds)
+			bounds = item.mapToScene(bounds)
+			print('  2 type(bounds):', bounds)
+			'''
+			print('   myQGraphicsView.zoomSelectedItem:', zoomThisItem._fileName)
+			self.fitInView( zoomThisItem, QtCore.Qt.KeepAspectRatio )
 
 	def appendScopeFile(self, newScopeFile):
 		"""
@@ -891,7 +927,11 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
-		pixMapItem.setZValue(200)
+
+		#pixMapItem.setZValue(200)
+		numItems = len(self.scene().items())
+		pixMapItem.setZValue(1000 + numItems) # do i use this???
+
 		# this also effects bounding rect
 		#pixMapItem.setOpacity(0.0) # 0.0 transparent 1.0 opaque
 
@@ -952,7 +992,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		pixMapItem.setPos(xMotor,yMotor)
 		#todo: this is important, self.myScene needs to keep all video BELOW 2p images!!!
 		#tmpNumItems = 100
-		pixMapItem.setZValue(100) # do i use this???
+		numItems = len(self.scene().items())
+		pixMapItem.setZValue(500 + numItems) # do i use this???
 
 		# add to scene
 		self.scene().addItem(pixMapItem)

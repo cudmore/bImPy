@@ -831,11 +831,22 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 		Respond to user click in the file list (selects a file)
 		"""
 		print('=== myTreeWidget.fileSelected_callback()')
+		modifiers = QtWidgets.QApplication.keyboardModifiers()
+		isShift = modifiers == QtCore.Qt.ShiftModifier
+		isControl = modifiers == QtCore.Qt.ControlModifier
+
+		print('  isControl:', isControl)
+
 		theItems = self.selectedItems()
 		if len(theItems) > 0:
 			theItem = theItems[0]
 			#selectedRow = self.fileList.currentRow() # self.fileList is a QTreeWidget
 			filename = theItem.text(self.myColumns['File'])
 			#print('   fileSelected_callback()', filename)
-			# visually select image in canvas with yellow square
-			self.myCanvasWidget.getGraphicsView().setSelectedItem(filename)
+			if isControl:
+				self.myCanvasWidget.getGraphicsView().zoomSelectedItem(filename)
+			else:
+				# visually select image in canvas with yellow square
+				self.myCanvasWidget.getGraphicsView().setSelectedItem(filename)
+		else:
+			print('  no selected items')

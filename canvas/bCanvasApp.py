@@ -397,6 +397,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['Canvas'] = OrderedDict()
 		self._optionsDict['Canvas']['wheelZoom'] = 1.1
 		self._optionsDict['Canvas']['maxProjectChannel'] = 1 #
+		self._optionsDict['Canvas']['useNapariViewer'] = True
 		if sys.platform.startswith('win'):
 			self._optionsDict['Canvas']['savePath'] = 'c:/Users/LindenLab/Desktop/cudmore/data'
 		else:

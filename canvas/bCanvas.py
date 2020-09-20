@@ -48,13 +48,18 @@ class bCanvas:
 			# always save when we create a new canvas
 			print('  bCanvas.__init__() is saving new canvas:', filePath)
 			self.save()
-	'''
-	def findByName(self, filename):
+
+	def findStackByName(self, filename):
+		# video files
+		theFile = None
 		for file in self._videoFileList:
 			if file.getFileName() == filename:
-				return file
-		return None
-	'''
+				theFile = file
+		if theFile is None:
+			for file in self._scopeFileList:
+				if file.getFileName() == filename:
+					theFile = file
+		return theFile
 
 	'''
 	def findScopeFileByName(self, filename):
@@ -92,16 +97,23 @@ class bCanvas:
 			folderPath = ''
 			potentialFolder = os.path.join(self._folderPath, tmpFile)
 			if os.path.isdir(potentialFolder):
-				print('tmpFile is a folder, potentialFolder:', potentialFolder)
+				# todo: make this more precise like <canvas>_video
+				videoFolderPath = self.videoFolderPath # todo: stop using properties !!!
+				tmpVideoFolderPath, videoFolderName = os.path.split(videoFolderPath)
+				#if potentialFolder.endswith('_video'):
+				if tmpFile == videoFolderName:
+					# don't load _video folder
+					continue
+				print('  tmpFile is a folder, potentialFolder:', potentialFolder)
 				# load from folder of tif
 				fileList = glob.glob(potentialFolder + '/*.tif')
 				fileList = sorted(fileList)
 				if len(fileList) == 0:
+					print('  did not find and .tif files in folder:', potentialFolder)
 					continue
-				folderPath = potentialFolder
-				potentialNewFile = fileList[0]
-				print('  loading from folder:', folderPath)
-				print('  seed file is:', potentialNewFile)
+				#folderPath = potentialFolder
+				#potentialNewFile = fileList[0]
+				print('  loading from folder potentialNewFile:', potentialNewFile)
 			# was this
 			elif not fileExt in theseFileExtensions:
 				continue
@@ -121,7 +133,7 @@ class bCanvas:
 				newFilePath = os.path.join(self._folderPath, potentialNewFile)
 
 				# abb canvas, we need a way to load header or max of .oir files?
-				newScopeStack = bimpy.bStack(newFilePath, folderPath=folderPath, loadImages=True)
+				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
 
 				# todo: put import in bCanvasWidget or bCanvasApp?
 				# todo: at least make api to get motor frorm app
@@ -258,7 +270,7 @@ class bCanvas:
 				self.import_stackDict[stack].header['yMotor'] = float(import_yMotorList[idx])
 		#print(self.import_stackDict)
 
-	def buildFromScratch(self, folderPath=''):
+	def old_buildFromScratch(self, folderPath=''):
 		"""
 		Given a folder path, build canvas from scratch
 		"""
@@ -345,7 +357,7 @@ class bCanvas:
 		fileName = stack.fileName
 		fileDict['filename'] = fileName
 
-		fileDict['folderPath'] = stack.folderPath # to open stack from folder of .tif
+		#fileDict['folderPath'] = stack.folderPath # to open stack from folder of .tif
 
 		fileDict['date'] = header.header['date']
 		fileDict['time'] = header.header['time']
@@ -465,14 +477,14 @@ class bCanvas:
 
 			elif key =='scopeFiles':
 				for fileName, fileDict in item.items():
-					folderPath = fileDict['folderPath'] # to load from folder
+					#folderPath = fileDict['folderPath'] # to load from folder
 					scopeFilePath = os.path.join(self._folderPath, fileName)
-					print('  bCanvas.load() is loading folderPath:', folderPath, 'scopeFilePath:', scopeFilePath)
+					print('  bCanvas.load() is loading scopeFilePath:', scopeFilePath)
 
 					# todo: we need to load from folder
 
 					# folderPath will trump scopeFilePath
-					scopeStack = bimpy.bStack(scopeFilePath, folderPath=folderPath, loadImages=False)
+					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
 					scopeStack.loadMax()
 
 					for headerStr,headerValue in fileDict.items():
@@ -540,7 +552,7 @@ if __name__ == '__main__':
 		bc = bCanvas(folderPath=folderPath)
 		#print(bc._optionsDict)
 
-		bc.buildFromScratch()
+		bc.old_buildFromScratch()
 
 		for videoFile in bc.videoFileList:
 			print(videoFile._header)
