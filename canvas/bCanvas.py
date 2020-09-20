@@ -1,7 +1,7 @@
 # Author: Robert Cudmore
 # Date: 20190703
 
-import os, sys, time, json
+import os, sys, time, json, glob
 from datetime import datetime
 from collections import OrderedDict
 
@@ -87,7 +87,23 @@ class bCanvas:
 
 		for potentialNewFile in listDir:
 			tmpFile, fileExt = os.path.splitext(potentialNewFile)
-			if not fileExt in theseFileExtensions:
+
+			# adding option to load from folder of .tif
+			folderPath = ''
+			potentialFolder = os.path.join(self._folderPath, tmpFile)
+			if os.path.isdir(potentialFolder):
+				print('tmpFile is a folder, potentialFolder:', potentialFolder)
+				# load from folder of tif
+				fileList = glob.glob(potentialFolder + '/*.tif')
+				fileList = sorted(fileList)
+				if len(fileList) == 0:
+					continue
+				folderPath = potentialFolder
+				potentialNewFile = fileList[0]
+				print('  loading from folder:', folderPath)
+				print('  seed file is:', potentialNewFile)
+			# was this
+			elif not fileExt in theseFileExtensions:
 				continue
 			#if not potentialNewFile.endswith(thisFileExtension):
 			#	continue
@@ -103,18 +119,24 @@ class bCanvas:
 				# we need to find it in bLogFilePosition
 				print('   New file:', potentialNewFile, 'find it in bLogFilePosition')
 				newFilePath = os.path.join(self._folderPath, potentialNewFile)
+
 				# abb canvas, we need a way to load header or max of .oir files?
-				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
-				
-				# flip xMotor/xMotor for sutter
-				tmp = newScopeStack.header.header['xMotor']
-				newScopeStack.header.header['xMotor'] = newScopeStack.header.header['yMotor']
-				newScopeStack.header.header['yMotor'] = tmp
-				
+				newScopeStack = bimpy.bStack(newFilePath, folderPath=folderPath, loadImages=True)
+
+				# todo: put import in bCanvasWidget or bCanvasApp?
+				# todo: at least make api to get motor frorm app
+				# flip xMotor/xMotor for app
+				if self.myCanvasWidget.myCanvasApp.xyzMotor.swapxy:
+					tmp = newScopeStack.header.header['xMotor']
+					newScopeStack.header.header['xMotor'] = newScopeStack.header.header['yMotor']
+					newScopeStack.header.header['yMotor'] = tmp
+
+				'''
 				print('FAKE MOTOR POSITION FOR mp285')
 				newScopeStack.header.header['xMotor'] = -2235
 				newScopeStack.header.header['yMotor'] = -844.56
-				
+				'''
+
 				# append to header
 				# todo: on windows use os.path.getctime(path_to_file)
 				# see: https://stackoverflow.com/questions/237079/how-to-get-file-creation-modification-date-times-in-python
@@ -122,7 +144,7 @@ class bCanvas:
 				dateStr = time.strftime('%Y%m%d', time.localtime(cTime))
 				timeStr = time.strftime('%H:%M:%S', time.localtime(cTime))
 
-				
+
 				newScopeStack.header.header['date'] = dateStr #time.strftime('%Y%m%d')
 				newScopeStack.header.header['time'] = timeStr #datetime.now().strftime("%H:%M:%S.%f")[:-4]
 				newScopeStack.header.header['seconds'] = cTime #time.time()
@@ -132,7 +154,7 @@ class bCanvas:
 				newScopeStack.saveMax()
 				#print('      ', newScopeStack.header.prettyPrint())
 				#print('      todo: fix this, adding fake motor !!! get motor position of file from bLogFilePosition !!!')
-				useWatchFolder = self.myCanvasWidget.appOptions()['scope']['useWatchFolder']
+				useWatchFolder = self.myCanvasWidget.appOptions()['Scope']['useWatchFolder']
 				if useWatchFolder:
 					xPos, yPos = self.myCanvasWidget.myLogFilePositon.getFilePositon(potentialNewFile)
 					if xPos is not None and yPos is not None:
@@ -323,6 +345,8 @@ class bCanvas:
 		fileName = stack.fileName
 		fileDict['filename'] = fileName
 
+		fileDict['folderPath'] = stack.folderPath # to open stack from folder of .tif
+
 		fileDict['date'] = header.header['date']
 		fileDict['time'] = header.header['time']
 		fileDict['seconds'] = header.header['seconds']
@@ -441,9 +465,14 @@ class bCanvas:
 
 			elif key =='scopeFiles':
 				for fileName, fileDict in item.items():
+					folderPath = fileDict['folderPath'] # to load from folder
 					scopeFilePath = os.path.join(self._folderPath, fileName)
-					print('  bCanvas.load() is loading scopeFilePath:', scopeFilePath)
-					scopeStack = bimpy.bStack(scopeFilePath, loadImages=False)
+					print('  bCanvas.load() is loading folderPath:', folderPath, 'scopeFilePath:', scopeFilePath)
+
+					# todo: we need to load from folder
+
+					# folderPath will trump scopeFilePath
+					scopeStack = bimpy.bStack(scopeFilePath, folderPath=folderPath, loadImages=False)
 					scopeStack.loadMax()
 
 					for headerStr,headerValue in fileDict.items():

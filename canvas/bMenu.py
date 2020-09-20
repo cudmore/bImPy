@@ -46,6 +46,7 @@ class bMenu:
 		#options.addAction('Load Users Config ...', self.loadUserConfig)
 		#options.addSeparator()
 		options.addAction('Canvas Options ...', self.showOptionsDialog)
+		options.addAction('Set Data Path ...', self.setDataPath)
 		options.addSeparator()
 		options.addAction('Save Canvas Options ...', self.saveOption)
 		options.addSeparator()
@@ -63,15 +64,17 @@ class bMenu:
 		# video
 		self.videoMenu = self.myMenuBar.addMenu("Video")
 		self.videoMenu.addAction('Video Window ...', self.showVideoWindow)
-		
+
 	def showVideoWindow(self):
 		self.myCanvasApp.toggleVideo()
-		
+
 	def buildCanvasMenu(self, canvasDict):
+		bLogger.info('buildCanvasMenu')
+
 		self.windowMenu.clear()
 
 		canvasList = canvasDict.keys()
-		print('buildCanvasMenu() canvasList:', canvasList)
+		#print('bMenu.buildCanvasMenu() canvasList:', canvasList)
 
 		# get the path to file of the front canvas window
 		frontWindow = self.myCanvasApp.myApp.activeWindow()
@@ -98,24 +101,20 @@ class bMenu:
 				#self.connect(entry,QtCore.SIGNAL('triggered()'), lambda item=item: self.doStuff(item))
 
 	def doStuff(self, checked, item):
-		print('doStuff() checked:', checked, 'item:', item)
+		#print('doStuff() checked:', checked, 'item:', item)
+		bLogger.info(f'doStuff() checked:{checked} item:{item}')
 		self.myCanvasApp.bringCanvasToFront(item)
 
-	'''
-	def processtrigger(self,q):
-		print(q.text()+" is triggered")
-	'''
-
 	def new(self):
-		print('=== bMenu.new')
+		bLogger.info('bMenu.new()')
 		self.myCanvasApp.newCanvas()
 
 	def open(self):
-		print('bMenu.open() a canvas')
+		bLogger.info('bMenu.open()')
 		self.myCanvasApp.load(askUser=True)
 
 	def save(self):
-		print('bMenu.save() not implemented, need to save each canvas')
+		bLogger.info('bMenu.save() IS THIS IMPLEMENTED???')
 		self.myCanvasApp.save()
 
 	def quit(self):
@@ -134,8 +133,17 @@ class bMenu:
 		#self.myCanvasApp.optionsLoad(askUser=True)
 	'''
 
+	def setDataPath(self):
+		"""
+		set ['Users']['xxx']
+		"""
+		bLogger.info('setDataPath')
+		dirStr = QtWidgets.QFileDialog.getExistingDirectory(None)
+		if len(dirStr) > 0:
+			self.myCanvasApp.optionsSetSavePath(dirStr)
+
 	def showOptionsDialog(self):
-		print('bMenu.showOptionsDialog')
+		bLogger.info('showOptionsDialog')
 		optionsDict = self.myCanvasApp.options
 		optionsDialog = canvas.bOptionsDialog(self.myCanvasApp, optionsDict)
 		optionsDialog.acceptOptionsSignal.connect(self.myCanvasApp.slot_UpdateOptions)

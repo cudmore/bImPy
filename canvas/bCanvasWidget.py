@@ -36,7 +36,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 		# on olympus we watch for new files to log motor position from Prior controller
 		self.myLogFilePositon = None
-		useWatchFolder = self.appOptions()['scope']['useWatchFolder']
+		useWatchFolder = self.appOptions()['Scope']['useWatchFolder']
 		if useWatchFolder:
 			folderPath = os.path.dirname(self.filePath)
 			self.myLogFilePositon = canvas.bLogFilePosition(folderPath, self.myCanvasApp.xyzMotor)
@@ -44,7 +44,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.buildUI()
 
 		# do this after interface is created
-		if self.isNew and self.getOptions()['motor']['useMotor']:
+		if self.isNew: # and self.getOptions()['motor']['useMotor']:
 			print('bCanvasWidget is reading initial motor position')
 			self.userEvent('read motor position')
 
@@ -318,9 +318,12 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		print('XXX flipping xMotor/yMotor when acquiring video (required for mp285)')
 		#newVideoStack.header.header['xMotor'] = xMotor # flipped
 		#newVideoStack.header.header['yMotor'] = yMotor
-		newVideoStack.header.header['xMotor'] = yMotor # flipped
-		newVideoStack.header.header['yMotor'] = xMotor
-
+		if self.myCanvasApp.xyzMotor.swapxy:
+			newVideoStack.header.header['xMotor'] = yMotor # flipped
+			newVideoStack.header.header['yMotor'] = xMotor
+		else:
+			newVideoStack.header.header['xMotor'] = xMotor # flipped
+			newVideoStack.header.header['yMotor'] = yMotor
 		'''
 		print('   bCanvasWidget.grabImage() after reload of video, newVideoStack is:')
 		#print(newVideoStack.print())
@@ -377,17 +380,20 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		elif event == 'read motor position':
 			# update the interface
 			x,y,z = self.myCanvasApp.xyzMotor.readPosition()
-			
+
 			# for mp285 swap x/y for diaply
-			tmp = x
-			xDisplay = y
-			yDisplay = tmp
-			
+			xDisplay = x
+			yDisplay = y
+			if self.myCanvasApp.xyzMotor.swapxy:
+				tmp = xDisplay
+				xDisplay = yDisplay
+				yDisplay = tmp
+
 			if xDisplay is not None:
 				xDisplay = round(xDisplay,1)
 			if yDisplay is not None:
 				yDisplay = round(yDisplay,1)
-			
+
 			if xDisplay is None:
 				self.motorToolbarWidget.xStagePositionLabel.setStyleSheet("color: red;")
 				self.motorToolbarWidget.xStagePositionLabel.repaint()
@@ -844,8 +850,8 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		#	#continue
 
 		# stackMax can be None
-		maxChannel = self.myCanvasWidget.getOptions()['scanning']['maxChannel']
-		stackMax = newScopeFile.getMax(channel=maxChannel) # stackMax can be None
+		maxProjectChannel = self.myCanvasWidget.getOptions()['Canvas']['maxProjectChannel']
+		stackMax = newScopeFile.getMax(channel=maxProjectChannel) # stackMax can be None
 		if stackMax is None:
 			print('\n\n')
 			print('  myQGraphicsView.appendScopeFile() got stackMax None. path:', path)
@@ -1161,7 +1167,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		self.setResizeAnchor(QtGui.QGraphicsView.NoAnchor)
 		'''
 
-		wheelZoom = self.myCanvasWidget.getOptions()['Interface']['wheelZoom'] # 1.25
+		wheelZoom = self.myCanvasWidget.getOptions()['Canvas']['wheelZoom'] # 1.25
 
 		oldPos = self.mapToScene(event.pos())
 		if event.angleDelta().y() > 0:

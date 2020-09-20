@@ -12,6 +12,7 @@ See bPrior for an example
 class bMotor(object):
 	def __init__(self, type=None):
 		self._type = type
+		self.swapxy = False
 
 	def readPosition(self):
 		"""

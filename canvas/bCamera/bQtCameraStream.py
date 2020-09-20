@@ -29,7 +29,7 @@ class myVideoThread(QtCore.QThread):
 	def __init__(self, parent=None):
 		super(myVideoThread, self).__init__(parent)
 		self.myStop = False
-	
+
 	def run(self):
 		cap = cv2.VideoCapture(0)
 		while not self.myStop:
@@ -40,7 +40,7 @@ class myVideoThread(QtCore.QThread):
 
 	def myStopThread(self):
 		self.myStop = True
-		
+
 # todo: this will always be used by canvas
 class myVideoWidget(QtWidgets.QWidget):
 
@@ -56,7 +56,8 @@ class myVideoWidget(QtWidgets.QWidget):
 		return theRet
 
 	def __init__(self, parent=None, videoSize=None, videoPos=None, scaleMult=1.0,
-					saveIntervalSeconds=None):
+					saveAtInterval=False,
+					saveIntervalSeconds=2):
 		"""
 		videoSize: (w,h) of actual video (pixels)
 		videoPos: (left,top) position on screen
@@ -96,14 +97,15 @@ class myVideoWidget(QtWidgets.QWidget):
 
 		# save an image at an interval
 		#self.saveImageAtInterval = True
+		self.saveAtInterval = saveAtInterval
 		self.saveIntervalSeconds = saveIntervalSeconds #1
 		self.lastSaveSeconds = None
 		# save oneimage.tif in the same folder as source code
 		myPath = os.path.dirname(os.path.abspath(__file__))
 		self.mySaveFilePath = os.path.join(myPath, 'oneimage.tif')
 
-		print('  saveIntervalSeconds:', self.saveIntervalSeconds)
-		print('  mySaveFilePath:', self.mySaveFilePath)
+		#print('  saveIntervalSeconds:', self.saveIntervalSeconds)
+		#print('  mySaveFilePath:', self.mySaveFilePath)
 
 		self.initUI()
 
@@ -114,7 +116,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		self.th.myStopThread()
 		self.th.quit()
 		self.th.wait()
-		
+
 	def getCurentImage(self):
 		return self.myCurrentImage
 
@@ -161,7 +163,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		"""
 
 		doDebug = False
-		
+
 		# (720, 1280, 3)
 		if doDebug: print('setImage2() image:', image.shape)
 
@@ -170,13 +172,13 @@ class myVideoWidget(QtWidgets.QWidget):
 			image = np.fliplr(image) # flip horizontal (flip on vertical line)
 
 		if doDebug: print('  after flip:', image.shape)
-			
+
 		# convert to Qt
 		# https://stackoverflow.com/a/55468544/6622587
 		rgbImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 		h, w, ch = rgbImage.shape
 		bytesPerLine = ch * w
-		
+
 		if doDebug:
 			print('  rgbImage:', rgbImage.shape)
 			print('  w:', w)
@@ -196,7 +198,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		if doDebug:
 			print('  myQtImage.width(), myQtImage.height():', myQtImage.width(), myQtImage.height())
 			print('  self.width(), self.height():', self.width(), self.height())
-		
+
 		# update qt interface
 		pixmap = QtGui.QPixmap.fromImage(myQtImage)
 		# scale pixmap
@@ -209,7 +211,7 @@ class myVideoWidget(QtWidgets.QWidget):
 		# this can be grabbed by other code
 		self.myCurrentImage = image
 
-		if self.saveIntervalSeconds is not None:
+		if self.saveAtInterval:
 			now = time.time()
 			if self.lastSaveSeconds is None or ((now-self.lastSaveSeconds) > self.saveIntervalSeconds):
 				#print(now, 'saving type(image)', type(image), image.shape, image.dtype, self.mySaveFilePath)

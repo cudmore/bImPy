@@ -2,6 +2,7 @@
 # Date: 20190630
 
 import os, sys, json, traceback
+import copy # to do deepcopy of (dict, OrderedDict)
 from collections import OrderedDict
 from datetime import datetime
 
@@ -40,7 +41,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		w = 500
 		h = 200
 		self.resize(w, h)
-		
+
 		self.myApp = parent # to use activeWindow() or focusWidget()
 
 		self.optionsFile = self.defaultOptionsFile()
@@ -49,11 +50,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.myMenu = canvas.bMenu(self)
 
 		# todo: do this after user modifies options, so they can set motor on fly
-		useMotor = self._optionsDict['motor']['useMotor']
-		motorName = self._optionsDict['motor']['name'] # = 'bPrior'
+		#useMotor = self._optionsDict['motor']['useMotor']
+		motorName = self._optionsDict['motor']['motorName'] # = 'bPrior'
 		port = self._optionsDict['motor']['port']
-		#isReal = self._optionsDict['motor']['isReal'] #= False
-		self.assignMotor(useMotor, motorName, port)
+		self.assignMotor(motorName, port)
 
 		# dictionary of bCanvasWidget
 		# each key is file name with no extension
@@ -87,23 +87,24 @@ class bCanvasApp(QtWidgets.QMainWindow):
 	def closeEvent(self, event):
 		# added this on windows, what does it do on mac? There is no main window?
 		print('bCanvasApp.closeEvent()')
-		
+
 		# close canvas windows
 		print('  closing canvas widgets/windows')
 		for k in self.canvasDict.keys():
 			self.canvasDict[k].close()
-			
+
 		# shutdown videothread#
-		
+
 		# tell the app to quit?
 		print('  calling self.myApp.quit()')
 		self.myApp.quit()
 		event.accept()
-		
+
 	def toggleVideo(self):
 		self.showingCamera = not self.showingCamera
 		if self.showingCamera:
 			if self.camera is None:
+				saveAtInterval = self._optionsDict['video']['saveAtInterval']
 				saveIntervalSeconds = self._optionsDict['video']['saveIntervalSeconds']
 				left = self._optionsDict['video']['left']
 				top  = self._optionsDict['video']['top']
@@ -116,6 +117,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 					videoSize=videoSize,
 					videoPos = pos,
 					scaleMult = scaleMult,
+					saveAtInterval = saveAtInterval,
 					saveIntervalSeconds = saveIntervalSeconds)
 				self.camera.videoWindowSignal.connect(self.slot_VideoChanged)
 			self.camera.show()
@@ -144,7 +146,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		else:
 			return None
 
-	def assignMotor(self, useMotor, motorName, motorPort):
+	def assignMotor(self, motorName, motorPort):
 		"""
 		Create a motor controller from a class name
 
@@ -156,11 +158,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		# see: https://stackoverflow.com/questions/4821104/dynamic-instantiation-from-string-name-of-a-class-in-dynamically-imported-module
 		# on sutter this is x/y/x !!!
 		self.xyzMotor = None
-		if useMotor:
-			class_ = getattr(canvas.bMotor, motorName) # class_ is a module
-			#print('class_:', class_)
-			#class_ = getattr(class_, motorName) # class_ is a class
-			self.xyzMotor = class_(motorPort)
+		class_ = getattr(canvas.bMotor, motorName) # class_ is a module
+		#print('class_:', class_)
+		#class_ = getattr(class_, motorName) # class_ is a class
+		self.xyzMotor = class_(motorPort)
 
 	def mousePressEvent(self, event):
 		print('=== bCanvasApp.mousePressEvent()')
@@ -175,7 +176,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		# todo: abb hopkins, why is this here?
 		self.myGraphicsView.keyPressEvent(event)
 	'''
-	
+
 	def bringCanvasToFront(self, fileNameNoExtension):
 		print('bCanvasApp.bringCanvasToFront() fileNameNoExtension:', fileNameNoExtension)
 		for canvas in self.canvasDict.keys():
@@ -198,6 +199,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			self.myMenu.buildCanvasMenu(self.canvasDict)
 
 	def newCanvas(self, shortName=''):
+		"""
+		new canvas(s) are always saved in options['Canvas']['savePath']
+			options['Canvas']['savePath']/<date>_<name>
+		"""
 		if shortName=='':
 			# setInformativeText("This is additional information")
 			text, ok = QtWidgets.QInputDialog.getText(self,
@@ -209,13 +214,14 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		if shortName == '':
 			return
 
-		savePath = self._optionsDict['userOptions']['savePath']
+		savePath = self._optionsDict['Canvas']['savePath']
 		dateStr = datetime.today().strftime('%Y%m%d')
 
-		datePath = os.path.join(savePath, dateStr)
+		#datePath = os.path.join(savePath, dateStr)
 
 		folderName = dateStr + '_' + shortName
-		folderPath = os.path.join(datePath, folderName)
+		#folderPath = os.path.join(datePath, folderName)
+		folderPath = os.path.join(savePath, folderName)
 
 		videoFolderPath = os.path.join(folderPath, folderName + '_video')
 
@@ -245,8 +251,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		else:
 			print('   making new canvas:', filePath)
 			# todo: defer these until we actually save !!!
+			'''
 			if not os.path.isdir(datePath):
 				os.mkdir(datePath)
+			'''
 			if not os.path.isdir(folderPath):
 				os.mkdir(folderPath)
 
@@ -300,7 +308,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		Load a canvas
 		"""
 		if askUser:
-			dataFolder = self.options['userOptions']['savePath']
+			dataFolder = self.options['Canvas']['savePath']
 			# '/Users/cudmore/data/canvas' #os.path.join(self._getCodeFolder(), 'config')
 			if not os.path.isdir(dataFolder):
 				dataFolder = ''
@@ -360,30 +368,18 @@ class bCanvasApp(QtWidgets.QMainWindow):
 	def optionsDefault(self):
 		self._optionsDict = OrderedDict()
 
-		self._optionsDict['userOptions'] = OrderedDict()
-		
-		if sys.platform.startswith('win'):
-			self._optionsDict['userOptions']['savePath'] = 'c:/Users/LindenLab/Desktop/cudmore/data'
-		else:
-			self._optionsDict['userOptions']['savePath'] = '/Users/cudmore/data/canvas'
-
-		self._optionsDict['scope'] = OrderedDict()
-		self._optionsDict['scope']['useWatchFolder'] = False # Olympus needs this
-
-		self._optionsDict['version'] = OrderedDict()
-		self._optionsDict['version']['version'] = self.optionsVersion() #0.1
-
 		self._optionsDict['motor'] = OrderedDict()
-		self._optionsDict['motor']['motorList'] = [motor for motor in dir(canvas.bMotor) if not motor.endswith('__')]
-		self._optionsDict['motor']['useMotor'] = True
-		self._optionsDict['motor']['name'] = 'mp285' #'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
+		self._optionsDict['motor']['motorNameList'] = [motor for motor in dir(canvas.bMotor) if not (motor.endswith('__') or motor=='bMotor')]
+		self._optionsDict['motor']['motorName'] = 'mp285' #'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
+		self._optionsDict['motor']['portList'] = [f'COM{x+1}' for x in range(20)]
 		self._optionsDict['motor']['port'] = 'COM4'
 		#self._optionsDict['motor']['isReal'] = False
 
 		# on olympus, camera is 1920 x 1200
 		self._optionsDict['video'] = OrderedDict()
-		self._optionsDict['video']['saveIntervalSeconds'] = None #100
-		self._optionsDict['video']['oneimage'] = 'bCamera/oneimage.tif'
+		self._optionsDict['video']['saveAtInterval'] = False
+		self._optionsDict['video']['saveIntervalSeconds'] = 2
+		#self._optionsDict['video']['oneimage'] = 'bCamera/oneimage.tif'
 		self._optionsDict['video']['left'] = 100
 		self._optionsDict['video']['top'] = 100
 		self._optionsDict['video']['width'] = 640 #1280 # set this to actual video pixels
@@ -391,15 +387,24 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self._optionsDict['video']['scaleMult'] = 1.0 # as user resizes window
 		self._optionsDict['video']['umWidth'] = 455.2 #693
 		self._optionsDict['video']['umHeight'] = 341.4 #433
-		self._optionsDict['video']['stepFraction'] = 0.2 # for motor moves
+		self._optionsDict['video']['motorStepFraction'] = 0.15 # for motor moves
 
-		self._optionsDict['scanning'] = OrderedDict()
-		self._optionsDict['scanning']['zoomOneWidthHeight'] = 509.116882454314
-		self._optionsDict['scanning']['stepFraction'] = 0.2 # for motor moves
-		self._optionsDict['scanning']['maxChannel'] = 1 # for motor moves
+		self._optionsDict['Scope'] = OrderedDict()
+		self._optionsDict['Scope']['zoomOneWidthHeight'] = 509.116882454314
+		self._optionsDict['Scope']['motorStepFraction'] = 0.15 # for motor moves
+		self._optionsDict['Scope']['useWatchFolder'] = False # Olympus needs this
 
-		self._optionsDict['Interface'] = OrderedDict()
-		self._optionsDict['Interface']['wheelZoom'] = 1.1
+		self._optionsDict['Canvas'] = OrderedDict()
+		self._optionsDict['Canvas']['wheelZoom'] = 1.1
+		self._optionsDict['Canvas']['maxProjectChannel'] = 1 #
+		if sys.platform.startswith('win'):
+			self._optionsDict['Canvas']['savePath'] = 'c:/Users/LindenLab/Desktop/cudmore/data'
+		else:
+			self._optionsDict['Canvas']['savePath'] = '/Users/cudmore/data/canvas'
+
+		self._optionsDict['version'] = OrderedDict()
+		self._optionsDict['version']['version'] = self.optionsVersion() #0.1
+
 
 	def optionsLoad(self, askUser=False):
 		if askUser:
@@ -421,7 +426,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			else:
 				print('bCanvasApp.optionsLoad() loading:', self.optionsFile)
 				with open(self.optionsFile) as f:
-					self._optionsDict = json.load(f)
+					self._optionsDict = json.load(f, object_pairs_hook=OrderedDict)
 				# check if it is old
 				loadedVersion = self._optionsDict['version']['version']
 				if self.optionsVersion() > loadedVersion:
@@ -435,10 +440,38 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		with open(self.optionsFile, 'w') as outfile:
 			json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
 
+	def optionsSetSavePath(self, savePath):
+		if not os.path.isdir(savePath):
+			print('warning: bCanvasApp.optionsSetSavePath() got bad save path:', savePath)
+		else:
+			self._optionsDict['Canvas']['savePath'] = savePath
+			self.optionsSave()
+
 	def slot_UpdateOptions(self, optionsDict):
 		print('bCanvasApp.slot_UpdateOptions()')
-		self._optionsDict = optionsDict
+
+		# grab existing and compare to new to find changes
+		oldMotorName = self._optionsDict['motor']['motorName']
+		oldPort = self._optionsDict['motor']['port']
+
+		# make sure motor name is in list
+		#self._optionsDict['motor']['motorNameList']
+
+		# update
+		self._optionsDict = copy.deepcopy(optionsDict)
+		#self._optionsDict = optionsDict
 		self.optionsSave()
+
+		# update the motore
+		# todo: check if it has changed
+		# todo: do this after user modifies options, so they can set motor on fly
+		newMotorName = self._optionsDict['motor']['motorName'] # = 'bPrior'
+		newPort = self._optionsDict['motor']['port']
+		#isReal = self._optionsDict['motor']['isReal'] #= False
+		if oldMotorName != newMotorName or oldPort != newPort:
+			print('  slot_UpdateOptions() calling self.assignMotor() with new motor')
+			self.assignMotor(newMotorName, newPort)
+
 
 	def _getCodeFolder(self):
 		""" get full path to the folder where this file of code lives

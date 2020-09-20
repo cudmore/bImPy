@@ -191,7 +191,7 @@ class bStackHeader:
 		self.initHeader()
 
 		verbose = False
-		debug = True
+		debug = False
 
 		if debug:
 			print('\nbStackHeader.loadHeader()', self.path)

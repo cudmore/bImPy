@@ -1,4 +1,5 @@
 import serial, time, struct
+import traceback
 
 from bMotor import bMotor
 
@@ -10,7 +11,8 @@ class mp285(bMotor):
 		linen sutter is COM4
 		"""
 		bMotor.__init__(self, type='mp285')
-
+		self.swapxy = True
+		
 		self.verbose = True
 
 		self.eol = '\r'
@@ -23,9 +25,9 @@ class mp285(bMotor):
 
 		self.ser = None
 
-		#self.setVelocity('fast')
-		self.setVelocity('medium')
-		
+		#todo: make interface so user can set this
+		ok = self.setVelocity('medium')
+
 		'''
 		self.open()
 		print('reading 1')
@@ -37,7 +39,7 @@ class mp285(bMotor):
 		print('mp285.__init__() done')
 		self.close()
 		'''
-		
+
 	def open(self):
 		if self.ser is not None:
 			print('mp285.open(), port already opened')
@@ -48,11 +50,24 @@ class mp285(bMotor):
 					parity=serial.PARITY_NONE,
 					stopbits=serial.STOPBITS_ONE,
 					timeout=self.timeout)
-			except (serial.serialutil.SerialException) as e:
-				print('exception: mp285.open() e:', e)
-				raise
+			#except (FileNotFoundError) as e:
+			#	print('\nexception: mp285.open() FileNotFoundError')
+			#	print('  e:', e)
+			#	print(traceback.format_exc())
+			#	raise
+			except (serial.SerialException) as e:
+				print('\nexception: mp285.open() serial.SerialException')
+				print('  e:', e)
+				return False
+				#print(traceback.format_exc())
+				#raise
+			except:
+				print('\nexception: mp285.open() UNKNOWN')
+				print(traceback.format_exc())
+				return False
+				#raise
 
-		return self.ser
+		return True
 
 	def close(self):
 		if self.ser is None:
@@ -63,7 +78,10 @@ class mp285(bMotor):
 
 	def setVelocity(self, fastSlow, openPort=True):
 		"""
-		fastSlow: in ('fast', 'slow')
+		fastSlow: in ('fast', 'medium', 'slow')
+
+		Returns:
+			true/false
 
 		Note: The lower 15 bits (Bit 14 through 0) contain
 		the velocity value. The high-order bit (Bit 15) is
@@ -97,8 +115,8 @@ class mp285(bMotor):
 			theVelocity = 1500
 		else:
 			print('mp285.setVelocity() did not understand fastSlow:', fastSlow)
-			return
-			
+			return False
+
 		print('mp285.setVelocity() fastSlow:', fastSlow, 'theVelocity:', theVelocity)
 
 		bVelocity = '{:b}'.format(theVelocity)
@@ -115,33 +133,32 @@ class mp285(bMotor):
 		# H: unsigned short
 		binaryVelocity = struct.pack('<H', theVelocity)
 
+		if openPort and not self.open():
+			return False
+
 		try:
-			if openPort:
-				self.open()
 			self.ser.write(b'V' + binaryVelocity + b'\r')
 			self.ser.read(1)
 		except:
-			print('exception: mp285.setVelocity()')
-			raise
+			print('exception: mp285.setVelocity() UNKNOWN')
+			print(traceback.format_exc())
+			return False
 		finally:
 			if openPort:
 				self.close()
 
+		return True
+
 	def readPosition(self, openPort=True, verbose=True):
 		if verbose:
 			print ('mp285.readPosition() openPort:', openPort, 'verbose:', verbose)
+
+		theRet = (None, None, None)
+
+		if openPort and not self.open():
+			return theRet
+
 		try:
-			theRet = (None, None, None)
-
-			if openPort:
-				self.open()
-
-			'''
-			self.ser.reset_input_buffer()
-			self.ser.reset_output_buffer()
-			time.sleep(1)
-			'''
-			
 			self.ser.write(b'c\r')
 
 			resp = self.ser.read(13) # 12 +1 (3 4-byte signed long numbers + CR)
@@ -160,15 +177,11 @@ class mp285(bMotor):
 				# < is little endian
 				stepTuple = struct.unpack('<lll', resp) # < is little-endian
 				micronList = [x*self.stepSize for x in stepTuple]
-				
-				# swapping x/y
 				theRet = (micronList[0], micronList[1], micronList[2])
 		except:
-			print('exceptiopn: mp285.readPosition()')
-			raise
+			print('exceptiopn: mp285.readPosition() UNKNOWN')
 		finally:
-			if openPort:
-				self.close()
+			if openPort: self.close()
 
 		if verbose:
 			print('  mp285.readPosition() returning:', theRet)
@@ -176,8 +189,8 @@ class mp285(bMotor):
 
 	def moveto(self, direction, umDistance):
 		return self.move(direction, umDistance)
-		
-	def move(self, direction, umDistance):
+
+	def move(self, direction, umDistance, openPort=True):
 		"""
 		direction: str:  in ['left', 'right', 'front', 'back']
 		umDistance: int: Not sure on units yet
@@ -187,16 +200,18 @@ class mp285(bMotor):
 
 		theRet = (None, None, None)
 
+		if openPort and not self.open():
+			return theRet
+
 		try:
-			self.open()
-			
+
 			(x,y,z) = self.readPosition(openPort=False)
 			print('  mp285.move() original position:', x, y, z)
 
 			if x is None or y is None or z is None:
 				print('  error: mp285.move() did not get good original position')
-				return None, None, None
-				
+				return theRet
+
 			# todo: these need to map to correct direction when looking at video
 			if direction == 'left':
 				y -= umDistance
@@ -233,19 +248,17 @@ class mp285(bMotor):
 			else:
 				print('  mp285.moveto(): move completed in (%.2f sec)' % (endt-startt))
 
-			print('5 xxx move()')
-
 			print('  after move, reading again')
 			theRet = self.readPosition(openPort=False)
 			print('  final position:', x, y, z)
 
 		except:
-			print('exception: mp285.moveto()')
-			raise
+			print('exception: mp285.moveto() UNKNOWN')
 
 		finally:
-			self.close()
-			return theRet
+			if openPort: self.close()
+
+		return theRet
 
 if __name__ == '__main__':
 	m = mp285()

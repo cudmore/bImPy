@@ -3,6 +3,7 @@
 
 import os, sys
 from collections import OrderedDict
+import glob
 import numpy as np
 import skimage
 
@@ -32,13 +33,29 @@ class bStack:
 
 	Image data is in self.stack
 	"""
-	def __init__(self, path='', loadImages=True, loadTracing=True):
+	def __init__(self, path='', folderPath='', loadImages=True, loadTracing=True):
 		"""
-		path:
+		path: full path to file
+		folderPath: path to folder with .tif files
 		"""
 		print('bStack.__init__() path:', path)
-		#logging.info('constructor')
-		self.path = path # path to file
+
+		# todo: put into function
+		self.folderPath = folderPath
+		if folderPath:
+			fileList = glob.glob(folderPath + '/*.tif')
+			fileList = sorted(fileList)
+			if len(fileList) < 1:
+				print('error: bStack() did not find any .tif files in folderPath:', folderPath)
+			self.path = os.path.join(folderPath, fileList[0])
+			'''
+			print('fileList:')
+			for file in fileList:
+				print('  ', file)
+			sys.exit()
+			'''
+		else:
+			self.path = path # path to file
 
 		self._numChannels = None
 		self.slabList = None
@@ -492,6 +509,10 @@ class bStack:
 
 	# abb aics
 	def loadStack2(self, verbose=False):
+		if self.folderPath:
+			self.loadStackFolder()
+			return True
+
 		basename, tmpExt = os.path.splitext(self.path)
 		basename = basename.replace('_ch1', '')
 		basename = basename.replace('_ch2', '')
@@ -519,7 +540,7 @@ class bStack:
 						for channelIdx in range(numChannels):
 							start = channelIdx
 							if stackData.shape[0] % numChannels != 0:
-								prnit('error: bStack.load() scanimage num slices error')
+								print('error: bStack.load() scanimage num slices error')
 							#stop = int(stackData.shape[0] / numChannels) # assuming we get an integer
 							stop = stackData.shape[0]
 							step = numChannels
@@ -566,6 +587,17 @@ class bStack:
 		if os.path.exists(path_oir):
 			print('  bStack.loadStack2() path_oir:', path_oir)
 			self.loadBioFormats_Oir() # sinfle oir file (can have multiple channels)
+
+	def loadStackFolder(self):
+		"""
+		load a stack from a folder of .tif files
+		"""
+		stackData = tifffile.imread(self.folderPath + '/*.tif')
+		print('loadStackFolder() stackData:', stackData.shape)
+		numChannels = stackData.shape[1] # assuming [slices][channels][x][y]
+		self._numChannels = numChannels
+		for channel in range(numChannels):
+			self._stackList[channel] = stackData[:, channel, :, :]
 
 	def loadBioFormats_Oir(self):
 		if bioformats is None:
@@ -678,6 +710,11 @@ if __name__ == '__main__':
 		myStack = bStack(path)
 
 	if 1:
+		folderPath = '/Users/cudmore/data/linden-images/512by512by1zoom5'
+		myStack = bStack(folderPath=folderPath)
+		myStack.print()
+
+	if 0:
 		myStack = bStack(path, loadImages=False)
 
 		myStack.print()

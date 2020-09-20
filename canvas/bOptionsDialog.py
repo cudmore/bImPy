@@ -5,9 +5,10 @@ Generic dialog to edit a dict of [key1][key2]
 """
 
 import json
+import copy
 from collections import OrderedDict
 
-from qtpy import QtGui, QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtGui
 
 def okCancelDialog(text, informativeText=''):
 	close = QtWidgets.QMessageBox()
@@ -62,7 +63,6 @@ class bOkCancelDialog:
 '''
 
 class bOptionsDialog(QtWidgets.QDialog):
-
 	"""
 	General purpose dialog to set tracing display options.
 	For now it is hard coded with pen size and masking
@@ -84,25 +84,46 @@ class bOptionsDialog(QtWidgets.QDialog):
 		#self.acceptOptionsSignal.connect(parent.slot_UpdateOptions)
 
 		# make a copy of options to modify
-		self.localOptions = OrderedDict(optionsDict)
+		self.localOptions = copy.deepcopy(optionsDict)
+		#self.localOptions = OrderedDict(optionsDict)
 
 		self.setWindowTitle('Canvas Options')
+
+		ignorKey1_List = ['version']
+
+		# ignore things like ['video']['left']
+		ignoreList = []
+		ignoreList.append(('motor', 'motorName')) #####!!!#####
+		ignoreList.append(('motor', 'port')) #####!!!#####
+		ignoreList.append(('Canvas', 'savePath'))
+		ignoreList.append(('video', 'left'))
+		ignoreList.append(('video', 'top'))
+		ignoreList.append(('video', 'width'))
+		ignoreList.append(('video', 'height'))
+		ignoreList.append(('video', 'scaleMult'))
 
 		numKeys = len(optionsDict.keys())
 		numCols = 3
 
 		mainLayout = QtWidgets.QGridLayout()
+		#mainLayout = QtWidgets.QVBoxLayout()
 
 		row = 0
 		col = 0
 		#print('building bOptionsDialog')
 		for key1 in self.localOptions.keys():
+			if key1 in ignorKey1_List:
+				continue
 			groupBox = QtWidgets.QGroupBox(key1)
 			layout = QtWidgets.QFormLayout()
 			layout.setLabelAlignment(QtCore.Qt.AlignLeft)
 			layout.setFormAlignment(QtCore.Qt.AlignLeft)
 
 			for key2 in self.localOptions[key1].keys():
+				# don't show certain preferences
+				if (key1,key2) in ignoreList:
+					continue
+
 				value = self.localOptions[key1][key2]
 				theType = type(value)
 				#print(key1, key2, theType, value)
@@ -138,16 +159,36 @@ class bOptionsDialog(QtWidgets.QDialog):
 					layout.addRow(QtWidgets.QLabel(key2), aLineEdit)
 
 				elif isinstance(value, list):
-					print('bOptionsDialog() list not implemented:', key1, key2, value)
+					# motorNameList makes the dropdown list
+					# motorName is what we set
+					#print('  bOptionsDialog() making QComboBox:', key1, key2, value)
+					aComboBox = QtGui.QComboBox()
+					aComboBox.addItems(value) # assumnig value is a list of str
+					# set selected item
+					useThisKey2 = key2.replace('List', '')
+					stringKey2 = self.localOptions[key1][useThisKey2]
+					try:
+						motorNameIndex = value.index(stringKey2)
+						aComboBox.setCurrentIndex(motorNameIndex)
+					except (ValueError) as e:
+						print('did not find', stringKey2, 'in list', value, '-->> deactivate control')
+						aComboBox.setDisabled(True)
+					aComboBox.setProperty('bobID_1', key1)
+					aComboBox.setProperty('bobID_2', key2)
+					aComboBox.activated[str].connect(self.comboBoxSelection)
+					layout.addRow(QtWidgets.QLabel(key2), aComboBox)
+					if key2.endswith('List'):
+						setKey = key2.replace('List', '')
 
 				else:
-					print('bOptionsDialog() isinstance not handled:', value)
+					print(f'  bOptionsDialog() isinstance not handled:, {key1}, {key2}, "{value}"')
 
 			groupBox.setLayout(layout)
 
 			rowSpan = 1
 			colSpan = 1
 			mainLayout.addWidget(groupBox, row, col, rowSpan, colSpan)
+			#mainLayout.addWidget(groupBox)
 			col += 1
 			if col == numCols:
 				col = 0
@@ -168,6 +209,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 
 		#
 		mainLayout.addWidget(self.buttonBox, row, numCols-1)
+		#mainLayout.addWidget(self.buttonBox)
 		self.setLayout(mainLayout)
 
 		self.show()
@@ -207,6 +249,17 @@ class bOptionsDialog(QtWidgets.QDialog):
 			self.localOptions[bobID_1][bobID_2] = value
 		except (KeyError) as e:
 			print('  error in valueChanged() e:', e)
+
+	def comboBoxSelection(self, str):
+		bobID_1 = self.sender().property('bobID_1')
+		bobID_2 = self.sender().property('bobID_2')
+		if bobID_2.endswith('List'):
+			setThisKey = bobID_2.replace('List', '')
+			try:
+				self.localOptions[bobID_1][setThisKey] = str
+			except (KeyError) as e:
+				print('error in comboBoxSelection() key1:', bobID_1, 'key2:', setThisKey)
+				print('  e:', e)
 
 	def valueChanged(self, value):
 		"""

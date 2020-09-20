@@ -336,7 +336,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		elif text=='Video':
 			umWidth = options['video']['umWidth']
 			umHeight = options['video']['umHeight']
-			stepFraction = options['video']['stepFraction']
+			stepFraction = options['video']['motorStepFraction']
 			# set step size
 			xStep = umWidth - (umWidth*stepFraction)
 			yStep = umHeight - (umHeight*stepFraction)
@@ -347,8 +347,8 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 			# assuming each option is of form(1x, 1.5x, etc)
 			text = text.strip('x')
 			zoom = float(text)
-			zoomOneWidthHeight = options['scanning']['zoomOneWidthHeight']
-			stepFraction = options['scanning']['stepFraction']
+			zoomOneWidthHeight = options['Scope']['zoomOneWidthHeight']
+			stepFraction = options['Scope']['motorStepFraction']
 			# set step size
 			zoomWidthHeight = zoomOneWidthHeight / zoom
 			xStep = zoomWidthHeight - (zoomWidthHeight*stepFraction) # always square
@@ -721,7 +721,13 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 
 		item = QtWidgets.QTreeWidgetItem(self)
 		item.setText(self.myColumns['Index'], str(myIndex+1))
+
+		#if theStack.folderPath:
+		#	item.setText(self.myColumns['File'], theStack.folderPath)
+		#else:
+		#	item.setText(self.myColumns['File'], theStack.getFileName())
 		item.setText(self.myColumns['File'], theStack.getFileName())
+
 		if type == 'Video Layer':
 			item.setText(self.myColumns['Type'], 'v')
 		elif type == '2P Max Layer':
