@@ -134,7 +134,8 @@ class bCanvas:
 
 				# abb canvas, we need a way to load header or max of .oir files?
 				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
-
+				newScopeStack.saveMax()
+				
 				# todo: put import in bCanvasWidget or bCanvasApp?
 				# todo: at least make api to get motor frorm app
 				# flip xMotor/xMotor for app
@@ -176,6 +177,7 @@ class bCanvas:
 						print('error: bCanvas.importNewScopeFiles() did not find file position for file:', potentialNewFile)
 						newScopeStack.header.header['xMotor'] = 0
 						newScopeStack.header.header['yMotor'] = 0
+
 				# append to return list
 				newStackList.append(newScopeStack)
 

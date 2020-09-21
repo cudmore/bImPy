@@ -598,6 +598,7 @@ class bStack:
 		print('loadFromFolder() stackData:', stackData.shape)
 		for channel in range(numChannels):
 			self._stackList[channel] = stackData[:, channel, :, :]
+			self._makeMax(channel)
 
 	def loadBioFormats_Oir(self):
 		if bioformats is None:

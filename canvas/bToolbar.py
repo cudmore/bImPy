@@ -845,8 +845,7 @@ class myTreeWidget(QtWidgets.QTreeWidget):
 			#print('   fileSelected_callback()', filename)
 			if isControl:
 				self.myCanvasWidget.getGraphicsView().zoomSelectedItem(filename)
-			else:
-				# visually select image in canvas with yellow square
-				self.myCanvasWidget.getGraphicsView().setSelectedItem(filename)
+			# visually select image in canvas with yellow square
+			self.myCanvasWidget.getGraphicsView().setSelectedItem(filename)
 		else:
 			print('  no selected items')

@@ -583,7 +583,7 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 	Each item is added to a scene (QGraphicsScene)
 	"""
 	#def __init__(self, fileName, index, myLayer, myQGraphicsView, parent=None):
-	def __init__(self, fileName, index, myLayer, theStack, parent=None):
+	def __init__(self, fileName, myLayer, theStack, parent=None):
 		"""
 		theStack: the underlying bStack, assuming it has at least its header loaded ???
 		"""
@@ -600,7 +600,6 @@ class myQGraphicsPixmapItem(QtWidgets.QGraphicsPixmapItem):
 		super(myQGraphicsPixmapItem, self).__init__(parent)
 		#self.myQGraphicsView = myQGraphicsView
 		self._fileName = fileName
-		self._index = index # index into canvas list (list of either video or scope)
 		self.myLayer = myLayer
 		self._isVisible = True
 		# new 20191229
@@ -908,7 +907,10 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 			print('  myQGraphicsView.appendScopeFile() is making zero max image for newScopeFile:', newScopeFile)
 			stackMax = np.zeros((imageStackWidth, imageStackHeight), dtype=np.uint8)
 
-		myQImage = QtGui.QImage(stackMax, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
+		# always map to 8-bit (should work for 8/14/16, etc)
+		stackMax_8Bit = ((stackMax - stackMax.min()) / (stackMax.ptp() / 255.0)).astype(np.uint8) # map the data range to 0 - 255
+
+		myQImage = QtGui.QImage(stackMax_8Bit, imageStackWidth, imageStackHeight, QtGui.QImage.Format_Indexed8)
 
 		#
 		# try and set color
@@ -921,8 +923,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		# insert
 		#pixMapItem = myQGraphicsPixmapItem(fileName, idx, '2P Max Layer', self, parent=pixmap)
-		newIdx = 999 # do i use this???
-		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, '2P Max Layer', newScopeFile, parent=pixmap)
+		pixMapItem = myQGraphicsPixmapItem(fileName, '2P Max Layer', newScopeFile, parent=pixmap)
 		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
@@ -985,8 +986,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 
 		# insert
 		#pixMapItem = myQGraphicsPixmapItem(fileName, idx, 'Video Layer', self, parent=pixmap)
-		newIdx = 999 # do i use this???
-		pixMapItem = myQGraphicsPixmapItem(fileName, newIdx, 'Video Layer', newVideoStack, parent=pixmap)
+		pixMapItem = myQGraphicsPixmapItem(fileName, 'Video Layer', newVideoStack, parent=pixmap)
 		pixMapItem.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
 		pixMapItem.setToolTip(fileName)
 		pixMapItem.setPos(xMotor,yMotor)
