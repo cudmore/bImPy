@@ -168,6 +168,17 @@ class bStack:
 	def bitDepth(self):
 		return self.header.bitDepth
 
+	def getHeaderVal2(self, key):
+		"""
+		key(s) are ALWAYS lower case
+		"""
+		key = key.lower()
+		if key in self.header.header.keys():
+			return self.header.header[key]
+		else:
+			print('error: bStack.getHeaderVal() did not find key "' + key + '" in self.header.header. Available keys are:', self.header.header.keys())
+			return None
+
 	def getHeaderVal(self, key):
 		if key in self.header.header.keys():
 			return self.header.header[key]
@@ -710,8 +721,14 @@ if __name__ == '__main__':
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 
-	# test scanimage foolder
+	# test canvas video
 	if 1:
+		path = '/Users/cudmore/data/canvas/20200921_xxx/20200921_xxx_video/v20200921_xxx_000.tif'
+		myStack = bStack(path)
+		myStack.print()
+
+	# test scanimage folder
+	if 0:
 		folderPath = '/Users/cudmore/data/linden-images/512by512by1zoom5'
 		myStack = bStack(folderPath)
 		myStack.print()

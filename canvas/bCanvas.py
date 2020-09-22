@@ -11,14 +11,17 @@ class bCanvas:
 	"""
 	A visuospatial convas that brings together different light paths of a scope.
 	"""
-	def __init__(self, filePath=None, folderPath='', parent=None):
+	def __init__(self, filePath=None, folderPath=''):
 		"""
 		filePath: path to _canvas.txt file to load a canvas
 		folderPath: to load a converted Igor canvas (DEPRECIATED)
 		parent: myCanvasWidget
+
+		todo:
+			don't rely on canvas app?
+			add logFileObject so we can ask it for motor positions
 		"""
 
-		self.myCanvasWidget = parent # use, self.myCanvasWidget.myLogFilePositon
 		self._filePath = None #filePath # todo: not used
 		self._folderPath = None
 
@@ -69,6 +72,54 @@ class bCanvas:
 		return None
 	'''
 
+	def newVideoStack(self, imageData, videoHeader):
+		"""
+		imageData: numpy image
+		videoHeader: dict with (motor, um widht/height, date/time)
+		"""
+		print('bCanvas.newVideoStack() imageData:', imageData.shape, 'videoHeader:', videoHeader)
+
+		# strip down imageData
+		if len(imageData.shape) == 2:
+			# ok
+			pass
+		elif len(imageData.shape) == 3:
+			# assume last axis is r/g/b planes
+			imageData = imageData[:,:,0]
+
+		xPixels, yPixels = imageData.shape
+
+		# make _video folder if necc
+		if not os.path.isdir(self.videoFolderPath):
+			os.mkdir(self.videoFolderPath)
+
+		# construct file path/name and save
+		numVideoFiles = len(self.videoFileList)
+		fileNumStr = str(numVideoFiles).zfill(3)
+		saveVideoFile = 'v' + self.enclosingFolder + '_' + fileNumStr + '.tif'
+		saveVideoPath = os.path.join(self.videoFolderPath, saveVideoFile)
+
+		# fill in more of header
+		videoHeader['bitDepth'] = 8
+		videoHeader['xVoxel'] = videoHeader['umHeight'] / xPixels
+		videoHeader['yVoxel'] = videoHeader['umWidth'] / yPixels
+		videoHeader['zVoxel'] = 1
+		videoHeader['unit'] = 'um'
+
+		# save stack
+		bimpy.util.bTiffFile.imsave(saveVideoPath, imageData, tifHeader=videoHeader)
+
+		# load as bStack
+		newVideoStack = bimpy.bStack(saveVideoPath, loadImages=True)
+
+		# append to list
+		self.appendVideo(newVideoStack)
+
+		# save canvas file
+		self.save()
+
+		return newVideoStack
+
 	def appendVideo(self, newVideoStack):
 		"""
 		used when user acquires a new image from video
@@ -77,10 +128,14 @@ class bCanvas:
 		"""
 		self._videoFileList.append(newVideoStack)
 
-	def importNewScopeFiles(self):
+	def importNewScopeFiles(self, watchDict=None):
 		"""
 		look through files in our hard-drive folder and look for new files.
 		A new file is one that is not already in self.scopeFileList
+
+		watchDict: dictionary mapping file name to x/y/z motor position
+
+		Return list of files/folders we imported
 		"""
 		newStackList = [] # build a list of new files
 		listDir = os.listdir(self._folderPath)
@@ -109,7 +164,7 @@ class bCanvas:
 				fileList = glob.glob(potentialFolder + '/*.tif')
 				fileList = sorted(fileList)
 				if len(fileList) == 0:
-					print('  did not find and .tif files in folder:', potentialFolder)
+					print('  did not find any .tif files in folder:', potentialFolder)
 					continue
 				#folderPath = potentialFolder
 				#potentialNewFile = fileList[0]
@@ -132,17 +187,18 @@ class bCanvas:
 				print('   New file:', potentialNewFile, 'find it in bLogFilePosition')
 				newFilePath = os.path.join(self._folderPath, potentialNewFile)
 
-				# abb canvas, we need a way to load header or max of .oir files?
+				# load stack with images and save max
 				newScopeStack = bimpy.bStack(newFilePath, loadImages=True)
 				newScopeStack.saveMax()
-				
-				# todo: put import in bCanvasWidget or bCanvasApp?
-				# todo: at least make api to get motor frorm app
-				# flip xMotor/xMotor for app
+
+				# abb removed southwest
+				# try and flip any/all motor in display widget?
+				'''
 				if self.myCanvasWidget.myCanvasApp.xyzMotor.swapxy:
 					tmp = newScopeStack.header.header['xMotor']
 					newScopeStack.header.header['xMotor'] = newScopeStack.header.header['yMotor']
 					newScopeStack.header.header['yMotor'] = tmp
+				'''
 
 				'''
 				print('FAKE MOTOR POSITION FOR mp285')
@@ -156,27 +212,24 @@ class bCanvas:
 				cTime = os.path.getctime(newFilePath)
 				dateStr = time.strftime('%Y%m%d', time.localtime(cTime))
 				timeStr = time.strftime('%H:%M:%S', time.localtime(cTime))
-
-
 				newScopeStack.header.header['date'] = dateStr #time.strftime('%Y%m%d')
 				newScopeStack.header.header['time'] = timeStr #datetime.now().strftime("%H:%M:%S.%f")[:-4]
 				newScopeStack.header.header['seconds'] = cTime #time.time()
 				print('   newScopeStack:', newScopeStack.print())
 
-				print('  saving max')
-				newScopeStack.saveMax()
-				#print('      ', newScopeStack.header.prettyPrint())
-				#print('      todo: fix this, adding fake motor !!! get motor position of file from bLogFilePosition !!!')
-				useWatchFolder = self.myCanvasWidget.appOptions()['Scope']['useWatchFolder']
-				if useWatchFolder:
+				# get motor position from dict
+				if watchDict is not None:
+					pass
+					'''
 					xPos, yPos = self.myCanvasWidget.myLogFilePositon.getFilePositon(potentialNewFile)
 					if xPos is not None and yPos is not None:
 						newScopeStack.header.header['xMotor'] = xPos
 						newScopeStack.header.header['yMotor'] = yPos
 					else:
 						print('error: bCanvas.importNewScopeFiles() did not find file position for file:', potentialNewFile)
-						newScopeStack.header.header['xMotor'] = 0
-						newScopeStack.header.header['yMotor'] = 0
+						newScopeStack.header.header['xMotor'] = None
+						newScopeStack.header.header['yMotor'] = None
+					'''
 
 				# append to return list
 				newStackList.append(newScopeStack)

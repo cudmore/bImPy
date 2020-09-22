@@ -81,9 +81,13 @@ class bLogFilePosition(threading.Thread):
 			print('getFilePositon()', fileName, self.myLogDict[fileName])
 			xPos = self.myLogDict[fileName]['xPos']
 			yPos = self.myLogDict[fileName]['yPos']
-			return xPos, yPos
+			zPos = self.myLogDict[fileName]['zPos']
+			return xPos, yPos, zPos
 		else:
 			return None, None
+
+	def getPositionDict(Self):
+		return self.myLogDict
 
 	def run(self):
 		print('bLogFilePosition.run()')
@@ -93,7 +97,7 @@ class bLogFilePosition(threading.Thread):
 				item = self.outQueue.get(block=False)
 				print('bLogFilePosition.run() found outQueue item:', item)
 				# read position of motor from prior stage
-				xPos, yPos = self.myStageController.readPosition()
+				xPos, yPos, zPos = self.myStageController.readPosition()
 				#print('xPos:', xPos, 'yPos:', yPos)
 
 				#datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
@@ -108,6 +112,7 @@ class bLogFilePosition(threading.Thread):
 				self.myLogDict[item]['time'] = timeStr
 				self.myLogDict[item]['xPos'] = xPos
 				self.myLogDict[item]['yPos'] = yPos
+				self.myLogDict[item]['zPos'] = zPos
 				#self.myLogList.append(logDict)
 				# append to log file
 				# log file should be in same folder as bWatchFolder path

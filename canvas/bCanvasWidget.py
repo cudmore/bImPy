@@ -11,7 +11,6 @@ import numpy as np
 from PyQt5 import QtCore, QtWidgets, QtGui
 
 import bimpy
-#from bimpy.interface import bStackWidget
 import canvas
 import bToolbar
 
@@ -30,7 +29,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		self.isNew = isNew # if False then was loaded
 
 		# if filePath exists then will load, otherwise will make new and save
-		self.myCanvas = canvas.bCanvas(filePath=filePath, parent=self)
+		self.myCanvas = canvas.bCanvas(filePath=filePath)
 
 		self.myStackList = [] # a list of open bStack
 
@@ -202,7 +201,6 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			print('    doNapari:', doNapari)
 			if doNapari:
 				bStackObject = self.myCanvas.findStackByName(filename)
-
 				# make sure channels are load
 				print('  todo: loading stack data each time, fix this ... bStackObject.loadStack2()')
 				bStackObject.loadStack2()
@@ -219,144 +217,56 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 	def grabImage(self):
 		"""
-		this grabs from file. we can also grab from thread like:
-		# currentImage = self.myCanvasApp.getCurentImage()
-		"""
+		this grabs from a data stream
+		we also need to grab from a file like with a point-gray camera
 
-		# 1) save stack/tiff with minimal headers
-		# 2) then load from file as a bStack
+		todo:
+			1) grab image
+			2) make header with (motor, um size, date/time)
+			3) tell backend bCanvas to .newVideoStack(imageData, imageHeader)
+			"""
 
 		print('=== bCanvasWidget.grabImage()')
 
-		# load .tif file that is being repeatdely saved by bCamera
-		# grab (videoWidth, videoHeight) fropm options
-		'''
-		codeFolder = self._getCodeFolder()
-		oneImage = self.myCanvasApp.options['video']['oneimage']
-		oneImagePath = os.path.join(codeFolder, oneImage)
-		if os.path.isfile(oneImagePath):
-			print('   found it', oneImagePath)
-		else:
-			print('   error: did not find file:', oneImagePath)
-			return
-		'''
-
+		# grab single image from camera
 		imageData = self.myCanvasApp.getCurentImage()
 		if imageData is None:
 			return
-		imageDataShape = imageData.shape
-		#print('  imageData.shape', imageData.shape)
-		if len(imageDataShape) == 3:
-			imageData = imageData[:,:,0] # first plane assuming a monochrome camera
-		elif len(imageDataShape) == 2:
-			pass # already the correct shape
-		else:
-			print('error: bCanvasWidget.grabImage() got bad imiage data shape:', imageDataShape)
 
-		m, n = imageData.shape
-
-		#
+		# user speciified video with/height (um)
 		umWidth = self.myCanvasApp.options['video']['umWidth']
 		umHeight = self.myCanvasApp.options['video']['umHeight']
 
-		# when loading from images that are saved at an interval, this will occassionally file with
-		#   IndexError: list index out of range
-		# presumably because file can not be read at same time as write
-		# maybe add try/except to actual bStack code ?
-		# todo: add try/except clause to catch it
+		# todo: do we need to swap x/y here?
+		# maybe add readPosiitonn(preSwap=True) to get swapped
 
 		# get the current motor position
-		xMotor, yMotor, zMotor = self.myCanvasApp.xyzMotor.readPosition()
+		#xMotor, yMotor, zMotor = self.myCanvasApp.xyzMotor.readPosition()
+		xMotor, yMotor, zMotor = self.readMotorPosition()
+		if xMotor is None or yMotor is None: # or zMotor is None:
+			print('error: bCanvasWidget.grabImage() got bad motor position')
+			return False
 
-		# make folder
-		videoFolderPath = self.myCanvas.videoFolderPath
-		if not os.path.isdir(videoFolderPath):
-			os.mkdir(videoFolderPath)
+		imageHeader = {
+			'date': time.strftime('%Y%m%d'),
+			'time': datetime.now().strftime("%H:%M:%S.%f")[:-4],
+			'seconds': time.time(),
+			'xMotor': xMotor,
+			'yMotor': yMotor,
+			'zMotor': zMotor,
+			'umWidth': umWidth,
+			'umHeight': umHeight,
+		}
+		# abb southwest
+		newVideoStack = self.myCanvas.newVideoStack(imageData, imageHeader)
 
-		# construct file path/name and save
-		numVideoFiles = len(self.myCanvas.videoFileList)
-		fileNumStr = str(numVideoFiles).zfill(3)
-		saveVideoFile = 'v' + self.myCanvas.enclosingFolder + '_' + fileNumStr + '.tif'
-		saveVideoPath = os.path.join(videoFolderPath, saveVideoFile)
+		if newVideoStack is not None:
+			# append to graphics view
+			self.myGraphicsView.appendVideo(newVideoStack)
+			# append to toolbar widget (list of files)
+			self.toolbarWidget.appendVideo(newVideoStack)
 
-		# tweek header
-		# todo: this is not complete
-		#newVideoStack.header.header['bitDepth'] = 8
-		#newVideoStack.header.header['bitDepth'] = 8
-		tmpHeader = OrderedDict()
-		tmpHeader['filename'] = saveVideoPath
-		tmpHeader['date'] = time.strftime('%Y%m%d')
-		tmpHeader['time'] = datetime.now().strftime("%H:%M:%S.%f")[:-4]
-		tmpHeader['seconds'] = time.time()
-		#
-		xVoxel = umHeight / m
-		yVoxel = umWidth / n
-		zVoxel = 1
-		tmpHeader['bitDepth'] = 8
-		tmpHeader['unit'] = 'um'
-		tmpHeader['xVoxel'] = xVoxel
-		tmpHeader['yVoxel'] = yVoxel
-		tmpHeader['zVoxel'] = zVoxel
-		tmpHeader['umWidth'] = umWidth
-		tmpHeader['umHeight'] = umHeight
-		tmpHeader['xMotor'] = xMotor
-		tmpHeader['yMotor'] = yMotor
-
-		#
-		# save image as .tif
-
-		print('   saving video tiff (with header):', saveVideoPath)
-		bimpy.util.bTiffFile.imsave(saveVideoPath, imageData, tifHeader=tmpHeader)
-
-		# load image as a new stack
-		try:
-			print('  loading as a bStack object')
-			newVideoStack = bimpy.bStack(saveVideoPath, loadImages=True)
-		except (IndexError) as e:
-			print('warning: exception while loading stack. this happends when background video stream is saving saving at the same time')
-			print('just try loading again !!!')
-			print(e)
-			return
-
-		'''
-		# tweek header
-		# todo: this is not complete
-		'''
-		# 20200915, removed after adding all metadata to bTiffFile.imsave()
-		newVideoStack.header.header['umWidth'] = umWidth
-		newVideoStack.header.header['umHeight'] = umHeight
-		print('XXX flipping xMotor/yMotor when acquiring video (required for mp285)')
-		#newVideoStack.header.header['xMotor'] = xMotor # flipped
-		#newVideoStack.header.header['yMotor'] = yMotor
-		if self.myCanvasApp.xyzMotor.swapxy:
-			newVideoStack.header.header['xMotor'] = yMotor # flipped
-			newVideoStack.header.header['yMotor'] = xMotor
-		else:
-			newVideoStack.header.header['xMotor'] = xMotor # flipped
-			newVideoStack.header.header['yMotor'] = yMotor
-		'''
-		print('   bCanvasWidget.grabImage() after reload of video, newVideoStack is:')
-		#print(newVideoStack.print())
-		for k,v in newVideoStack.header.header.items():
-			print('  ', k, v)
-		'''
-
-		#sys.exit()
-
-		# finalize
-
-		# append to canvas
-		#self.canvas.videoFileList.append(newVideoStack)
-		self.myCanvas.appendVideo(newVideoStack)
-
-		# append to graphics view
-		self.myGraphicsView.appendVideo(newVideoStack)
-
-		# append to toolbar widget (list of files)
-		self.toolbarWidget.appendVideo(newVideoStack)
-
-		# save canvas
-		self.saveMyCanvas()
+		return True
 
 	def userEvent(self, event):
 		print('=== myCanvasWidget.userEvent() event:', event)
@@ -388,6 +298,9 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			thePos = self.myCanvasApp.xyzMotor.move('back', yStep) # the pos is (x,y)
 			self.userEvent('read motor position')
 		elif event == 'read motor position':
+			self.readMotorPosition()
+
+			'''
 			# update the interface
 			x,y,z = self.myCanvasApp.xyzMotor.readPosition()
 
@@ -427,11 +340,11 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			# set red crosshair
 			if xDisplay is not None and yDisplay is not None:
 				self.myGraphicsView.myCrosshair.setMotorPosition(xDisplay, yDisplay)
-
+			'''
 		elif event == 'Canvas Folder':
 			#print('sys.platform:', sys.platform)
-			print('open folder on hdd', self.myCanvas._folderPath)
 			path = self.myCanvas._folderPath
+			print('open folder on hdd', path)
 			if sys.platform.startswith('darwin'):
 				subprocess.Popen(["open", path])
 			elif sys.platform.startswith('win'):
@@ -451,7 +364,23 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 
 		elif event =='Import From Scope':
 			print('=== bCanvasWidget.userEvent() event:', event)
-			newScopeFileList = self.myCanvas.importNewScopeFiles()
+
+			# todo: build a list of all (.tif and folder)
+			# pass this to self.myCanvas.addNEwScopeFile()
+			# that will return a list of files actually added
+			#
+			# option 2: pass importNEwScope file
+			#	- a dict of log file positions
+			#	- try and swap x/y of motor when we display?
+
+			# abb southwest
+			useWatchFolder = self.appOptions()['Scope']['useWatchFolder']
+			if useWatchFolder:
+				watchDict = self.myLogFilePositon.getPositionDict()
+			else:
+				watchDict = None
+			newScopeFileList = self.myCanvas.importNewScopeFiles(watchDict=watchDict)
+
 			for newScopeFile in newScopeFileList:
 				# append to view
 				self.myGraphicsView.appendScopeFile(newScopeFile)
@@ -466,20 +395,55 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			selectedItem = self.myGraphicsView.getSelectedItem()
 			if selectedItem is not None:
 				selectedItem.myStack.print()
-				'''
-				fileName = selectedItem._fileName
-				selectedStack = self.myCanvas.findScopeFileByName(fileName)
-				if selectedStack is not None:
-					selectedStack.print()
-				else:
-					print('no stack selection')
-				'''
 
 		elif event == 'center canvas on motor position':
 			self.getGraphicsView().centerOnCrosshair()
 
 		else:
 			print('bCanvasWidget.userEvent() not understood:', event)
+
+	def readMotorPosition(self):
+		# update the interface
+		x,y,z = self.myCanvasApp.xyzMotor.readPosition()
+
+		# for mp285 swap x/y for diaply
+		xDisplay = x
+		yDisplay = y
+		if self.myCanvasApp.xyzMotor.swapxy:
+			tmp = xDisplay
+			xDisplay = yDisplay
+			yDisplay = tmp
+
+		if xDisplay is not None:
+			xDisplay = round(xDisplay,1)
+		if yDisplay is not None:
+			yDisplay = round(yDisplay,1)
+
+		if xDisplay is None:
+			self.motorToolbarWidget.xStagePositionLabel.setStyleSheet("color: red;")
+			self.motorToolbarWidget.xStagePositionLabel.repaint()
+		else:
+			self.motorToolbarWidget.xStagePositionLabel.setStyleSheet("color: white;")
+			self.motorToolbarWidget.xStagePositionLabel.setText(str(xDisplay))
+			self.motorToolbarWidget.xStagePositionLabel.repaint()
+		if yDisplay is None:
+			self.motorToolbarWidget.yStagePositionLabel.setStyleSheet("color: red;")
+			self.motorToolbarWidget.yStagePositionLabel.repaint()
+		else:
+			self.motorToolbarWidget.yStagePositionLabel.setStyleSheet("color: white;")
+			self.motorToolbarWidget.yStagePositionLabel.setText(str(yDisplay))
+			self.motorToolbarWidget.yStagePositionLabel.repaint()
+
+		#self.motorToolbarWidget.setStepSize(x,y)
+
+		# x/y coords are not updating???
+		#self.motorToolbarWidget.xStagePositionLabel.update()
+
+		# set red crosshair
+		if xDisplay is not None and yDisplay is not None:
+			self.myGraphicsView.myCrosshair.setMotorPosition(xDisplay, yDisplay)
+
+		return x,y,z
 
 	def getOptions(self):
 		return self.myCanvasApp._optionsDict
@@ -805,7 +769,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# a cross hair and rectangle (size of zoom)
 		#useMotor = self.myCanvasWidget.appOptions()['motor']['useMotor']
 		#if useMotor:
-		self.myCrosshair = myQGraphicsRectItem(self)
+		self.myCrosshair = myCrosshairRectItem(self)
 		self.myCrosshair.setZValue(10000)
 		self.scene().addItem(self.myCrosshair)
 		# read initial position (might cause problems)
@@ -952,17 +916,17 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		path = newVideoStack.path
 		fileName = newVideoStack.getFileName()
 		#videoFileHeader = videoFile.getHeader()
-		xMotor = newVideoStack.header.header['xMotor']
-		yMotor = newVideoStack.header.header['yMotor']
-		umWidth = newVideoStack.header.header['umWidth']
-		umHeight = newVideoStack.header.header['umHeight']
+		xMotor = newVideoStack.getHeaderVal2('xMotor')
+		yMotor = newVideoStack.getHeaderVal2('yMotor')
+		umWidth = newVideoStack.getHeaderVal2('umWidth')
+		umHeight = newVideoStack.getHeaderVal2('umHeight')
 
 		if xMotor is None or yMotor is None:
-			print('error: bCanvasWidget.appendVideo() got bad xMotor/yMotor')
+			print('error: myQGraphicsView.appendVideo() got bad xMotor/yMotor')
 			print('      -->> ABORTING')
 			return
 		if umWidth is None or umHeight is None:
-			print('error: bCanvasWidget.appendVideo() got bad umWidth/umHeight')
+			print('error: myQGraphicsView.appendVideo() got bad umWidth/umHeight')
 			print('      -->> ABORTING')
 			return
 
@@ -1393,13 +1357,13 @@ class myCrosshair(QtWidgets.QGraphicsTextItem):
 		self.setPos(x, y)
 '''
 
-class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
+class myCrosshairRectItem(QtWidgets.QGraphicsRectItem):
 	"""
 	To display rectangles in canvas.
 	Used for 2p images so we can show/hide max project and still see square
 	"""
 	def __init__(self, parent=None):
-		super(myQGraphicsRectItem, self).__init__()
+		super(myCrosshairRectItem, self).__init__()
 
 		self.myQGraphicsView = parent
 
@@ -1433,7 +1397,10 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		'''
 
 	def setWidthHeight(self, width, height):
-		"""Use this to set different 2p zooms and video"""
+		"""
+		Called when user selects different 'Square Size'
+		Use this to set different 2p zooms and video
+		"""
 		self.width = width
 		self.height = height
 		self.setMotorPosition(xMotor=None, yMotor=None) # don't adjust position, just size
@@ -1444,7 +1411,7 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 
 		also used when changing the size of the square (Video, 1x, 1.5x, etc)
 		"""
-		#print('myQGraphicsRectItem.setMotorPosition() xMotor:', xMotor, 'yMotor:', yMotor)
+		#print('myCrosshairRectItem.setMotorPosition() xMotor:', xMotor, 'yMotor:', yMotor)
 		if xMotor is not None and yMotor is not None:
 			self.xPos = xMotor #- self.width/2
 			self.yPos = yMotor #- self.height/2
@@ -1470,7 +1437,7 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		self.drawCrosshairRect(painter)
 
 	def drawCrosshairRect(self, painter):
-		#print('myQGraphicsRectItem.drawCrosshairRect()')
+		#print('myCrosshairRectItem.drawCrosshairRect()')
 		self.focusbrush = QtGui.QBrush()
 
 		self.focuspen = QtGui.QPen(QtCore.Qt.DashLine) # SolidLine, DashLine
@@ -1480,76 +1447,12 @@ class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
 		painter.setBrush(self.focusbrush)
 		painter.setPen(self.focuspen)
 
-		# THIS IS NECCESSARY !!!! OTherwise the rectangle disapears !!!
+		# THIS IS NECCESSARY !!!! Otherwise the rectangle disapears !!!
 		painter.setOpacity(1.0)
 
 		if self.xPos is not None and self.yPos is not None:
 			#print('  xxx drawCrosshairRect() self.boundingRect():', self.boundingRect())
 			painter.drawRect(self.boundingRect())
 		else:
-			#print('  !!! myQGraphicsRectItem.drawCrosshairRect() did not draw')
+			#print('  !!! myCrosshairRectItem.drawCrosshairRect() did not draw')
 			pass
-
-'''
-class myQGraphicsRectItem(QtWidgets.QGraphicsRectItem):
-	"""
-	To display rectangles in canvas.
-	Used for 2p images so we can show/hide max project and still see square
-	"""
-	def __init__(self, fileName, myLayer, parent=None):
-		super(QtWidgets.QGraphicsRectItem, self).__init__(parent)
-		self._fileName = fileName
-		self.myLayer = myLayer
-
-	def paint(self, painter, option, widget=None):
-		super().paint(painter, option, widget)
-		if self.isSelected():
-			self.drawFocusRect(painter)
-
-	def drawFocusRect(self, painter):
-		self.focusbrush = QtGui.QBrush()
-		self.focuspen = QtGui.QPen(globalSelectionSquare['pen'])
-		self.focuspen.setColor(globalSelectionSquare['penColor'])
-		self.focuspen.setWidthF(globalSelectionSquare['penWidth'])
-		#
-		painter.setBrush(self.focusbrush)
-		painter.setPen(self.focuspen)
-		painter.drawRect(self.boundingRect())
-
-	def mousePressEvent(self, event):
-		print('   myQGraphicsPixmapItem.mousePressEvent()')
-		super().mousePressEvent(event)
-		#self.setSelected(True)
-		event.setAccepted(False)
-	def mouseMoveEvent(self, event):
-		print('   myQGraphicsPixmapItem.mouseMoveEvent()')
-		super().mouseMoveEvent(event)
-		event.setAccepted(False)
-	def mouseReleaseEvent(self, event):
-		#print('   myQGraphicsPixmapItem.mouseReleaseEvent()')
-		super().mouseReleaseEvent(event)
-		#self.setSelected(False)
-		event.setAccepted(False)
-
-	def bringForward(self):
-		"""
-		move this item before its previous sibling
-		"""
-		print('myQGraphicsRectItem.bringForward()')
-		myScene = self.scene()
-		previousItem = None
-		for item in self.scene().items():
-			if item == self:
-				break
-			previousItem = item
-		if previousItem is not None:
-			print('   myQGraphicsRectItem.bringForward() is moving', self._fileName, 'before', previousItem._fileName)
-			# this does not work !!!!
-			#self.stackBefore(previousItem)
-			previous_zvalue = previousItem.zValue()
-			this_zvalue = self.zValue()
-			previousItem.setZValue(this_zvalue)
-			self.setZValue(previous_zvalue)
-		else:
-			print('   myQGraphicsRectItem.bringToFront() item is already front most')
-'''
