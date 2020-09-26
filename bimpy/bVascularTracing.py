@@ -42,6 +42,7 @@ class bVascularTracing:
 		"""
 		path: path to file
 		"""
+		print('bVascularTracing() loadTracing:', loadTracing)
 		self.parentStack = parentStack
 		self.path = path
 
@@ -55,7 +56,7 @@ class bVascularTracing:
 				self.hasFile['h5f'] = True
 			else:
 				donotloadForNow = False
-				if donotloadForNow:
+				if not donotloadForNow:
 					loadedVesselucida = self.loadVesselucida_xml()
 					if loadedVesselucida:
 						self.hasFile['vesselucida'] = True
@@ -69,6 +70,11 @@ class bVascularTracing:
 					self.fixMissingNodes() # fill in missing pre/post nodes coming from vesselucia
 					self._analyze()
 					self.colorize()
+		#
+		# remove short edges
+		print('  bVascularTracing.__init__() calling bVascularTracingAics.removeShortEdges()')
+		bVascularTracingAics.removeShortEdges(self, removeSmallerThan=5)
+
 		#
 		self.makeGraph() # always make the graph
 
@@ -1054,7 +1060,7 @@ class bVascularTracing:
 		return True
 
 	def loadDeepVess(self):
-		print('loadDeepVess()')
+		print('bVascularTracing.loadDeepVess()')
 		dvMaskPath, ext = os.path.splitext(self.path)
 
 		print(' !!!!! 20200819 switching loadDeepVess to load vasc aics analysis')
@@ -1088,7 +1094,12 @@ class bVascularTracing:
 			dvMask = self.parentStack.getStack('mask', 2)
 			dvMask = dvMask.copy() # we might blank some slices
 
-			print('  !!!!! aics dvMask', dvMask.shape, dvMask.dtype)
+			print('  loadDeepVess() aics dvMask', dvMask.shape, dvMask.dtype)
+			tmpPath = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
+			if self.path == tmpPath:
+				print('\n\n    need to remove top/bottom slices')
+				print('    blanking slices 0..16')
+				dvMask[0:16,:,:] = 0
 
 		else:
 			dvMaskPath += '_dvMask.tif'
@@ -2661,20 +2672,34 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
 
+	path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
+
 	stack = bimpy.bStack(path=path)
 
 	stack.slabList.fixMissingNodes()
 
-	#stack.slabList.makeGraph()
 
-	#bimpy.bVascularTracingAics.removeDanglingEdges(self)
+	# do this once then save
+	'''
+	removeSmallerThan = 3
+	bimpy.bVascularTracingAics.removeShortEdges(stack.slabList, removeSmallerThan=removeSmallerThan)
 
-	# abb aics, testing new aics code
-	vascTracing = stack.slabList
+	stack.saveAnnotations()
+	'''
 
-	bimpy.bVascularTracingAics.detectEdgesAndNodesToRemove(vascTracing)
+	type = 'Analyze All Diameters'
+	paramDict = {
+		'radius': 12,
+		'lineWidth': 5,
+		'medianFilter': 5,
+	}
+	tmpWorkThread = bimpy.bVascularTracingAics.myWorkThread(stack.slabList, type, paramDict)
+	tmpWorkThread.run()
+	#tmpWorkThread,join()
 
-	if 1:
+	stack.saveAnnotations()
+
+	if 0:
 		nodeIdx1 = 34
 		nodeIdx2 = 116
 		okJoin = bimpy.bVascularTracingAics.joinNodes(vascTracing, nodeIdx1, nodeIdx2, verbose=True)

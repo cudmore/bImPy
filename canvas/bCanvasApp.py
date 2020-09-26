@@ -438,6 +438,11 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
 	def optionsSave(self):
 		print('bCanvasApp.optionsSave() self.optionsFile:', self.optionsFile)
+		# abb ubuntu
+		tmpPath, tmpFile = os.path.split(self.optionsFile)
+		if not os.path.isdir(tmpPath):
+			print('  making folder:', tmpPath)
+			os.mkdir(tmpPath)
 		with open(self.optionsFile, 'w') as outfile:
 			json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
 
@@ -518,7 +523,7 @@ def main(withJavaBridge=False):
 		myCanvasApp = bCanvasApp(parent=app)
 
 		# todo: could also use platform.system() which returns 'Windows'
-		if sys.platform.startswith('win'):
+		if sys.platform.startswith('win') or sys.platform.startswith('linux'):
 			# linden windows machine isreporting 'win32'
 			myCanvasApp.show()
 

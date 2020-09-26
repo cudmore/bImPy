@@ -211,7 +211,7 @@ def readVoxelSize(path, getShape=False, getMetaData=False, verbose=False, return
 			print('  warning: bTiffFile.readVoxelSize() did not find YResolution')
 
 		# HOLY CRAP, FOUND IT QUICK
-		imagej_metadata = tif.imagej_metadata
+		imagej_metadata = tif.imagej_metadata # can be None
 		if imagej_metadata is not None:
 			'''
 			print('imagej_metadata:')
@@ -246,22 +246,24 @@ def readVoxelSize(path, getShape=False, getMetaData=False, verbose=False, return
 
 		#
 		# return
+		# todo: change name of actual dict, it conflicts with boolean returnDict
 		if returnDict:
-			returnDict = OrderedDict()
-			returnDict['xVoxel'] = xVoxel
-			returnDict['yVoxel'] = yVoxel
-			returnDict['zVoxel'] = zVoxel
-			returnDict['shape'] = myShape
-			returnDict['unit'] = unit
+			theReturnDict = OrderedDict()
+			theReturnDict['xVoxel'] = xVoxel
+			theReturnDict['yVoxel'] = yVoxel
+			theReturnDict['zVoxel'] = zVoxel
+			theReturnDict['shape'] = myShape
+			theReturnDict['unit'] = unit
 
 			# all metadata
-			skipImageJ = ['ImageJ', 'images', 'hyperstack', 'mode', 'spacing']
-			for k,v in imagej_metadata.items():
-				if k in skipImageJ:
-					continue
-				returnDict[k] = v
+			if imagej_metadata is not None:
+				skipImageJ = ['ImageJ', 'images', 'hyperstack', 'mode', 'spacing']
+				for k,v in imagej_metadata.items():
+					if k in skipImageJ:
+						continue
+					theReturnDict[k] = v
 
-			return returnDict
+			return theReturnDict
 		else:
 			if getShape:
 				theRet = xVoxel, yVoxel, zVoxel, (myShape)

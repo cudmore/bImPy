@@ -80,7 +80,9 @@ class bStackWidget(QtWidgets.QMainWindow):
 			myStyleSheet = f.read()
 
 		#
-		self.mySimpleStack = bimpy.bStack(path) # backend stack
+		loadTracing = True
+		print('bStackWidget.__init__() is making bimpy.bStack() with loadTracing:', loadTracing)
+		self.mySimpleStack = bimpy.bStack(path, loadTracing=loadTracing) # backend stack
 
 		#
 		# search for close nodes (very slow)
@@ -780,8 +782,11 @@ class bStackWidget(QtWidgets.QMainWindow):
 		print('   z: toggle sliding z-projection on/off, will apply to all "Stacks To Display"')
 		print(' ' )
 
+	def getOptions(self):
+		return self.options
+
 	def optionsVersion(self):
-		return 1.4
+		return 1.5
 
 	def options_defaults(self):
 		print('bStackWidget.options_defaults()')
@@ -880,6 +885,13 @@ class bStackWidget(QtWidgets.QMainWindow):
 			'_verboseSlots': False
 		})
 
+		self.options['LineProfile'] = OrderedDict({
+			'lineLength': 12, # pixels
+			'lineWidth': 5,
+			'medianFilter': 5,
+			'halfHeight': 0.5,
+		})
+
 		# this is hard coded in bEvent class
 		'''
 		# debug
@@ -927,12 +939,14 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		todo: building and then responding to menu is too hard coded here, should generalize???
 		"""
+		print('showRightClickMenu()')
 		menu = QtWidgets.QMenu()
 		#self.menu = QtWidgets.QMenu()
 
 		numChannels = self.mySimpleStack.numChannels # number of channels in stack
 		maxNumChannels = self.mySimpleStack.maxNumChannels
 		#actions = ['Channel 1', 'Channel 2', 'Channel 3', 'RGB', 'Channel 1 Mask', 'Channel 2 Mask', 'Channel 3 Mask']
+		print('  numChannels:', numChannels, 'maxNumChannels:', maxNumChannels)
 		actionsList = []
 		isEnabledList = []
 		isCheckedList = []
@@ -941,23 +955,23 @@ class bStackWidget(QtWidgets.QMainWindow):
 			actionsList.append(f'Channel {chanNumber}')
 			isEnabled = self.mySimpleStack.hasChannelLoaded(chanNumber)
 			isEnabledList.append(isEnabled)
-			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1
+			isChecked = self.getStackView().displayStateDict['displayThisStack'] == chanNumber
 			isCheckedList.append(isChecked)
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber} Mask')
-			actualChanNumber = maxNumChannels + i
+			actualChanNumber = maxNumChannels + i + 1
 			isEnabled = self.mySimpleStack.hasChannelLoaded(actualChanNumber)
 			isEnabledList.append(isEnabled)
-			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1+maxNumChannels
+			isChecked = self.getStackView().displayStateDict['displayThisStack'] == actualChanNumber
 			isCheckedList.append(isChecked)
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber} Skel')
-			actualChanNumber = 2 * maxNumChannels + i
+			actualChanNumber = 2 * maxNumChannels + i + 1
 			isEnabled = self.mySimpleStack.hasChannelLoaded(actualChanNumber)
 			isEnabledList.append(isEnabled)
-			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1+maxNumChannels
+			isChecked = self.getStackView().displayStateDict['displayThisStack'] == actualChanNumber
 			isCheckedList.append(isChecked)
 		if numChannels>1:
 			actionsList.append('RGB')

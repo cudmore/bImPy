@@ -16,7 +16,6 @@ class bLineProfile:
 	def __init__(self, stack):
 		self.mySimpleStack = stack
 
-
 	def getLine(self, slabIdx, radius=None):
 		"""
 		given a slab, return coordinates of line
@@ -25,6 +24,9 @@ class bLineProfile:
 		"""
 		if radius is None:
 			radius = 30 # pixels
+
+		#print('bLineProfile.getLine()')
+		#print('  radius:', radius)
 
 		edgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(slabIdx)
 		if edgeIdx is None:
@@ -84,7 +86,7 @@ class bLineProfile:
 	def getIntensity(self, lineProfileDict, lineWidth, medianFilter):
 		"""
 		diameter is in pixels
-		
+
 		taken from bLineProfileWidget.update()
 		"""
 		slabIdx = lineProfileDict['slabIdx'] # just used in return
@@ -93,7 +95,7 @@ class bLineProfile:
 		slice = lineProfileDict['slice']
 		#print('bLineProfileWidget.update() xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot, 'slice:', slice)
 
-		imageSlice = self.mySimpleStack.getImage(sliceNum=slice)
+		imageSlice = self.mySimpleStack.getImage2(channel=2, sliceNum=slice)
 
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])

@@ -87,7 +87,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	def __init__(self, parent=None, mySimpleStack=None):
 		super(myPyQtGraphPlotWidget, self).__init__(parent=parent)
 
-		self.mainWindow = parent
+		self.mainWindow = parent # usually bStackWidget
 		self.myZoom = 1 # to control point size of tracing plot() and setdata()
 
 		##
@@ -440,9 +440,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		draw one slab as a line orthogonal to edge
 		"""
-		print('drawSlab() slabIdx:', slabIdx)
+		print('bPyQtGraph.drawSlabLine() slabIdx:', slabIdx)
 		if radius is None:
-			radius = 30 # pixels
+			radius = 12 # pixels
+		print('  radius:', radius)
 
 		if slabIdx is None:
 			slabIdx = self.selectedSlab()
@@ -452,7 +453,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# todo: could pas edgeIdx as a parameter
 		edgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(slabIdx)
 		if edgeIdx is None:
-			print('warning: myPyQtGraphPlotWidget.drawSlab() got bad edgeIdx:', edgeIdx)
+			print('warning: myPyQtGraphPlotWidget.drawSlabLine() got bad edgeIdx:', edgeIdx)
 			return
 		edgeSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
 		thisSlabIdx = edgeSlabList.index(slabIdx) # index within edgeSlabList
@@ -495,7 +496,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# was this
 		#self.mySlabLinePlot.set_xdata(ySlabPlot) # flipped
 		#self.mySlabLinePlot.set_ydata(xSlabPlot)
-		print('  xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot)
+		#print('  bPyQtGraph.drawSlabLine() xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot)
 		self.mySlabPlotOne.setData(ySlabPlot, xSlabPlot) # flipped
 
 		displayThisStack = self.displayStateDict['displayThisStack']
@@ -836,7 +837,13 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 			if displayThisStack == 'rgb':
 				sliceImage1 = self.mySimpleStack.getImage2(channel=1, sliceNum=thisSlice)
+				if sliceImage1 is None:
+					print('errror setSlice() showing rgb, sliceImage1 is None')
+					return False
 				sliceImage2 = self.mySimpleStack.getImage2(channel=2, sliceNum=thisSlice)
+				if sliceImage2 is None:
+					print('errror setSlice() showing rgb, sliceImage2 is None')
+					return False
 				m = sliceImage1.shape[0]
 				n = sliceImage1.shape[1]
 				dtype = sliceImage1.dtype # assuming both have same dtype
@@ -858,6 +865,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				else:
 					#imageChannel = displayThisStack-maxNumChannels
 					imageChannel = displayThisStack % maxNumChannels # remainder after division
+					#print('bPyQtGraph.setSlice() imageChannel:', imageChannel)
 					sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
 					skelChannel = displayThisStack + maxNumChannels
 					sliceSkelImage = self.mySimpleStack.getImage2(channel=skelChannel, sliceNum=thisSlice)
@@ -866,7 +874,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					sliceImage = np.zeros((m,n,3), dtype=np.uint8)
 					# assuming we want channel 1 as green and channel 2 as magenta
 					sliceImage[:,:,0] = sliceChannelImage # red
-					sliceImage[:,:,1] = sliceSkelImage # green
+					if sliceSkelImage is not None:
+						sliceImage[:,:,1] = sliceSkelImage # green
 					sliceImage[:,:,2] = sliceMaskImage # blue
 					# contrast for [0,1] mask
 					autoLevels = False

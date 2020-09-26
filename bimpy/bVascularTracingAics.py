@@ -7,12 +7,11 @@ import json
 
 import numpy as np
 
-from qtpy import QtGui, QtCore, QtWidgets
+#from qtpy import QtGui, QtCore, QtWidgets
 
 import bimpy
 
 import multiprocessing as mp
-
 
 stackDatabase = OrderedDict()
 
@@ -263,6 +262,32 @@ def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 	return newEdgeIdx, newSrcNodeIdx, newDstNodeIdx
 
 #####################################################################
+def removeShortEdges(vascTracing, removeSmallerThan=3):
+	print('bVascularTracingAics.removeShortEdges() removeSmallerThan:', removeSmallerThan)
+	deleteEdgeList = []
+	for edgeIdx, edge in enumerate(vascTracing.edgeIter()):
+		if edge['nSlab'] <= removeSmallerThan:
+			# remove edge
+			#vascTracing.deleteEdge(edgeIdx)
+			deleteEdgeList.append(edgeIdx)
+
+	nEdgesToRemove= len(deleteEdgeList)
+	print(f'   removing {nEdgesToRemove} short edges')
+	print(f'   before remove {vascTracing.numEdges()} edges')
+	for idx in range(nEdgesToRemove):
+		edgeIdx = deleteEdgeList[idx]
+		#print(f'  removeShortEdges() deleting edgeIdx {edgeIdx}, total edges is {vascTracing.numEdges()}')
+		try:
+			vascTracing.edgeDictList[edgeIdx]
+		except (IndexError) as e:
+			print(f'    removeShortEdges() edgeIdx does not exist {edgeIdx}, num edges is {vascTracing.numEdges()}')
+		else:
+			vascTracing.deleteEdge(edgeIdx)
+		# [unicode(x.strip()) if x is not None else '' for x in row]
+		deleteEdgeList = [x-1 if x>edgeIdx else x for x in deleteEdgeList]
+	print(f'   after remove {vascTracing.numEdges()} edges')
+
+#####################################################################
 def detectEdgesAndNodesToRemove(vascTracing):
 	"""
 	remove edges that have src/dst nodes that do not connect to other
@@ -344,7 +369,8 @@ def detectEdgesAndNodesToRemove(vascTracing):
 #####################################################################
 # see: https://stackoverflow.com/questions/29310824/how-to-implement-multicore-processing-in-python-3-and-pyqt5
 #class myWorkThread(QtCore.QThread):
-class myWorkThread(QtCore.QRunnable):
+#class myWorkThread(QtCore.QRunnable):
+class myWorkThread:
 	"""
 	General purpose thread to run python multiprocessing pool.
 	This is required for mp to work within the main PyQt5 thread
@@ -352,91 +378,69 @@ class myWorkThread(QtCore.QRunnable):
 	type: pass a unique string and we will call different worker function
 	"""
 
-	workerThreadFinishedSignal = QtCore.Signal(object)
+	#workerThreadFinishedSignal = QtCore.Signal(object)
 
-	def __init__(self, slabList, type, paramDict):
+	def __init__(self, slabList, type, paramDict=None):
 		"""
 		slabList: usually bStackWindget.mySimpleStack.slabList
 		type: string description
-		"""
-		super(myWorkThread, self).__init__()
+		paramDict: 'radius;, 'lineWidth', 'medianFilter
+		'"""
+
+		#super(myWorkThread, self).__init__()
 
 		self.slabList = slabList # self.mySimpleStack.slabList
 		self.type = type
+
+		if paramDict is None:
+			paramDict = {
+				'radius': 12,
+				'lineWidth': 5,
+				'medianFilter': 5,
+			}
 		self.paramDict = paramDict
 
-	'''
-	def __del__(self):
-		self.wait()
-	'''
-
-	'''
-	def ____worker_getOneEdgeRadius(self, lp, edgeIdx, radius, lineWidth, medianFilter):
-		"""
-		return list of slabIdx with diam of each (can be nan)
-		"""
-		edgeDict = self.slabList.getEdge(edgeIdx)
-
-		thisDiamList = []
-		slabIdxList = []
-
-		#print('worker_getOneEdgeRadius edgeIdx:', edgeIdx, len(edgeDict['slabList']))
-		for slabIdx in edgeDict['slabList']:
-
-			slabIdxList.append(slabIdxList)
-
-			lpDict = lp.getLine(slabIdx, radius=radius) # default is radius=30
-
-			thisDiam = np.nan
-			if lpDict is not None:
-				retDict = lp.getIntensity(lpDict, lineWidth=lineWidth, medianFilter=medianFilter)
-				if retDict is not None:
-					thisDiamList.append(retDict['diam']) # bImPy diameter
-					#self.d2[slabIdx] = retDict['diam']
-				else:
-					thisDiamList.append(np.nan)
-					#self.d2[slabIdx] = np.nan
-			else:
-				thisDiamList.append(np.nan)
-				#self.d2[slabIdx] = np.nan
-
-		#print('  done worker_getOneEdgeRadius edgeIdx:', edgeIdx, len(edgeDict['slabList']))
-		return edgeIdx, slabIdxList, thisDiamList
-	'''
+		print('bVascularTracingAics.myWorkThread() init')
+		print('  self.type:', type)
+		print('  self.paramDict:', self.paramDict)
 
 	def run(self):
-		print('myWorkThread.run() type:', self.type)
+		print('myWorkThread.run() type:', self.type, 'self.paramDict:', self.paramDict)
 
 		radius = self.paramDict['radius'] #20
 		lineWidth = self.paramDict['lineWidth'] #5
 		medianFilter = self.paramDict['medianFilter'] #3
 
 		cpuCount = mp.cpu_count()
-		cpuCount -= 1
-		print('  run() cpuCount:', cpuCount)
+		cpuCount -= 2
+		print('  myWorkThread.run() cpuCount:', cpuCount)
 		# The multiprocessing.pool.ThreadPool behaves the same as the multiprocessing.Pool with the only difference that uses threads instead of processes to run the workers logic
 		pool = mp.Pool(processes=cpuCount)
 		#pool = mp.pool.ThreadPool(processes=cpuCount)
 		results = []
 
-		lp = bimpy.bLineProfile(self.slabList.parentStack)
+		# this was working but trying to get it to run in parallel
+		#lp = bimpy.bLineProfile(self.slabList.parentStack)
 
 		nEdges = self.slabList.numEdges()
 		for edgeIdx in range(nEdges):
-			if edgeIdx % 20 == 0:
-				print('    putting edgeIdx:', edgeIdx, 'of', nEdges, 'edges')
+			if edgeIdx % 500 == 0:
+				print('    putting edgeIdx:', edgeIdx, 'to', edgeIdx+500, 'of', nEdges, 'edges')
 
 			edgeDict = self.slabList.getEdge(edgeIdx)
 
-			args = [self.slabList, lp, edgeIdx, radius, lineWidth, medianFilter]
+			#args = [self.slabList, lp, edgeIdx, radius, lineWidth, medianFilter]
+			args = [self.slabList,
+				bimpy.bLineProfile(self.slabList.parentStack),
+				edgeIdx,
+				radius,
+				lineWidth,
+				medianFilter]
 			#pool.apply_async(worker_getOneEdgeRadius, args, callback=results.append)
 			oneResult = pool.apply_async(worker_getOneEdgeRadius, args)
 			results.append(oneResult)
 
-		#pool.close()
-		#pool.join()
-
-		print('xxx done')
+		print(f'myWorkThread() done adding {nEdges} edges to pool.apply_async')
 
 		numAnalyzed = 0
 		nResult = len(results)
@@ -446,13 +450,6 @@ class myWorkThread(QtCore.QRunnable):
 				print('    fetching resultIdx:', resultIdx+1, 'of', nResult)
 
 			oneEdgeIdx, oneSlabIdxList, oneDiamList = result.get() # edgeIdx, slabIdxList, thisDiamList
-
-			'''
-			print('result')
-			print('  oneEdgeIdx:', oneEdgeIdx)
-			print('  oneSlabIdxList:', oneSlabIdxList)
-			print('  oneDiamList:', oneDiamList)
-			'''
 
 			for oneResultIdx, oneSlabIdx in enumerate(oneSlabIdxList):
 				self.slabList.d2[oneSlabIdx] = oneDiamList[oneResultIdx]
@@ -475,13 +472,21 @@ class myWorkThread(QtCore.QRunnable):
 def worker_getOneEdgeRadius(slabList, lp, edgeIdx, radius, lineWidth, medianFilter):
 	"""
 	return list of slabIdx with diam of each (can be nan)
+
+	parameters:
+		slabList:
+		lp: bimpy.bLineProfile(self.parentStack)
+		edgeIDx:
+		radius:
+		lineWidth:
+		medianFilter:
 	"""
 	edgeDict = slabList.getEdge(edgeIdx)
 
 	thisDiamList = []
 	slabIdxList = []
 
-	print('worker_getOneEdgeRadius edgeIdx:', edgeIdx, len(edgeDict['slabList']))
+	#print('worker_getOneEdgeRadius edgeIdx:', edgeIdx, 'nSlabs:', len(edgeDict['slabList']), 'num edges:', slabList.numEdges())
 	for slabIdx in edgeDict['slabList']:
 
 		slabIdxList.append(slabIdx)

@@ -309,8 +309,22 @@ class bStack:
 		return image
 
 	def hasChannelLoaded(self, channel):
-		channel -= 1
-		theRet = self._stackList[channel] is not None
+		"""
+		channel: 1,2,3,...
+		"""
+		channelIdx = channel - 1
+		#print('bStack.hasChannelLoaded()')
+		#print('  channel:', channel)
+		'''
+		for idx, stack in enumerate(self._stackList):
+			if stack is None:
+				print('  stack', idx, 'None')
+			else:
+				print('  stack', idx, stack.shape)
+		'''
+		# 20200924 was this
+		#channel -= 1
+		theRet = self._stackList[channelIdx] is not None
 		return theRet
 
 	def getSlidingZ2(self, channel, sliceNumber, upSlices, downSlices):
@@ -386,7 +400,9 @@ class bStack:
 				print('  bStack.loadLabeled() loading channelNumber:', channelNumber, 'labeledPath:', labeledPath)
 				labeledData = tifffile.imread(labeledPath)
 				# mask is made of all labels
+				print('    assigning self._stackList[stackListIdx] stackListIdx:', stackListIdx)
 				self._stackList[stackListIdx] = labeledData > maskFromLabelGreaterThan
+				print('    shape is:', self._stackList[stackListIdx].shape)
 			else:
 				#print('  bStack.loadLabeled() did not find _labeled path:', labeledPath)
 				pass

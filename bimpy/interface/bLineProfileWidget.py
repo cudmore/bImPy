@@ -17,14 +17,22 @@ class bLineProfileWidget(QtWidgets.QWidget):
 	def __init__(self, mainWindow=None):
 		super(bLineProfileWidget, self).__init__()
 
-		self.mainWindow = mainWindow
+		self.mainWindow = mainWindow # usually bStackWidget
 
 		self.updateDict = None
 
-		self.lineLength = 5
+		# grab local copies, do not change options
+		self.lineLength = self.mainWindow.getOptions()['LineProfile']['lineLength'] #12 # pixels
+		self.lineWidth = self.mainWindow.getOptions()['LineProfile']['lineWidth'] #5
+		self.medianFilter = self.mainWindow.getOptions()['LineProfile']['medianFilter']  #5
+		self.halfHeight = self.mainWindow.getOptions()['LineProfile']['halfHeight'] #0.5
+
+		'''
+		self.lineLength = 12
 		self.lineWidth = 3
 		self.medianFilter = 5
 		self.halfHeight = 0.5
+		'''
 
 		self.doUpdate = True # set to false to not update on signal/slot
 
@@ -125,19 +133,22 @@ class bLineProfileWidget(QtWidgets.QWidget):
 	def lineLength_Callback(self, value):
 		print('lineLength_Callback() value:', value)
 		self.lineLength = value
-		self.mainWindow.getStackView().drawSlab(radius=value)
+		self.mainWindow.getStackView().drawSlabLine(radius=value)
 
 	def lineWidth_Callback(self, value):
+		print('lineWidth_Callback() value:', value)
 		self.lineWidth = value
 		if self.updateDict is not None:
 			self.updateLineProfile(self.updateDict)
 
 	def medianFilter_Callback(self, value):
+		print('medianFilter_Callback() value:', value)
 		self.medianFilter = value
 		if self.updateDict is not None:
 			self.updateLineProfile(self.updateDict)
 
 	def halfHeight_Callback(self, value):
+		print('halfHeight_Callback() value:', value)
 		self.halfHeight = value
 		if self.updateDict is not None:
 			self.updateLineProfile(self.updateDict)
@@ -160,7 +171,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		if not displayThisStack in [1,2,3,4]:
 			return
-		
+
 		imageSlice = self.mainWindow.getStack().getImage2(channel=displayThisStack, sliceNum=slice)
 
 		src = (xSlabPlot[0], ySlabPlot[0])

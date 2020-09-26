@@ -294,6 +294,7 @@ def main(useBioformats=False):
 	app.setWindowIcon(appIcon)
 
 	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
+	path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
 
 	try:
 		if useBioformats:
@@ -332,6 +333,9 @@ if __name__ == '__main__':
 		if arg == '--bioformats':
 			useBioformats = True
 
+	main(useBioformats=useBioformats)
+
+	'''
 	app = QtWidgets.QApplication(sys.argv)
 
 	# set the icon of the application
@@ -382,6 +386,7 @@ if __name__ == '__main__':
 		raise
 
 	sys.exit(app.exec_()) # this will loop
+	'''
 
 	# this is never called ???
 	'''
