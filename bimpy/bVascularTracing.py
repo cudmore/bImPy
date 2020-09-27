@@ -2693,11 +2693,10 @@ if __name__ == '__main__':
 		'lineWidth': 5,
 		'medianFilter': 5,
 	}
-	tmpWorkThread = bimpy.bVascularTracingAics.myWorkThread(stack.slabList, type, paramDict)
-	tmpWorkThread.run()
-	#tmpWorkThread,join()
+	bimpy.bVascularTracingAics.myWorkThread(stack.slabList, type, paramDict)
 
-	stack.saveAnnotations()
+	# after this we should have diam of all slabs
+	#stack.saveAnnotations()
 
 	if 0:
 		nodeIdx1 = 34

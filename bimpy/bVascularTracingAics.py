@@ -2,8 +2,8 @@
 20200819
 bVascularTracingAics
 """
+import time, json
 from collections import OrderedDict
-import json
 
 import numpy as np
 
@@ -404,6 +404,8 @@ class myWorkThread:
 		print('  self.type:', type)
 		print('  self.paramDict:', self.paramDict)
 
+		self.run()
+
 	def run(self):
 		print('myWorkThread.run() type:', self.type, 'self.paramDict:', self.paramDict)
 
@@ -429,6 +431,11 @@ class myWorkThread:
 
 			edgeDict = self.slabList.getEdge(edgeIdx)
 
+			# debug
+			args = [edgeIdx]
+			oneResult = pool.apply_async(worker_debug, args)
+
+			'''
 			#args = [self.slabList, lp, edgeIdx, radius, lineWidth, medianFilter]
 			args = [self.slabList,
 				bimpy.bLineProfile(self.slabList.parentStack),
@@ -437,7 +444,10 @@ class myWorkThread:
 				lineWidth,
 				medianFilter]
 			#pool.apply_async(worker_getOneEdgeRadius, args, callback=results.append)
+			# real
 			oneResult = pool.apply_async(worker_getOneEdgeRadius, args)
+			'''
+			#
 			results.append(oneResult)
 
 		print(f'myWorkThread() done adding {nEdges} edges to pool.apply_async')
@@ -451,6 +461,10 @@ class myWorkThread:
 
 			oneEdgeIdx, oneSlabIdxList, oneDiamList = result.get() # edgeIdx, slabIdxList, thisDiamList
 
+			print('    got oneEdgeIdx:', oneEdgeIdx, 'oneSlabIdxList:', oneSlabIdxList, 'oneDiamList:', oneDiamList)
+
+			'''
+			# put this back in after debug(ing)
 			for oneResultIdx, oneSlabIdx in enumerate(oneSlabIdxList):
 				self.slabList.d2[oneSlabIdx] = oneDiamList[oneResultIdx]
 			if len(oneDiamList) > 0:
@@ -459,6 +473,7 @@ class myWorkThread:
 				thisDiamMean = np.nan
 			edgeDict = self.slabList.getEdge(oneEdgeIdx)
 			edgeDict['Diam2'] = thisDiamMean
+			'''
 
 			#
 			numAnalyzed += len(oneSlabIdxList)
@@ -467,6 +482,15 @@ class myWorkThread:
 
 		#
 		print('  myWorkThread.run() done with', nResult, 'results and ', numAnalyzed, 'analyzed')
+
+#####################################################################
+# trying to understand why this is not in parallel
+def worker_debug(edgeIdx):
+	time.sleep(2)
+	#edgeIdx = edgeIdx
+	slabIdxList = [-999]
+	thisDiamList = [-999]
+	return edgeIdx, slabIdxList, thisDiamList
 
 #####################################################################
 def worker_getOneEdgeRadius(slabList, lp, edgeIdx, radius, lineWidth, medianFilter):

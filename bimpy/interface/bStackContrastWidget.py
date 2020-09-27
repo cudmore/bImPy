@@ -2,8 +2,8 @@
 
 import numpy as np
 
-#from PyQt5 import QtGui, QtCore, QtWidgets
-from qtpy import QtGui, QtCore, QtWidgets
+from PyQt5 import QtGui, QtCore, QtWidgets
+#from qtpy import QtGui, QtCore, QtWidgets
 
 from matplotlib.figure import Figure
 from matplotlib.backends import backend_qt5agg
@@ -67,7 +67,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 	#contrastChangeSignal = QtCore.pyqtSignal(object) # object can be a dict
 	contrastChangeSignal = QtCore.Signal(object) # object can be a dict
 
-		
+
 	def __init__(self, mainWindow=None, parent=None):
 		super(bStackContrastWidget, self).__init__(parent)
 
@@ -77,7 +77,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.myDoUpdate = True # set to false to not update on signal/slot
 		self.plotLogHist = True
-		
+
 		#self._minColor = None
 		#self._maxColor = None
 
@@ -118,13 +118,13 @@ class bStackContrastWidget(QtWidgets.QWidget):
 	def setSlice(self, sliceNumber):
 		if not self.myDoUpdate:
 			return
-		
+
 		# this should be a slot_ like slot_updateChannel()
 		# channel is (1,2,3,...) can also be 'rgb'
 		channel = self.mainWindow.getStackView().displayStateDict['displayThisStack']
 
 		#print('bStackContrastWidget.setSlice() channel:', channel)
-		
+
 		maxNumChannels = self.mainWindow.getStackView().mySimpleStack.maxNumChannels
 		if isinstance(channel,int) and channel < maxNumChannels:
 			#data = self.mainWindow.myStackView.mySimpleStack.stack[channel,sliceNumber,:,:]
@@ -134,7 +134,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 				data = data.ravel() # returns a copy
 		else:
 			data = None
-		
+
 		#self.axes.plot(x, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
 		# see: https://stackoverflow.com/questions/35738199/matplotlib-pyplot-hist-very-slow
 		#num_bins = 2 ** 13
@@ -157,17 +157,17 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		if data is not None:
 			doLog = self.plotLogHist
 			n, bins, patches = self.axes.hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=1.0)
-	
-		
+
+
 		#
 		self.canvasHist.draw()
 		#self.canvasHist.draw_idle()
-		
+
 	def emitChange(self):
 		myEvent = bimpy.interface.bEvent('contrast change')
 		myEvent.contrastDict = self.contrastDict
 		self.contrastChangeSignal.emit(myEvent)
-		
+
 	def sliderValueChanged(self):
 		theMin = self.minContrastSlider.value()
 		theMax = self.maxContrastSlider.value()
@@ -177,7 +177,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.contrastDict['minContrast'] = theMin
 		self.contrastDict['maxContrast'] = theMax
-		
+
 		self.emitChange()
 
 	def spinBoxValueChanged(self):
@@ -194,14 +194,14 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 	def color_Callback(self, idx):
 		newColor = self._myColors[idx]
-		
+
 		#print('color_Callback() newColor:', newColor)
-		
+
 		self.color = newColor
 
 		minColor = self.minColorButton.getColor()
 		maxColor = self.maxColorButton.getColor()
-		
+
 		# set in window
 		#self.mainWindow.getStackView().set_cmap(newColor, minColor='black', maxColor='white')
 
@@ -210,7 +210,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.contrastDict['maxColor'] = maxColor
 
 		self.emitChange()
-		
+
 	def checkbox_callback(self, isChecked):
 		sender = self.sender()
 		title = sender.text()
@@ -231,7 +231,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		elif title == 'Log':
 			self.plotLogHist = not self.plotLogHist
 			self.setSlice()
-			
+
 	def bitDepth_Callback(self, idx):
 		newBitDepth = self._myBitDepths[idx]
 		print('bitDepth_Callback() newBitDepth:', newBitDepth)
@@ -352,7 +352,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		colorComboBox.setCurrentIndex(colorIdx)
 		colorComboBox.currentIndexChanged.connect(self.color_Callback)
 		#colorComboBox.setEnabled(False)
-		
+
 		# todo: not implemented, turn hist on/off
 		self.logCheckbox = QtWidgets.QCheckBox('Log')
 		self.logCheckbox.setChecked(self.plotLogHist)
@@ -409,7 +409,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		histHBoxLayout.addWidget(self.logCheckbox)
 		histHBoxLayout.addWidget(self.canvasHist)
 		'''
-		
+
 		#
 		#self.myQVBoxLayout.addLayout(histHBoxLayout)
 
