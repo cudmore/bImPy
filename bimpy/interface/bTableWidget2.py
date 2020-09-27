@@ -42,17 +42,17 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		#print('  original table font size:', fnt.pointSize())
 		fnt.setPointSize(12)
 		self.setFont(fnt)
-		
+
 		self._rowHeight = 12
 		#self.setRowHeight(12)
-		
+
 		# getting error: AttributeError: 'PyQt5.QtCore.pyqtSignal' object has no attribute 'connect'
 		'''
 		if type == 'node search':
 			print('bTableWidget2() connecting to bSearchAnnotations.searchFinishedSignal')
 			bimpy.bSearchAnnotations.searchFinishedSignal.connect(self.slot_SearchFinished)
 		'''
-			
+
 		# I want a visual iterator to traverse a path/loop of edges
 		# this will require a second search in bStackView and bNapari
 		self.edgeIterIndex = None
@@ -129,7 +129,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			for colIdx, item in enumerate(rowItems):
 				self.setRowHeight(rowIdx, self._rowHeight)
 				self.setItem(rowIdx, colIdx, item)
-				
+
 		# resize headers based on content
 		header = self.horizontalHeader()
 		for idx, label in enumerate(self.headerLabels):
@@ -167,14 +167,14 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		else:
 			myEvent.printSlot('bTableWidget.slot_select() did not respond')
 			#print('    slot_select() did not respond to myEvent.eventType:', myEvent.eventType)
-			
+
 	def slot_updateTracing(self, myEvent):
 		"""
 		respond to edits
 		"""
 
 		myEvent.printSlot('bTableWidget2.slot_updateTracing()')
-		
+
 		if myEvent.eventType == 'newNode' and self._type == 'nodes':
 			newRowIdx = self.appendRow(myEvent.nodeDict)
 			self.mySelectRow(rowIdx=newRowIdx)
@@ -219,7 +219,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		print('bTableWidget2.slot_newSearchHit()')
 		print('  searchType:', searchType)
 		print('  newHitDict:', newHitDict)
-	
+
 	def slot_SearchFinished(self, searchType, hitDictList):
 		print('bTableWidget2.slot_SearchFinished()')
 		print('  searchType:', searchType)
@@ -230,7 +230,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		'''
 		self._type = searchType
 		self.populate(hitDictList)
-		
+
 	def appendRow(self, theDict):
 		"""
 		append
@@ -256,9 +256,9 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		this is super freaking sloppy
 		"""
 		print('bTableWidget2.deleteRowByIndex()', self._type, 'deleteRowIdx:', deleteRowIdx)
-		
+
 		self.stopSelectionPropogation = True
-		
+
 		rowIdx = self._findRow(theIdx=deleteRowIdx, theDict=None)
 		if rowIdx is None:
 			print('   \n\n\n                    !!! !!! THIS IS A BUG: bTableWidget2.deleteRowByIndex() rowIdx', rowIdx, 'theDict:', theDict)
@@ -277,7 +277,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 					self.setItem(row, 0, item) # assuming col 0 is 'idx' !!!!!!!!!
 		#
 		self.repaint()
-		
+
 	'''
 	def deleteRow(self, theDict):
 		"""
@@ -288,7 +288,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			return
 		else:
 			print('bTableWidget2.deleteRow()', self._type, 'theDict["idx"]:', theDict['idx'])
-		
+
 		self.stopSelectionPropogation = True
 		deletingRowIdx = theDict['idx']
 		rowIdx = self._findRow(theDict=theDict)
@@ -309,7 +309,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 					item.setData(QtCore.Qt.EditRole, myString)
 					self.setItem(row, 0, item) # assuming col 0 is 'idx' !!!!!!!!!
 	'''
-	
+
 	def setRow(self, rowDict):
 		"""
 		Assume: rowDict['Idx']
@@ -450,7 +450,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 	def on_clicked_row(self):
 		#print('on_clicked_node()')
 		row = self.currentRow()
-		
+
 		'''
 		mouse_state = self.mainWindow.mainWindow.mouseButtons()
 		print('mouse_state:', mouse_state)
@@ -513,7 +513,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 						edgeIdx = edgeList[self.edgeIterIndex]
 				else:
 					edgeList = []
-					
+
 					# todo: make all edge/node search use idx for object (edge/node) index
 					idx = self.getCellValue_int('idx')
 					edge1 = self.getCellValue_int('edge1')
@@ -737,7 +737,7 @@ class bAnnotationTableWidget(bTableWidget2):
 
 	def on_clicked_row(self):
 		row = self.currentRow()
-		
+
 		myItem = self.item(row, 0) # 0 is idx column
 		myIdx = myItem.text()
 		if myIdx=='':
@@ -762,7 +762,7 @@ class bAnnotationTableWidget(bTableWidget2):
 	def keyPressEvent(self, event):
 		key = event.key()
 		print('=== bAnnotationTableWidget.keyPressEvent() in', self._type, 'key:', event.text())
-		
+
 		if key in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
 			print('bAnnotationTableWidget delete not implemented ... please delete from the image')
 			'''
@@ -788,7 +788,7 @@ class bAnnotationTableWidget(bTableWidget2):
 		"""
 
 		myEvent.printSlot('bAnnotationTableWidget.slot_updateTracing()')
-		
+
 		if myEvent.eventType == 'newAnnotation':
 			newRowIdx = self.appendRow(myEvent.nodeDict)
 			self.mySelectRow(rowIdx=newRowIdx)

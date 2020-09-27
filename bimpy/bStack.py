@@ -39,7 +39,11 @@ class bStack:
 		path: full path to file
 		folderPath: path to folder with .tif files
 		"""
-		print('bStack.__init__() path:', path)
+		#print('bStack.__init__() path:', path)
+
+		if path and not os.path.isfile(path):
+			#print('error: bStack() did not find file path:', path)
+			raise ValueError('error: bStack() file not found: ' + path)
 
 		self._numChannels = None
 		self.slabList = None

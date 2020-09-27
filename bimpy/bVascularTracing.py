@@ -1092,15 +1092,18 @@ class bVascularTracing:
 			#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
 
 			dvMask = self.parentStack.getStack('mask', 2)
-			dvMask = dvMask.copy() # we might blank some slices
+			if dvMask is not None:
+				dvMask = dvMask.copy() # we might blank some slices
 
-			print('  loadDeepVess() aics dvMask', dvMask.shape, dvMask.dtype)
-			tmpPath = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
-			if self.path == tmpPath:
-				print('\n\n    need to remove top/bottom slices')
-				print('    blanking slices 0..16')
-				dvMask[0:16,:,:] = 0
-
+				print('  loadDeepVess() aics dvMask', dvMask.shape, dvMask.dtype)
+				tmpPath = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
+				if self.path == tmpPath:
+					print('\n\n    need to remove top/bottom slices')
+					print('    blanking slices 0..16')
+					dvMask[0:16,:,:] = 0
+			else:
+				print('bVasularTracing.loadDeepVess() got None dvMask')
+				return False
 		else:
 			dvMaskPath += '_dvMask.tif'
 			dvMaskPath += '_mask.tif'
@@ -1149,6 +1152,7 @@ class bVascularTracing:
 
 		# 20200901 laptop
 		#parentStack = self.parentStack.getStack('ch1')
+		print('critical todo: get rid of hard coded vascChannel = 2')
 		vascChannel = 2
 		parentStack = self.parentStack.getStack('raw', vascChannel) # vasc channel
 		print('parentStack:', parentStack.shape)

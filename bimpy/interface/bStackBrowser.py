@@ -3,8 +3,8 @@
 import os, sys
 import traceback
 
-from PyQt5 import QtGui, QtCore, QtWidgets
-#from qtpy import QtGui, QtCore, QtWidgets
+#from PyQt5 import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets
 
 # we are not using bioformats, just testing if it is installed
 try:
@@ -16,6 +16,8 @@ except (Exception) as e:
 import qdarkstyle #see: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 
 import bimpy
+import bimpy.interface
+
 #from bimpy import bJavaBridge
 #from bimpy.interface import bStackWidget
 

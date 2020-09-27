@@ -20,3 +20,6 @@ from .bDialog import *
 from .bPyQtGraph import myPyQtGraphPlotWidget
 from .bToolBar import bToolBar
 from .bSearchWidget import bSearchWidget
+
+# todo: rewrite this to not depend on PyQt5
+from .bSearchAnnotations import bSearchAnnotations

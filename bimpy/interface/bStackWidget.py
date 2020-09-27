@@ -548,8 +548,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 		#
 		# search
 		elif signal == 'Disconnected Edges':
-			self.mySearchAnnotation = bimpy.bSearchAnnotations(self.mySimpleStack.slabList,
-								fn = bimpy.bSearchAnnotations.searchDisconnectedEdges,
+			self.mySearchAnnotation = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList,
+								fn = bimpy.interface.bSearchAnnotations.searchDisconnectedEdges,
 								params = None,
 								searchType='edge search')
 			self.mySearchAnnotation.searchFinishedSignal.connect(self.searchWidget.searchTable().slot_SearchFinished)
@@ -564,8 +564,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.editTable2._type = 'edge search'
 			'''
 
-			self.mySearchAnnotation = bimpy.bSearchAnnotations(self.mySimpleStack.slabList,
-								fn = bimpy.bSearchAnnotations.searchDeadEnd,
+			self.mySearchAnnotation = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList,
+								fn = bimpy.interface.bSearchAnnotations.searchDeadEnd,
 								params = thresholdDist,
 								searchType='edge search')
 			self.mySearchAnnotation.searchFinishedSignal.connect(self.searchWidget.searchTable().slot_SearchFinished)
@@ -590,14 +590,14 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.mySearchAnnotation.start()
 			'''
 
-			fn = bimpy.bSearchAnnotations.searchDeadEnd2
+			fn = bimpy.interface.bSearchAnnotations.searchDeadEnd2
 			params = thresholdDist # pass None for no parameters
 			searchType = 'node search'
 			self.startSearch(fn, params, searchType)
 
 		elif signal == 'search 1_2':
 			thresholdDist = value
-			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
+			searchObj = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList)
 			results = searchObj.searchBigGaps(thresholdDist=thresholdDist)
 			self.editTable2.populate(results)
 			self.editTable2._type = 'edge search'
@@ -612,33 +612,33 @@ class bStackWidget(QtWidgets.QMainWindow):
 			'''
 
 			thresholdDist = value
-			fn = bimpy.bSearchAnnotations.searchCloseNodes
+			fn = bimpy.interface.bSearchAnnotations.searchCloseNodes
 			params = thresholdDist # pass None for no parameters
 			searchType = 'node search'
 			self.startSearch(fn, params, searchType)
 
 		elif signal == 'search 1_6':
 			thresholdDist = value
-			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
+			searchObj = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList)
 			results = searchObj.searchCloseSlabs(thresholdDist=thresholdDist)
 			self.editTable2.populate(results)
 			self.editTable2._type = 'edge search'
 
 		elif signal == 'search 2':
-			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
+			searchObj = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList)
 			results = searchObj.allDeadEnds()
 			self.editTable2.populate(results)
 			self.editTable2._type = 'edge search'
 
 		elif signal == 'search 3':
-			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
+			searchObj = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList)
 			results = searchObj.shortestPath(value)
 			if results is not None:
 				self.editTable2.populate(results)
 				self.editTable2._type = 'edge search'
 
 		elif signal == 'search 4':
-			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
+			searchObj = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList)
 			results = searchObj.allPaths(value)
 			if results is not None:
 				self.editTable2.populate(results)
@@ -652,14 +652,14 @@ class bStackWidget(QtWidgets.QMainWindow):
 		#		self.editTable2._type = 'edge search'
 
 		elif signal == 'search 5':
-			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
+			searchObj = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList)
 			results = searchObj.allSubgraphs()
 			if results is not None:
 				self.editTable2.populate(results)
 				self.editTable2._type = 'edge search'
 
 		elif signal == 'search 6':
-			searchObj = bimpy.bSearchAnnotations(self.mySimpleStack.slabList)
+			searchObj = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList)
 			results = searchObj.allLoops(value)
 			if results is not None:
 				self.editTable2.populate(results)
@@ -674,7 +674,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		params:
 		searchType: ('node search', 'edgeSearch') defines the type of object in search results
 		"""
-		self.mySearchAnnotation = bimpy.bSearchAnnotations(self.mySimpleStack.slabList,
+		self.mySearchAnnotation = bimpy.interface.bSearchAnnotations(self.mySimpleStack.slabList,
 							fn = fn,
 							params = params,
 							searchType = searchType)
