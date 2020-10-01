@@ -120,6 +120,9 @@ class bStack:
 		#
 		self.header.print()
 
+	def prettyPrint(self):
+		self.header.prettyPrint()
+
 	def _getSavePath(self):
 		"""
 		return full path to filename without extension
@@ -404,9 +407,9 @@ class bStack:
 				print('  bStack.loadLabeled() loading channelNumber:', channelNumber, 'labeledPath:', labeledPath)
 				labeledData = tifffile.imread(labeledPath)
 				# mask is made of all labels
-				print('    assigning self._stackList[stackListIdx] stackListIdx:', stackListIdx)
+				#print('    assigning self._stackList[stackListIdx] stackListIdx:', stackListIdx)
 				self._stackList[stackListIdx] = labeledData > maskFromLabelGreaterThan
-				print('    shape is:', self._stackList[stackListIdx].shape)
+				#print('    shape is:', self._stackList[stackListIdx].shape)
 			else:
 				#print('  bStack.loadLabeled() did not find _labeled path:', labeledPath)
 				pass

@@ -37,12 +37,23 @@ import bimpy
 #import sanode
 from bimpy import bVascularTracingAics
 
+class NpEncoder(json.JSONEncoder):
+	def default(self, obj):
+		if isinstance(obj, np.integer):
+			return int(obj)
+		elif isinstance(obj, np.floating):
+			return float(obj)
+		elif isinstance(obj, np.ndarray):
+			return obj.tolist()
+		else:
+			return super(NpEncoder, self).default(obj)
+
 class bVascularTracing:
 	def __init__(self, parentStack, path, loadTracing=True):
 		"""
 		path: path to file
 		"""
-		print('bVascularTracing() loadTracing:', loadTracing)
+		print('bVascularTracing.__init__() loadTracing:', loadTracing)
 		self.parentStack = parentStack
 		self.path = path
 
@@ -57,13 +68,20 @@ class bVascularTracing:
 			else:
 				donotloadForNow = False
 				if not donotloadForNow:
-					loadedVesselucida = self.loadVesselucida_xml()
+					# load is probably broken
+					#loadedVesselucida = self.loadVesselucida_xml()
+					loadedVesselucida = False
 					if loadedVesselucida:
 						self.hasFile['vesselucida'] = True
 					else:
+						# this actually loads mask and then makes trcing from it
+						# only do this explicitly in a script
+						pass
+						'''
 						loadedDeepVess = self.loadDeepVess()
 						if loadedDeepVess:
 							self.hasFile['deepvess'] = True
+						'''
 					#
 					# todo: combine the next two into one function
 					self.analyzeEdgeDeadEnds() # mark edges coming from Vesseluica that has pre/post None
@@ -72,9 +90,11 @@ class bVascularTracing:
 					self.colorize()
 		#
 		# remove short edges
-		print('  bVascularTracing.__init__() calling bVascularTracingAics.removeShortEdges()')
-		bVascularTracingAics.removeShortEdges(self, removeSmallerThan=5)
-
+		'''
+		removeSmallerThan = 6
+		print('  calling bVascularTracingAics.removeShortEdges() removeSmallerThan:', removeSmallerThan)
+		bVascularTracingAics.removeShortEdges(self, removeSmallerThan=removeSmallerThan)
+		'''
 		#
 		self.makeGraph() # always make the graph
 
@@ -700,6 +720,7 @@ class bVascularTracing:
 			'deadEnd': None,
 			'skelID': None, # used by deepves
 			'color': 'cyan',
+			'nCon': None, # 0/1/2 for no other, one, or 2 other edges
 			'slabList': [], # list of slab indices on this edge
 			})
 		return edgeDict
@@ -773,19 +794,26 @@ class bVascularTracing:
 
 	def printNodeInfo(self, nodeIdx):
 		node = self.getNode(nodeIdx)
-		print('    printNodeInfo() nodeIdx:', nodeIdx, 'idx:', node['idx'], 'nEdges:', node['nEdges'], 'edgeList:', node['edgeList'])
+		#print('    printNodeInfo() nodeIdx:', nodeIdx, 'idx:', node['idx'], 'nEdges:', node['nEdges'], 'edgeList:', node['edgeList'])
+		print(json.dumps(node, indent=4))
 
-	def printEdgeInfo(self, edgeIdx):
+	def printEdgeInfo(self, edgeIdx, withNodes=True):
 		#print('printEdgeInfo() edgeIdx:', edgeIdx)
 
 		edge = self.getEdge(edgeIdx)
-		print('    printEdgeInfo() edgeIdx:', edgeIdx, 'idx:', edge['idx'], 'nSlab:', edge['nSlab'])
+		#print('    printEdgeInfo() edgeIdx:', edgeIdx, 'idx:', edge['idx'], 'nSlab:', edge['nSlab'])
+		for k,v in edge.items():
+			if k == 'slabList':
+				continue
+			print(f'    {k} : {v}')
+		#print(json.dumps(edge, indent=4, cls=NpEncoder))
 
-		preNodeIdx = edge['preNode']
-		postNodeIdx= edge['postNode']
+		if withNodes:
+			preNodeIdx = edge['preNode']
+			postNodeIdx= edge['postNode']
 
-		self.printNodeInfo(preNodeIdx)
-		self.printNodeInfo(postNodeIdx)
+			self.printNodeInfo(preNodeIdx)
+			self.printNodeInfo(postNodeIdx)
 
 	def printSlabInfo(self, slabIdx):
 		print('  slabIdx:', slabIdx, 'x:', self.x[slabIdx], 'y:', self.y[slabIdx], 'z:', self.z[slabIdx], 'edgeIdx:', self.edgeIdx[slabIdx], 'nodeIdx:', self.nodeIdx[slabIdx])
@@ -1059,11 +1087,19 @@ class bVascularTracing:
 
 		return True
 
-	def loadDeepVess(self):
-		print('bVascularTracing.loadDeepVess()')
+	def loadDeepVess(self, vascChannel=2, maskStartStop=None):
+		"""
+		maskStartStop: inclusive (start slice, stop slice)
+			mask out (set to 0) slices beyond this range
+			use this to only analyze a subset of the mask
+
+		todo: rename this makeSkelFromMask()
+		"""
+		print('bVascularTracing.loadDeepVess() maskStartStop:', maskStartStop)
+		print('  todo: rename this to makeSkelFromMask()')
 		dvMaskPath, ext = os.path.splitext(self.path)
 
-		print(' !!!!! 20200819 switching loadDeepVess to load vasc aics analysis')
+		#print(' !!!!! 20200819 switching loadDeepVess to load vasc aics analysis')
 
 		## abb aics analysis
 		"""
@@ -1095,12 +1131,28 @@ class bVascularTracing:
 			if dvMask is not None:
 				dvMask = dvMask.copy() # we might blank some slices
 
+				##
+				##
 				print('  loadDeepVess() aics dvMask', dvMask.shape, dvMask.dtype)
+				'''
 				tmpPath = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
 				if self.path == tmpPath:
 					print('\n\n    need to remove top/bottom slices')
 					print('    blanking slices 0..16')
 					dvMask[0:16,:,:] = 0
+				'''
+				if maskStartStop is not None:
+					#print('todo: blank out start/top of mask maskStartStop:', maskStartStop)
+					startSlice = maskStartStop[0]
+					stopSlice = maskStartStop[1]
+					if startSlice is not None:
+						print('   using startSlice:', startSlice, 'to mask [0..startSlice,:,:]')
+						dvMask[0:startSlice,:,:] = 0
+					if stopSlice is not None:
+						print('   uisng stopSlice:', stopSlice, 'to mask [stopSlice+1:,:,:]')
+						dvMask[stopSlice+1:,:,:] = 0
+				##
+				##
 			else:
 				print('bVasularTracing.loadDeepVess() got None dvMask')
 				return False
@@ -1122,16 +1174,18 @@ class bVascularTracing:
 			uFirstSlice = None
 			uLastSlice = None
 			try:
-				print('tmpBaseName:', tmpBaseName)
+				#print('tmpBaseName:', tmpBaseName)
 				trimDict = bVascularTracingAics.stackDatabase[tmpBaseName]
 				uFirstSlice = trimDict['uFirstSlice']
 				uLastSlice = trimDict['uLastSlice']
 			except (KeyError) as e:
-				print('did not find stack tmpBaseName:', tmpBaseName, 'in bVascularTracingAics.stackDatabase ---->>>> NO PRUNING/BLANKING')
+				# todo: get rid of this and use maskStartStop instead
+				#print('did not find stack tmpBaseName:', tmpBaseName, 'in bVascularTracingAics.stackDatabase ---->>>> NO PRUNING/BLANKING')
+				pass
 			if uFirstSlice is not None and uLastSlice is not None:
 				print('    loadDeepVess() aics pruning/blanking slices:', uFirstSlice, uLastSlice)
 				dvMask[0:uFirstSlice-1,:,:] = 0
-				dvMask[uLastSlice:-1,:,:] = 0
+				dvMask[uLastSlice:,:,:] = 0
 
 			'''
 			uFirstSlice = 44 # /Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif
@@ -1152,13 +1206,13 @@ class bVascularTracing:
 
 		# 20200901 laptop
 		#parentStack = self.parentStack.getStack('ch1')
-		print('critical todo: get rid of hard coded vascChannel = 2')
-		vascChannel = 2
+		#print('critical todo: get rid of hard coded vascChannel = 2')
+		#vascChannel = 2
 		parentStack = self.parentStack.getStack('raw', vascChannel) # vasc channel
-		print('parentStack:', parentStack.shape)
+		print('  parentStack:', parentStack.shape)
 		#
 		# convert the deepvess mask to a skeleton (same as deepves postprocess)
-		print('    making skeleton from binary stack dvMask ...')
+		print('  making 1-pixel skeleton from binary stack dvMask ...')
 		startSeconds = time.time()
 		# todo: fix this, older version need to use max_pool3d
 		#skeleton0 = morphology.skeletonize(dvMask)
@@ -1169,7 +1223,7 @@ class bVascularTracing:
 			print('    - loading dv skel from file:', dvSkelPath)
 			skeleton0 = tifffile.imread(dvSkelPath)
 		else:
-			print('    - generating skeleton from dvMask using morphology.skeletonize_3d ... might be too slow')
+			print('    generating 1-pixel skeleton from dvMask using morphology.skeletonize_3d ... might be too slow')
 			skeleton0 = morphology.skeletonize_3d(dvMask)
 		print('    skeleton0:', type(skeleton0), skeleton0.dtype, skeleton0.shape, np.min(skeleton0), np.max(skeleton0))
 		print('        took:', round(time.time()-startSeconds,2), 'seconds')
@@ -1184,14 +1238,14 @@ class bVascularTracing:
 
 		#
 		# convert raw skeleton into a proper graph with nodes/edges
-		print('    === running skan.Skeleton(skeleton0)')
+		print('    generating skan (package) skeleton with skan.Skeleton(skeleton0)')
 		startSeconds = time.time()
 		skanSkel = skan.Skeleton(skeleton0, source_image=parentStack.astype('float'))
 		print('        took:', round(time.time()-startSeconds,2), 'seconds')
 
 		# not needed but just to remember
 		branch_data = skan.summarize(skanSkel) # branch_data is a pandas dataframe
-		print('    branch_data.shape:', branch_data.shape)
+		print('    skan skanSkel branch_data.shape:', branch_data.shape)
 		print(branch_data.head())
 
 		# make a list of coordinate[i] that are segment endpoints_src
@@ -1209,7 +1263,7 @@ class bVascularTracing:
 		masterNodeIdx = 0
 		masterEdgeIdx = 0
 		nPath = len(skanSkel.paths_list())
-		print('    parsing nPath:', nPath, '...')
+		print('    parsing skanSkel.paths_list() nPath:', nPath, '...')
 		for edgeIdx, path in enumerate(skanSkel.paths_list()):
 			# edgeIdx: int
 
@@ -1306,12 +1360,14 @@ class bVascularTracing:
 				pass # this happens a lot ???
 				#print('    warning: got len(path)<=2 at edgeIdx:',edgeIdx)
 
+		print('    .done parsing skanSkel.paths_list() nPath:', nPath, '...')
+
 		self._analyze()
 
 		# abb aics, this just prints stats
 		#bimpy.bVascularTracingAics.detectEdgesAndNodesToRemove(self)
 
-		print('    done loadDeepVess()')
+		print('    .done bVascularTracing.loadDeepVess()')
 		return True
 
 	def makeVolumeMask(self):
@@ -1954,7 +2010,7 @@ class bVascularTracing:
 		else:
 			thisEdgeDictList = [self.edgeDictList[thisEdgeIdx]]
 
-		print('bVascularTracing._analyze() thisEdgeIdx:', thisEdgeIdx, 'len(thisEdgeDictList):', len(thisEdgeDictList))
+		print('  bVascularTracing._analyze() thisEdgeIdx:', thisEdgeIdx, 'len(thisEdgeDictList):', len(thisEdgeDictList))
 
 		for edgeIdx, edge in enumerate(thisEdgeDictList):
 			#print('    edge:', edge)
@@ -2001,7 +2057,8 @@ class bVascularTracing:
 			#edge['Len 3D Nathan'] = round(len3d_nathan,2)
 
 			if euclideanDist == 0:
-				print('WARNING: bVascularTracing._analyze() euclideanDist==0 for edgeIdx:', edgeIdx)
+				# todo: writ emore real-time code to find these (just sort the edge list!!!)
+				#print('WARNING: bVascularTracing._analyze() euclideanDist==0 for edgeIdx:', edgeIdx)
 				tort = np.nan
 			else:
 				tort = round(len3d / euclideanDist,2)
@@ -2022,6 +2079,8 @@ class bVascularTracing:
 			edge['Diam2'] = meanDiameter
 			warnings.resetwarnings()
 			#print(edgeIdx, meanDiameter)
+
+			edge['nCon'] = self.getEdgeConnectivity(edgeIdx)
 
 	def euclideanDistance2(self, src, dst):
 		# src and dst are 3 element tuples (x,y,z)
@@ -2571,6 +2630,9 @@ class bVascularTracing:
 
 	# abb aics
 	def isDanglingEdge(self, edgeIdx):
+		"""
+		a 'dangling' edges is an edge where where pre/post nodes are only connected to one edge
+		"""
 		edge = self.getEdge(edgeIdx)
 		preNodeIdx = edge['preNode']
 		postNodeIdx = edge['postNode']
@@ -2586,6 +2648,34 @@ class bVascularTracing:
 			theRet = True
 
 		return theRet
+
+	# abb aics
+	def getEdgeConnectivity(self, edgeIdx):
+		"""
+		Return 0, 1, or 2 where
+			0: edge is dangling
+			1: edge is connected to other edge on one end
+			2: edge is connected to other edges on both ends
+		"""
+		connectedNumber = 0
+
+		edge = self.getEdge(edgeIdx)
+
+		preNodeIdx = edge['preNode']
+		postNodeIdx = edge['postNode']
+
+		preNode = self.getNode(preNodeIdx)
+		postNode = self.getNode(postNodeIdx)
+
+		preNumEdges = preNode['nEdges']
+		postNumEdges = postNode['nEdges']
+
+		if preNumEdges > 1:
+			connectedNumber += 1
+		if postNumEdges > 1:
+			connectedNumber += 1
+
+		return connectedNumber
 
 	# abb aics
 	def checkSanity(self):
@@ -2605,9 +2695,9 @@ class bVascularTracing:
 			#self.edgeIdx[idx] = idx
 
 	def _preComputeAllMasks(self, verbose=False):
-		print('  bVascularTracing._preComputeAllMasks2()')
+		print('  bVascularTracing._preComputeAllMasks()')
 
-		timeIt = bimpy.util.bTimer('  _preComputeAllMasks2')
+		timeIt = bimpy.util.bTimer('  _preComputeAllMasks')
 
 		aicsSlabList = []
 		aicsSlabList_x = np.empty((0), np.float16) #[]
@@ -2670,18 +2760,11 @@ class bVascularTracing:
 		return self.maskedEdgesDict
 
 if __name__ == '__main__':
-	#path = '/Users/cudmore/box/Sites/DeepVess/data/20200127/blur/20200127_gel_0011_z.tif'
-	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
-	path = '/Users/cudmore/box/data/nathan/vascular-tracing/20191017/tifs/20191017_0001.tif'
-
-	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
-
 	path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
 
+	global myStack
 	stack = bimpy.bStack(path=path)
-
 	stack.slabList.fixMissingNodes()
-
 
 	# do this once then save
 	'''
@@ -2701,6 +2784,8 @@ if __name__ == '__main__':
 
 	# after this we should have diam of all slabs
 	#stack.saveAnnotations()
+
+	stack.saveAnnotations()
 
 	if 0:
 		nodeIdx1 = 34

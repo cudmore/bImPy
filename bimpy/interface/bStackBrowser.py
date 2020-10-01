@@ -295,8 +295,9 @@ def main(useBioformats=False):
 	appIcon = QtGui.QIcon(iconPath)
 	app.setWindowIcon(appIcon)
 
-	path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
-	path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
+	path = '' # set to '' to not auto load a stack
+	#path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
+	#path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
 
 	try:
 		if useBioformats:

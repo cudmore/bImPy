@@ -127,7 +127,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.myVBoxLayout = QtWidgets.QVBoxLayout()
 
 		# testing pyqtgraph (removing self.myStackView on 20200829)
-		self.myStackView = None
+		#self.myStackView = None
 		#self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
 		# abb
 		self.myStackView2 = bimpy.interface.bPyQtGraph.myPyQtGraphPlotWidget(self, self.mySimpleStack) # a visual stack
@@ -139,8 +139,10 @@ class bStackWidget(QtWidgets.QMainWindow):
 		# a slider to set slice number
 		self.mySliceSlider = myStackSlider(self.mySimpleStack.numImages)
 
+		'''
 		if self.myStackView is not None:
 			self.myHBoxLayout2.addWidget(self.myStackView)
+		'''
 		self.myHBoxLayout2.addWidget(self.myStackView2)
 		self.myHBoxLayout2.addWidget(self.mySliceSlider)
 
@@ -192,28 +194,14 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		#
 		# listen to self.mySliceSlider
+		'''
 		if self.myStackView is not None:
 			self.mySliceSlider.updateSliceSignal.connect(self.myStackView.slot_StateChange)
+		'''
 		#self.mySliceSlider.updateSliceSignal.connect(self.bLeftToolbarWidget.slot_StateChange)
 		self.mySliceSlider.updateSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
 		self.mySliceSlider.updateSliceSignal.connect(self.myContrastWidget.slot_setSlice)
-		#
-		# listen to self.annotationTable
-		'''
-		self.annotationTable.selectNodeSignal.connect(self.myStackView.slot_selectNode) # change to slot_selectNode ???
-		self.annotationTable.selectEdgeSignal.connect(self.myStackView.slot_selectEdge) # change to slot_selectNode ???
-		'''
-		# node/edge/search tables
-		if self.myStackView is not None:
-			self.nodeTable2.selectRowSignal.connect(self.myStackView.slot_selectNode)
-			self.edgeTable2.selectRowSignal.connect(self.myStackView.slot_selectEdge)
-			self.editTable2.selectRowSignal.connect(self.myStackView.slot_selectNode)
-			self.editTable2.selectRowSignal.connect(self.myStackView.slot_selectEdge)
-		#
-		# was this
-		#self.nodeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_StateChange2)
-		#self.edgeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_StateChange2)
-		#self.editTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_StateChange2)
+
 		self.nodeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
 		self.edgeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
 
@@ -225,16 +213,6 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.nodeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		self.edgeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		self.searchWidget.searchTable().selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
-		#
-		# listen to edit table, self.
-		'''
-		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.myStackView.slot_selectEdge)
-		self.annotationTable.myEditTableWidget.selectEdgeSignal.connect(self.annotationTable.slot_selectEdge)
-		'''
-		#
-		# listen to bStackContrastWidget
-		if self.myStackView is not None:
-			self.myContrastWidget.contrastChangeSignal.connect(self.myStackView.slot_contrastChange)
 
 		##
 		##
@@ -282,16 +260,22 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.move(left,top)
 		self.resize(width, height)
 
+		'''
 		if self.myStackView is not None:
 			self.myStackView.setSlice(0)
+		'''
 		self.myStackView2.setSlice(0)
+
+		self.myScatterPlotWidget = None # see self.showScatterWidget()
 
 	def getMyStack(self):
 		return self.mySimpleStack
 
 	def getStackView(self):
+		'''
 		if self.myStackView is not None:
 			return self.myStackView
+		'''
 		return self.myStackView2
 
 	def mousePressEvent(self, event):
@@ -749,12 +733,32 @@ class bStackWidget(QtWidgets.QMainWindow):
 			if self.mySearchAnnotation is not None:
 				self.mySearchAnnotation.continueSearch = False
 
+		elif event.text() == 'p':
+			self.showPlotWidget()
+
 		elif event.text() == 'i':
 			self.mySimpleStack.print()
 
 		else:
 			#print('bStackWidget.keyPressEvent() not handled', event.text())
 			event.setAccepted(False)
+
+	def showPlotWidget(self):
+		if self.myScatterPlotWidget is None:
+			self.myScatterPlotWidget = bimpy.interface.bScatterPlotWidget(stackObject=self.mySimpleStack, parent=None)
+			#
+			# signal/slot from scatter plot to *self
+			self.myScatterPlotWidget.mainWindowSignal.connect(self.slot_selectPoint)
+			#
+			# signal/slot from *self to scatter plot
+			# connect myStackView2 to scatterplot selection
+			self.myStackView2.selectNodeSignal.connect(self.myScatterPlotWidget.slot_selectNode)
+			self.myStackView2.selectEdgeSignal.connect(self.myScatterPlotWidget.slot_selectEdge)
+		else:
+			if self.myScatterPlotWidget.isVisible():
+				self.myScatterPlotWidget.hide()
+			else:
+				self.myScatterPlotWidget.show()
 
 	def printHelp(self):
 		print('=============================================================')
@@ -821,8 +825,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 			'nodeSelectionColor': 'y',
 			'nodeSelectionFlashPenSize': 15, #**2,
 			'nodeSelectionFlashColor': 'm',
-			'showTracingAboveSlices': 5,
-			'showTracingBelowSlices': 5,
+			'showTracingAboveSlices': 2,
+			'showTracingBelowSlices': 2,
 			'tracingPenWidth': 5, # lines between slabs
 			'tracingPenSize': 10, # slabs
 			'tracingColor': 'c',
@@ -1252,6 +1256,28 @@ class bStackWidget(QtWidgets.QMainWindow):
 				myAction = QtWidgets.QAction(menuStr, self)
 				myAction.setEnabled(isEnabled)
 				menu.addAction(myAction)
+
+	# from scatter plot
+	def slot_selectPoint(self, selectionDict):
+		"""
+		coming from scatterplotwidget
+		this is only partially done, we need to emit from *self to scatterplotwidget as well
+		selectionDict: like {'type':'Nodes', 'idx':1}
+		"""
+		print('bStackWidget.slot_selectPoint() selectionDict:', selectionDict)
+		if selectionDict is None:
+			return
+		if selectionDict['name'] == 'toggle rect roi':
+			return
+		type = selectionDict['type']
+		idx = selectionDict['idx']
+		if type == 'Nodes':
+			nodeIdx = idx
+			self.myStackView2.selectNode(nodeIdx, snapz=True, isShift=False, doEmit=True)
+		elif type == 'Edges':
+			edgeIdx = idx
+			self.myStackView2.selectEdge(edgeIdx, snapz=True, isShift=False, doEmit=True)
+
 
 ################################################################################
 class myStackSlider(QtWidgets.QSlider):
