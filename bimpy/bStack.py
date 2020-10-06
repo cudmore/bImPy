@@ -357,7 +357,7 @@ class bStack:
 			if stopSlice > self.numImages - 1:
 				stopSlice = self.numImages - 1
 
-			print('    getSlidingZ2() startSlice:', startSlice, 'stopSlice:', stopSlice)
+			#print('    getSlidingZ2() startSlice:', startSlice, 'stopSlice:', stopSlice)
 
 			img = self._stackList[channelIdx][startSlice:stopSlice, :, :] #.copy()
 			img = np.max(img, axis=0)

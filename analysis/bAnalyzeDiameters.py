@@ -16,6 +16,7 @@ def runDiameterPool(stackObject):
 	global gStackObject
 	gStackObject = stackObject
 
+	# todo: the stack already has this -->> no need for global
 	global gLineProfile
 	gLineProfile = bimpy.bLineProfile(gStackObject)
 
@@ -36,16 +37,18 @@ def runDiameterPool(stackObject):
 	'''
 	pool = mp.Pool(processes=cpuCount) #, maxtasksperchild=10)
 
+	'''
 	radius = 12
 	lineWidth = 5
 	medianFilter = 5
+	'''
+	detectionDict = gLineProfile.getDefaultDetectionParams()
+
 	nEdges = gStackObject.slabList.numEdges()
 	print('  nEdges:', nEdges)
+
 	for edgeIdx in range(nEdges):
-		args = [edgeIdx,
-			radius,
-			lineWidth,
-			medianFilter]
+		args = [edgeIdx, detectionDict]
 		oneResult = pool.apply_async(my_mpWorker, args, callback=my_mpCallback)
 
 	pool.close()
@@ -107,7 +110,7 @@ def my_mpCallback(result):
 
 	#print('  done my_mpCallback() oneEdgeIdx:', oneEdgeIdx)
 
-def my_mpWorker(edgeIdx, radius, lineWidth, medianFilter):
+def my_mpWorker(edgeIdx, detectionDict):
 	"""
 	do the work for one edge
 	return results for the list of slabs
@@ -148,23 +151,21 @@ def my_mpWorker(edgeIdx, radius, lineWidth, medianFilter):
 
 		'''
 
-		print('\n\ntodo: update to new bLineProfile interface')
-		print('  bStack (gStackObject) now has self.myLineProfile')
-		lpDict = gLineProfile.getLine(slabIdx, radius=radius) # default is radius=30
+		#lpDict = gLineProfile.getLine(slabIdx, radius=radius) # default is radius=30
+		# this uses line radius internal to bLineProfile
+		xSlabPlot, ySlabPlot = gLineProfile.getSlabLine2(slabIdx) #
 
 		# without numpy import this fails but we never see an exception?
 		#thisDiam = np.nan
 
 		if lpDict is not None:
-			print('\n\ntodo: update to new bLineProfile interface')
-			print('  use bLineProfile.getLineProfile2()')
-			print('\n\n')
-			retDict = gLineProfile.getIntensity(lpDict, lineWidth=lineWidth, medianFilter=medianFilter)
+			#retDict = gLineProfile.getIntensity(lpDict, lineWidth=lineWidth, medianFilter=medianFilter)
+			retDict = gLineProfile.getLineProfile2(lpDict, xSlabPlot, ySlabPlot)
 			if retDict is not None:
-				oneDiam = retDict['diam']
-				one_lpMin = retDict['lpMin']
-				one_lpMax = retDict['lpMax']
-				one_lpSNR = retDict['lpSNR']
+				oneDiam = retDict['diam'] # can be np.nan
+				one_lpMin = retDict['minVal']
+				one_lpMax = retDict['maxVal']
+				one_lpSNR = retDict['snrVal']
 				# append
 				thisDiamList[idx] = oneDiam
 				this_lpMinList[idx] = one_lpMin

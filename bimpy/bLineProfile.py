@@ -15,30 +15,52 @@ import bimpy
 class bLineProfile:
 	def __init__(self, stack):
 		self.mySimpleStack = stack
+		self.detectionDict = self.getDefaultDetectionParams()
+
+	def setDetectionParam(self, key, value):
+		if key not in self.detectionDict:
+			print(f'error: bLineProfile.setDetectionParam() did not find {key} in {self.detectionDict.keys()}')
+			return False
+		self.detectionDict[key] = value
+
+	'''
+	def updateDetectionDict(self, newDict):
+		self.detectionDict = newDict
+	'''
 
 	def getDefaultDetectionParams(self):
 		detectionDict = OrderedDict()
+		detectionDict['displayThisStack'] = None
+		detectionDict['slice'] = None
+
+		detectionDict['xSlabPlot'] = None # get this from bLineProfile.getSlabLine2
+		detectionDict['ySlabPlot'] = None
 		detectionDict['lineRadius'] = 12 # radius of orthogonal slab along the line
 		detectionDict['medianFilter'] = 5 # 0 to turn off, o.w. pre-filter with kernel
 		detectionDict['lineWidth'] = 5 # pixels used to extract intensities along line profile
 		detectionDict['halfHeight'] = 0.5 # half height of gaussian
+		detectionDict['plusMinusSlidingZ'] = 1
 
 		return detectionDict
 
-	def getSlabLine2(self, slabIdx, radius=None):
+	def getSlabLine2(self, slabIdx):
 		"""
 		get line to take intensity analysis and draw in widget
+
+		return (xSlabPlot, ySlabPlot)
 		"""
-		print('bLineProfile.getSlabLine2() slabIdx:', slabIdx)
-		if radius is None:
-			print('getSlabLine2() hard coding radius 12')
-			radius = 12
+
+		radius = self.detectionDict['lineRadius']
+
+		print('bLineProfile.getSlabLine2() slabIdx:', slabIdx, 'radius:', radius)
+
 		if slabIdx is None:
 			return None
 		edgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(slabIdx)
 		if edgeIdx is None:
 			print('warning: bLineProfile.getSlabLine2() got bad edgeIdx:', edgeIdx)
 			return None
+
 		edgeSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
 		thisSlabIdx = edgeSlabList.index(slabIdx) # index within edgeSlabList
 
@@ -153,18 +175,31 @@ class bLineProfile:
 		"""
 		extract a line profile and return the fit
 		"""
+
+		print('bLineProfile.getLineProfile2()')
+		for k,v in lineProfileDict.items():
+			print('  ', k, ':', v)
+
+		xSlabPlot = lineProfileDict['xSlabPlot'] # todo: calculate this here, it depends on radius!!!
+		ySlabPlot = lineProfileDict['ySlabPlot']
+
 		# this is what user is looking at
 		displayThisStack = lineProfileDict['displayThisStack'] # (1,2,3, ...)
 		slice = lineProfileDict['slice']
 		# dynamic
-		xSlabPlot = lineProfileDict['xSlabPlot'] # todo: calculate this here, it depends on radius!!!
-		ySlabPlot = lineProfileDict['ySlabPlot']
 		medianFilter = lineProfileDict['medianFilter']
 		lineWidth = lineProfileDict['lineWidth']
 		halfHeight = lineProfileDict['halfHeight']
 		plusMinusSlidingZ = lineProfileDict['plusMinusSlidingZ']
 
-		print('todo: bLineProfile.getLineProfile2() ... extend this to sliding-z')
+		if xSlabPlot is None or ySlabPlot is None:
+			xSlabPlot, ySlabPlot = self.getSlabLine2
+
+		src = (xSlabPlot[0], ySlabPlot[0])
+		dst = (xSlabPlot[1], ySlabPlot[1])
+
+		# get the image to analyze
+		#print('todo: bLineProfile.getLineProfile2() ... extend this to sliding-z')
 		if plusMinusSlidingZ > 0:
 			upSlices = plusMinusSlidingZ
 			downSlices = plusMinusSlidingZ
@@ -175,17 +210,16 @@ class bLineProfile:
 		else:
 			imageSlice = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=slice)
 
-		src = (xSlabPlot[0], ySlabPlot[0])
-		dst = (xSlabPlot[1], ySlabPlot[1])
+		# get the line profile
 		try:
 			# abb aics added mode='constant'
 			# Specifies how to compute any values falling outside of the image.
 			intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=lineWidth, mode='constant')
 		except(ValueError) as e:
-			print('!!! abb aics bLineProfile.getLineProfile2() got nan calling profile.profile_line()')
+			print('ERROR: bLineProfile.getLineProfile2() got nan calling profile.profile_line()')
 			return None
 
-		# smooth it
+		# smooth the line profile
 		if medianFilter > 0:
 			intensityProfile = scipy.ndimage.median_filter(intensityProfile, medianFilter)
 
@@ -200,11 +234,11 @@ class bLineProfile:
 		print('   x:', type(x), x.shape, x)
 		'''
 
+		# do the fit
 		yFit, FWHM, leftIdx, rightIdx = self._fit(xFit,intensityProfile, halfHeight=halfHeight)
 		#print('   yFit:', yFit, 'FWHM:', FWHM, 'leftIdx:', leftIdx, 'rightIdx:', rightIdx)
 
 		goodFit = not np.isnan(leftIdx)
-
 		minVal = round(np.nanmin(intensityProfile),2)
 		maxVal = round(np.nanmax(intensityProfile),2)
 
@@ -227,8 +261,13 @@ class bLineProfile:
 		snrVal = round(maxVal/tmpMinVal, 2)
 		'''
 
+		myDiam = np.nan
+		if goodFit:
+			myDiam = rightIdx - leftIdx + 1
+
 		returnDict = OrderedDict()
 		returnDict['intensityProfile'] = intensityProfile
+		returnDict['diam'] = myDiam # pixels
 		returnDict['minVal'] = minVal
 		returnDict['maxVal'] = maxVal
 		returnDict['goodFit'] = goodFit

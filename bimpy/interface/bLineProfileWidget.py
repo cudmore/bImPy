@@ -140,34 +140,51 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		self.myHBoxLayout.addWidget(self.canvas)
 
+	def getLineRadius(self):
+		return self.lineRadius
+
+	def _setDetectionParam(self, key, value):
+		lineProfileObj = self.mainWindow.getMyStack().myLineProfile
+		lineProfileObj.setDetectionParam(key, value)
+
 	def lineRadius_Callback(self, value):
 		print('lineRadius_Callback() value:', value)
 		self.lineRadius = value
-		self.mainWindow.getStackView().drawSlabLine(radius=value)
+		self._setDetectionParam('lineRadius', value)
+		# redraw
+		self.mainWindow.getStackView().drawSlabLine()
 
 	def lineWidth_Callback(self, value):
 		print('lineWidth_Callback() value:', value)
 		self.lineWidth = value
-		if self.updateDict is not None:
-			self.updateLineProfile(self.updateDict)
+		self._setDetectionParam('lineWidth', value)
+		self.mainWindow.getStackView().drawSlabLine()
+		#if self.updateDict is not None:
+		#	self.updateLineProfile(self.updateDict)
 
 	def medianFilter_Callback(self, value):
 		print('medianFilter_Callback() value:', value)
 		self.medianFilter = value
-		if self.updateDict is not None:
-			self.updateLineProfile(self.updateDict)
+		self._setDetectionParam('medianFilter', value)
+		self.mainWindow.getStackView().drawSlabLine()
+		#if self.updateDict is not None:
+		#	self.updateLineProfile(self.updateDict)
 
 	def halfHeight_Callback(self, value):
 		print('halfHeight_Callback() value:', value)
 		self.halfHeight = value
-		if self.updateDict is not None:
-			self.updateLineProfile(self.updateDict)
+		self._setDetectionParam('halfHeight', value)
+		self.mainWindow.getStackView().drawSlabLine()
+		#if self.updateDict is not None:
+		#	self.updateLineProfile(self.updateDict)
 
 	def slidingZ_Callback(self, value):
 		print('slidingZ_Callback() value:', value)
 		self.plusMinusSlidingZ = value
-		if self.updateDict is not None:
-			self.updateLineProfile(self.updateDict)
+		self._setDetectionParam('plusMinusSlidingZ', value)
+		self.mainWindow.getStackView().drawSlabLine()
+		#if self.updateDict is not None:
+		#	self.updateLineProfile(self.updateDict)
 
 	def updateLineProfile(self, updateDict):
 		"""
@@ -177,24 +194,25 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		before doing the fit, we need to grab parameters from our interface
 		"""
-		print('updateLineProfile() updateDict:', updateDict)
+
 		if not self.doUpdate:
 			print('  bLineProfileWidget.updateLineProfile() not updating as self.doUpdate is False')
-			return
+			return None
 
-		print('bLineProfileWidget.updateLineProfile()')
-		print('  updateDict:', updateDict)
-
-		print('  !!!!!!!! todo: bLineProfileWidget add median filter')
+		# copy curent interface into line profile detection dict
 		updateDict['medianFilter'] = self.medianFilter
-		print('  !!!!!!!! todo: bLineProfileWidget add lineWidth filter')
 		updateDict['lineWidth'] = self.lineWidth
-		print('  !!!!!!!! todo: bLineProfileWidget add halfHeight filter')
 		updateDict['halfHeight'] = self.halfHeight
-		print('  !!!!!!!! todo: bLineProfileWidget add plusMinusSlidingZ filter')
 		updateDict['plusMinusSlidingZ'] = self.plusMinusSlidingZ
 
+		print('bLineProfileWidget.updateLineProfile() is calling ...myLineProfile.getLineProfile2()')
+		#print('  updateDict:', updateDict)
+
+		# get the results of the fit
 		lineProfileDict = self.mainWindow.getStack().myLineProfile.getLineProfile2(updateDict)
+
+		if lineProfileDict is None:
+			return None
 
 		intensityProfile = lineProfileDict['intensityProfile']
 		minVal = lineProfileDict['minVal']
@@ -275,7 +293,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		print('bLineProfileWidget.nudgeDown_Callback()')
 		#self.mainWindow.signal('save')
 
-	def _fit(self, x, y):
+	def _old_fit(self, x, y):
 		"""
 		x: np.ndarray of x, e.g. pixels or um
 		y: np.ndarray of line intensity profile

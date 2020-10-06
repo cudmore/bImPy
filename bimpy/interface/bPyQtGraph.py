@@ -436,14 +436,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#self.myAnnotationPlot.setData(xNodeMasked, yNodeMasked, symbolSize=nodePenSize)
 		self.myAnnotationPlot.setData(yNodeMasked, xNodeMasked) # flipped
 
-	def drawSlabLine(self, slabIdx=None, radius=None):
+	def drawSlabLine(self, slabIdx=None):
 		"""
 		draw one slab as a line orthogonal to edge
 		"""
 		print('bPyQtGraph.drawSlabLine() slabIdx:', slabIdx)
-		if radius is None:
-			print('-->> drawSlabLine() radius was none -->> defaulting to 12')
-			radius = 12 # pixels
 
 		if slabIdx is None:
 			slabIdx = self.selectedSlab()
@@ -451,7 +448,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			return
 
 		xSlabPlot, ySlabPlot = \
-			self.mySimpleStack.myLineProfile.getSlabLine2(slabIdx, radius=radius)
+			self.mySimpleStack.myLineProfile.getSlabLine2(slabIdx)
 
 		if xSlabPlot is None or ySlabPlot is None:
 			return None
@@ -467,7 +464,6 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		}
 
 		self.mainWindow.signal('update line profile', profileDict)
-		# todo: implement this
 
 		#
 		# emit
