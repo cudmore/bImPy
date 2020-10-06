@@ -22,17 +22,11 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.updateDict = None
 
 		# grab local copies, do not change options
-		self.lineLength = self.mainWindow.getOptions()['LineProfile']['lineLength'] #12 # pixels
+		self.lineRadius = self.mainWindow.getOptions()['LineProfile']['lineRadius'] #12 # pixels
 		self.lineWidth = self.mainWindow.getOptions()['LineProfile']['lineWidth'] #5
 		self.medianFilter = self.mainWindow.getOptions()['LineProfile']['medianFilter']  #5
 		self.halfHeight = self.mainWindow.getOptions()['LineProfile']['halfHeight'] #0.5
-
-		'''
-		self.lineLength = 12
-		self.lineWidth = 3
-		self.medianFilter = 5
-		self.halfHeight = 0.5
-		'''
+		self.plusMinusSlidingZ = self.mainWindow.getOptions()['LineProfile']['plusMinusSlidingZ'] #0.5
 
 		self.doUpdate = True # set to false to not update on signal/slot
 
@@ -46,6 +40,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		myRow = 0
 
+		'''
 		# nudge up button
 		nudgeUpButton = QtWidgets.QPushButton('Nudge Up')
 		nudgeUpButton.clicked.connect(self.nudgeUp_Callback)
@@ -56,15 +51,16 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.leftGridLayout.addWidget(nudgeUpButton, myRow, 1)
 
 		myRow += 1
+		'''
 
-		# line length for intensity profile
-		myLabel = QtWidgets.QLabel('Line Length (pixels)')
-		lineWidthSpinBox = QtWidgets.QSpinBox()
-		lineWidthSpinBox.setMinimum(1)
-		lineWidthSpinBox.setValue(self.lineLength)
-		lineWidthSpinBox.valueChanged.connect(self.lineLength_Callback)
+		# line radius for intensity profile
+		myLabel = QtWidgets.QLabel('Line Radius (pixels)')
+		lineRadiusSpinBox = QtWidgets.QSpinBox()
+		lineRadiusSpinBox.setMinimum(1)
+		lineRadiusSpinBox.setValue(self.lineRadius)
+		lineRadiusSpinBox.valueChanged.connect(self.lineRadius_Callback)
 		self.leftGridLayout.addWidget(myLabel, myRow, 0)
-		self.leftGridLayout.addWidget(lineWidthSpinBox, myRow, 1)
+		self.leftGridLayout.addWidget(lineRadiusSpinBox, myRow, 1)
 
 		myRow += 1
 
@@ -79,7 +75,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		myRow += 1
 
-		# size (pixels) of median filter
+		# median filter size (pixels)
 		myLabel = QtWidgets.QLabel('Median Filter (pixels)')
 		medianFilterSpinbox = QtWidgets.QSpinBox()
 		medianFilterSpinbox.setMinimum(0)
@@ -103,6 +99,20 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		myRow += 1
 
+		# +/- for sliding z
+		myLabel = QtWidgets.QLabel('+/- Sliding Z')
+		slidingZ_Spinbox = QtWidgets.QSpinBox()
+		slidingZ_Spinbox.setMinimum(0)
+		#slidingZ_Spinbox.setMaximum(1.0)
+		slidingZ_Spinbox.setSingleStep(1)
+		slidingZ_Spinbox.setValue(self.plusMinusSlidingZ)
+		slidingZ_Spinbox.valueChanged.connect(self.slidingZ_Callback)
+		self.leftGridLayout.addWidget(myLabel, myRow, 0)
+		self.leftGridLayout.addWidget(slidingZ_Spinbox, myRow, 1)
+
+		myRow += 1
+
+		#
 		# report results
 		self.myMin = QtWidgets.QLabel('Min: None')
 		self.myMax = QtWidgets.QLabel('Max: None')
@@ -130,9 +140,9 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		self.myHBoxLayout.addWidget(self.canvas)
 
-	def lineLength_Callback(self, value):
-		print('lineLength_Callback() value:', value)
-		self.lineLength = value
+	def lineRadius_Callback(self, value):
+		print('lineRadius_Callback() value:', value)
+		self.lineRadius = value
 		self.mainWindow.getStackView().drawSlabLine(radius=value)
 
 	def lineWidth_Callback(self, value):
@@ -153,58 +163,53 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		if self.updateDict is not None:
 			self.updateLineProfile(self.updateDict)
 
+	def slidingZ_Callback(self, value):
+		print('slidingZ_Callback() value:', value)
+		self.plusMinusSlidingZ = value
+		if self.updateDict is not None:
+			self.updateLineProfile(self.updateDict)
+
 	def updateLineProfile(self, updateDict):
 		"""
 		Update the line profile
-		We need too much info here ???
+
+		slot responding to main window signal 'update line profile'
+
+		before doing the fit, we need to grab parameters from our interface
 		"""
+		print('updateLineProfile() updateDict:', updateDict)
 		if not self.doUpdate:
+			print('  bLineProfileWidget.updateLineProfile() not updating as self.doUpdate is False')
 			return
 
-		self.updateDict = updateDict
+		print('bLineProfileWidget.updateLineProfile()')
+		print('  updateDict:', updateDict)
 
-		xSlabPlot = updateDict['xSlabPlot']
-		ySlabPlot = updateDict['ySlabPlot']
-		displayThisStack = updateDict['displayThisStack'] # (1,2,3, ...)
-		slice = updateDict['slice']
-		#print('bLineProfileWidget.updateLineProfile() xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot, 'slice:', slice)
+		print('  !!!!!!!! todo: bLineProfileWidget add median filter')
+		updateDict['medianFilter'] = self.medianFilter
+		print('  !!!!!!!! todo: bLineProfileWidget add lineWidth filter')
+		updateDict['lineWidth'] = self.lineWidth
+		print('  !!!!!!!! todo: bLineProfileWidget add halfHeight filter')
+		updateDict['halfHeight'] = self.halfHeight
+		print('  !!!!!!!! todo: bLineProfileWidget add plusMinusSlidingZ filter')
+		updateDict['plusMinusSlidingZ'] = self.plusMinusSlidingZ
 
-		if not displayThisStack in [1,2,3,4]:
-			return
+		lineProfileDict = self.mainWindow.getStack().myLineProfile.getLineProfile2(updateDict)
 
-		imageSlice = self.mainWindow.getStack().getImage2(channel=displayThisStack, sliceNum=slice)
+		intensityProfile = lineProfileDict['intensityProfile']
+		minVal = lineProfileDict['minVal']
+		maxVal = lineProfileDict['maxVal']
+		goodFit = lineProfileDict['goodFit']
+		leftIdx = lineProfileDict['leftIdx']
+		rightIdx = lineProfileDict['rightIdx']
+		snrVal = lineProfileDict['snrVal']
+		yFit = lineProfileDict['yFit']
+		xFit = lineProfileDict['xFit']
 
-		src = (xSlabPlot[0], ySlabPlot[0])
-		dst = (xSlabPlot[1], ySlabPlot[1])
-		try:
-			# abb aics added mode='constant'
-			intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=self.lineWidth, mode='constant')
-		except(ValueError) as e:
-			print('abb aics bLineProfileWidget.updateLineProfile() got nan???')
-			return
+		###
+		### abb start interface
+		###
 
-		# smooth it
-		if self.medianFilter > 0:
-			intensityProfile = scipy.ndimage.median_filter(intensityProfile, self.medianFilter)
-
-		x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
-
-		if np.isnan(intensityProfile[0]):
-			print('\nERROR: line profile was nan?\n')
-			return
-		'''
-		print('   intensityProfile:', type(intensityProfile), intensityProfile.shape, intensityProfile)
-		print('   x:', type(x), x.shape, x)
-		'''
-
-		yFit, FWHM, leftIdx, rightIdx = self._fit(x,intensityProfile)
-		#print('   yFit:', yFit, 'FWHM:', FWHM, 'leftIdx:', leftIdx, 'rightIdx:', rightIdx)
-
-		goodFit = not np.isnan(leftIdx)
-
-		minVal = round(np.nanmin(intensityProfile),2)
-		maxVal = round(np.nanmax(intensityProfile),2)
-		snrVal = round(maxVal - minVal, 2)
 		minStr = 'Min: ' + str(minVal)
 		self.myMin.setText(minStr)
 		maxStr = 'Max: ' + str(maxVal)
@@ -224,7 +229,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			diamStr = 'Diameter (pixels): ' + str(int(rightIdx-leftIdx)) # points !!!
 			self.myDiameter.setText(diamStr) # points !!!
 		else:
-			print('warning: fit failed')
+			print('warning: bLineProfileWidget.updateLineProfile() fit failed')
 			self.myDiameter.setText('Diameter (pixels): None')
 
 		# clear entire axes
@@ -239,10 +244,10 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		zorder = 1
 		c = self.mainWindow.getStackView().options['Tracing']['lineProfileColor']
-		self.axes.plot(x, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
+		self.axes.plot(xFit, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
 		if goodFit:
 			zorder = 2
-			self.axes.plot(x, yFit,'r-', zorder=zorder) # gaussian
+			self.axes.plot(xFit, yFit,'r-', zorder=zorder) # gaussian
 			zorder = 3
 			self.axes.plot(xPnt, yPnt,'ob-', zorder=zorder)
 

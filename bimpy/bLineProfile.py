@@ -16,13 +16,79 @@ class bLineProfile:
 	def __init__(self, stack):
 		self.mySimpleStack = stack
 
-	def getLine(self, slabIdx, radius=None):
+	def getDefaultDetectionParams(self):
+		detectionDict = OrderedDict()
+		detectionDict['lineRadius'] = 12 # radius of orthogonal slab along the line
+		detectionDict['medianFilter'] = 5 # 0 to turn off, o.w. pre-filter with kernel
+		detectionDict['lineWidth'] = 5 # pixels used to extract intensities along line profile
+		detectionDict['halfHeight'] = 0.5 # half height of gaussian
+
+		return detectionDict
+
+	def getSlabLine2(self, slabIdx, radius=None):
+		"""
+		get line to take intensity analysis and draw in widget
+		"""
+		print('bLineProfile.getSlabLine2() slabIdx:', slabIdx)
+		if radius is None:
+			print('getSlabLine2() hard coding radius 12')
+			radius = 12
+		if slabIdx is None:
+			return None
+		edgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(slabIdx)
+		if edgeIdx is None:
+			print('warning: bLineProfile.getSlabLine2() got bad edgeIdx:', edgeIdx)
+			return None
+		edgeSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
+		thisSlabIdx = edgeSlabList.index(slabIdx) # index within edgeSlabList
+
+		if thisSlabIdx==0 or thisSlabIdx==len(edgeSlabList)-1:
+			# we were at a slab that was also a node
+			return None
+
+		prevSlab = edgeSlabList[thisSlabIdx - 1]
+		nextSlab = edgeSlabList[thisSlabIdx + 1]
+		this_x, this_y, this_z = self.mySimpleStack.slabList.getSlab_xyz(slabIdx)
+		prev_x, prev_y, prev_z = self.mySimpleStack.slabList.getSlab_xyz(prevSlab)
+		next_x, next_y, next_z = self.mySimpleStack.slabList.getSlab_xyz(nextSlab)
+		# as I look at image,
+		#  y is left/right
+		#  x is up/down
+		dy = next_y - prev_y
+		dx = next_x - prev_x
+
+		# abb removed
+		#delta_x = np.cos(np.arctan2(dy, dx)) * radius # flipped
+		#delta_y = np.sin(np.arctan2(dy, dx)) * radius # flipped
+
+		# slope is 'rise / travel', in this case 'x / y'
+		# calling arctan2() with inverse slope, arctan2(dy, dz)
+		# angle from slope is 'arctan2(dy, dx)''
+		theAngle = np.arctan2(dy, dx)
+		# cos(theta) = adjacent / hyp -->> adjacent = sin(theta) * hyp
+		delta_y = np.cos(theAngle) * radius # y is left/right
+		# sin(theta) = opposite / hyp -->> opposite = sin(theta) * hyp
+		delta_x = np.sin(theAngle) * radius  # x is up/down
+
+		xLine1 = this_x - delta_x
+		xLine2 = this_x + delta_x
+		yLine1 = this_y + delta_y
+		yLine2 = this_y - delta_y
+
+		xSlabPlot = [xLine1, xLine2]
+		ySlabPlot = [yLine1, yLine2]
+
+		return (xSlabPlot, ySlabPlot)
+
+	def old_getLine(self, slabIdx, radius=None):
 		"""
 		given a slab, return coordinates of line
 
 		taken from: bStackView.drawSlab()
 		"""
+		print('bLineProfile.getLine()')
 		if radius is None:
+			print('  !!!using hard coded radius 30')
 			radius = 30 # pixels
 
 		#print('bLineProfile.getLine()')
@@ -83,7 +149,98 @@ class bLineProfile:
 		}
 		return lineProfileDict
 
-	def getIntensity(self, lineProfileDict, lineWidth, medianFilter):
+	def getLineProfile2(self, lineProfileDict):
+		"""
+		extract a line profile and return the fit
+		"""
+		# this is what user is looking at
+		displayThisStack = lineProfileDict['displayThisStack'] # (1,2,3, ...)
+		slice = lineProfileDict['slice']
+		# dynamic
+		xSlabPlot = lineProfileDict['xSlabPlot'] # todo: calculate this here, it depends on radius!!!
+		ySlabPlot = lineProfileDict['ySlabPlot']
+		medianFilter = lineProfileDict['medianFilter']
+		lineWidth = lineProfileDict['lineWidth']
+		halfHeight = lineProfileDict['halfHeight']
+		plusMinusSlidingZ = lineProfileDict['plusMinusSlidingZ']
+
+		print('todo: bLineProfile.getLineProfile2() ... extend this to sliding-z')
+		if plusMinusSlidingZ > 0:
+			upSlices = plusMinusSlidingZ
+			downSlices = plusMinusSlidingZ
+			imageSlice = self.mySimpleStack.getSlidingZ2(channel=displayThisStack,
+											sliceNumber=slice,
+											upSlices=upSlices,
+											downSlices=downSlices)
+		else:
+			imageSlice = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=slice)
+
+		src = (xSlabPlot[0], ySlabPlot[0])
+		dst = (xSlabPlot[1], ySlabPlot[1])
+		try:
+			# abb aics added mode='constant'
+			# Specifies how to compute any values falling outside of the image.
+			intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=lineWidth, mode='constant')
+		except(ValueError) as e:
+			print('!!! abb aics bLineProfile.getLineProfile2() got nan calling profile.profile_line()')
+			return None
+
+		# smooth it
+		if medianFilter > 0:
+			intensityProfile = scipy.ndimage.median_filter(intensityProfile, medianFilter)
+
+		# make alist of x points (todo: should be um, not points!!!)
+		xFit = np.asarray([a for a in range(len(intensityProfile))])
+
+		if np.isnan(intensityProfile[0]):
+			print('\nERROR: bLineProfile.getLineProfile2() got line profile nan?\n')
+			return
+		'''
+		print('   intensityProfile:', type(intensityProfile), intensityProfile.shape, intensityProfile)
+		print('   x:', type(x), x.shape, x)
+		'''
+
+		yFit, FWHM, leftIdx, rightIdx = self._fit(xFit,intensityProfile, halfHeight=halfHeight)
+		#print('   yFit:', yFit, 'FWHM:', FWHM, 'leftIdx:', leftIdx, 'rightIdx:', rightIdx)
+
+		goodFit = not np.isnan(leftIdx)
+
+		minVal = round(np.nanmin(intensityProfile),2)
+		maxVal = round(np.nanmax(intensityProfile),2)
+
+		# abb oct2020
+		# was this
+		#snrVal = round(maxVal - minVal, 2)
+		# now this
+		if goodFit:
+			yTmpInt_left = intensityProfile[leftIdx]
+			yTmpInt_right = intensityProfile[rightIdx]
+			yTmpInt = max(yTmpInt_left, yTmpInt_right)
+			snrVal = yTmpInt - minVal
+			snrVal = round(snrVal,2)
+		else:
+			snrVal = None
+		'''
+		tmpMinVal = minVal
+		if tmpMinVal==0:
+			tmpMinVal = 1
+		snrVal = round(maxVal/tmpMinVal, 2)
+		'''
+
+		returnDict = OrderedDict()
+		returnDict['intensityProfile'] = intensityProfile
+		returnDict['minVal'] = minVal
+		returnDict['maxVal'] = maxVal
+		returnDict['goodFit'] = goodFit
+		returnDict['leftIdx'] = leftIdx
+		returnDict['rightIdx'] = rightIdx
+		returnDict['snrVal'] = snrVal # depends on good fit
+		returnDict['yFit'] = yFit
+		returnDict['xFit'] = xFit
+
+		return returnDict
+
+	def old_getIntensity(self, lineProfileDict, lineWidth, medianFilter):
 		"""
 		diameter is in pixels
 
@@ -106,11 +263,24 @@ class bLineProfile:
 		if medianFilter > 0:
 			intensityProfile = scipy.ndimage.median_filter(intensityProfile, medianFilter)
 
-		x = np.asarray([a for a in range(len(intensityProfile))]) # make alist of x points (todo: should be um, not points!!!)
+		# abb oct2020
+		# see below, playing with SNR, maybe use (left/right intensity) / min
+		# put these in return dict
+		lpMin = np.nanmin(intensityProfile)
+		lpMax = np.nanmax(intensityProfile)
+		'''
+		lpMin_denom = lpMin
+		if lpMin_denom == 0:
+			lpMin_denom = 1
+		lpSNR = lpMax / lpMin_denom # redundant, just max/min
+		'''
+
+		# make alist of x points (todo: should be um, not points!!!)
+		x = np.asarray([a for a in range(len(intensityProfile))])
 
 		if np.isnan(intensityProfile[0]):
 			print('\nERROR: line profile was nan?\n')
-			return
+			return None
 		'''
 		print('   intensityProfile:', type(intensityProfile), intensityProfile.shape, intensityProfile)
 		print('   x:', type(x), x.shape, x)
@@ -144,12 +314,27 @@ class bLineProfile:
 			#print('   yFit:', yFit, 'FWHM:', FWHM, 'diam:', diam, 'leftIdx:', leftIdx, 'rightIdx:', rightIdx)
 			#print('FWHM:', FWHM, 'diam:', diam, 'leftIdx:', leftIdx, 'rightIdx:', rightIdx)
 
+			# abb oct2020
+			# trying to get a meaningful SNR
+			tmp_left_y = intensityProfile[leftIdx]
+			tmp_right_y = intensityProfile[rightIdx]
+			tmpMax = max(tmp_left_y, tmp_left_y)
+			# as ratio
+			#lpSNR = tmpMax / lpMin_denom # todo: clean this up
+			# as difference
+			lpSNR = tmpMax - lpMin # todo: clean this up
+
 			retDict = OrderedDict()
 			retDict['slabIdx'] = slabIdx
 			retDict['FWHM'] = FWHM
 			retDict['diam'] = diam # pixels
 			retDict['leftIdx'] = leftIdx
 			retDict['rightIdx'] = rightIdx
+			# abb oct2020
+			retDict['lpMin'] = lpMin # actual min along line profile
+			retDict['lpMax'] = tmpMax #lpMax # max between left/right of fit
+			retDict['lpSNR'] = lpSNR # redundant, just max/min
+
 			return retDict
 			# interface
 			'''

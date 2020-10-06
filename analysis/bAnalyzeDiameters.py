@@ -58,12 +58,26 @@ def runDiameterPool(stackObject):
 	print(myTimer.elapsed())
 
 	# save gStackObject !!!
+	'''
 	print('saving gStackObject')
 	gStackObject.saveAnnotations()
+	'''
 
 def my_mpCallback(result):
-	""" apply_async() callback """
-	oneEdgeIdx, oneSlabIdxList, oneDiamList = result #.get()
+	"""
+	apply_async() callback
+	"""
+	def getMeanFromList(theList):
+		if np.isnan(theList).all():
+			return np.nan
+		else:
+			return np.nanmean(theList)
+
+	# unzip result into local variables
+	oneEdgeIdx, oneSlabIdxList, \
+	oneDiamList, \
+	one_lpMinList, one_lpMaxList, one_lpSNRList = result
+
 	#oneEdgeIdx, oneSlabIdxList, oneDiamList = result.get() # edgeIdx, slabIdxList, thisDiamList
 	if oneEdgeIdx % 500 == 0:
 		print('    my_mpCallback() oneEdgeIdx:', oneEdgeIdx, 'to', oneEdgeIdx+500)
@@ -72,53 +86,94 @@ def my_mpCallback(result):
 
 	global gStackObject # we are mofifying this
 
+	# slabs have properties (diam, lpMin, lpMax, lpSNR)
 	for oneResultIdx, oneSlabIdx in enumerate(oneSlabIdxList):
 		gStackObject.slabList.d2[oneSlabIdx] = oneDiamList[oneResultIdx]
+		gStackObject.slabList.lpMin[oneSlabIdx] = one_lpMinList[oneResultIdx]
+		gStackObject.slabList.lpMax[oneSlabIdx] = one_lpMaxList[oneResultIdx]
+		gStackObject.slabList.lpSNR[oneSlabIdx] = one_lpSNRList[oneResultIdx]
+
+	thisDiamMean = np.nan
+	this_SNR_Mean = np.nan
 	if len(oneDiamList) > 0:
-		if np.isnan(oneDiamList).all():
-			# we have values but they are all nan
-			thisDiamMean = np.nan
-		else:
-			# we have values, some could be nan
-			thisDiamMean = np.nanmean(oneDiamList)
-	else:
-		thisDiamMean = np.nan
+		thisDiamMean = getMeanFromList(oneDiamList)
+		this_SNR_Mean = getMeanFromList(one_lpSNRList)
+
+	# todo: don't use getEdge() here, expensive
+	# just index directly
 	edgeDict = gStackObject.slabList.getEdge(oneEdgeIdx)
 	edgeDict['Diam2'] = thisDiamMean
+	edgeDict['mSlabSNR'] = this_SNR_Mean
 
 	#print('  done my_mpCallback() oneEdgeIdx:', oneEdgeIdx)
 
 def my_mpWorker(edgeIdx, radius, lineWidth, medianFilter):
-	""" do the work """
+	"""
+	do the work for one edge
+	return results for the list of slabs
+	"""
 
 	#print('my_mpWorker() edgeIdx:', edgeIdx)
 
+	# slabList.getEdge() also returns nodes !!!
 	edgeDict = gStackObject.slabList.getEdge(edgeIdx)
 
-	thisDiamList = []
-	slabIdxList = []
+	mySlabList = edgeDict['slabList']
 
-	for slabIdx in edgeDict['slabList']:
+	# remove first/last slab, they are nodes
+	#mySlabList
+
+	#myNumSlabs = len(mySlabList)
+
+	# abb oct2020 todo: make thesee lists up front, we know the # odf slabs
+	slabIdxList = []
+	thisDiamList = [np.nan for x in mySlabList]
+	this_lpMinList = [np.nan for x in mySlabList]
+	this_lpMaxList = [np.nan for x in mySlabList]
+	this_lpSNRList = [np.nan for x in mySlabList]
+
+	for idx, slabIdx in enumerate(mySlabList):
 
 		slabIdxList.append(slabIdx)
 
+		if idx==0 or idx==len(mySlabList)-1:
+			# don't analyze pre/post nodes
+			# we will return lists with these as np.nan
+			continue
+
+		'''
+		abb oct2020
+		we need a dict to specify all line detection params
+			radius: passed to bLineProfile.getLine to make the actual line
+
+		'''
+
+		print('\n\ntodo: update to new bLineProfile interface')
+		print('  bStack (gStackObject) now has self.myLineProfile')
 		lpDict = gLineProfile.getLine(slabIdx, radius=radius) # default is radius=30
 
-		thisDiam = np.nan # without numpy import this fails but we never see an exception?
+		# without numpy import this fails but we never see an exception?
+		#thisDiam = np.nan
+
 		if lpDict is not None:
+			print('\n\ntodo: update to new bLineProfile interface')
+			print('  use bLineProfile.getLineProfile2()')
+			print('\n\n')
 			retDict = gLineProfile.getIntensity(lpDict, lineWidth=lineWidth, medianFilter=medianFilter)
 			if retDict is not None:
-				thisDiamList.append(retDict['diam']) # bImPy diameter
+				oneDiam = retDict['diam']
+				one_lpMin = retDict['lpMin']
+				one_lpMax = retDict['lpMax']
+				one_lpSNR = retDict['lpSNR']
+				# append
+				thisDiamList[idx] = oneDiam
+				this_lpMinList[idx] = one_lpMin
+				this_lpMaxList[idx] = one_lpMax
+				this_lpSNRList[idx] = one_lpSNR
 				#self.d2[slabIdx] = retDict['diam']
-			else:
-				thisDiamList.append(np.nan)
-				#self.d2[slabIdx] = np.nan
-		else:
-			thisDiamList.append(np.nan)
-			#self.d2[slabIdx] = np.nan
 
 	#print('  done my_mpWorker() edgeIdx:', edgeIdx)
-	return edgeIdx, slabIdxList, thisDiamList
+	return edgeIdx, slabIdxList, thisDiamList, this_lpMinList, this_lpMaxList, this_lpSNRList
 
 if __name__ == '__main__':
 	# this is output of saNode.aicsVasc.py
@@ -137,43 +192,98 @@ if __name__ == '__main__':
 	path = '/home/cudmore/data/nathan/SAN4/aicsAnalysis/SAN4_tail_ch2.tif'
 	maskStartStop = (9,46)
 
+	# TESTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	path = '/home/cudmore/data/nathan/SAN4/aicsAnalysis/testing/SAN4_tail_ch2.tif'
+	maskStartStop = (9,46)
+
 	# load the stack
 	myStack = bimpy.bStack(path=path, loadImages=True, loadTracing=True)
 
-	# load mask and make skel from mask
-	if 1:
+	#
+	# some options
+	remakeSkelFromMask = False
+	saveAtEnd = False
+
+	# SLOW: load mask and make skel from mask
+	if remakeSkelFromMask:
 		myStack.slabList.loadDeepVess(vascChannel=2, maskStartStop=maskStartStop)
 
+	# remove edges based on criterion
+	if 0:
+		#
+		# remove all nCon==0
+		edgeListToRemove = bimpy.bVascularTracingAics._getListFromCriterion(
+					myStack.slabList,
+					'edges',
+					'nCon', '==', 0,
+					verbose=True)
+
+		# delete the edges
+		bimpy.bVascularTracingAics._deleteList(myStack.slabList,
+					'edges',
+					edgeListToRemove,
+					verbose=True)
+
+
+		#
+		# remove (nCon==1 and nSlab<20)
+		edgeListToRemove = bimpy.bVascularTracingAics._getListFromCriterion(
+					myStack.slabList,
+					'edges',
+					'nCon', '==', 1,
+					verbose=True)
+		#
+		edgeListToRemove = bimpy.bVascularTracingAics._getListFromCriterion(
+					myStack.slabList,
+					'edges',
+					'nSlab', '<', 20,
+					fromThisList=edgeListToRemove,
+					verbose=True)
+		# delete edges
+		bimpy.bVascularTracingAics._deleteList(myStack.slabList,
+					'edges',
+					edgeListToRemove,
+					verbose=True)
+
+		#
+		# now we have a bunch of nodes with nEdges==0
+		print('  == after deleting edges')
+		nodeListToRemove = bimpy.bVascularTracingAics._getListFromCriterion(
+					myStack.slabList,
+					'nodes',
+					'nEdges', '==', 0,
+					verbose=True)
+		# delete edges
+		bimpy.bVascularTracingAics._deleteList(myStack.slabList,
+					'nodes',
+					nodeListToRemove,
+					verbose=True)
+
+		print('  == after deleting nodes with nEdges==0')
+		nodeListToRemove = bimpy.bVascularTracingAics._getListFromCriterion(
+					myStack.slabList,
+					'nodes',
+					'nEdges', '==', 0,
+					verbose=True)
+
 	# remove zero edge nodes
 	# not sure why we have these ??
-	if 0:
-		print('  1 bimpy.bVascularTracingAics.removeZeroEdgeNodes')
-		bimpy.bVascularTracingAics.removeZeroEdgeNodes(myStack.slabList)
-
-	# remove really short edges
-	if 0:
-		removeSmallerThan = 5
-		onlyRemoveDisconnect = False
-		bimpy.bVascularTracingAics.removeShortEdges(myStack.slabList,
-					removeSmallerThan=removeSmallerThan,
-					onlyRemoveDisconnect=onlyRemoveDisconnect)
-
-	# remove zero edge nodes
-	# not sure why we have these ??
+	'''
 	if 0:
 		print('  2 bimpy.bVascularTracingAics.removeZeroEdgeNodes')
-		bimpy.bVascularTracingAics.removeZeroEdgeNodes(myStack.slabList)
+		bimpy.bVascularTracingAics.old_removeZeroEdgeNodes(myStack.slabList)
+	'''
+
+	# anlyze all slab diameter in a cpu pool
+	if 1:
+		runDiameterPool(myStack)
 
 	if 1:
 		myStack.slabList._preComputeAllMasks()
 
-	# anlyze all slab diameter in a cpu pool
-	if 0:
-		runDiameterPool(myStack)
-
 	# save, next time we load, we do not need to (make skel, analyze diameter)
-	if 1:
+	if saveAtEnd:
 		myStack.saveAnnotations()
 
-	print('todo: write second analysis function() to load stack and')
-	print('  plot histograms of edge (length, diam, etc)')
+	#print('todo: write second analysis function() to load stack and')
+	#print('  plot histograms of edge (length, diam, etc)')

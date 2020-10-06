@@ -53,7 +53,7 @@ class bVascularTracing:
 		"""
 		path: path to file
 		"""
-		print('bVascularTracing.__init__() loadTracing:', loadTracing)
+		print('bVascularTracing.__init__() loadTracing:', loadTracing, 'path:', path)
 		self.parentStack = parentStack
 		self.path = path
 
@@ -112,6 +112,11 @@ class bVascularTracing:
 		self.edgeIdx = np.empty(0, dtype=np.float) # will be nan for nodes
 		self.nodeIdx = np.empty(0, dtype=np.float) # will be nan for slabs
 		#self.slabIdx = np.empty(0, dtype=np.uint8) # will be nan for slabs
+		# abb oct2020
+		self.isBad = np.empty(0, dtype=np.float) # will be nan for nodes
+		self.lpMin = np.empty(0, dtype=np.float) # will be nan for nodes
+		self.lpMax = np.empty(0, dtype=np.float) # will be nan for nodes
+		self.lpSNR = np.empty(0, dtype=np.float) # will be nan for nodes
 
 		self._volumeMask = None
 
@@ -295,10 +300,13 @@ class bVascularTracing:
 
 		#build the list, [pre ... slabs ... post]
 		theseIndices = []
+		# preNode slab
 		if preSlab is not None:
 			theseIndices.append(preSlab)
+		# main list
 		for slab in slabList:
 			theseIndices.append(slab)
+		# post node slab
 		if postSlab is not None:
 			theseIndices.append(postSlab)
 		#print('   theseIndices:', theseIndices)
@@ -401,18 +409,6 @@ class bVascularTracing:
 
 		return newEdgeIdx
 
-	def updateEdge___(self, edgeIdx):
-		"""
-		when slabs change (add, subtract, move)
-		update z (the median z of all slabs
-		"""
-
-		pass
-		'''
-		slabList = self.getEdgeSlabList(edgeIdx)
-		z = round(statistics.median(newZList))
-		'''
-
 	def newSlab(self, edgeIdx, x, y, z, d=np.nan, d2=np.nan, verbose=False):
 		"""
 		append a new slab to edgeIdx
@@ -429,10 +425,30 @@ class bVascularTracing:
 		# not needed
 		#self.edgeDictList[edgeIdx]['slabList'].insert(-1, newSlabIdx)
 
+		# abb oct2020
+		#self.addNewSlabToEdge(edgeIdx, slabIdx)
+
 		if verbose: print('bVascularTracing.newSlab()', newSlabIdx)
 		#self._printGraph()
 
 		return newSlabIdx
+
+	'''
+	def addNewSlabToEdge(self, edgeIdx, slabIdx):
+		pass
+	'''
+
+	def old_updateEdge___(self, edgeIdx):
+		"""
+		when slabs change (add, subtract, move)
+		update z (the median z of all slabs
+		"""
+
+		pass
+		'''
+		slabList = self.getEdgeSlabList(edgeIdx)
+		z = round(statistics.median(newZList))
+		'''
 
 	def deleteNode(self, nodeIdx):
 		# only delete if there are no edges
@@ -454,11 +470,11 @@ class bVascularTracing:
 			postNode = edge['postNode']
 			if preNode is not None and (preNode > nodeIdx):
 				#self.edgeDictList[edgeIdx]['preNode'] = preNode - 1
-				print('ERROR: deleteNode() should not be here ... preNode')
+				#print('ERROR: deleteNode() should not be here ... preNode')
 				edge['preNode'] -= 1
 			if postNode is not None and (postNode > nodeIdx):
 				#self.edgeDictList[edgeIdx]['postNode'] = postNode - 1
-				print('ERROR: deleteNode() should not be here ... postNode')
+				#print('ERROR: deleteNode() should not be here ... postNode')
 				edge['postNode'] -= 1
 
 		# delete from dict
@@ -576,6 +592,49 @@ class bVascularTracing:
 		#print('after) bVascularTracing.deleteEdge()', edgeIdx)
 		#self._printGraph()
 
+	def deleteSlab(self, slabIdx):
+		'''
+		print('bVascularTracing.deleteSlab() slabIdx:', slabIdx, 'shape:', self.x.shape)
+		self._printSlab(slabIdx)
+		'''
+
+		if not self.myBoundCheck_Slab(slabIdx):
+			print('ERROR: bVascularTracing.deleteSlab() got bad slab index:', slabIdx, 'total num slabs is:', len(self.x))
+			return
+
+		edgeIdx = self.edgeIdx[slabIdx]
+		nodeIdx = self.nodeIdx[slabIdx]
+
+		self.x = np.delete(self.x, slabIdx)
+		self.y = np.delete(self.y, slabIdx)
+		self.z = np.delete(self.z, slabIdx)
+		self.d = np.delete(self.d, slabIdx)
+		self.d2 = np.delete(self.d2, slabIdx)
+		self.int = np.delete(self.int, slabIdx)
+		self.edgeIdx = np.delete(self.edgeIdx, slabIdx)
+		self.nodeIdx = np.delete(self.nodeIdx, slabIdx)
+		#self.slabIdx = np.delete(self.slabIdx, slabIdx)
+
+		# abb oct2020
+		self.isBad = np.delete(self.isBad, slabIdx)
+		self.lpMin = np.delete(self.lpMin, slabIdx)
+		self.lpMax = np.delete(self.lpMax, slabIdx)
+		self.lpSNR = np.delete(self.lpSNR, slabIdx)
+
+		# abb oct2020, delete slab to edge
+		#self.deleteSlabFromEdge(edgeIdx, slabIdx)
+
+		#decriment remaining slabIdx
+		#self.slabIdx[self.slabIdx>slabIdx] -= 1
+
+		# remember, both self.edgeIdx and self.nodeIdx have nan!
+		#if edgeIdx is not None:
+
+	'''
+	def deleteSlabFromEdge(self, edgeIdx, slabIdx)
+		pass
+	'''
+
 	'''
 	def updateNode(self, nodeIdx, x=None, y=None, z=None):
 		"""
@@ -607,10 +666,20 @@ class bVascularTracing:
 		self.z = np.append(self.z, z)
 		self.d = np.append(self.d, d)
 		self.d2 = np.append(self.d2, d2) # will be filled in by bLineIntensity profile
-		self.int = np.append(self.int, np.nan)
+		self.int = np.append(self.int, np.nan) # oct2020, not used???
 		self.edgeIdx = np.append(self.edgeIdx, edgeIdx)
 		self.nodeIdx = np.append(self.nodeIdx, nodeIdx)
 		#self.slabIdx = np.append(self.slabIdx, newSlabIdx)
+
+		# abb oct2020, add slab to edge edgeIdx
+		# slabs are NOT bad, edges are bad
+		# this should allow us to NOT display bad edges
+		self.isBad = np.append(self.isBad, np.nan)
+		# line intensity profile
+		self.lpMin = np.append(self.lpMin, np.nan)
+		self.lpMax = np.append(self.lpMax, np.nan)
+		self.lpSNR = np.append(self.lpSNR, np.nan) # lpMax/lpMin
+
 		return newSlabIdx
 
 	def _deleteSlabList(self, slabList, verbose=False):
@@ -628,35 +697,6 @@ class bVascularTracing:
 			self.deleteSlab(thisSlab)
 			# decriment all items of slabList > slab
 			slabListCopy = slabListCopy - 1 # this is assuming slabs are monotonically increasing
-
-	def deleteSlab(self, slabIdx):
-		'''
-		print('bVascularTracing.deleteSlab() slabIdx:', slabIdx, 'shape:', self.x.shape)
-		self._printSlab(slabIdx)
-		'''
-
-		if not self.myBoundCheck_Slab(slabIdx):
-			print('ERROR: bVascularTracing.deleteSlab() got bad slab index:', slabIdx, 'total num slabs is:', len(self.x))
-			return
-
-		edgeIdx = self.edgeIdx[slabIdx]
-		nodeIdx = self.nodeIdx[slabIdx]
-
-		self.x = np.delete(self.x, slabIdx)
-		self.y = np.delete(self.y, slabIdx)
-		self.z = np.delete(self.z, slabIdx)
-		self.d = np.delete(self.d, slabIdx)
-		self.d2 = np.delete(self.d2, slabIdx)
-		self.int = np.delete(self.int, slabIdx)
-		self.edgeIdx = np.delete(self.edgeIdx, slabIdx)
-		self.nodeIdx = np.delete(self.nodeIdx, slabIdx)
-		#self.slabIdx = np.delete(self.slabIdx, slabIdx)
-
-		#decriment remaining slabIdx
-		#self.slabIdx[self.slabIdx>slabIdx] -= 1
-
-		# remember, both self.edgeIdx and self.nodeIdx have nan!
-		#if edgeIdx is not None:
 
 	def _getSlabFromNodeIdx(self, nodeIdx):
 		# todo: not sure if this works
@@ -708,8 +748,8 @@ class bVascularTracing:
 			'type': '',
 			'preNode': srcNode,
 			'postNode': dstNode,
-			'Diam': None,
-			'Diam2': None, # my line intensity analysis
+			'Diam': None, # mean
+			'Diam2': None, # mean, my line intensity analysis
 			'nSlab': 0, # umber of slabs
 			'Len 3D': None,
 			'Len 2D': None,
@@ -722,6 +762,9 @@ class bVascularTracing:
 			'color': 'cyan',
 			'nCon': None, # 0/1/2 for no other, one, or 2 other edges
 			'slabList': [], # list of slab indices on this edge
+			# abb oct2020
+			'mSlabSNR': None,
+
 			})
 		return edgeDict
 
@@ -2080,6 +2123,7 @@ class bVascularTracing:
 			warnings.resetwarnings()
 			#print(edgeIdx, meanDiameter)
 
+			# number of other edges connected to, will be 0/1/2
 			edge['nCon'] = self.getEdgeConnectivity(edgeIdx)
 
 	def euclideanDistance2(self, src, dst):
@@ -2279,7 +2323,11 @@ class bVascularTracing:
 				edgeGroup.attrs['edgeDict'] = edgeDict_json
 
 			# slabs are in a dataset
-			slabData = np.column_stack((self.x, self.y, self.z, self.d, self.d2, self.int, self.edgeIdx, self.nodeIdx,))
+			slabData = np.column_stack((self.x, self.y, self.z,
+							self.d, self.d2, self.int,
+							self.edgeIdx, self.nodeIdx,
+							self.isBad,
+							self.lpMin, self.lpMax, self.lpSNR,))
 			#print('slabData:', slabData.shape)
 			f.create_dataset('slabs', data=slabData)
 
@@ -2343,6 +2391,21 @@ class bVascularTracing:
 					self.int = b[:,5]
 					self.edgeIdx = b[:,6]
 					self.nodeIdx = b[:,7]
+					# oct2020
+					try:
+						self.isBad = b[:,8]
+						self.lpMin = b[:,9]
+						self.lpMax = b[:,10]
+						self.lpSNR = b[:,11]
+					except (IndexError) as e:
+						print('=== bVascularTracing.load() new file format for (isBad, lpMin, lpMax, lpSNR)')
+						loadedShape = self.x.shape
+						print('  loadedShape:', loadedShape)
+						self.isBad = np.zeros(loadedShape) * np.nan
+						self.lpMin = np.zeros(loadedShape) * np.nan
+						self.lpMax = np.zeros(loadedShape) * np.nan
+						self.lpSNR = np.zeros(loadedShape) * np.nan
+
 				'''
 				elif name == 'masks':
 					c = f['masks']
@@ -2358,7 +2421,7 @@ class bVascularTracing:
 		for edge in tmpEdgeDictList:
 			self.edgeDictList[edge['idx']] = edge
 
-		print('    loaded nodes:', maxNodeIdx, 'edges:', maxEdgeIdx)
+		print('    loaded nodes:', maxNodeIdx, 'edges:', maxEdgeIdx, 'slabs:', len(self.x))
 
 		#return maskDictList
 		return h5FilePath
@@ -2705,6 +2768,7 @@ class bVascularTracing:
 		aicsSlabList_z = np.empty((0), np.float16) #[]
 		aicsSlabList_edgeIdx = np.empty((0), np.uint16) #[]
 		aicsSlabList_slabIdx = np.empty((0), np.uint16) #[]
+		#aicsSlabList_isBad = np.empty((0), np.uint16) #[]
 
 		for edgeIdx, edge in enumerate(self.edgeDictList):
 			tmpSlabList = self.getEdgeSlabList(edgeIdx) # includes nodes
@@ -2717,7 +2781,7 @@ class bVascularTracing:
 			# y
 			aicsSlabList_y = np.append(aicsSlabList_y, self.y[tmpSlabList])
 			aicsSlabList_y = np.append(aicsSlabList_y, np.nan) # abb aics
-			# x
+			# z
 			aicsSlabList_z = np.append(aicsSlabList_z, self.z[tmpSlabList])
 			aicsSlabList_z = np.append(aicsSlabList_z, np.nan) # abb aics
 
@@ -2729,6 +2793,11 @@ class bVascularTracing:
 			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, tmpSlabList)
 			aicsSlabList_slabIdx = np.append(aicsSlabList_slabIdx, np.nan) # abb aics
 
+			# isBad
+			'''
+			aicsSlabList_isBad = np.append(aicsSlabList_isBad, self.isBad[tmpSlabList])
+			aicsSlabList_isBad = np.append(aicsSlabList_isBad, np.nan) # abb aics
+			'''
 		#
 		# nodes
 		nodeIdxMask = np.ma.masked_greater_equal(self.nodeIdx, 0)

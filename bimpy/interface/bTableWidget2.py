@@ -349,6 +349,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 	def _itemFromDict(self, theDict):
 		myItemRole = QtCore.Qt.DisplayRole #options are (DisplayRole,EditRole)
 		rowItems = []
+		isBad = False
 		for colIdx, header in enumerate(self.headerLabels):
 			item = QtWidgets.QTableWidgetItem()
 			try:
@@ -370,9 +371,17 @@ class bTableWidget2(QtWidgets.QTableWidget):
 						item.setData(myItemRole, theDict[header]) # DON'T PUT STR() HERE !!! abb 20200831
 				#myString = str(theDict[header])
 				#item.setData(QtCore.Qt.EditRole, myString)
+
+				if header == 'isBad':
+					isBad = theDict[header]
+
 			except (KeyError) as e:
 				pass
 			rowItems.append(item)
+
+		if isBad and len(rowItems)>0:
+			rowItems[0].setForeground(QtGui.QBrush(QtGui.QColor(255, 0, 0)))
+
 		return rowItems
 
 	def _getColumnIdx(self, colStr):
@@ -585,9 +594,47 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		userAction = menu.exec_(self.mapToGlobal(pos))
 
+
+	def menuActionHandler_header(self):
+		"""
+		show/hide columns
+
+		as a lot of this ... this is messy !!!!!!!!!!!!!
+		"""
+		print('  menuActionHandler_header()', self._type)
+		sender = self.sender()
+		title = sender.text()
+		isChecked = sender.isChecked()
+		print('    title:', title, 'isChecked:', isChecked, type(sender))
+
+		# self.horizontalHeader().isSectionHidden(colIdx)
+
+		# build a list of columns to hide
+		hideColumnList = []
+		nColHeader = self.horizontalHeader().count()
+		for colIdx in range(nColHeader):
+			headerItem = self.horizontalHeaderItem(colIdx)
+			headerItemText = headerItem.text()
+			if headerItemText == title: # logic here is a bit backwards
+				# checked means show
+				#print('menuActionHandler_header() is changing headerItemText:', headerItemText, 'to:', isChecked)
+				if isChecked:
+					# checked means show
+					pass
+				else:
+					# not checked means hide
+					hideColumnList.append(headerItemText)
+			elif self.horizontalHeader().isSectionHidden(colIdx):
+				# not checked means hide
+				hideColumnList.append(headerItemText)
+
+		self.hideColumns(hideColumnList)
+
+		# repaint
+		self.repaint()
+
 	def contextMenuEvent(self, event):
 		"""
-
 		for a more advanced example, see
 		https://stackoverflow.com/questions/20930764/how-to-add-a-right-click-menu-to-each-cell-of-qtableview-in-pyqt
 		"""
@@ -639,44 +686,6 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		userAction = menu.exec_(self.mapToGlobal(pos))
 		#print('userAction:', userAction)
-
-	def menuActionHandler_header(self):
-		"""
-		show/hide columns
-
-		as a lot of this ... this is messy !!!!!!!!!!!!!
-		"""
-		print('  menuActionHandler_header()', self._type)
-		sender = self.sender()
-		title = sender.text()
-		isChecked = sender.isChecked()
-		print('    title:', title, 'isChecked:', isChecked, type(sender))
-
-		# self.horizontalHeader().isSectionHidden(colIdx)
-
-		# build a list of columns to hide
-		hideColumnList = []
-		nColHeader = self.horizontalHeader().count()
-		for colIdx in range(nColHeader):
-			headerItem = self.horizontalHeaderItem(colIdx)
-			headerItemText = headerItem.text()
-			if headerItemText == title: # logic here is a bit backwards
-				# checked means show
-				#print('menuActionHandler_header() is changing headerItemText:', headerItemText, 'to:', isChecked)
-				if isChecked:
-					# checked means show
-					pass
-				else:
-					# not checked means hide
-					hideColumnList.append(headerItemText)
-			elif self.horizontalHeader().isSectionHidden(colIdx):
-				# not checked means hide
-				hideColumnList.append(headerItemText)
-
-		self.hideColumns(hideColumnList)
-
-		# repaint
-		self.repaint()
 
 	def menuActionHandler(self):
 		"""

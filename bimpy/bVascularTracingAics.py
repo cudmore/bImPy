@@ -3,6 +3,7 @@
 bVascularTracingAics
 """
 import time, json
+import operator
 from collections import OrderedDict
 
 import numpy as np
@@ -262,7 +263,7 @@ def joinEdges(vascTracing, edgeIdx1, edgeIdx2, verbose=False):
 	return newEdgeIdx, newSrcNodeIdx, newDstNodeIdx
 
 #####################################################################
-def removeZeroEdgeNodes(vascTracing):
+def old_removeZeroEdgeNodes(vascTracing):
 	"""
 	THIS DOES NOTHING????
 	the error might be in the list display of nodes ???
@@ -296,40 +297,148 @@ def removeZeroEdgeNodes(vascTracing):
 	print(f'   after remove we have {vascTracing.numNodes()} nodes')
 
 #####################################################################
-def removeShortEdges(vascTracing, removeSmallerThan=3, onlyRemoveDisconnect=False):
+'''
+def deleteEdgeList(vascTracing, deleteEdgeList):
 	"""
-	vascTracing: bVascularTracing
-	removeSmallerThan: number of slabs
-	onlyRemoveDisconnect: if true then only removed disconnected edges (preNode and postNode is None)
+	delete a list of edges
 	"""
-	print('bVascularTracingAics.removeShortEdges() removeSmallerThan:', removeSmallerThan, 'onlyRemoveDisconnect:', onlyRemoveDisconnect)
-	deleteEdgeList = []
-	for edgeIdx, edge in enumerate(vascTracing.edgeIter()):
-		if onlyRemoveDisconnect:
-			okRemove = vascTracing.isDanglingEdge(edgeIdx)
-		else:
-			okRemove = True
-		if (edge['nSlab'] <= removeSmallerThan) and okRemove:
-			# remove edge
-			#vascTracing.deleteEdge(edgeIdx)
-			deleteEdgeList.append(edgeIdx)
-
-	nEdgesToRemove= len(deleteEdgeList)
-	print(f'   removing {nEdgesToRemove} short edges')
-	print(f'   before remove we have {vascTracing.numEdges()} edges ...')
+	nEdgesToRemove = len(deleteEdgeList)
+	print(f'  bVascularTracingAics.deleteEdgeList() removing {nEdgesToRemove} edges')
+	print(f'    before remove we have {vascTracing.numEdges()} edges ...')
 	for idx in range(nEdgesToRemove):
 		edgeIdx = deleteEdgeList[idx]
 		#print(f'  removeShortEdges() deleting edgeIdx {edgeIdx}, total edges is {vascTracing.numEdges()}')
 		try:
-			vascTracing.edgeDictList[edgeIdx]
+			tmp = vascTracing.edgeDictList[edgeIdx]
 		except (IndexError) as e:
-			print(f'    removeShortEdges() edgeIdx does not exist {edgeIdx}, num edges is {vascTracing.numEdges()}')
+			print(f'    EXCEPTION ERROR: deleteEdgeList() edgeIdx does not exist {edgeIdx}, num edges is {vascTracing.numEdges()}')
 		else:
 			# do the delete
 			vascTracing.deleteEdge(edgeIdx)
-		# [unicode(x.strip()) if x is not None else '' for x in row]
 		deleteEdgeList = [x-1 if x>edgeIdx else x for x in deleteEdgeList]
-	print(f'   after remove we have {vascTracing.numEdges()} edges')
+	#
+	print(f'    after remove we have {vascTracing.numEdges()} edges')
+'''
+
+#####################################################################
+def _deleteList(vascTracing, type, listToDelete, verbose=False):
+	"""
+	delete a list of objects, either (nodes, edges)
+
+	parameters:
+		type: (nodes, edges)
+		listToDelete: list of either (nodes, edges) indices to delete
+	"""
+	nToRemove = len(listToDelete)
+
+	if type == 'nodes':
+		theDictList = vascTracing.nodeDictList
+	elif type == 'edges':
+		theDictList = vascTracing.edgeDictList
+
+	nInDict = len(theDictList)
+
+	if verbose:
+		print(f'  bVascularTracingAics._deleteList() {type} deleting {nToRemove} {type} from {nInDict}')
+
+	for idx in range(nToRemove):
+		theIdx = listToDelete[idx]
+		try:
+			tmp = theDictList[idx]
+		except (IndexError) as e:
+			print(f'    EXCEPTION ERROR: _deleteList() idx does not exist {idx}, num is {nInDict}')
+		else:
+			# do the delete
+			if type == 'edges':
+				vascTracing.deleteEdge(theIdx)
+			elif type == 'nodes':
+				vascTracing.deleteNode(theIdx)
+
+		# rebuild the list, decrimenting remaing that are > the one just deleted
+		listToDelete = [x-1 if x>theIdx else x for x in listToDelete]
+	#
+	if verbose:
+		print(f'    bVascularTracingAics._deleteList() {type} after delete we have {len(theDictList)} {type}')
+
+#####################################################################
+def old_getEdgeListFromCriterion(vascTracing,
+							key, operatorStr, value,
+							fromThisEdgeList=None,
+							verbose=False):
+	"""
+	Return a list of edges indices matching a criterion
+		like, edgeDict[key] < 5
+	Parameters:
+		key: key into vascTracing.edgeDictList[key]
+		value: value to compare
+		operatorStr: ('>', '<', '>=', '<=', '==')
+	"""
+	type = 'edges'
+	edgeList = _getListFromCriterion(vascTracing, type,
+						key, operatorStr, value,
+						fromThisList=fromThisEdgeList,
+						verbose=verbose)
+	return edgeList
+
+#####################################################################
+def old_getNodeListFromCriterion(vascTracing,
+							key, operatorStr, value,
+							fromThisEdgeList=None,
+							verbose=False):
+	"""
+	Return a list of edges indices matching a criterion
+		like, edgeDict[key] < 5
+	Parameters:
+		key: key into vascTracing.edgeDictList[key]
+		value: value to compare
+		operatorStr: ('>', '<', '>=', '<=', '==')
+	"""
+	type = 'nodes'
+	nodeList = _getListFromCriterion(vascTracing, type,
+						key, operatorStr, value,
+						fromThisList=fromThisEdgeList,
+						verbose=verbose)
+	return nodeList
+
+#####################################################################
+def _getListFromCriterion(vascTracing,
+							type,
+							key, operatorStr, value,
+							fromThisList=None,
+							verbose=False):
+	"""
+	Return a list of either (nodes, edges) that match a criterion
+
+	Parameters:
+		type: ('nodes', 'edges')
+	"""
+
+	ops = {'>': operator.gt,
+		'<': operator.lt,
+		'>=': operator.ge,
+		'<=': operator.le,
+		'==': operator.eq}
+
+	if type == 'nodes':
+		thisDictList = vascTracing.nodeDictList
+	elif type == 'edges':
+		thisDictList = vascTracing.edgeDictList
+
+	if fromThisList is None:
+		# do all
+		fromThisList = range(len(thisDictList))
+
+	returnList = []
+	for idx, dictIdx in enumerate(fromThisList):
+		oneDict = thisDictList[dictIdx]
+		oneValue = oneDict[key]
+		if ops[operatorStr](oneValue, value):
+			returnList.append(dictIdx)
+
+	if verbose:
+		print(f'  bVascularTracingAics._getListFromCriterion() found {len(returnList)} {type} from {len(thisDictList)} with {key} {operatorStr} {value}')
+
+	return returnList
 
 #####################################################################
 def detectEdgesAndNodesToRemove(vascTracing):

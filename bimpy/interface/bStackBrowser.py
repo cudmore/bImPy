@@ -299,6 +299,9 @@ def main(useBioformats=False):
 	#path = '/Users/cudmore/data/20200717/aicsAnalysis/20200717__A01_G001_0014_ch2.tif'
 	#path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
 
+	# debug line profile
+	path = '/home/cudmore/data/nathan/SAN4/aicsAnalysis/testing/SAN4_tail_ch2.tif'
+
 	try:
 		if useBioformats:
 			mjb = bimpy.bJavaBridge()

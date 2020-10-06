@@ -86,6 +86,9 @@ class bStack:
 		# load vesselucida analysis from .xml file
 		self.slabList = bimpy.bVascularTracing(self, self.path, loadTracing=loadTracing)
 
+		# todo: decide on better place to put this
+		self.myLineProfile = bimpy.bLineProfile(self)
+
 		self.analysis = bimpy.bAnalysis(self)
 
 	def saveAs(self, newPath=None):

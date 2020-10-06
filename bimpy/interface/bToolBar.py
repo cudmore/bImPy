@@ -21,14 +21,19 @@ class bToolBar(QtWidgets.QToolBar):
 		#print('bToolBar() tmpPath:', tmpPath)
 		#print('bToolBar() iconsFolderPath:', iconsFolderPath)
 
-		self.setWindowTitle('xxx toolbar')
+		self.setWindowTitle('Stack toolbar')
 
 		#self.setOrientation(QtCore.Qt.Vertical);
 		#self.setOrientation(QtCore.Qt.Horizontal);
 
-		myIconSize = 16 #32
+		myIconSize = 12 #32
 		self.setIconSize(QtCore.QSize(myIconSize,myIconSize))
 		self.setToolButtonStyle( QtCore.Qt.ToolButtonTextUnderIcon )
+
+		myFontSize = 10
+		myFont = self.font();
+		myFont.setPointSize(myFontSize);
+		self.setFont(myFont)
 
 		toolNameList = ['Save']
 		for toolName in toolNameList:
@@ -43,33 +48,108 @@ class bToolBar(QtWidgets.QToolBar):
 
 		self.addSeparator()
 
-		iconSizeStr = '16'
+		#iconSizeStr = '16'
 
 		# checkable e.g. two state buttons
-		toolListNames = ['1', '2', '3', 'rgb', 'separator', 'z', 'max', 'separator',
-						 'Branch Points', 'Vessels', 'Annotations',
-						 'Search', 'Contrast', 'Line Profile', 'Analysis',
+		toolListNames = ['1', '2', '3', 'rgb', 'separator', 'sliding-z',
+						'separator',
+						'Branch Points', 'Vessels', 'Annotations',
+						'separator',
+						'Tracing', '-', '+',
+						'separator',
+						'Search', 'Contrast', 'Line Profile', 'Analysis',
 						 ]
+
+		# make ['1', '2', '3', 'rgb'] disjoint selections
+		channelActionGroup = QtWidgets.QActionGroup(self)
+
+		numChannels = self.myMainWindow.getMyStack().numChannels
+
 		self.toolList = []
 		toolIndex = 0
 		for index, toolName in enumerate(toolListNames):
 			if toolName == 'separator':
 				self.addSeparator()
 			else:
+				if toolName == '3' and numChannels<3:
+					continue
 				iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
 				theIcon = QtGui.QIcon(iconPath)
 
 				# see: https://stackoverflow.com/questions/45511056/pyqt-how-to-make-a-toolbar-button-appeared-as-pressed
 				theAction = QtWidgets.QAction(theIcon, toolName, self)
-				theAction.setCheckable(True)
-				theAction.setStatusTip(toolName)
+
+				isCheckable = True
+				if toolName in ['+', '-']:
+					isCheckable = False
+				theAction.setCheckable(isCheckable)
+
+				theAction.setStatusTip(toolName) # USED BY CALLBACK, do not change
 				theAction.triggered.connect(lambda checked, index=toolIndex: self.oneCallback3(index))
 
+				# add channels to group
+				if toolName in ['1', '2', '3', 'rgb']:
+					channelActionGroup.addAction(theAction)
+
+				# set keyboard shortcuts
+				if toolName == '1':
+					theAction.setShortcut('1')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('View Channel 1 [1]')
+				elif toolName == '2':
+					theAction.setShortcut('2')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('View Channel 2 [2]')
+				elif toolName == '3':
+					theAction.setShortcut('3')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('View Channel 3 [3]')
+				elif toolName == 'rgb':
+					theAction.setToolTip('View RGB Image')
+
+				elif toolName == 'sliding-z':
+					theAction.setShortcut('z')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('Toggle Sliding-Z [z]')
+
+				elif toolName == 'Branch Points':
+					theAction.setToolTip('Toggle Branch Point List')
+				elif toolName == 'Vessels':
+					theAction.setToolTip('Toggle Vessels List')
+				elif toolName == 'Annotations':
+					theAction.setToolTip('Toggle Annotations List')
+
+				elif toolName == 'Tracing':
+					theAction.setShortcut('t')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('Toggle Tracing [t]')
+				elif toolName == '-':
+					theAction.setShortcut('-')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('Reduce Tracing Size [-]')
+				elif toolName == '+':
+					theAction.setShortcut('=')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('Increase Tracing Size [=]')
+				elif toolName == 'Search':
+					theAction.setShortcut('Ctrl+f')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('Search Annotations [Ctrl+f]')
+				elif toolName == 'Contrast':
+					theAction.setShortcut('c')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('Toggle Contrast [c]')
+				elif toolName == 'Line Profile':
+					theAction.setShortcut('l')# or 'Ctrl+r' or '&r' for alt+r
+					theAction.setToolTip('Toggle Line Profile [l]')
+					#theAction.setShortcutVisibleInContextMenu(True)
+
+				#
+				# add action
 				self.toolList.append(theAction)
 				self.addAction(theAction)
 				toolIndex += 1
 
 		self.addSeparator()
+
+		#
+		# checkbox to toggle user set type with 1,2,3,...
+		toolName = 'Set Type'
+		setTypeCheckBox = QtWidgets.QCheckBox(toolName)
+		#callbackFn = functools.partial(self.oneCallback, toolName)
+		setTypeCheckBox.stateChanged.connect(self.setType_callback)
+		self.addWidget(setTypeCheckBox)
 
 		toolNameList = ['Options', 'Help']
 		for toolName in toolNameList:
@@ -86,6 +166,9 @@ class bToolBar(QtWidgets.QToolBar):
 		print('    bToolbar.slot_DisplayStateChange() key:', key)
 		if key == 'displayThisStack':
 			print('  toggle channel 1/2/3/rgb to displayStateDict[key]', displayStateDict[key])
+
+	def setType_callback(self, state):
+		print('setType_callback() state:', state)
 
 	def syncWithOptions(self, options):
 		"""
@@ -136,13 +219,22 @@ class bToolBar(QtWidgets.QToolBar):
 			webbrowser.open(urlStr, new=2)
 
 	def oneCallback3(self, index):
-		print('oneCallback3() index:', index)
 		action = self.toolList[index]
-		print('  ' ,action.statusTip(), action.isChecked())
 		actionName = action.statusTip()
 		isChecked = action.isChecked()
+		print('bToolbar.oneCallback3() index:', index, 'actionName:', actionName, 'isChecked:', isChecked)
 
-		if actionName == 'Branch Points':
+		if actionName == '1':
+			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value=1)
+		elif actionName == '2':
+			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value=2)
+		elif actionName == '3':
+			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value=3)
+
+		elif actionName == 'sliding-z':
+			self.myMainWindow.getStackView().displayStateChange('displaySlidingZ', toggle=True)
+
+		elif actionName == 'Branch Points':
 			self.myMainWindow.optionsChange('Panels', 'showNodeList', toggle=True, doEmit=True)
 		elif actionName == 'Vessels':
 			self.myMainWindow.optionsChange('Panels', 'showEdgeList', toggle=True, doEmit=True)
@@ -155,3 +247,12 @@ class bToolBar(QtWidgets.QToolBar):
 		elif actionName == 'Line Profile':
 			self.myMainWindow.optionsChange('Panels', 'showLineProfile', toggle=True, doEmit=True)
 
+		elif actionName == 'Tracing':
+			self.myMainWindow.getStackView().toggleTracing()
+		elif actionName == '-':
+			self.myMainWindow.getStackView().incrementDecrimentTracing('decrease')
+		elif actionName == '+':
+			self.myMainWindow.getStackView().incrementDecrimentTracing('increase')
+
+		else:
+			print('  -->> action not taken')

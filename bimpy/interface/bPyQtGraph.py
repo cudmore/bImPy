@@ -442,61 +442,20 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		print('bPyQtGraph.drawSlabLine() slabIdx:', slabIdx)
 		if radius is None:
+			print('-->> drawSlabLine() radius was none -->> defaulting to 12')
 			radius = 12 # pixels
-		print('  radius:', radius)
 
 		if slabIdx is None:
 			slabIdx = self.selectedSlab()
 		if slabIdx is None:
 			return
 
-		# todo: could pas edgeIdx as a parameter
-		edgeIdx = self.mySimpleStack.slabList.getSlabEdgeIdx(slabIdx)
-		if edgeIdx is None:
-			print('warning: myPyQtGraphPlotWidget.drawSlabLine() got bad edgeIdx:', edgeIdx)
-			return
-		edgeSlabList = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
-		thisSlabIdx = edgeSlabList.index(slabIdx) # index within edgeSlabList
-		#print('   edgeIdx:', edgeIdx, 'thisSlabIdx:', thisSlabIdx, 'len(edgeSlabList):', len(edgeSlabList))
-		# todo: not sure but pretty sure this will not fail?
-		if thisSlabIdx==0 or thisSlabIdx==len(edgeSlabList)-1:
-			# we were at a slab that was also a node
-			return
-		prevSlab = edgeSlabList[thisSlabIdx - 1]
-		nextSlab = edgeSlabList[thisSlabIdx + 1]
-		this_x, this_y, this_z = self.mySimpleStack.slabList.getSlab_xyz(slabIdx)
-		prev_x, prev_y, prev_z = self.mySimpleStack.slabList.getSlab_xyz(prevSlab)
-		next_x, next_y, next_z = self.mySimpleStack.slabList.getSlab_xyz(nextSlab)
-		dy = next_y - prev_y
-		dx = next_x - prev_x
-		slope = dy/dx
-		slope = dx/dy # flipped
-		inverseSlope = -1/slope
-		x_ = radius / math.sqrt(slope**2 + 1) #
-		y_ = x_ * slope
-		#y_ = radius / math.sqrt(slope**2 + 1) # flipped
-		#x_ = y_ * slope
+		xSlabPlot, ySlabPlot = \
+			self.mySimpleStack.myLineProfile.getSlabLine2(slabIdx, radius=radius)
 
-		xLine1 = this_x - x_ #
-		xLine2 = this_x + x_
+		if xSlabPlot is None or ySlabPlot is None:
+			return None
 
-		yLine1 = this_y + y_
-		yLine2 = this_y - y_
-		#yLine1 = this_y - y_ # PyQtGraph
-		#yLine2 = this_y + y_
-
-		xSlabPlot = [xLine1, xLine2]
-		ySlabPlot = [yLine1, yLine2]
-		'''
-		print('selectSlab() slabIdx:', slabIdx, 'slope:', slope, 'inverseSlope:', inverseSlope)
-		print('   slope:', slope, 'inverseSlope:', inverseSlope)
-		print('   xSlabPlot:', xSlabPlot)
-		print('   ySlabPlot:', ySlabPlot)
-		'''
-		# was this
-		#self.mySlabLinePlot.set_xdata(ySlabPlot) # flipped
-		#self.mySlabLinePlot.set_ydata(xSlabPlot)
-		#print('  bPyQtGraph.drawSlabLine() xSlabPlot:', xSlabPlot, 'ySlabPlot:', ySlabPlot)
 		self.mySlabPlotOne.setData(ySlabPlot, xSlabPlot) # flipped
 
 		displayThisStack = self.displayStateDict['displayThisStack']
@@ -1143,15 +1102,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				self.setSliceSignal.emit('set slice', self.currentSlice)
 				'''
 		# choose which stack to display
-		elif event.key() == QtCore.Qt.Key_1:
-			self.displayStateChange('displayThisStack', value=1)
-			#self.setStackDisplay(1)
-		elif event.key() == QtCore.Qt.Key_2:
-			self.displayStateChange('displayThisStack', value=2)
-			#self.setStackDisplay(2)
-		elif event.key() == QtCore.Qt.Key_3:
-			self.displayStateChange('displayThisStack', value=2)
-			#self.setStackDisplay(3)
+		#elif event.key() == QtCore.Qt.Key_1:
+		#	self.displayStateChange('displayThisStack', value=1)
+		#elif event.key() == QtCore.Qt.Key_2:
+		#	self.displayStateChange('displayThisStack', value=2)
+		#elif event.key() == QtCore.Qt.Key_3:
+		#	self.displayStateChange('displayThisStack', value=2)
 
 		# masks
 		elif event.key() == QtCore.Qt.Key_5:
@@ -1179,12 +1135,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#		self.displayStateDict['displayThisStack'] = 'mask'
 		#		self.setSlice() # just refresh
 
-		elif event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
-			# increase tracing
-			self.incrementDecrimentTracing('increase')
-		elif event.key() == QtCore.Qt.Key_Minus:
-			# increase tracing
-			self.incrementDecrimentTracing('decrease')
+		#elif event.key() in [QtCore.Qt.Key_Plus, QtCore.Qt.Key_Equal]:
+		#	# increase tracing
+		#	self.incrementDecrimentTracing('increase')
+		#elif event.key() == QtCore.Qt.Key_Minus:
+		#	# decrease tracing
+		#	self.incrementDecrimentTracing('decrease')
 
 		elif event.key() == QtCore.Qt.Key_J:
 			event = {'type':'joinTwoEdges'}
@@ -1203,17 +1159,25 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		elif event.key() in [QtCore.Qt.Key_T]:
 			# todo: use this after adding deferUpdate=True
 			#  self.displayStateChange('showNodes', toggle=True)
+			'''
 			self.displayStateDict['showNodes'] = not self.displayStateDict['showNodes']
 			self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
 			self.displayStateDict['showAnnotations'] = not self.displayStateDict['showAnnotations']
 			self.setSlice() # refresh
-
-		elif event.key() in [QtCore.Qt.Key_Z]:
-			self.displayStateChange('displaySlidingZ', toggle=True)
+			'''
+			self.toggleTracing()
+		#elif event.key() in [QtCore.Qt.Key_Z]:
+		#	self.displayStateChange('displaySlidingZ', toggle=True)
 
 		else:
 			# if not handled by *this, this will continue propogation
 			event.setAccepted(False)
+
+	def toggleTracing(self):
+		self.displayStateDict['showNodes'] = not self.displayStateDict['showNodes']
+		self.displayStateDict['showEdges'] = not self.displayStateDict['showEdges']
+		self.displayStateDict['showAnnotations'] = not self.displayStateDict['showAnnotations']
+		self.setSlice() # refresh
 
 	def keyReleaseEvent(self, event):
 		#print(f'=== keyReleaseEvent() event.text() {event.text()}')

@@ -17,17 +17,25 @@ import qdarkstyle
 
 import bimpy
 
+#class bScatterPlotWidget(QtWidgets.QWidget):
 class bScatterPlotWidget(QtWidgets.QMainWindow):
 	mainWindowSignal = QtCore.Signal(object)
 
 	def __init__(self, stackObject, parent=None):
-		super(bScatterPlotWidget, self).__init__()
+		super(bScatterPlotWidget, self).__init__(parent)
 		self.myStack = stackObject
 		self.myParent = parent
+
+		# this adds all action of parent bStackWindow (QMainWindow)
+		# it seems to propogate key strokes back up
+		# but then, from the main bStackWidget (QMainWindow) we need to
+		# figure out whe sent it and what is selected???
+		#self.addActions(parent.actions())
 
 		# all widgets should inherit this
 		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 
+		# as a QMainWindow
 		centralWidget = QtWidgets.QWidget(self)
 		self.setCentralWidget(centralWidget)
 
@@ -36,6 +44,11 @@ class bScatterPlotWidget(QtWidgets.QMainWindow):
 		myToolbar = bPlotToolBar()
 		#myToolbar.selectTypeSignal.connect(self.slot_selectType)
 		self.addToolBar(myToolbar)
+
+		#
+		# status bar
+		myStatusBar = bScatterStatusBar()
+		self.setStatusBar(myStatusBar)
 
 		# hboxlayout for x/y/plot
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
@@ -56,17 +69,23 @@ class bScatterPlotWidget(QtWidgets.QMainWindow):
 
 		# connect point selection to toolbar
 		myPlot.selectPointSignal.connect(self.slot_selectPoint)
-		myPlot.selectPointSignal.connect(myToolbar.slot_selectPoint)
+		#myPlot.selectPointSignal.connect(myToolbar.slot_selectPoint)
+		myPlot.selectPointSignal.connect(myStatusBar.slot_selectPoint)
 		self.mainWindowSignal.connect(myPlot.slot_mainWindowSignal)
 
+		myPlot.selectPointsSignal.connect(myStatusBar.slot_selectPoints)
+
 		# connect type selection to plot
+		myToolbar.selectTypeSignal.connect(myStatusBar.slot_selectType)
 		myToolbar.selectTypeSignal.connect(myPlot.slot_selectType)
 		myToolbar.selectTypeSignal.connect(myStatListWidget_x.slot_selectType)
 		myToolbar.selectTypeSignal.connect(myStatListWidget_y.slot_selectType)
 		myToolbar.selectPlotTypeSignal.connect(myPlot.slot_selectPlotType)
+		myToolbar.toggleRectROISignal.connect(myPlot.slot_toggleRectROI)
 
 		# to disable when toolbar selects 'Histogram'
 		myToolbar.selectPlotTypeSignal.connect(myStatListWidget_y.slot_selectPlotType)
+
 
 	'''
 	def slot_selectType(self, type):
@@ -78,10 +97,12 @@ class bScatterPlotWidget(QtWidgets.QMainWindow):
 			# print stack header info
 			self.myStack.prettyPrint()
 
+		'''
 		if event.text() == 'r':
 			# toggle rect roi on/off
-			signalDict = {'name': 'toggle rect roi'}
+			signalDict = {'name': 'toggle rect roi', 'type':'', 'idx':None}
 			self.mainWindowSignal.emit(signalDict)
+		'''
 
 	# used internally
 	def slot_selectPoint(self, selectionDict):
@@ -97,13 +118,13 @@ class bScatterPlotWidget(QtWidgets.QMainWindow):
 		myEvent.printSlot('bScatterPlotWidget.slot_selectNode()')
 		# I don't understand how to deal with these 'circular' signal/slot situations???
 		# for now, just select in each of our interface objects
-		signalDict = {'name': 'external select node', 'idx':myEvent.nodeIdx}
+		signalDict = {'name': 'external select node', 'type':'node', 'idx':myEvent.nodeIdx}
 		self.mainWindowSignal.emit(signalDict)
 
 	# coming from main bImPy interface
 	def slot_selectEdge(self, myEvent):
 		myEvent.printSlot('bScatterPlotWidget.slot_selectEdge()')
-		signalDict = {'name': 'external select edge', 'idx':myEvent.edgeIdx}
+		signalDict = {'name': 'external select edge', 'type':'edge', 'idx':myEvent.edgeIdx}
 		self.mainWindowSignal.emit(signalDict)
 
 class bStatListWidget(QtWidgets.QTableWidget):
@@ -226,25 +247,75 @@ class bStatListWidget(QtWidgets.QTableWidget):
 class bPlotToolBar(QtWidgets.QToolBar):
 	selectTypeSignal = QtCore.Signal(object) # object can be a dict
 	selectPlotTypeSignal = QtCore.Signal(object) # object can be a dict
+	toggleRectROISignal = QtCore.Signal(object)
 
 	def __init__(self, parent=None):
 		super(bPlotToolBar, self).__init__(parent)
 
-		typePopup = QtWidgets.QComboBox()
-		typeList = ['Nodes', 'Edges', 'Annotations']
-		typePopup.addItems(typeList)
-		typePopup.activated[str].connect(self.typePopupSelection)
-		self.addWidget(typePopup)
+		#
+		# radio buttons to select (Nodes, Edges, Annotations)
+		typeButtonGroup = QtWidgets.QButtonGroup(self)
 
+		typeList = ['Nodes', 'Edges'] #, 'Annotations']
+		for typeStr in typeList:
+			oneRadioButton = QtWidgets.QRadioButton(typeStr)
+			if typeStr == 'Nodes':
+				oneRadioButton.setChecked(True)
+			oneRadioButton.toggled.connect(self.myRadioCallback)
+			# add to group
+			typeButtonGroup.addButton(oneRadioButton)
+			# add to self
+			self.addWidget(oneRadioButton)
+
+		#
 		# checkbox to toggle (scatter, histogram)
 		aCheckbox = QtWidgets.QCheckBox('Histogram')
 		aCheckbox.setChecked(False)
 		aCheckbox.stateChanged.connect(self.histogramCallback)
 		self.addWidget(aCheckbox)
 
+		'''
 		# show selected point
 		self.pointLabel = QtWidgets.QLabel('Selection:None')
 		self.addWidget(self.pointLabel)
+		'''
+
+		#aPushButton = QtWidgets.QPushButton('Selection Square')
+		#self.addWidget(aPushButton)
+
+		self.button_action = QtWidgets.QAction('Selection []', self)
+		self.button_action.setToolTip("Toggle selection square")
+		self.button_action.setShortcut('r')# or 'Ctrl+r' or '&r' for alt+r
+		self.button_action.setCheckable(True)
+		self.button_action.triggered.connect(self.onMyToolBarButtonClick)
+		self.addAction(self.button_action)
+
+	'''
+	def keyPressEvent(self, event):
+		print('xxx.keyPressEvent()')
+		if event.key() in [QtCore.Qt.Key_Escape]:
+			self.cancelSelection()
+	'''
+
+	'''
+	def cancelSelection(self):
+		#self.button_action.setDisabled(True)
+		self.button_action.trigger()
+	'''
+
+	def onMyToolBarButtonClick(self, state):
+		"""
+		state: bool
+		"""
+		print('onMyToolBarButtonClick() state:', state)
+		self.toggleRectROISignal.emit(state)
+
+	def myRadioCallback(self):
+		rbtn = self.sender()
+		print('myRadioCallback()', rbtn.text(), rbtn.isChecked())
+		# emit
+		str = rbtn.text()
+		self.selectTypeSignal.emit(str)
 
 	def histogramCallback(self, value):
 		""""
@@ -258,21 +329,52 @@ class bPlotToolBar(QtWidgets.QToolBar):
 			typeStr = 'Scatter'
 		self.selectPlotTypeSignal.emit(typeStr)
 
-	def typePopupSelection(self, str):
-		print('typePopupSelection() str:', str)
-		self.selectTypeSignal.emit(str)
-
+	'''
 	def slot_selectPoint(self, selectionDict):
 		theIdx = None
 		if selectionDict is not None:
 			theIdx = selectionDict['idx']
 		print('bPlotToolbar.slot_selectPoint() theIdx:', theIdx)
 		self.pointLabel.setText('Selection:' + str(theIdx))
+	'''
+
+class bScatterStatusBar(QtWidgets.QStatusBar):
+	def __init__(self, parent=None):
+		super(bScatterStatusBar, self).__init__()
+
+		self.myTypeLabel = QtWidgets.QLabel('')
+		self.addWidget(self.myTypeLabel)
+
+		# selected index
+		self.myIndexLabel = QtWidgets.QLabel('Selection:None')
+		self.addWidget(self.myIndexLabel)
+
+		# number selected using rect-roi
+		self.myNumSelectedLabel = QtWidgets.QLabel('Number Selected:')
+		self.addWidget(self.myNumSelectedLabel)
+
+	def slot_selectType(self, typeStr):
+		self.myTypeLabel.setText(typeStr)
+
+	def slot_selectPoint(self, selectionDict):
+		theIdx = None
+		if selectionDict is not None:
+			theIdx = selectionDict['idx']
+		#print('bScatterStatusBar.slot_selectPoint() theIdx:', theIdx)
+		self.myIndexLabel.setText('Selection:' + str(theIdx))
+
+	def slot_selectPoints(self, selectionDict):
+		numSelected = 0
+		if selectionDict is not None:
+			numSelected = selectionDict['numSelected']
+		#print('bScatterStatusBar.slot_selectPoints() numSelected:', numSelected)
+		self.myNumSelectedLabel.setText('Number Selected:' + str(numSelected))
 
 class bPyQtPlot(pg.PlotWidget):
 
 	# signals
-	selectPointSignal = QtCore.Signal(object) # object can be a dict
+	selectPointSignal = QtCore.Signal(object)
+	selectPointsSignal = QtCore.Signal(object)
 
 	def __init__(self, parent=None, stackObject=None):
 		super(bPyQtPlot, self).__init__(parent=parent)
@@ -311,17 +413,12 @@ class bPyQtPlot(pg.PlotWidget):
 										centered=False)
 		#self.myLinearRegion = pg.LinearRegionItem()
 		self.myLinearRegion.sigRegionChanged.connect(self.myRectROI_changed)
-		self.myLinearRegion.show()
+		#self.myLinearRegion.show()
+		self.slot_toggleRectROI(False) # start hidden
 		self.getPlotItem().getViewBox().addItem(self.myLinearRegion)
 
 		# initialize empty plot
 		self.doPlot()
-
-	def toggleRectROI(self):
-		if self.myLinearRegion.isVisible():
-			self.myLinearRegion.hide()
-		else:
-			self.myLinearRegion.show()
 
 	def myRectROI_changed(self, e):
 		"""
@@ -353,13 +450,23 @@ class bPyQtPlot(pg.PlotWidget):
 		ySel = self.yData[(self.xData>left) & (self.xData<right) &
 							(self.yData>bottom) & (self.yData<top)]
 
-		print(f'  myRectROI_changed() selected {len(xSel)} points')
+		numSelected = len(xSel)
+		#print(f'  myRectROI_changed() selected {numSelected} points')
 
 		self.myPointPlotSelection.setData(xSel, ySel)
 
 		# force update
 		self.update()
 
+		# emit
+		emitDict = {'name':'bPyQtPlot',
+					'type':self.myType,
+					'idx': None,
+					'numSelected': numSelected}
+		self.selectPointsSignal.emit(emitDict)
+
+
+	'''
 	def myDrag(self, event):
 		leftButton = event.button() == QtCore.Qt.LeftButton
 		isControl = event.modifiers() & QtCore.Qt.ControlModifier
@@ -377,6 +484,7 @@ class bPyQtPlot(pg.PlotWidget):
 		#else:
 		#	#self.myPointPlot.ViewBox.mouseDragEvent(self.myPointPlot..plotItem.vb, event)
 		#	self.getPlotItem().getViewBox().mouseDragEvent(event)
+	'''
 
 	def doPlotHist(self, xDict=None):
 		if xDict is None:
@@ -404,7 +512,9 @@ class bPyQtPlot(pg.PlotWidget):
 		# plot
 		theMin = np.min(xData)
 		theMax = np.max(xData)
-		y,x = np.histogram(xData, bins=np.linspace(theMin, theMax, 40))
+		#bins = bins=np.linspace(theMin, theMax, 40)
+		bins = 'auto'
+		y,x = np.histogram(xData, bins=bins)
 		self.myPointPlot.setData(x, y, stepMode=True, fillLevel=0, brush=(0,0,255,150))
 
 		# set the axis
@@ -414,6 +524,7 @@ class bPyQtPlot(pg.PlotWidget):
 		# clear selection
 		self.selectPoint(None)
 		self.selectPointSignal.emit(None)
+		self.selectPointsSignal.emit(None)
 
 		# force update
 		self.update()
@@ -487,6 +598,7 @@ class bPyQtPlot(pg.PlotWidget):
 		# clear selection
 		self.selectPoint(None)
 		self.selectPointSignal.emit(None)
+		self.selectPointsSignal.emit(None)
 
 		# same as right-click 'auto range'
 		self.getPlotItem().getViewBox().autoRange()
@@ -543,11 +655,16 @@ class bPyQtPlot(pg.PlotWidget):
 		receive updates from main window
 		"""
 		print('bPyQtPlot.slot_mainWindowSignal() signalDict:', signalDict)
+		if signalDict is None:
+			return
+
 		name = signalDict['name']
 		idx = signalDict['idx']
+		'''
 		if name == 'toggle rect roi':
-			self.toggleRectROI()
-		elif name == 'external select node':
+			self.slot_toggleRectROI()
+		'''
+		if name == 'external select node':
 			if self.myType == 'Nodes':
 				self.selectPoint(idx)
 		elif name == 'external select edge':
@@ -582,9 +699,44 @@ class bPyQtPlot(pg.PlotWidget):
 			self.selectPoint(None)
 
 	def slot_selectPlotType(self, plotType):
+		"""
+		plotType: (Nodes, Edges, Annotations)
+		"""
 		print('bPyQtPlot.slot_selectPlotType() plotType:', plotType)
 		self.plotType = plotType
 		self.doPlot()
+
+	def _rectGuessPos(self):
+		# guess a good position
+		xMin = np.nanmin(self.xData)
+		xMax = np.nanmax(self.xData)
+		yMin = np.nanmin(self.yData)
+		yMax = np.nanmax(self.yData)
+		#
+		#thePos = self.myLinearRegion.pos()
+		#theSize = self.myLinearRegion.size()
+		#
+		xMid = abs(xMax-xMin) / 2
+		yMid = abs(yMax-yMin) / 2
+		newPos = (xMid, yMid)
+		self.myLinearRegion.setPos(newPos)
+		newSize = (xMid, yMid)
+		self.myLinearRegion.setSize(newSize)
+
+	def slot_toggleRectROI(self, state=None):
+		"""
+		"""
+		if state is None:
+			state = not self.myLinearRegion.isVisible()
+		if state:
+			#
+			self._rectGuessPos()
+			#
+			self.myLinearRegion.show()
+		else:
+			self.myLinearRegion.hide()
+			self.myPointPlotSelection.setData([],[])
+
 
 def main(path):
 	myStack = bimpy.bStack(path, loadImages=False, loadTracing=True)

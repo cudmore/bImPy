@@ -268,6 +268,27 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		self.myScatterPlotWidget = None # see self.showScatterWidget()
 
+		#
+		# actions
+		myName = 'Toggle Bad'
+		toggleBadAction = QtWidgets.QAction(myName, self)
+		toggleBadAction.setShortcut('b')# or 'Ctrl+r' or '&r' for alt+r
+		toggleBadAction.setToolTip('Toggle Bad [b]')
+		# button.clicked.connect(lambda state, x=idx: self.button_pushed(x))
+		toggleBadAction.triggered.connect(lambda state, myName=myName: self.toggleBad_callback(myName))
+		#toggleBadAction.triggered.connect(self.toggleBad_callback)
+		self.addAction(toggleBadAction)
+
+		for action in self.actions():
+			print('  bStackWidget action:', action, action.text(), action.shortcut().toString())
+		#print('bScatterPlotWidget.actions():', self.actions())
+
+	def toggleBad_callback(self, name):
+		print('bStackWidget.toggleBad_callback()')
+		#print('  state:', state)
+		print('  name:', name)
+		print('  sender:', self.sender().text())
+
 	def getMyStack(self):
 		return self.mySimpleStack
 
@@ -708,19 +729,19 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
 			self.updateDisplayedWidgets()
 
-		elif event.key() in [QtCore.Qt.Key_L]:
-			self.options['Panels']['showLineProfile'] = not self.options['Panels']['showLineProfile']
-			self.updateDisplayedWidgets()
+		#elif event.key() in [QtCore.Qt.Key_L]:
+		#	self.options['Panels']['showLineProfile'] = not self.options['Panels']['showLineProfile']
+		#	self.updateDisplayedWidgets()
 
-		elif event.key() in [QtCore.Qt.Key_C]:
-			self.options['Panels']['showContrast'] = not self.options['Panels']['showContrast']
-			self.updateDisplayedWidgets()
+		#elif event.key() in [QtCore.Qt.Key_C]:
+		#	self.options['Panels']['showContrast'] = not self.options['Panels']['showContrast']
+		#	self.updateDisplayedWidgets()
 
 		elif event.key() in [QtCore.Qt.Key_H]:
 			self.printHelp()
 
 		elif event.key() in [QtCore.Qt.Key_B]:
-			print('set selected edge to bad ... need to implement this')
+			print('set selected node/edge to bad --->>> need to implement this')
 			'''
 			selectedEdge = self.myStackView.selectedEdge()
 			self.mySimpleStack.setAnnotation('toggle bad edge', selectedEdge)
@@ -745,7 +766,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 	def showPlotWidget(self):
 		if self.myScatterPlotWidget is None:
-			self.myScatterPlotWidget = bimpy.interface.bScatterPlotWidget(stackObject=self.mySimpleStack, parent=None)
+			self.myScatterPlotWidget = bimpy.interface.bScatterPlotWidget(
+										stackObject=self.mySimpleStack, parent=self)
 			#
 			# signal/slot from scatter plot to *self
 			self.myScatterPlotWidget.mainWindowSignal.connect(self.slot_selectPoint)
@@ -790,7 +812,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		return self.options
 
 	def optionsVersion(self):
-		return 1.5
+		return 1.7
 
 	def options_defaults(self):
 		print('bStackWidget.options_defaults()')
@@ -819,7 +841,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.options['Tracing'] = OrderedDict()
 		self.options['Tracing'] = OrderedDict({
 			'allowEdit': True,
-			'nodePenSize': 15, #**2,
+			'nodePenSize': 15-4, #**2,
 			'nodeColor': 'r',
 			'nodeSelectionPenSize': 5, #**2, # make this smaller than nodePenSize (should always be on top) ????
 			'nodeSelectionColor': 'y',
@@ -827,8 +849,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 			'nodeSelectionFlashColor': 'm',
 			'showTracingAboveSlices': 2,
 			'showTracingBelowSlices': 2,
-			'tracingPenWidth': 5, # lines between slabs
-			'tracingPenSize': 10, # slabs
+			'tracingPenWidth': 5-4, # lines between slabs
+			'tracingPenSize': 10-4, # slabs
 			'tracingColor': 'c',
 			'tracingSelectionPenSize': 2,
 			'tracingSelectionColor': 'y',
@@ -890,10 +912,11 @@ class bStackWidget(QtWidgets.QMainWindow):
 		})
 
 		self.options['LineProfile'] = OrderedDict({
-			'lineLength': 12, # pixels
-			'lineWidth': 5,
-			'medianFilter': 5,
-			'halfHeight': 0.5,
+			'lineRadius': 12, # pixels
+			'lineWidth': 5, # pixels
+			'medianFilter': 5, # 0 to turn off
+			'halfHeight': 0.5, # half-height for gaussian detection
+			'plusMinusSlidingZ': 1, #slices
 		})
 
 		# this is hard coded in bEvent class
