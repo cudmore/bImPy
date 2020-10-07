@@ -215,7 +215,7 @@ class bToolBar(QtWidgets.QToolBar):
 		if id == 'Options':
 			bimpy.interface.bOptionsDialog(self.myMainWindow, self.myMainWindow)
 		elif id == 'Help':
-			urlStr = 'https://cudmore.github.io/bImPy/interface'
+			urlStr = 'https://cudmore.github.io/bImPy-Docs/interface'
 			webbrowser.open(urlStr, new=2)
 
 	def oneCallback3(self, index):
