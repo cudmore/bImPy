@@ -384,6 +384,8 @@ class bStack:
 		"""
 		load _labeled.tif for each (_ch1, _ch2, _ch3)
 		make mask from labeled
+
+		if we do not find _labeeled.tif but do find _mask.tif then just load that
 		"""
 
 		maxNumChannels = self._maxNumChannels # 4
@@ -406,6 +408,8 @@ class bStack:
 			chStr = '_ch' + str(channelNumber)
 			labeledPath = baseFilePath + chStr + '_labeled.tif'
 
+			# if we find _labeeled.tif, load and make a mask
+			# o.w. if we find _mask.tif then load that
 			if os.path.isfile(labeledPath):
 				print('  bStack.loadLabeled() loading channelNumber:', channelNumber, 'labeledPath:', labeledPath)
 				labeledData = tifffile.imread(labeledPath)
@@ -416,6 +420,13 @@ class bStack:
 			else:
 				#print('  bStack.loadLabeled() did not find _labeled path:', labeledPath)
 				pass
+				maskPath = baseFilePath + chStr + '_mask.tif'
+				if os.path.isfile(maskPath):
+					print('  bStack.loadLabeled() loading _mask.tif channelNumber:', channelNumber, 'maskPath:', maskPath)
+					maskData = tifffile.imread(maskPath)
+					# mask is made of all labels
+					#print('    assigning self._stackList[stackListIdx] stackListIdx:', stackListIdx)
+					self._stackList[stackListIdx] = maskData
 
 		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)

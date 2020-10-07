@@ -4,7 +4,7 @@
 # this has to be firs otherwise others often fail?
 numpy
 
-PyQt5
+PyQt5==5.13.0
 QtPy
 
 napari

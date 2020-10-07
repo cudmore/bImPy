@@ -115,9 +115,14 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			sliceIdx = myEvent.sliceIdx
 			self.setSlice(sliceIdx)
 
-	def setSlice(self, sliceNumber):
+	def setSlice(self, sliceNumber=None):
 		if not self.myDoUpdate:
 			return
+
+		if sliceNumber is None:
+			# todo: add self.currentSlice and set it when we get slot_ set slice
+			# get it from the main window
+			sliceNumber = self.mainWindow.getStackView().getCurrentSlice()
 
 		# this should be a slot_ like slot_updateChannel()
 		# channel is (1,2,3,...) can also be 'rgb'
@@ -234,7 +239,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 	def bitDepth_Callback(self, idx):
 		newBitDepth = self._myBitDepths[idx]
-		print('bitDepth_Callback() newBitDepth:', newBitDepth)
+		print('bbStackContrastWidget.itDepth_Callback() newBitDepth:', newBitDepth)
 		self.bitDepth = newBitDepth
 
 		# update range sliders

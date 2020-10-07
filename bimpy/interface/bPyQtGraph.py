@@ -261,6 +261,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self._preComputeAllMasks()
 		#self.setSlice()
 
+	def getCurrentSlice(self):
+		return self.currentSlice
+
 	def mainOptions(self):
 		return self.mainWindow.options
 
@@ -453,14 +456,16 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		if xSlabPlot is None or ySlabPlot is None:
 			return None
 
+		# draw in window
 		self.mySlabPlotOne.setData(ySlabPlot, xSlabPlot) # flipped
 
 		displayThisStack = self.displayStateDict['displayThisStack']
 		profileDict = {
+			'slabIdx': slabIdx,
+			'slice': self.currentSlice,
+			'displayThisStack': displayThisStack,
 			'xSlabPlot': xSlabPlot,
 			'ySlabPlot': ySlabPlot,
-			'displayThisStack': displayThisStack,
-			'slice': self.currentSlice,
 		}
 
 		self.mainWindow.signal('update line profile', profileDict)
@@ -1449,6 +1454,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			# emit
 			myEvent = bimpy.interface.bEvent('select node', nodeIdx=newSelectedNodeIdx)
 			self.selectNodeSignal.emit(myEvent)
+
+	# abb oct2020 to handle +/- tracing sliding z
+	def slot_OptionsStateChange(self, key1, key2, value):
+		print('    myPyQtGraphPlotWidget.slot_OptionsStateChange()', key1, key2, value)
+		print('      abb oct2020')
+		if key1 == 'Tracing':
+			if key2 in ['showTracingAboveSlices', 'showTracingBelowSlices']:
+				self.mainWindow.getStackView()._preComputeAllMasks()
+				self.mainWindow.getStackView().setSlice()
 
 	def slot_StateChange(self, signalName, signalValue):
 		#print(' myPyQtGraphPlotWidget.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)

@@ -27,7 +27,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		hBoxLayout = QtWidgets.QHBoxLayout()
 
 		myAlign = QtCore.Qt.AlignLeft
-		
+
 		image_ = QtWidgets.QLabel("Channel")
 		self.imageLabel = QtWidgets.QLabel("")
 		hBoxLayout.addWidget(image_)
@@ -61,6 +61,8 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		#
 		# seconds row
 		hBoxLayout2 = QtWidgets.QHBoxLayout()
+		# make just one row
+		#hBoxLayout2 = hBoxLayout
 
 		fixedWidth = 35
 
@@ -94,15 +96,16 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			theWidget.setFixedWidth(fixedWidth)
 		'''
 
+		"""
 		#
 		# third row
 		hBoxLayout3 = QtWidgets.QHBoxLayout()
-		
+
 		spinBoxWidth = 64
-		
+
 		# here we set one value for both
 		showTracingAboveSlices = self.mainWindow.options['Tracing']['showTracingAboveSlices']
-		
+
 		plusMinusLabel_ = QtWidgets.QLabel("+/- Slices")
 		self.plusMinusSpinBox = QtWidgets.QSpinBox()
 		self.plusMinusSpinBox.setMaximumWidth(spinBoxWidth)
@@ -111,23 +114,23 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		self.plusMinusSpinBox.setValue(showTracingAboveSlices)
 		self.plusMinusSpinBox.setProperty('bobID_1', 'Tracing')
 		self.plusMinusSpinBox.setProperty('bobID_2', 'showTracingAboveSlices')
-		self.plusMinusSpinBox.valueChanged.connect(self.valueChanged)
+		self.plusMinusSpinBox.valueChanged.connect(self.old_valueChanged)
 		hBoxLayout3.addWidget(plusMinusLabel_, myAlign)
 		hBoxLayout3.addWidget(self.plusMinusSpinBox, myAlign)
+		"""
 
 		#
 		# add all rows to vBoxLayout
 		vBoxLayout = QtWidgets.QVBoxLayout(self)
 		vBoxLayout.addLayout(hBoxLayout)
 		vBoxLayout.addLayout(hBoxLayout2)
-		vBoxLayout.addLayout(hBoxLayout3)
-
+		#vBoxLayout.addLayout(hBoxLayout3)
 
 		# finish
 		#myGroupBox.setLayout(hBoxLayout)
 		#self.addWidget(myGroupBox)
 
-	def valueChanged(self, value):
+	def old_valueChanged(self, value):
 		"""
 		Set value in our local copy of options, self.localOptions
 		"""
@@ -136,12 +139,26 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		print(f'valueChanged() value: {value} type(value), bobID_1:{bobID_1}, bobID_2:{bobID_2}')
 
 		if bobID_2 == 'showTracingAboveSlices':
+			# abb oct2020 new
+			key1 = 'Tracing'
+			key2 = 'showTracingAboveSlices'
+			doEmit = False
+			self.mainWindow.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+			key1 = 'Tracing'
+			key2 = 'showTracingBelowSlices'
+			doEmit = True
+			self.mainWindow.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+			# abb oct2020 was this
+			'''
 			self.mainWindow.options['Tracing']['showTracingAboveSlices'] = value
 			self.mainWindow.options['Tracing']['showTracingBelowSlices'] = value
 			# todo: make this either a main window event() or a signal/slot
 			self.mainWindow.getStackView()._preComputeAllMasks()
 			self.mainWindow.getStackView().setSlice()
-			
+			'''
+
 	def slot_DisplayStateChange(self, key, theDict):
 		"""
 		update based on theDict myQtGraphPlotWidget.displayStateDict
@@ -196,7 +213,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 	def setMousePosition(self, channel, sliceNumber, x, y):
 		#channel = channel - 1
-		
+
 		#x = round(point.x(),0)
 		#y = round(point.y(),0)
 		x = int(x)

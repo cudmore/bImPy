@@ -43,7 +43,7 @@ class bLineProfile:
 
 		return detectionDict
 
-	def getSlabLine2(self, slabIdx):
+	def getSlabLine2(self, slabIdx, verbose=True):
 		"""
 		get line to take intensity analysis and draw in widget
 
@@ -52,7 +52,8 @@ class bLineProfile:
 
 		radius = self.detectionDict['lineRadius']
 
-		print('bLineProfile.getSlabLine2() slabIdx:', slabIdx, 'radius:', radius)
+		if verbose:
+			print('bLineProfile.getSlabLine2() slabIdx:', slabIdx, 'radius:', radius)
 
 		if slabIdx is None:
 			return None
@@ -171,29 +172,39 @@ class bLineProfile:
 		}
 		return lineProfileDict
 
-	def getLineProfile2(self, lineProfileDict):
+	def getLineProfile2(self, lineProfileDict, verbose=False):
 		"""
 		extract a line profile and return the fit
 		"""
 
-		print('bLineProfile.getLineProfile2()')
-		for k,v in lineProfileDict.items():
-			print('  ', k, ':', v)
+		if verbose:
+			print('bLineProfile.getLineProfile2()')
+			for k,v in lineProfileDict.items():
+				print('  ', k, ':', v)
+
+		# this is what user is looking at
+		slabIdx = lineProfileDict['slabIdx']
+		displayThisStack = lineProfileDict['displayThisStack'] # (1,2,3, ...)
+		slice = lineProfileDict['slice'] # can be None
+
+		if displayThisStack == 'rgb':
+			print('warning: getLineProfile2() does not work for rgb !!!')
+			return None
 
 		xSlabPlot = lineProfileDict['xSlabPlot'] # todo: calculate this here, it depends on radius!!!
 		ySlabPlot = lineProfileDict['ySlabPlot']
 
-		# this is what user is looking at
-		displayThisStack = lineProfileDict['displayThisStack'] # (1,2,3, ...)
-		slice = lineProfileDict['slice']
+		if xSlabPlot is None or ySlabPlot is None:
+			xSlabPlot, ySlabPlot = self.getSlabLine2(slabIdx)
+		if slice is None:
+			xSlab, ySlab, zSlab = self.mySimpleStack.slabList.getSlab_xyz(slabIdx)
+			slice = int(zSlab)
+
 		# dynamic
 		medianFilter = lineProfileDict['medianFilter']
 		lineWidth = lineProfileDict['lineWidth']
 		halfHeight = lineProfileDict['halfHeight']
 		plusMinusSlidingZ = lineProfileDict['plusMinusSlidingZ']
-
-		if xSlabPlot is None or ySlabPlot is None:
-			xSlabPlot, ySlabPlot = self.getSlabLine2
 
 		src = (xSlabPlot[0], ySlabPlot[0])
 		dst = (xSlabPlot[1], ySlabPlot[1])
@@ -253,7 +264,7 @@ class bLineProfile:
 			snrVal = yTmpInt - minVal
 			snrVal = round(snrVal,2)
 		else:
-			snrVal = None
+			snrVal = np.nan
 		'''
 		tmpMinVal = minVal
 		if tmpMinVal==0:

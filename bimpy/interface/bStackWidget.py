@@ -190,6 +190,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		# listen to bStackWidget
 		self.optionsStateChange.connect(self.myFeedbackWidget.slot_OptionsStateChange)
+		self.optionsStateChange.connect(self.myStackView2.slot_OptionsStateChange)
 		#self.optionsStateChange.connect(self.myToolbar.slot_OptionsStateChange)
 
 		#
@@ -268,6 +269,22 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		self.myScatterPlotWidget = None # see self.showScatterWidget()
 
+		##
+		##
+		# experimenting with QAction rather than intercepting keyboard events
+		##
+		##
+
+		# todo: put this in self.addKeyboardActions()
+
+		self.initActions()
+
+	def initActions(self):
+		"""
+		install keyboard actions
+
+		they will be handled in self.myAction_callback()
+		"""
 		#
 		# actions
 		myName = 'Toggle Bad'
@@ -275,19 +292,91 @@ class bStackWidget(QtWidgets.QMainWindow):
 		toggleBadAction.setShortcut('b')# or 'Ctrl+r' or '&r' for alt+r
 		toggleBadAction.setToolTip('Toggle Bad [b]')
 		# button.clicked.connect(lambda state, x=idx: self.button_pushed(x))
-		toggleBadAction.triggered.connect(lambda state, myName=myName: self.toggleBad_callback(myName))
-		#toggleBadAction.triggered.connect(self.toggleBad_callback)
+		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
+		#toggleBadAction.triggered.connect(self.myAction_callback)
 		self.addAction(toggleBadAction)
 
+		myName = 'Increase Tracing Sliding-Z'
+		toggleBadAction = QtWidgets.QAction(myName, self)
+		#toggleBadAction.setShortcut('Shift+QtCore.Qt.Key_Plus')# or 'Ctrl+r' or '&r' for alt+r
+		myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Shift + QtCore.Qt.Key_G)
+		myKeySequence = '.'
+		toggleBadAction.setShortcut(myKeySequence)# or 'Ctrl+r' or '&r' for alt+r
+		toggleBadAction.setToolTip('Increase Tracing Sliding-Z [.]')
+		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
+		self.addAction(toggleBadAction)
+
+		myName = 'Decrease Tracing Sliding-Z'
+		toggleBadAction = QtWidgets.QAction(myName, self)
+		#toggleBadAction.setShortcut('Shift+QtCore.Qt.Key_Plus')# or 'Ctrl+r' or '&r' for alt+r
+		myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Shift + QtCore.Qt.Key_G)
+		myKeySequence = ','
+		toggleBadAction.setShortcut(myKeySequence)# or 'Ctrl+r' or '&r' for alt+r
+		toggleBadAction.setToolTip('Decrease Tracing Sliding-Z [,]')
+		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
+		self.addAction(toggleBadAction)
+
+		'''
 		for action in self.actions():
 			print('  bStackWidget action:', action, action.text(), action.shortcut().toString())
+		'''
 		#print('bScatterPlotWidget.actions():', self.actions())
 
-	def toggleBad_callback(self, name):
-		print('bStackWidget.toggleBad_callback()')
+	# abb oct2020
+	# this is very new code using signal/slot
+	def myAction_callback(self, name):
+		print('===bStackWidget.myAction_callback() name:', name)
 		#print('  state:', state)
-		print('  name:', name)
-		print('  sender:', self.sender().text())
+		#print('  name:', name)
+		#print('  sender:', self.sender().text())
+
+		if name == 'Toggle Bad':
+			pass
+			#print('generally follow code from table')
+			#print('  1) find selected object')
+			#print('  2) set it to bad')
+			#print('  3) emit a signal')
+			selectedNode = self.getStackView().selectedNode()
+			selectedEdge = self.getStackView().selectedEdge()
+			if selectedNode is not None:
+				print('    set node to bad:', selectedNode)
+			elif selectedEdge is not None:
+				print('    set edge to bad:', selectedEdge)
+			else:
+				print('  bStackWidget.myAction_callback() did not find a (node, edge) to set bad?')
+
+		elif name == 'Increase Tracing Sliding-Z':
+			# increase the value
+			value = self.getOptions()['Tracing']['showTracingAboveSlices']
+			value += 1
+
+			key1 = 'Tracing'
+			key2 = 'showTracingAboveSlices'
+			doEmit = False
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+			key1 = 'Tracing'
+			key2 = 'showTracingBelowSlices'
+			doEmit = True
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+		elif name == 'Decrease Tracing Sliding-Z':
+			# increase the value
+			value = self.getOptions()['Tracing']['showTracingAboveSlices']
+			value -= 1
+
+			key1 = 'Tracing'
+			key2 = 'showTracingAboveSlices'
+			doEmit = False
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+			key1 = 'Tracing'
+			key2 = 'showTracingBelowSlices'
+			doEmit = True
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+		else:
+			print('bStackWidget.myAction_callback() did not understand name:', name)
 
 	def getMyStack(self):
 		return self.mySimpleStack

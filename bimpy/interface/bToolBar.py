@@ -230,6 +230,8 @@ class bToolBar(QtWidgets.QToolBar):
 			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value=2)
 		elif actionName == '3':
 			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value=3)
+		elif actionName == 'rgb':
+			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value='rgb')
 
 		elif actionName == 'sliding-z':
 			self.myMainWindow.getStackView().displayStateChange('displaySlidingZ', toggle=True)
