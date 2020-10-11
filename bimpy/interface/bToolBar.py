@@ -27,7 +27,7 @@ class bToolBar(QtWidgets.QToolBar):
 		#self.setOrientation(QtCore.Qt.Horizontal);
 
 		myIconSize = 12 #32
-		self.setIconSize(QtCore.QSize(myIconSize,myIconSize))
+		#self.setIconSize(QtCore.QSize(myIconSize,myIconSize))
 		self.setToolButtonStyle( QtCore.Qt.ToolButtonTextUnderIcon )
 
 		myFontSize = 10
@@ -48,8 +48,6 @@ class bToolBar(QtWidgets.QToolBar):
 
 		self.addSeparator()
 
-		#iconSizeStr = '16'
-
 		# checkable e.g. two state buttons
 		toolListNames = ['1', '2', '3', 'rgb', 'separator', 'sliding-z',
 						'separator',
@@ -57,7 +55,8 @@ class bToolBar(QtWidgets.QToolBar):
 						'separator',
 						'Tracing', '-', '+',
 						'separator',
-						'Search', 'Contrast', 'Line Profile', 'Analysis',
+						# todo remove this and move below into hamburger
+						#'Search', 'Contrast', 'Line Profile', 'Analysis',
 						 ]
 
 		# make ['1', '2', '3', 'rgb'] disjoint selections
@@ -124,6 +123,9 @@ class bToolBar(QtWidgets.QToolBar):
 				elif toolName == '+':
 					theAction.setShortcut('=')# or 'Ctrl+r' or '&r' for alt+r
 					theAction.setToolTip('Increase Tracing Size [=]')
+
+				# moved down
+				'''
 				elif toolName == 'Search':
 					theAction.setShortcut('Ctrl+f')# or 'Ctrl+r' or '&r' for alt+r
 					theAction.setToolTip('Search Annotations [Ctrl+f]')
@@ -134,6 +136,7 @@ class bToolBar(QtWidgets.QToolBar):
 					theAction.setShortcut('l')# or 'Ctrl+r' or '&r' for alt+r
 					theAction.setToolTip('Toggle Line Profile [l]')
 					#theAction.setShortcutVisibleInContextMenu(True)
+				'''
 
 				#
 				# add action
@@ -141,26 +144,73 @@ class bToolBar(QtWidgets.QToolBar):
 				self.addAction(theAction)
 				toolIndex += 1
 
-		self.addSeparator()
-
 		#
 		# checkbox to toggle user set type with 1,2,3,...
 		toolName = 'Set Type'
 		setTypeCheckBox = QtWidgets.QCheckBox(toolName)
 		#callbackFn = functools.partial(self.oneCallback, toolName)
+		# why is checkbox color inverted?
+		# don't do this, it turns off user checking
+		#setTypeCheckBox.setCheckable(isCheckable)
 		setTypeCheckBox.stateChanged.connect(self.setType_callback)
 		self.addWidget(setTypeCheckBox)
 
-		toolNameList = ['Options', 'Help']
+		print('  \n!!! todo: bToolbar, add icons as menu under hamburger !!!\n')
+
+		#
+		# put actions in hamburger combo box
+		myHamburger = QtWidgets.QToolButton()
+		myHamburger.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+		hamburgerPath = os.path.join(iconsFolderPath, 'Hamburger' + '-16.png')
+		hamburgerIcon = QtGui.QIcon(hamburgerPath)
+		myHamburger.setArrowType(QtCore.Qt.NoArrow)
+		myHamburger.setIcon(hamburgerIcon)
+		myHamburger.setIconSize(QtCore.QSize(myIconSize*2,myIconSize*2))
+		self.addWidget(myHamburger)
+
+		#toolNameList = ['Options', 'Help']
+		toolNameList = ['Search', 'Contrast', 'Line Profile',
+						'separator',
+						'Options', 'Help']
 		for toolName in toolNameList:
-			iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
-			saveIcon = QtGui.QIcon(iconPath)
-			saveAction = QtWidgets.QAction(saveIcon, toolName, self)
-			saveAction.setStatusTip(toolName)
-			saveAction.setCheckable(False)
+			if toolName == 'separator':
+				theAction = QtWidgets.QAction('---', self)
+				myHamburger.addAction(theAction)
+				continue
+
+			isCheckable = False
+			useIcon = True
+			if toolName in ['Search', 'Contrast', 'Line Profile']:
+				isCheckable = True
+				# we have icons for these but they collide with state checkbox in menu
+				useIcon = False
+			if useIcon:
+				iconPath = os.path.join(iconsFolderPath, toolName + '-16.png')
+				saveIcon = QtGui.QIcon(iconPath)
+				theAction = QtWidgets.QAction(saveIcon, toolName, self)
+			else:
+				theAction = QtWidgets.QAction(toolName, self)
+			theAction.setStatusTip(toolName)
+			theAction.setCheckable(isCheckable)
 			callbackFn = functools.partial(self.oneCallback, toolName)
-			saveAction.triggered.connect(callbackFn)
-			self.addAction(saveAction)
+			theAction.triggered.connect(callbackFn)
+
+			# set shortcuts and tooltip
+			if toolName == 'Search':
+				theAction.setShortcut('Ctrl+f')# or 'Ctrl+r' or '&r' for alt+r
+				theAction.setToolTip('Search Annotations [Ctrl+f]')
+				theAction.setShortcutVisibleInContextMenu(True)
+			elif toolName == 'Contrast':
+				theAction.setShortcut('c')# or 'Ctrl+r' or '&r' for alt+r
+				theAction.setToolTip('Toggle Contrast [c]')
+				theAction.setShortcutVisibleInContextMenu(True)
+			elif toolName == 'Line Profile':
+				theAction.setShortcut('l')# or 'Ctrl+r' or '&r' for alt+r
+				theAction.setToolTip('Toggle Line Profile [l]')
+				theAction.setShortcutVisibleInContextMenu(True)
+
+			# add to hamburger QToolButton
+			myHamburger.addAction(theAction)
 
 	def slot_DisplayStateChange(self, key, displayStateDict):
 		print('    bToolbar.slot_DisplayStateChange() key:', key)
@@ -171,6 +221,7 @@ class bToolBar(QtWidgets.QToolBar):
 		print('setType_callback() state:', state)
 
 	def syncWithOptions(self, options):
+		print('=== bToolbar.syncWithOption()')
 		"""
 			#'showAnnotations': False,
 			'showToolbar': True,
@@ -210,19 +261,34 @@ class bToolBar(QtWidgets.QToolBar):
 				print('bToolbar.syncWithOptions() case not taken with action name:', name)
 
 	def oneCallback(self, id):
-		print('oneCallback() id:', id)
+		print('bToolbar.oneCallback() id:', id)
 
-		if id == 'Options':
+		if id == 'Search':
+			self.myMainWindow.optionsChange('Panels', 'showSearch', toggle=True, doEmit=True)
+		elif id == 'Contrast':
+			self.myMainWindow.optionsChange('Panels', 'showContrast', toggle=True, doEmit=True)
+		elif id == 'Line Profile':
+			self.myMainWindow.optionsChange('Panels', 'showLineProfile', toggle=True, doEmit=True)
+
+		elif id == 'Options':
 			bimpy.interface.bOptionsDialog(self.myMainWindow, self.myMainWindow)
 		elif id == 'Help':
 			urlStr = 'https://cudmore.github.io/bImPy-Docs/interface'
 			webbrowser.open(urlStr, new=2)
 
+		else:
+			print('  bToolBar.oneCallback() did not understand id:', id)
+
 	def oneCallback3(self, index):
+		"""
+		this REQUIRES a list of actions, self.tooList
+		"""
 		action = self.toolList[index]
 		actionName = action.statusTip()
 		isChecked = action.isChecked()
 		print('bToolbar.oneCallback3() index:', index, 'actionName:', actionName, 'isChecked:', isChecked)
+
+		# if 'set types' is checked then 1,2,3,...,0 set type
 
 		if actionName == '1':
 			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value=1)

@@ -42,7 +42,8 @@ class bNapari:
 		#
 		title = filename
 
-		stack = self.mySimpleStack.getStackData(channel=1)
+		# todo oct 2020, add all open channels/masks
+		stack = self.mySimpleStack.getStack('raw', channel=1)
 		stack_nDim = len(stack.shape)
 
 		self.viewer = napari.Viewer(title=title, ndisplay=stack_nDim)
@@ -65,14 +66,37 @@ class bNapari:
 		else:
 			print('error: napari got stack dim it does not understand')
 
-		self.myNapari = self.viewer.add_image(
-			stack,
-			colormap=colormap,
-			scale=scale)
+		colorMaps = ['green', 'red', 'blue']
 
+		# raw data
+		for idx in range(self.mySimpleStack.numChannels):
+			channel = idx +1
+			colormap = colorMaps[idx]
+			stack = self.mySimpleStack.getStack('raw', channel=channel)
+			self.viewer.add_image(
+									stack,
+									name= str(channel),
+									blending='additive',
+									colormap=colormap,
+									scale=scale)
+
+		# mask data
+		for idx in range(self.mySimpleStack.numChannels):
+			channel = idx +1
+			colormap = colorMaps[idx]
+			stack = self.mySimpleStack.getStack('mask', channel=channel)
+			self.viewer.add_image(
+									stack,
+									name='mask ' + str(channel),
+									blending='additive',
+									colormap=colormap,
+									scale=scale)
+
+		'''
 		dvMask = self.mySimpleStack.getDeepVessMask()
 		if dvMask is not None:
 			self.viewer.add_image(data=dvMask, contrast_limits=[0,1], opacity=0.8, colormap='gray', scale=scale, name='dvMask')
+		'''
 
 		'''
 		@self.viewer.bind_key('u')
@@ -232,8 +256,8 @@ class bNapari:
 		self.myStackWidget.nodeTable2.selectRowSignal.connect(self.slot_selectNode) # change to slot_selectNode ???
 		self.myStackWidget.edgeTable2.selectRowSignal.connect(self.slot_selectEdge) # change to slot_selectNode ???
 		# listen to edit table, self.
-		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectNode)
-		self.myStackWidget.editTable2.selectRowSignal.connect(self.slot_selectEdge)
+		self.myStackWidget.searchWidget.editTable2.selectRowSignal.connect(self.slot_selectNode)
+		self.myStackWidget.searchWidget.editTable2.selectRowSignal.connect(self.slot_selectEdge)
 
 	def flashNode(self, nodeIdx, numberOfFlashes=2):
 		if nodeIdx is None:

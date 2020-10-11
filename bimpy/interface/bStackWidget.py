@@ -286,16 +286,22 @@ class bStackWidget(QtWidgets.QMainWindow):
 		they will be handled in self.myAction_callback()
 		"""
 		#
-		# actions
-		myName = 'Toggle Bad'
+		myName = 'Set Bad'
 		toggleBadAction = QtWidgets.QAction(myName, self)
 		toggleBadAction.setShortcut('b')# or 'Ctrl+r' or '&r' for alt+r
-		toggleBadAction.setToolTip('Toggle Bad [b]')
-		# button.clicked.connect(lambda state, x=idx: self.button_pushed(x))
+		toggleBadAction.setToolTip('Set Bad [b]')
 		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
-		#toggleBadAction.triggered.connect(self.myAction_callback)
 		self.addAction(toggleBadAction)
 
+		#
+		myName = 'Set Good'
+		toggleBadAction = QtWidgets.QAction(myName, self)
+		toggleBadAction.setShortcut('g')# or 'Ctrl+r' or '&r' for alt+r
+		toggleBadAction.setToolTip('Set Good [g]')
+		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
+		self.addAction(toggleBadAction)
+
+		#
 		myName = 'Increase Tracing Sliding-Z'
 		toggleBadAction = QtWidgets.QAction(myName, self)
 		#toggleBadAction.setShortcut('Shift+QtCore.Qt.Key_Plus')# or 'Ctrl+r' or '&r' for alt+r
@@ -322,28 +328,53 @@ class bStackWidget(QtWidgets.QMainWindow):
 		'''
 		#print('bScatterPlotWidget.actions():', self.actions())
 
+	def setBadGood(self, setBad):
+		"""
+		set selected object to either bad or good
+
+		parameters:
+			setBad: if True then set bad, else then set good (not bad)
+		"""
+		selectedNode = self.getStackView().selectedNode()
+		selectedEdge = self.getStackView().selectedEdge()
+		objectType = None # either node or edge
+		if selectedNode is not None:
+			print('    bStackWidget.setBadGood() set node', selectedNode, 'to bad:', setBad)
+			objectType = 'Nodes'
+		elif selectedEdge is not None:
+			print('    bStackWidget.setBadGood() set edge', selectedEdge, 'to bad:', setBad)
+			objectType = 'Edges'
+		else:
+			print('  bStackWidget.setBadGood() did not find a (node, edge) to set bad?')
+
+		# follow right-click in tablewidget2
+		# myEvent: {'type': 'setIsBad', 'bobID0': 'nodes', 'newType': 'Bad', 'objectIdx': 7, 'isChecked': True}
+
+		if objectType is not None:
+			# copied from bTableWidget2.menuActionHandler
+			myEvent = {
+				'type': myType,
+				'bobID0': objectType,
+				'newType': 'Bad'',
+				'objectIdx':int(objectIndex),
+				'isChecked': setBad,
+				}
+			self.mainWindow.getStackView().myEvent(myEvent)
+
 	# abb oct2020
 	# this is very new code using signal/slot
 	def myAction_callback(self, name):
 		print('===bStackWidget.myAction_callback() name:', name)
-		#print('  state:', state)
-		#print('  name:', name)
-		#print('  sender:', self.sender().text())
 
-		if name == 'Toggle Bad':
-			pass
+		if name == 'Set Bad':
 			#print('generally follow code from table')
 			#print('  1) find selected object')
 			#print('  2) set it to bad')
 			#print('  3) emit a signal')
-			selectedNode = self.getStackView().selectedNode()
-			selectedEdge = self.getStackView().selectedEdge()
-			if selectedNode is not None:
-				print('    set node to bad:', selectedNode)
-			elif selectedEdge is not None:
-				print('    set edge to bad:', selectedEdge)
-			else:
-				print('  bStackWidget.myAction_callback() did not find a (node, edge) to set bad?')
+			self.setBadGood(setBad=True)
+
+		elif name == 'Set Good':
+			self.setBadGood(setBad=False)
 
 		elif name == 'Increase Tracing Sliding-Z':
 			# increase the value

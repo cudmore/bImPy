@@ -581,8 +581,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			myEvent = bimpy.interface.bEvent('select edge', edgeIdx=edgeIdx)
 			self.selectEdgeSignal.emit(myEvent)
 
-	def selectEdgeList(self, edgeList):
-		colorList = ['r', 'g', 'b', 'm']
+	def selectEdgeList(self, edgeList, snapz=False, nodeIdx=None, colorList=None):
+		"""
+		Select a list of edges
+
+		nodeIdx: If given (ans snapz) then snap to the z of the node
+		colorList: can be []
+
+		we are snapping to the middle of the first edge edgeList[0]
+		"""
+
+		# todo: fix this, what am i passing for colorList ????
+		if colorList is None or len(colorList)==0:
+			colorList = ['r', 'g', 'b', 'm']
+
+		print('  selectEdgeList() edgeList:', edgeList, 'colorList:', colorList)
 
 		self.displayStateDict['selectedEdgeList'] = []
 
@@ -592,16 +605,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		symbolBrushList = []
 		colorIdx = 0
 		for idx, edgeIdx in enumerate(edgeList):
-			theseIndices = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
-			numIndices = len(theseIndices)
+			theseSlabs = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
+			numSlabs = len(theseSlabs)
 
-			#slabList += theseIndices
+			xList += self.mySimpleStack.slabList.x[theseSlabs].tolist()
+			yList += self.mySimpleStack.slabList.y[theseSlabs].tolist()
 
-			xList += self.mySimpleStack.slabList.x[theseIndices].tolist()
-			yList += self.mySimpleStack.slabList.y[theseIndices].tolist()
-
-			# make a list of pg.mkColor using colorList[idx]
-			symbolBrushList += [pg.mkColor(colorList[colorIdx]) for tmp in range(numIndices)]
+			# make a list of pg.mkColor using colorList[colorIdx]
+			symbolBrushList += [pg.mkColor(colorList[colorIdx]) for tmp in range(numSlabs)]
 
 			xList.append(np.nan)
 			yList.append(np.nan)
@@ -618,7 +629,34 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		self.mySlabPlotSelection.setData(yList, xList, symbolBrush=symbolBrushList) # flipped
 
-		#QtCore.QTimer.singleShot(10, lambda:self.flashEdge(edgeIdx, 2))
+		if snapz:
+			# snap to the first edge
+			edgeIdx = edgeList[0]
+
+			#tmpEdgeDict = self.mySimpleStack.slabList.getEdge(edgeIdx)
+			#z = tmpEdgeDict['z']
+			if nodeIdx is not None:
+				z = self.mySimpleStack.slabList.getNode_zSlice(nodeIdx)
+			else:
+				z = self.mySimpleStack.slabList.edgeDictList[edgeIdx]['z']
+				z = int(z)
+			self.setSlice(z)
+
+			# snap to point
+			# get the (x,y) of the middle slab
+			if nodeIdx is not None:
+				tmpx, tmpy, tmpz = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
+			else:
+				tmpEdgeDict = self.mySimpleStack.slabList.getEdge(edgeIdx)
+				tmp_nSlab = tmpEdgeDict['nSlab']
+				middleSlab = int(tmp_nSlab/2)
+				middleSlabIdx = tmpEdgeDict['slabList'][middleSlab]
+				tmpx, tmpy, tmpz = self.mySimpleStack.slabList.getSlab_xyz(middleSlabIdx)
+			# do the zoom
+			self._zoomToPoint(tmpy, tmpx) # flipped
+
+		# flash edge list
+		QtCore.QTimer.singleShot(10, lambda:self._flashEdgeList(edgeList, 2))
 
 	def selectSlab(self, slabIdx, snapz=False, doEmit=False):
 
@@ -745,6 +783,30 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.myEdgeSelectionFlash.setData([], [])
 			#self.myEdgeSelectionFlash.set_offsets(np.c_[[], []])
 
+	def _flashEdgeList(self, edgeList, on):
+		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
+		#print('flashEdge() edgeIdx:', edgeIdx, on)
+		if edgeList is None or len(edgeList)==0:
+			return
+		if on:
+			# todo: probably slow !!!
+			theseIndicesList = []
+			xMasked = []
+			yMasked = []
+			for edgeIdx in edgeList:
+				# theseIndices is a list
+				theseIndices = self.mySimpleStack.slabList.getEdgeSlabList(edgeIdx)
+				theseIndicesList = theseIndicesList + theseIndices
+				xMasked = xMasked + self.mySimpleStack.slabList.x[theseIndices].tolist()
+				xMasked = xMasked + [np.nan]
+				yMasked = yMasked + self.mySimpleStack.slabList.y[theseIndices].tolist()
+				yMasked = yMasked + [np.nan]
+			self.myEdgeSelectionFlash.setData(yMasked, xMasked) # flipped
+			#
+			QtCore.QTimer.singleShot(20, lambda:self._flashEdgeList(edgeList, False))
+		else:
+			self.myEdgeSelectionFlash.setData([], [])
+
 	def flashAnnotation(self, annotationIdx, numberOfFlashes):
 		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
 		#print('flashNode() nodeIdx:', nodeIdx, 'numberOfFlashes:', numberOfFlashes)
@@ -865,9 +927,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					self.myImage.setLevels([minContrast,maxContrast], update=True)
 
 					colorLutStr = self.contrastDict['colorLut']
-					colorLut = self.myColorLutDict[colorLutStr] # like (green, red, blue, gray, gray_r, ...)
-					self.myImage.setLookupTable(colorLut, update=True)
-
+					try:
+						colorLut = self.myColorLutDict[colorLutStr] # like (green, red, blue, gray, gray_r, ...)
+						self.myImage.setLookupTable(colorLut, update=True)
+					except (KeyError) as e:
+						print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
 		else:
 			#print('not showing image')
 			fakeImage = np.ndarray((1,1,1), dtype=np.uint8)
@@ -1514,16 +1578,20 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		myEvent.printSlot('myPyQtGraphPlotWidget.slot_selectEdge()')
 		if myEvent.eventType == 'select node':
 			return
+		snapz = myEvent.snapz
+		nodeIdx = myEvent.nodeIdx # used to snapz when given 2x (joined) edges
 		edgeList = myEvent.edgeList
-		colorList = myEvent.colorList
+		colorList = myEvent.colorList # can be []
 		if len(edgeList)>0:
 			# select a list of edges
-			self.selectEdgeList(edgeList, thisColorList=colorList, snapz=True)
+			# abb oct2020 removed snapz
+			#self.selectEdgeList(edgeList, colorList=colorList, snapz=True)
+			self.selectEdgeList(edgeList, snapz=snapz, nodeIdx=nodeIdx, colorList=colorList)
 		else:
 			# select a single edge
 			edgeIdx = myEvent.edgeIdx
 			slabIdx = myEvent.slabIdx
-			snapz = myEvent.snapz
+			#snapz = myEvent.snapz
 			isShift = myEvent.isShift
 			self.selectEdge(edgeIdx, snapz=snapz, isShift=isShift)
 		self.selectNode(myEvent.nodeIdx)
@@ -1860,8 +1928,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		elif event['type']=='setIsBad':
 			bobID0 = event['bobID0'] # tells us nodes/edges
 			objectIdx = event['objectIdx']
-			isChecked = event['isChecked']
-			print(event)
+			isChecked = event['isChecked'] # tells us good/bad
+			print('bPyQtGraph.myEvent() setIsBad event:', event)
 			if bobID0 == 'nodes':
 				self.mySimpleStack.slabList.setNodeIsBad(objectIdx, isChecked)
 			elif bobID0 == 'edges':

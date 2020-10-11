@@ -8,7 +8,7 @@ type: from (nodes, edges, search)
 listOfDict: from nodeList, edgeList, searchList
 """
 
-import json
+import os, json
 
 import numpy as np
 
@@ -30,6 +30,12 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		self.mainWindow = parent
 
+		myPath = os.path.dirname(os.path.abspath(__file__))
+		mystylesheet_css = os.path.join(myPath, 'css', 'mystylesheet.css')
+		with open(mystylesheet_css) as f:
+			myStyleSheet = f.read()
+		self.setStyleSheet(myStyleSheet)
+
 		# todo: remove this, I am now explicitly deriving. For example, see bAnnotationTableWidget
 		if type not in {'nodes', 'edges', 'node search', 'edge search', 'annotations'}:
 			print('error: bTableWidget2 type is incorrect:', type)
@@ -37,11 +43,13 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		self._type = type # from ('nodes', 'edges', 'search')
 
+		'''
 		# set font size of table (default seems to be 13 point)
 		fnt = self.font()
 		#print('  original table font size:', fnt.pointSize())
 		fnt.setPointSize(12)
 		self.setFont(fnt)
+		'''
 
 		self._rowHeight = 12
 		#self.setRowHeight(12)
@@ -215,19 +223,23 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		else:
 			myEvent.printSlot('bTableWidget2.slot_updateTracing() case not taken')
 
-	def slot_newSearchHit(self, searchType, newHitDict):
-		print('bTableWidget2.slot_newSearchHit()')
-		print('  searchType:', searchType)
-		print('  newHitDict:', newHitDict)
+	def slot_newSearchHit(self, newHitDict):
+		"""
+		would like to update the table but
+			requires too much code, will be buggy, and at first will be slow
+		"""
+		#print('bTableWidget2.slot_newSearchHit() todo: refresh table')
+		pass
 
-	def slot_SearchFinished(self, searchType, hitDictList):
+	def slot_SearchFinished(self, searchDict):
 		print('bTableWidget2.slot_SearchFinished()')
+
+		searchType = searchDict['searchType']
+		hitDictList = searchDict['hitDictList']
+
 		print('  searchType:', searchType)
 		print('  len(hitDictList):', len(hitDictList))
-		'''
-		self.editTable.populate(self.hitDictList)
-		self.editTable._type = 'edge search'
-		'''
+
 		self._type = searchType
 		self.populate(hitDictList)
 
@@ -395,7 +407,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 	def keyPressEvent(self, event):
 		super(bTableWidget2, self).keyPressEvent(event)
 		key = event.key()
-		print('=== bTableWidget2.keyPressEvent() in', self._type, 'key:', event.text())
+		print('=== bTableWidget2.keyPressEvent() in type:', self._type, ', key:', event.text())
 		if key in [QtCore.Qt.Key_Left, QtCore.Qt.Key_Right]:
 			if self._type == 'edge search':
 				if self.edgeIterIndex is None:
@@ -405,8 +417,13 @@ class bTableWidget2(QtWidgets.QTableWidget):
 						self.edgeIterIndex -= 1 #
 						if self.edgeIterIndex < 0:
 							self.edgeIterIndex = 0
+
 					elif key == QtCore.Qt.Key_Right:
 						self.edgeIterIndex += 1 # this will overflow
+						# todo: need to test upper bound !!!
+						tmpEdgeList = self.getCellValue('edgeList')
+						if self.edgeIterIndex > len(tmpEdgeList)-1:
+							self.edgeIterIndex -= 1
 			# reselect node
 			self.on_clicked_row()
 
@@ -517,6 +534,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				colorList = []
 				edgeList = self.getCellValue('edgeList')
 				if edgeList is not None:
+					print('  "on_clicked_row() edge search" got edgeList:', edgeList)
 					edgeList = json.loads(edgeList)
 					if self.edgeIterIndex is not None:
 						edgeIdx = edgeList[self.edgeIterIndex]
@@ -552,22 +570,25 @@ class bTableWidget2(QtWidgets.QTableWidget):
 					print('    edge search idx:', idx, 'edge2:', edge2)
 
 				# todo: convert bEvent nodeList to None rather than empty list []
-				nodeList = self.getCellValue('nodeList')
+				nodeList = self.getCellValue('nodeList') # might not exist
 				if nodeList is not None:
 					nodeList = json.loads(nodeList)
 				else:
 					nodeList = []
 				#
 				if len(edgeList) == 1:
+					# one edge
 					edgeIdx = edgeList[0]
 					myEvent = bimpy.interface.bEvent('select edge', edgeIdx=edgeIdx, nodeIdx=None, snapz=True, isShift=isShift)
-					print('   emit myEvent:', myEvent)
+					print('   bTableWidget2.on_clicked_row() one edge emit myEvent:', myEvent)
 					self.selectRowSignal.emit(myEvent)
 				else:
+					# more than one edge
 					myEvent = bimpy.interface.bEvent('select edge list', nodeIdx=nodeIdx, slabIdx=slabIdx, edgeList=edgeList, snapz=True, isShift=isShift)
-					myEvent._nodeList = nodeList
+					myEvent._nodeList = nodeList # might be []
 					if len(colorList) > 0:
 						myEvent._colorList = colorList
+					print('   bTableWidget2.on_clicked_row() edge list emit myEvent:', myEvent)
 					self.selectRowSignal.emit(myEvent)
 
 	def contextMenuEvent_Header(self, pos):
@@ -691,18 +712,19 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		"""
 		receives event when user selects a right-click menu
 		"""
-		print('menuActionHandler')
+		print('bTableWidget2.menuActionHandler')
 		row = self.currentRow() # this is dangerous but seems to stay in sync, I owuld rather have the row in the event?
-		sender = self.sender()
+		sender = self.sender() # not object oriented compliant
 		title = sender.text()
 		isChecked = sender.isChecked()
 		bobID0 = sender.property('bobID0') # object type node/index/search
 		bobID = sender.property('bobID') # set type or isBad
-		print('    title:', title, 'row:', row, 'isChecked:', isChecked, 'bobID:', bobID)
+		print('    title:', title, 'row:', row, 'isChecked:', isChecked, 'bobID:', bobID, 'bobID0:', bobID0)
 
 		#
 		objectIndex = self.getCellValue('idx', row=row)
 		myEvent = {'type': bobID, 'bobID0': bobID0, 'newType': title, 'objectIdx':int(objectIndex), 'isChecked':isChecked}
+		print('  myEvent:', myEvent)
 		self.mainWindow.getStackView().myEvent(myEvent)
 
 	def getCellValue_int(self, colName, row=None):

@@ -67,8 +67,9 @@ def find_all_cycles(G, source=None, cycle_length_limit=None):
     return [list(i) for i in output_cycles]
 
 class bSearchAnnotations(QtCore.QThread):
-	searchNewHitSignal = QtCore.Signal(str, object)
-	searchFinishedSignal = QtCore.Signal(str, object)
+	searchNewSearchSignal = QtCore.Signal(object) # (search type, dict)
+	searchNewHitSignal = QtCore.Signal(object)
+	searchFinishedSignal = QtCore.Signal(object)
 
 	def __init__(self, slabList, fn=None, params=None, searchType=None, ):
 		"""
@@ -79,46 +80,70 @@ class bSearchAnnotations(QtCore.QThread):
 
 		self.fn = fn #searchDisconnectedEdges
 		self.params = params
-		
+
 		self.continueSearch = True # set False to cancel
 
 		self.slabList = slabList # parent stack is in self.slabList.parentStack
 		self.searchType = searchType
 
+		self.doCancel = False
+
 		self.initSearch()
 
-		
+	def getSearchDict(self):
+		theDict = OrderedDict()
+		theDict['searchType'] = self.searchType
+		theDict['searchName'] = self.name
+		theDict['numFound'] = self.numFound
+		theDict['numSearched'] = self.numSearched
+		theDict['numToSearch'] = self.numToSearch
+		theDict['startTime'] = self.startTime
+		theDict['elapsedTime'] = self.elapsedTime
+
+		theDict['hitDictList'] = self.hitDictList
+
+		return theDict
+
+	def cancelSearch(self):
+		self.doCancel = True
+
 	def run(self):
 		#self.searchDisconnectedEdges()
 		self.fn(self, self.params)
-		
-	def initSearch(self, name=''):
+
+	def initSearch(self, name='', numToSearch=0):
 		"""
 		Initialize a search
 		"""
 		self.name = name
-		self.nFound = 0
-		self.nSearched = 0
+		self.numFound = 0
+		self.numSearched = 0
+		self.numToSearch = numToSearch
 		self.startTime = time.time()
+		self.elapsedTime  = 0
 		self.hitDictList = []
-		
+
+		# emit
+		searchDict = self.getSearchDict()
+		self.searchNewSearchSignal.emit(searchDict)
+
 	def addFound(self, hitDict):
 		"""
 		Add a found object
 		"""
-		self.nFound += 1
-		hitDict['Idx'] = self.nFound # modify the dict
+		self.numFound += 1
+		hitDict['Idx'] = self.numFound # modify the dict
 		self.hitDictList.append(hitDict)
 
-		self.searchNewHitSignal.emit(self.searchType, hitDict)
-		
-		#print(f'  found {len(self.hitDictList)}')
-		
+		# emit
+		searchDict = self.getSearchDict()
+		self.searchNewHitSignal.emit(searchDict)
+
 	def addSearched(self):
 		"""
 		Add to the number of searched objects/items
 		"""
-		self.nSearched += 1
+		self.numSearched += 1
 
 	def finishSearch(self, verbose=False):
 		"""
@@ -127,21 +152,17 @@ class bSearchAnnotations(QtCore.QThread):
 		if verbose:
 			for idx, hitDict in enumerate(self.hitDictList):
 				print('    ', idx, hitDict)
-		self.stopTime = time.time()
-		self.elapsed = round(self.stopTime-self.startTime,2)
-		#print('bSearchAnnotations "' + self.name + ' ' + str(self.searchType) + '" finished in', self.elapsed, 'seconds, searched', self.nSearched, 'items -->> found', self.nFound)
-		print(f'bSearchAnnotations {self.name} "{self.searchType}" finished in {self.elapsed} seconds, searched {self.nSearched} items -->> found {self.nFound}')
 
-		'''
-		# update main editTable2
-		if self.searchType is not None and self.editTable is not None:
-			self.editTable.populate(self.hitDictList)
-			self.editTable._type = 'edge search'
-		'''
-		
-		# emit search type and hitDict
-		self.searchFinishedSignal.emit(self.searchType, self.hitDictList)
-		
+		# critical, bSearchWidget is calling *this.FinishSearch
+		#if self.doCancel = True
+
+		self.stopTime = time.time()
+		self.elapsedTime = round(self.stopTime-self.startTime,2)
+
+		# emit
+		searchDict = self.getSearchDict()
+		self.searchFinishedSignal.emit(searchDict)
+
 	def _defaultSearchDict(self):
 		"""
 		Get a default search itme
@@ -274,7 +295,7 @@ class bSearchAnnotations(QtCore.QThread):
 		return self.hitDictList
 	"""
 
-	def allSubgraphs(self):
+	def allSubgraphs(self, param=None):
 		"""
 		Returns a list of subgraphs
 
@@ -291,7 +312,7 @@ class bSearchAnnotations(QtCore.QThread):
 		numFound = 0
 		for idx, ccNodes in enumerate(nx.connected_components(G)):
 			ccNodes = list(ccNodes)
-			
+
 			#print('component:', idx, type(ccNodes), ccNodes)
 
 			nNodes = len(ccNodes)
@@ -309,6 +330,10 @@ class bSearchAnnotations(QtCore.QThread):
 					len3d += v['len3d']
 					edgeList.append(edgeIdx)
 
+					#
+					# this is meaningless
+					self.addSearched()
+
 			#
 			hitDict = self._defaultSearchDict2()
 			hitDict['len3d'] = len3d
@@ -317,9 +342,9 @@ class bSearchAnnotations(QtCore.QThread):
 			hitDict['nodeList'] = ccNodes
 			self.addFound(hitDict)
 			numFound += 1
-			
+
 		#print('  found', numFound, 'hits.')
-		
+
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
@@ -422,11 +447,12 @@ class bSearchAnnotations(QtCore.QThread):
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
-	def allDeadEnds(self):
+	def allDeadEnds(self, params=None):
 		"""
 		"""
 		print('searching for dead end edges')
-		self.initSearch('allDeadEnds')
+		nEdges = self.slabList.numEdges()
+		self.initSearch('allDeadEnds', numToSearch=nEdges)
 
 		for edgeIdx, edgeDict in enumerate(self.slabList.edgeIter()):
 			#
@@ -440,6 +466,9 @@ class bSearchAnnotations(QtCore.QThread):
 				hitDict = self._defaultSearchDict()
 				hitDict['edge1'] = int(edgeIdx)
 				self.addFound(hitDict)
+
+			#
+			self.addSearched() # add to total number searched
 
 		self.finishSearch(verbose=False)
 		return self.hitDictList
@@ -468,15 +497,23 @@ class bSearchAnnotations(QtCore.QThread):
 			return slabList
 
 		try:
+
+			numToSearch = self.slabList.numSlabs()
+			self.initSearch('allDeadEnds', numToSearch=numToSearch)
+
 			numHits = 0
 			pairedSLabs = [None] * self.slabList.numSlabs() #
 			for edgeIdx1, edgeDict1 in enumerate(self.slabList.edgeIter()):
+				if self.doCancel:
+					break
 				if numHits > limitHits:
 					continue
 				joiningSlabList = getJoiningSlabs(edgeDict1)
 				#print('edgeIdx1:', edgeIdx1, 'joiningSlabList:', joiningSlabList)
 				slabList1 = self.slabList.getEdgeSlabList(edgeIdx1)
 				for slab1 in slabList1:
+					if self.doCancel:
+						break
 					if numHits > limitHits:
 						continue
 					if pairedSLabs[slab1] is not None: continue
@@ -488,6 +525,10 @@ class bSearchAnnotations(QtCore.QThread):
 							continue
 						slabList2 = self.slabList.getEdgeSlabList(edgeIdx2)
 						for slab2 in slabList2:
+
+							# need this here because we are using 'continue' below
+							self.addSearched() # add to total number searched
+
 							if slab2 in joiningSlabList:
 								continue
 							if pairedSLabs[slab2] is not None: continue
@@ -517,25 +558,33 @@ class bSearchAnnotations(QtCore.QThread):
 
 	def searchCloseNodes(self, thresholdDist=10):
 
-		self.initSearch('searchCloseNodes')
-		
+		nNodes = self.slabList.numNodes() # we are actually searching n*n-n
+		numToSearch = nNodes * nNodes - nNodes
+		self.initSearch('searchCloseNodes', numToSearch=numToSearch)
+
 		pairedNodes = [None] * self.slabList.numNodes() #
 
 		#foundPairList = []
 		for nodeIdx1, nodeDict1 in enumerate(self.slabList.nodeIter()):
+			if self.doCancel:
+				break
+
 			if pairedNodes[nodeIdx1] is not None:
 				continue
 
 			x1,y1,z1 = self.slabList.getNode_xyz(nodeIdx1)
 			for nodeIdx2, nodeDict2 in enumerate(self.slabList.nodeIter()):
+				if self.doCancel:
+					break
+
 				if nodeIdx1 == nodeIdx2:
 					continue
-				
+
 				# abb aics
 				#if [nodeIdx2,nodeIdx1] in foundPairList:
 				#	print('searchCloseNodes:', nodeIdx2, nodeIdx1, 'already in list')
 				#	continue
-				
+
 				x2,y2,z2 = self.slabList.getNode_xyz(nodeIdx2)
 				dist = bimpy.util.euclideanDistance(x1,y1,z1, x2,y2,z2)
 				if dist < thresholdDist:
@@ -549,28 +598,36 @@ class bSearchAnnotations(QtCore.QThread):
 					hitDict['node2'] = int(nodeIdx2)
 					hitDict['nEdges2'] = int(nodeDict2['nEdges'])
 					hitDict['edgeList2'] = nodeDict2['edgeList']
-					
+
 					sharedEdgeList = bimpy.bVascularTracingAics.sharedEdges(self.slabList, nodeIdx1, nodeIdx2)
 					hitDict['sharedEdges'] = sharedEdgeList
 
 					self.addFound(hitDict)
-					
+
 					#foundPairList.append([nodeIdx1, nodeIdx2])
-					
+
+				self.addSearched() # add to total number searched
+
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
-	def searchBigGaps(self, thresholdDist=10):
+	def searchSlabGaps(self, thresholdDist=10):
 		""" search edges for sequential slabs that are far apart.
 		Edges that have gaps
 		"""
 
-		self.initSearch('searchBigGaps')
+		numToSearch = self.slabList.numSlabs()
+		self.initSearch('searchBigGaps', numToSearch=numToSearch)
 
 		for edgeIdx, edge in enumerate(self.slabList.edgeIter()):
+			if self.doCancel:
+				break
+
 			slabList = edge['slabList']
 			nSLab = len(slabList)
 			for edgeSlabIdx,slabIdx in enumerate(slabList):
+				if self.doCancel:
+					break
 				if edgeSlabIdx > 0:
 					x, y, z = self.slabList.getSlab_xyz(slabIdx)
 					dist = bimpy.util.euclideanDistance(xLast,yLast,zLast, x,y,z)
@@ -585,6 +642,47 @@ class bSearchAnnotations(QtCore.QThread):
 						self.addFound(hitDict)
 				xLast, yLast, zLast = self.slabList.getSlab_xyz(slabIdx)
 
+				self.addSearched() # add to total number searched
+
+		self.finishSearch(verbose=False)
+		return self.hitDictList
+
+	def searchJoinEdges(self, param=None):
+		"""
+		return a list of edge pairs that are joined by a single node (node nEdges==2)
+		"""
+		numToSearch = self.slabList.numNodes()
+		self.initSearch('searchDeadEnd2', numToSearch=numToSearch)
+
+		hitList = [] # list of tuple (edge1, edge2)
+		for nodeIdx, node in enumerate(self.slabList.nodeIter()):
+			if self.doCancel:
+				break
+			nEdges = node['nEdges']
+			if nEdges == 2:
+				edge1 = node['edgeList'][0]
+				edge2 = node['edgeList'][1]
+				if (edge1, edge2) not in hitList and (edge2, edge1) not in hitList:
+					# keep track of what we find
+					hitList.append((edge1, edge2)) # append tuple (edge1, edge2)
+
+					len2D1 = self.slabList.getEdge(edge1)['Len 2D']
+					len2D2 = self.slabList.getEdge(edge2)['Len 2D']
+					totLen2D = len2D1 + len2D2
+					hitDict = {
+						'edge1': edge1,
+						'len2D1': len2D1,
+						'edge2': edge2,
+						'len2D2': len2D2,
+						'totLen2D': totLen2D,
+						'nodeIdx': nodeIdx, # edge1 and edg2 are connected by this node
+						'edgeList': [edge1, edge2],
+					}
+					self.addFound(hitDict)
+
+			#
+			self.addSearched() # add to total number searched
+
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
@@ -592,13 +690,14 @@ class bSearchAnnotations(QtCore.QThread):
 		"""
 		Search edges that have a dead end near another node
 		"""
-		self.initSearch('searchDeadEnd2')
-
-		print('thresholdDist:', thresholdDist)
+		numToSearch = self.slabList.numEdges() * self.slabList.numNodes() * 2
+		self.initSearch('searchDeadEnd2', numToSearch=numToSearch)
 
 		pairedNodes = [None] * self.slabList.numNodes() #
 
 		for edgeIdx, edgeDict in enumerate(self.slabList.edgeIter()):
+			if self.doCancel:
+				break
 			if not self.continueSearch:
 				break
 
@@ -627,6 +726,9 @@ class bSearchAnnotations(QtCore.QThread):
 				xPost, yPost, zPost = self.slabList.getNode_xyz(postNode)
 
 			for nodeIdx, nodeDict in enumerate(self.slabList.nodeIter()):
+				if self.doCancel:
+					break
+
 				# consider all target nodes
 				x2, y2, z2 = self.slabList.getNode_xyz(nodeIdx)
 
@@ -647,12 +749,12 @@ class bSearchAnnotations(QtCore.QThread):
 						hitDict['node2'] = nodeIdx
 						hitDict['nEdges2'] = self.slabList.getNode(nodeIdx)['nEdges']
 						hitDict['edgeList2'] = self.slabList.getNode(nodeIdx)['edgeList']
-						
+
 						nodeIdx1 = preNode
 						nodeIdx2 = nodeIdx
 						sharedEdgeList = bimpy.bVascularTracingAics.sharedEdges(self.slabList, nodeIdx1, nodeIdx2)
 						hitDict['sharedEdges'] = sharedEdgeList
-						
+
 						self.addFound(hitDict)
 				# post
 				if doPost and nodeIdx != postNode:
@@ -679,6 +781,9 @@ class bSearchAnnotations(QtCore.QThread):
 
 						self.addFound(hitDict)
 
+				#
+				self.addSearched() # add to total number searched
+
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
@@ -692,16 +797,15 @@ class bSearchAnnotations(QtCore.QThread):
 		This is inneficient
 		"""
 
-		print('searching for dead end edges near other slabs')
-
-		self.initSearch('searchDeadEnd')
-
-		print('thresholdDist:', thresholdDist)
+		numToSearch = self.slabList.numEdges() * 2 * self.slabList.numSlabs()
+		self.initSearch('searchDeadEnd', numToSearch=numToSearch)
 
 		nSlabs = self.slabList.numSlabs()
 
 		foundEdgeList = []
 		for edgeIdx, edgeDict in enumerate(self.slabList.edgeIter()):
+			if self.doCancel:
+				break
 			if not self.continueSearch:
 				break
 			preNode = edgeDict['preNode']
@@ -720,6 +824,8 @@ class bSearchAnnotations(QtCore.QThread):
 			xPost, yPost, zPost = self.slabList.getNode_xyz(postNode)
 
 			for j in range(nSlabs):
+				if self.doCancel:
+					break
 				if self.slabList.edgeIdx[j] == edgeIdx:
 					continue # skip
 
@@ -771,6 +877,9 @@ class bSearchAnnotations(QtCore.QThread):
 						hitDict['slab2'] = j
 						self.addFound(hitDict)
 
+				#
+				self.addSearched() # add to total number searched
+
 		self.finishSearch(verbose=False)
 		return self.hitDictList
 
@@ -787,17 +896,17 @@ class bSearchAnnotations(QtCore.QThread):
 				#hitDict['edge1'] = int(edgeIdx)
 				hitDict = edge
 				self.addFound(hitDict)
-		
+
 			# debug quiting search with Key_Q
 			#time.sleep(0.3)
 			#print('edgeIdx:', edgeIdx)
-			
+
 		if not self.continueSearch:
 			print('search cancelled')
-		
+
 		self.finishSearch(verbose=False)
 		return self.hitDictList
-				
+
 if __name__ == '__main__':
 	path = '/Users/cudmore/box/Sites/DeepVess/data/20191017/blur/20191017__0001_z.tif'
 	stack = bimpy.bStack(path, loadImages=False)

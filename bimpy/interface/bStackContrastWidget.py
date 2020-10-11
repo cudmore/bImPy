@@ -204,15 +204,21 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		self.color = newColor
 
+		# don't remove this code, need to implement min/max color
+		'''
 		minColor = self.minColorButton.getColor()
 		maxColor = self.maxColorButton.getColor()
+		'''
 
 		# set in window
 		#self.mainWindow.getStackView().set_cmap(newColor, minColor='black', maxColor='white')
 
 		self.contrastDict['colorLut'] = newColor
+		# don't remove this code, need to implement min/max color
+		'''
 		self.contrastDict['minColor'] = minColor
 		self.contrastDict['maxColor'] = maxColor
+		'''
 
 		self.emitChange()
 
@@ -281,9 +287,12 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# inverse checkbox
 		# color table
 
+		# don't remove this code, need to implement min/max color
+		'''
 		# min color
 		self.minColorButton = myColorButton() # use *self so we can .getColor()
 		self.minColorButton.setColor('black')
+		'''
 
 		#
 		# bit depth
@@ -291,7 +300,7 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		bitDepthIdx = self._myBitDepths.index(self.bitDepth) # will sometimes fail
 		bitDepthLabel = QtWidgets.QLabel('Bit Depth')
 		bitDepthComboBox = QtWidgets.QComboBox()
-		bitDepthComboBox.setMaximumWidth(spinBoxWidth)
+		#bitDepthComboBox.setMaximumWidth(spinBoxWidth)
 		for depth in self._myBitDepths:
 			bitDepthComboBox.addItem(str(depth))
 		bitDepthComboBox.setCurrentIndex(bitDepthIdx)
@@ -309,8 +318,11 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		col += 1
 		self.myGridLayout.addWidget(self.minContrastSlider, row, col)
 		col += 1
+		# don't remove this code, need to implement min/max color
+		'''
 		self.myGridLayout.addWidget(self.minColorButton, row, col)
 		col += 1
+		'''
 		self.myGridLayout.addWidget(bitDepthLabel, row, col)
 		col += 1
 		self.myGridLayout.addWidget(bitDepthComboBox, row, col)
@@ -337,17 +349,19 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		# inverse checkbox
 		# color table
 
+		# don't remove this code, need to implement min/max color
+		'''
 		# max color
 		self.maxColorButton = myColorButton() # use *self so we can .getColor()
 		self.maxColorButton.setColor('white')
+		'''
 
 		# popup for color LUT for image
 		self.myColor = 'gray'
-		#self._myColors = ['red', 'green', 'blue', 'cyan', 'magenta', 'yellow', 'gray']
-		#self._myColors = ['gray', 'Reds', 'Greens', 'Blues', 'gray_r', 'Reds_r', 'Greens_r', 'Blues_r',
+		# todo: add some more colors
+		#self._myColors = ['gray', 'red', 'green', 'blue', 'gray_r', 'red_r', 'green_r', 'blue_r',
 		#					'gist_earth', 'gist_earth_r', 'gist_gray', 'gist_gray_r', 'gist_heat', 'gist_heat_r']
-		self._myColors = ['gray', 'red', 'green', 'blue', 'gray_r', 'red_r', 'green_r', 'blue_r',
-							'gist_earth', 'gist_earth_r', 'gist_gray', 'gist_gray_r', 'gist_heat', 'gist_heat_r']
+		self._myColors = ['gray', 'red', 'green', 'blue', 'gray_r']
 		colorIdx = self._myColors.index(self.myColor) # will sometimes fail
 		colorLabel = QtWidgets.QLabel('LUT')
 		colorComboBox = QtWidgets.QComboBox()
@@ -371,8 +385,11 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		col += 1
 		self.myGridLayout.addWidget(self.maxContrastSlider, row, col)
 		col += 1
+		# don't remove this code, need to implement min/max color
+		'''
 		self.myGridLayout.addWidget(self.maxColorButton, row, col)
 		col += 1
+		'''
 		self.myGridLayout.addWidget(colorLabel, row, col)
 		col += 1
 		self.myGridLayout.addWidget(colorComboBox, row, col)

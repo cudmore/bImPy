@@ -12,6 +12,7 @@ QPushButton {
 }
 */
 
+/*
 QRadioButton {
 	color: white;
 }
@@ -19,11 +20,16 @@ QRadioButton {
 QCheckBox {
 	color: white;
 }
+*/
 
+/*
+see: https://stackoverflow.com/questions/2730331/set-qgroupbox-title-font-size-with-style-sheets
+*/
 QGroupBox {
     border: 2px solid gray;
     border-radius: 3px;
 	margin-top: 0.5em;
+	font-size: 12px;
  }
 
 QGroupBox::title {
@@ -37,5 +43,22 @@ QGroupBox::title {
 
 /* abb aics */
 QPushButton {
+	font-size: 11px;
+}
+
+QLabel {
+	font-size: 11px;
+}
+
+QSpinBox {
+	font-size: 11px;
+}
+
+QTableWidget {
+	font-size: 11px;
+	/* height: 36px; */
+}
+
+QHeaderView::section {
 	font-size: 11px;
 }
