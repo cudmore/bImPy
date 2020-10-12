@@ -1907,44 +1907,44 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.tracingEditSignal.emit(myEvent)
 
 		elif event['type']=='setType':
-			# myEvent = {'event': 'setNodeType', 'newType': title, 'nodeIdx':int(nodeIdx)}
-			bobID0 = event['bobID0'] # tells us nodes/edges
-			newObjectType = event['newType']
+			# see bTableWidget2.menuActionHandler
+			objectType = event['objectType'] # like ('nodes', 'edges')
+			newValue = event['newValue'] # like (1,2,3,...)
 			objectIdx = event['objectIdx']
-			print(event)
-			if bobID0 == 'nodes':
-				self.mySimpleStack.slabList.setNodeType(objectIdx, newObjectType)
-			elif bobID0 == 'edges':
-				self.mySimpleStack.slabList.setEdgeType(objectIdx, newObjectType)
 			#
-			if bobID0 == 'nodes':
+			# make backend change
+			if objectType == 'nodes':
+				self.mySimpleStack.slabList.setNodeType(objectIdx, newValue)
+			elif objectType == 'edges':
+				self.mySimpleStack.slabList.setEdgeType(objectIdx, newValue)
+			#
+			# emit events
+			if objectType == 'nodes':
 				newNodeDict = self.mySimpleStack.slabList.getNode(objectIdx)
 				myEvent = bimpy.interface.bEvent('updateNode', nodeIdx=objectIdx, nodeDict=newNodeDict)
-			elif bobID0 == 'edges':
+			elif objectType == 'edges':
 				newEdgeDict = self.mySimpleStack.slabList.getEdge(objectIdx)
 				myEvent = bimpy.interface.bEvent('updateEdge', edgeIdx=objectIdx, edgeDict=newEdgeDict)
 			self.tracingEditSignal.emit(myEvent)
 
 		elif event['type']=='setIsBad':
-			bobID0 = event['bobID0'] # tells us nodes/edges
+			objectType = event['objectType'] # like ('nodes', 'edges')
+			newValue = event['newValue'] # like (True, False)
 			objectIdx = event['objectIdx']
-			isChecked = event['isChecked'] # tells us good/bad
-			print('bPyQtGraph.myEvent() setIsBad event:', event)
-			if bobID0 == 'nodes':
-				self.mySimpleStack.slabList.setNodeIsBad(objectIdx, isChecked)
-			elif bobID0 == 'edges':
-				self.mySimpleStack.slabList.setEdgeIsBad(objectIdx, isChecked)
 			#
-			if bobID0 == 'nodes':
+			# make backend changes
+			if objectType == 'nodes':
+				self.mySimpleStack.slabList.setNodeIsBad(objectIdx, newValue)
+			elif objectType == 'edges':
+				self.mySimpleStack.slabList.setEdgeIsBad(objectIdx, newValue)
+			#
+			# emit a signal
+			if objectType == 'nodes':
 				newNodeDict = self.mySimpleStack.slabList.getNode(objectIdx)
 				myEvent = bimpy.interface.bEvent('updateNode', nodeIdx=objectIdx, nodeDict=newNodeDict)
-			elif bobID0 == 'edges':
+			elif objectType == 'edges':
 				newEdgeDict = self.mySimpleStack.slabList.getEdge(objectIdx)
 				myEvent = bimpy.interface.bEvent('updateEdge', edgeIdx=objectIdx, edgeDict=newEdgeDict)
-			'''
-			newNodeDict = self.mySimpleStack.slabList.getNode(nodeIdx)
-			myEvent = bimpy.interface.bEvent('updateNode', nodeIdx=nodeIdx, nodeDict=newNodeDict)
-			'''
 			self.tracingEditSignal.emit(myEvent)
 
 		elif event['type'] == 'cancelSelection':

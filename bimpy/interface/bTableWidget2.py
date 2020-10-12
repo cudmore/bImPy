@@ -656,6 +656,8 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 	def contextMenuEvent(self, event):
 		"""
+		build a right-click context menu
+
 		for a more advanced example, see
 		https://stackoverflow.com/questions/20930764/how-to-add-a-right-click-menu-to-each-cell-of-qtableview-in-pyqt
 		"""
@@ -672,59 +674,87 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		print('bTableWidget2.contextMenuEvent() row:', row, pos)
 
 		myType = self.getCellValue('type', row=row)
+		print('  todo: remove this ... none type is now type 0')
 		if myType is None:
-			myType = ''
+			myType = 0
+		myTypeInt = int(myType)
+		print('  myType:', myType)
 		#print('    myType:', myType, type(myType))
 
 		# make a popup allowing 'type' to be set
 		menu = QtWidgets.QMenu()
-		nodeTypes = ['Empty', 'Type 1', 'Type 2', 'Type 3', 'Type 4']
-		for nodeType in nodeTypes:
+		numTypes = 10 # type 0 is no type
+		types = []
+		for i in range(numTypes):
+			types.append('Type ' + str(i))
+		for typeIdx, type in enumerate(types):
 			# make an action
-			isChecked = nodeType == myType
-			currentAction = QtWidgets.QAction(nodeType, self, checkable=True, checked=isChecked)
-			currentAction.setProperty('bobID0', self._type)
-			currentAction.setProperty('bobID', 'setType')
+			isChecked = myTypeInt == typeIdx
+
+			menuStr = 'Type ' + str(typeIdx)
+			currentAction = QtWidgets.QAction(menuStr, self, checkable=True, checked=isChecked)
+			currentAction.setProperty('bAction', 'setType') # from (setType, setIsBad)
+			currentAction.setProperty('bObjectType', self._type) # (nodes, edges)
+			currentAction.setProperty('bNewValue', typeIdx) # the selected type (0,1,2,3,...)
 			currentAction.triggered.connect(self.menuActionHandler)
 			# add to menu
 			menuAction = menu.addAction(currentAction)
 
 		menu.addSeparator()
 
+		# get current state from table widget
+		# todo: maybe get from backend data???
 		myIsBad = self.getCellValue('isBad', row=row) # this is a string
-		#print('myIsBad:', myIsBad, type(myIsBad))
-		if myIsBad == 'True':
+		if myIsBad == 'true': # lowercase because of json filtering
 			myIsBad = True
-		elif myIsBad == 'False':
+		elif myIsBad == 'false':
 			myIsBad = False
 		else:
 			myIsBad = False
-		badAction = QtWidgets.QAction('Bad', self, checkable=True, checked=myIsBad)
-		badAction.setProperty('bobID0', self._type)
-		badAction.setProperty('bobID', 'setIsBad')
+
+		#
+		# on user selection of good/bad, set the selected object isBad key
+
+		# bad
+		badAction = QtWidgets.QAction('Bad', self, checkable=True, checked = myIsBad)
+		badAction.setProperty('bAction', 'setIsBad') # from (setType, setIsBad)
+		badAction.setProperty('bObjectType', self._type) # (nodes, edges)
+		badAction.setProperty('bNewValue', True) # user selected 'bad' -->> set isBad to True
 		badAction.triggered.connect(self.menuActionHandler)
 		menuAction = menu.addAction(badAction)
+		# good
+		goodAction = QtWidgets.QAction('Good', self, checkable=True, checked = not myIsBad)
+		goodAction.setProperty('bAction', 'setIsBad') # from (setType, setIsBad)
+		goodAction.setProperty('bObjectType', self._type) # (nodes, edges)
+		goodAction.setProperty('bNewValue', False) # user selected 'good' -->> set isBad to False
+		goodAction.triggered.connect(self.menuActionHandler)
+		menuAction = menu.addAction(goodAction)
 
+		# user selection will trigger self.menuActionHandler()
 		userAction = menu.exec_(self.mapToGlobal(pos))
-		#print('userAction:', userAction)
 
 	def menuActionHandler(self):
 		"""
 		receives event when user selects a right-click menu
 		"""
-		print('bTableWidget2.menuActionHandler')
-		row = self.currentRow() # this is dangerous but seems to stay in sync, I owuld rather have the row in the event?
+		print('== bTableWidget2.menuActionHandler()')
+		# row needs to be 'idx'
+		row = self.currentRow()
+		objectIndex = self.getCellValue('idx', row=row)
+
 		sender = self.sender() # not object oriented compliant
-		title = sender.text()
-		isChecked = sender.isChecked()
-		bobID0 = sender.property('bobID0') # object type node/index/search
-		bobID = sender.property('bobID') # set type or isBad
-		print('    title:', title, 'row:', row, 'isChecked:', isChecked, 'bobID:', bobID, 'bobID0:', bobID0)
+
+		type = sender.property('bAction') # like (setType, setIsBad)
+		objectType = sender.property('bObjectType') # like ('nodes', 'edges') # todo: add in (node search, edge search)
+		#bSetThisKey = sender.property('bSetThisKey') # like (type, isBad)
+		newValue = sender.property('bNewValue') #
 
 		#
-		objectIndex = self.getCellValue('idx', row=row)
-		myEvent = {'type': bobID, 'bobID0': bobID0, 'newType': title, 'objectIdx':int(objectIndex), 'isChecked':isChecked}
-		print('  myEvent:', myEvent)
+		myEvent = {'type': type, 'objectType': objectType,
+					'newValue': newValue,
+					'objectIdx':int(objectIndex)}
+		print(json.dumps(myEvent, indent=4))
+
 		self.mainWindow.getStackView().myEvent(myEvent)
 
 	def getCellValue_int(self, colName, row=None):

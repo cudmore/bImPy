@@ -169,7 +169,7 @@ class bToolBar(QtWidgets.QToolBar):
 		self.addWidget(myHamburger)
 
 		#toolNameList = ['Options', 'Help']
-		toolNameList = ['Search', 'Contrast', 'Line Profile',
+		toolNameList = ['Search', 'Contrast', 'Line Profile', 'Status',
 						'separator',
 						'Options', 'Help']
 		for toolName in toolNameList:
@@ -180,7 +180,7 @@ class bToolBar(QtWidgets.QToolBar):
 
 			isCheckable = False
 			useIcon = True
-			if toolName in ['Search', 'Contrast', 'Line Profile']:
+			if toolName in ['Search', 'Contrast', 'Line Profile', 'Status']:
 				isCheckable = True
 				# we have icons for these but they collide with state checkbox in menu
 				useIcon = False
@@ -269,6 +269,10 @@ class bToolBar(QtWidgets.QToolBar):
 			self.myMainWindow.optionsChange('Panels', 'showContrast', toggle=True, doEmit=True)
 		elif id == 'Line Profile':
 			self.myMainWindow.optionsChange('Panels', 'showLineProfile', toggle=True, doEmit=True)
+		elif id == 'Status':
+			self.myMainWindow.optionsChange('Panels', 'showStatus', toggle=True, doEmit=True)
+		#elif id == 'Napari':
+		#	self.myMainWindow.optionsChange('Panels', 'showStatus', toggle=True, doEmit=True)
 
 		elif id == 'Options':
 			bimpy.interface.bOptionsDialog(self.myMainWindow, self.myMainWindow)

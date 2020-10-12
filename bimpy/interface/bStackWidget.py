@@ -355,7 +355,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 			myEvent = {
 				'type': myType,
 				'bobID0': objectType,
-				'newType': 'Bad'',
+				'newType': 'Bad',
 				'objectIdx':int(objectIndex),
 				'isChecked': setBad,
 				}
@@ -1093,10 +1093,12 @@ class bStackWidget(QtWidgets.QMainWindow):
 		numChannels = self.mySimpleStack.numChannels # number of channels in stack
 		maxNumChannels = self.mySimpleStack.maxNumChannels
 		#actions = ['Channel 1', 'Channel 2', 'Channel 3', 'RGB', 'Channel 1 Mask', 'Channel 2 Mask', 'Channel 3 Mask']
-		print('  numChannels:', numChannels, 'maxNumChannels:', maxNumChannels)
+		print('  showRightClickMenu() numChannels:', numChannels, 'maxNumChannels:', maxNumChannels)
 		actionsList = []
 		isEnabledList = []
 		isCheckedList = []
+		# abb oct 2020, maybe put these back in
+		'''
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber}')
@@ -1104,6 +1106,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 			isEnabledList.append(isEnabled)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == chanNumber
 			isCheckedList.append(isChecked)
+		'''
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber} Mask')
@@ -1112,6 +1115,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 			isEnabledList.append(isEnabled)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == actualChanNumber
 			isCheckedList.append(isChecked)
+		'''
 		for i in range(numChannels):
 			chanNumber = i + 1
 			actionsList.append(f'Channel {chanNumber} Skel')
@@ -1120,11 +1124,16 @@ class bStackWidget(QtWidgets.QMainWindow):
 			isEnabledList.append(isEnabled)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == actualChanNumber
 			isCheckedList.append(isChecked)
+		'''
+
+		# abb oct 2020, maybe put this back in ???
+		'''
 		if numChannels>1:
 			actionsList.append('RGB')
 			isEnabledList.append(True)
 			isChecked = self.getStackView().displayStateDict['displayThisStack'] == 'rgb' # lower case !!!
 			isCheckedList.append(isChecked)
+		'''
 
 		for i, actionStr in enumerate(actionsList):
 			# make an action
@@ -1143,7 +1152,9 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		#
 		# view
-		actions = ['Image', 'Sliding Z', 'Nodes', 'Edges']
+		# abb oct 2020, maybe put these back in ???
+		#actions = ['Image', 'Sliding Z', 'Nodes', 'Edges']
+		actions = ['Image']
 		for actionStr in actions:
 			# make an action
 			currentAction = QtWidgets.QAction(actionStr, self, checkable=True)
@@ -1168,42 +1179,61 @@ class bStackWidget(QtWidgets.QMainWindow):
 		#
 		# panels
 
+		'''
 		annotationsAction = QtWidgets.QAction('Left Toolbar', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showLeftToolbar'])
 		#annotationsAction.setShortcuts('[')
 		tmpMenuAction = menu.addAction(annotationsAction)
+		'''
 
+		'''
 		# nodes
 		annotationsAction = QtWidgets.QAction('Node List', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showNodeList'])
 		tmpMenuAction = menu.addAction(annotationsAction)
+		'''
+
+		'''
 		# edges
 		annotationsAction = QtWidgets.QAction('Edge List', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showEdgeList'])
 		tmpMenuAction = menu.addAction(annotationsAction)
+		'''
+
+		'''
 		# search
 		annotationsAction = QtWidgets.QAction('Search List', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showSearch'])
 		tmpMenuAction = menu.addAction(annotationsAction)
+		'''
+
+		'''
 		# annotations
 		annotationsAction = QtWidgets.QAction('Annotation List', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showAnnotations'])
 		tmpMenuAction = menu.addAction(annotationsAction)
+		'''
 
+		'''
 		# contrast
 		contrastAction = QtWidgets.QAction('Contrast Panel', self, checkable=True)
 		contrastAction.setChecked(self.options['Panels']['showContrast'])
 		tmpMenuAction = menu.addAction(contrastAction)
+		'''
 
+		'''
 		# status toolbar
 		annotationsAction = QtWidgets.QAction('Status Panel', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showStatus'])
 		tmpMenuAction = menu.addAction(annotationsAction)
+		'''
 
+		'''
 		# line profile toolbar
 		annotationsAction = QtWidgets.QAction('Line Profile Panel', self, checkable=True)
 		annotationsAction.setChecked(self.options['Panels']['showLineProfile'])
 		tmpMenuAction = menu.addAction(annotationsAction)
+		'''
 
 		# napari
 		menu.addSeparator()
@@ -1211,11 +1241,13 @@ class bStackWidget(QtWidgets.QMainWindow):
 		tmpMenuAction = menu.addAction(napariAction)
 
 		# options
+		'''
 		menu.addSeparator()
 		optionsAction = QtWidgets.QAction('Options', self, checkable=False)
 		tmpMenuAction = menu.addAction(optionsAction)
+		'''
 
-		# options
+		# refresh tracing
 		menu.addSeparator()
 		refeshAction = QtWidgets.QAction('Refresh', self, checkable=False)
 		tmpMenuAction = menu.addAction(refeshAction)
@@ -1381,6 +1413,9 @@ class bStackWidget(QtWidgets.QMainWindow):
 		#print('    title:', title)
 
 	def addEditMenu(self, menu):
+		print(' bStackWidget.addEditMenu() is no longer adding (delete node, delete edge, etc), maybe put this back in ???')
+		return
+
 		editMenus = ['Delete Node', 'Delete Edge', 'Delete Slab', '---', 'Slab To Node']
 
 		menu.addSeparator()
