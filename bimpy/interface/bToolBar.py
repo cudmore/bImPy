@@ -1,7 +1,7 @@
 """
 """
 
-import os
+import os, json
 import functools
 import webbrowser
 
@@ -147,15 +147,13 @@ class bToolBar(QtWidgets.QToolBar):
 		#
 		# checkbox to toggle user set type with 1,2,3,...
 		toolName = 'Set Type'
-		setTypeCheckBox = QtWidgets.QCheckBox(toolName)
+		self.setTypeCheckBox = QtWidgets.QCheckBox(toolName)
 		#callbackFn = functools.partial(self.oneCallback, toolName)
 		# why is checkbox color inverted?
 		# don't do this, it turns off user checking
 		#setTypeCheckBox.setCheckable(isCheckable)
-		setTypeCheckBox.stateChanged.connect(self.setType_callback)
-		self.addWidget(setTypeCheckBox)
-
-		print('  \n!!! todo: bToolbar, add icons as menu under hamburger !!!\n')
+		self.setTypeCheckBox.stateChanged.connect(self.setType_callback)
+		self.addWidget(self.setTypeCheckBox)
 
 		#
 		# put actions in hamburger combo box
@@ -169,7 +167,7 @@ class bToolBar(QtWidgets.QToolBar):
 		self.addWidget(myHamburger)
 
 		#toolNameList = ['Options', 'Help']
-		toolNameList = ['Search', 'Contrast', 'Line Profile', 'Status',
+		toolNameList = ['Search', 'Contrast', 'Line Profile', 'Plot', 'Status',
 						'separator',
 						'Options', 'Help']
 		for toolName in toolNameList:
@@ -208,6 +206,10 @@ class bToolBar(QtWidgets.QToolBar):
 				theAction.setShortcut('l')# or 'Ctrl+r' or '&r' for alt+r
 				theAction.setToolTip('Toggle Line Profile [l]')
 				theAction.setShortcutVisibleInContextMenu(True)
+			elif toolName == 'Plot':
+				theAction.setShortcut('p')# or 'Ctrl+r' or '&r' for alt+r
+				theAction.setToolTip('Plot [p]')
+				theAction.setShortcutVisibleInContextMenu(True)
 
 			# add to hamburger QToolButton
 			myHamburger.addAction(theAction)
@@ -236,6 +238,12 @@ class bToolBar(QtWidgets.QToolBar):
 			'showLineProfile': False,
 
 		"""
+
+		# todo: add another sync() function to handle displayStateDict
+		# the state of these tools are associated with tracing in
+		# bPyQtGraph.displayStateDict
+		ignoreTools = ['1', '2', '3', 'rgb', 'sliding-z', 'Tracing', '-', '+']
+
 		for item in self.toolList:
 			name = item.statusTip()
 			#print('name:', name)
@@ -258,17 +266,23 @@ class bToolBar(QtWidgets.QToolBar):
 				isChecked = options['Panels']['showLineProfile']
 				item.setChecked(isChecked)
 			else:
-				print('bToolbar.syncWithOptions() case not taken with action name:', name)
+				if name not in ignoreTools:
+					print('  bToolbar.syncWithOptions() case not taken with action name:', name)
 
 	def oneCallback(self, id):
 		print('bToolbar.oneCallback() id:', id)
 
-		if id == 'Search':
+		if id == 'Save':
+			self.myMainWindow.signal('save')
+		elif id == 'Search':
 			self.myMainWindow.optionsChange('Panels', 'showSearch', toggle=True, doEmit=True)
 		elif id == 'Contrast':
 			self.myMainWindow.optionsChange('Panels', 'showContrast', toggle=True, doEmit=True)
 		elif id == 'Line Profile':
 			self.myMainWindow.optionsChange('Panels', 'showLineProfile', toggle=True, doEmit=True)
+		elif id == 'Plot':
+			# todo: what happens when this is closed???
+			self.myMainWindow.showPlotWidget()
 		elif id == 'Status':
 			self.myMainWindow.optionsChange('Panels', 'showStatus', toggle=True, doEmit=True)
 		#elif id == 'Napari':
@@ -293,6 +307,38 @@ class bToolBar(QtWidgets.QToolBar):
 		print('bToolbar.oneCallback3() index:', index, 'actionName:', actionName, 'isChecked:', isChecked)
 
 		# if 'set types' is checked then 1,2,3,...,0 set type
+		# todo: HOW DO I HANDLE THIS ????
+		if self.setTypeCheckBox.isChecked():
+			handleActionNames = [str(x) for x in range(10)] # 0..9
+			if actionName in handleActionNames:
+				#
+				print('\n')
+				print('   bToolBar.oneCallback3() tell ... bPyQtGraph to set selected object type')
+				print('\n')
+
+				#
+
+				# need to set type of selected object (not set channel 1,2,3,...,0)
+				# like bTableWidget2.menuActionHandler()
+				print('!!! bToolBar.oneCallback3() need to set type not channel !!!')
+				newValue = int(actionName)
+				print('  todo: newValue:', newValue)
+				type = 'setType'
+				print('  todo: detect selection type !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! hard coded edges')
+				objectType = 'edges'
+				print('  todo: detect objectIndex !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! hard coded 5')
+				objectIndex = 5
+				myEvent = {'type': type, 'objectType': objectType,
+							'newValue': newValue,
+							'objectIdx':int(objectIndex)}
+				print(json.dumps(myEvent, indent=4))
+
+				# todo: I don't want this to be getStackView() e.g. bPyQtGraph
+				# i should send it to the main bStackWidget, this hold a view of the stack
+				# it could be bPyQtGraph OR bNapari !!!!
+				self.myMainWindow.getStackView().myEvent(myEvent)
+
+		# todo: we need to handle 0,1,2,3,... if 'set types' is checked but process others normally
 
 		if actionName == '1':
 			self.myMainWindow.getStackView().displayStateChange('displayThisStack', value=1)

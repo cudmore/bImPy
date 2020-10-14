@@ -2283,9 +2283,8 @@ class bVascularTracing:
 		"""
 		save a h5f file
 		"""
-		print('=== bVascularTracing.save()')
 		h5FilePath = self._getSavePath() + '.h5f'
-		print('   h5FilePath:', h5FilePath)
+		print('=== bVascularTracing.save() h5FilePath:', h5FilePath)
 
 		saveDict = OrderedDict()
 		saveDict['nodeDictList'] = self.nodeDictList
@@ -2331,7 +2330,11 @@ class bVascularTracing:
 			#print('slabData:', slabData.shape)
 			f.create_dataset('slabs', data=slabData)
 
-			# abb aics ... save skel
+			#
+			# maskedEdgesDict
+			# oct 2020, we are loading this but we are always calling _preComputeAllMasks !!!!
+			for k,v in self.maskedEdgesDict.items():
+				f.create_dataset(k, data=v)
 
 		return h5FilePath
 
@@ -2341,9 +2344,11 @@ class bVascularTracing:
 		This works but all entries are out of order. For example (edge,node)
 		Need to order them correctly
 		"""
+		startSeconds = time.time()
+
 		h5FilePath = self._getSavePath() + '.h5f'
 
-		#print('=== bVascularTracing.load()', h5FilePath)
+		print('=== bVascularTracing.load()', h5FilePath)
 
 		if not os.path.isfile(h5FilePath):
 			#print('   file not found:', h5FilePath)
@@ -2357,11 +2362,12 @@ class bVascularTracing:
 		tmpNodeDictList = []
 		tmpEdgeDictList = []
 
-		#maskDictList = None
+		#
+		# created in _preComputeAllMasks()
+		self.maskedEdgesDict = {}
 
 		with h5py.File(h5FilePath, "r") as f:
 			for name in f:
-				#print('   loading name:', name)
 				# The order of groups in h5f file is not same as saved?
 				# I guess this is ok, it is structured so we need to check what we are loading?
 				# both (nodes,edges) are coming in in a string sort ordr, we can't simply append()
@@ -2405,6 +2411,12 @@ class bVascularTracing:
 						self.lpMin = np.zeros(loadedShape) * np.nan
 						self.lpMax = np.zeros(loadedShape) * np.nan
 						self.lpSNR = np.zeros(loadedShape) * np.nan
+				elif name.startswith('aics'):
+					self.maskedEdgesDict[name] = f[name][:]
+
+				else:
+					print('bVascularTracing.load() did not understand name:', name, 'in file:', h5FilePath)
+				# all maskedEdgesDict start with aics
 
 				'''
 				elif name == 'masks':
@@ -2421,7 +2433,9 @@ class bVascularTracing:
 		for edge in tmpEdgeDictList:
 			self.edgeDictList[edge['idx']] = edge
 
-		print('    loaded nodes:', maxNodeIdx, 'edges:', maxEdgeIdx, 'slabs:', len(self.x))
+		stopSeconds = time.time()
+		elapsedSeconds = round(stopSeconds-startSeconds,2)
+		print(f'    loaded nodes: {maxNodeIdx} edges: {maxEdgeIdx} slabs: {len(self.x)} in {elapsedSeconds} seconds')
 
 		#return maskDictList
 		return h5FilePath

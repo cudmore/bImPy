@@ -105,7 +105,7 @@ class bAnnotationList:
 		save to _annotationList.csv
 		"""
 		if self.numItems() == 0:
-			print('  bAnnotationList.save() nothing in list')
+			#print('  bAnnotationList.save() nothing in list')
 			return
 
 		savePath = self.saveFilePath

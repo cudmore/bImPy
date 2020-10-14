@@ -22,7 +22,7 @@ import matplotlib.cm
 
 import tifffile
 import h5py
-import pickle # to save masks
+#import pickle # to save masks
 
 # testing, remember to remove
 #import pyqtgraph as pg
@@ -285,6 +285,21 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		they will be handled in self.myAction_callback()
 		"""
+
+		#
+		# this is super confusing to me, this is also defined in bToolBar
+		# todo: where do I define it?????
+		# if we define in both places,we get
+		#    WARNING: QAction::event: Ambiguous shortcut overload: 1
+		'''
+		myName = '1'
+		keyboardAction1 = QtWidgets.QAction(myName, self)
+		keyboardAction1.setShortcut('1')# or 'Ctrl+r' or '&r' for alt+r
+		keyboardAction1.setToolTip('Set 1 [1]')
+		keyboardAction1.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
+		self.addAction(keyboardAction1)
+		'''
+
 		#
 		myName = 'Set Bad'
 		toggleBadAction = QtWidgets.QAction(myName, self)
@@ -335,31 +350,30 @@ class bStackWidget(QtWidgets.QMainWindow):
 		parameters:
 			setBad: if True then set bad, else then set good (not bad)
 		"""
+		myType = 'setIsBad' #like (setType, setIsBad)
+		newValue = setBad # if true then set to bad, else set to good
+
 		selectedNode = self.getStackView().selectedNode()
 		selectedEdge = self.getStackView().selectedEdge()
-		objectType = None # either node or edge
+		objectType = None #  like ('nodes', 'edges')
 		if selectedNode is not None:
 			print('    bStackWidget.setBadGood() set node', selectedNode, 'to bad:', setBad)
-			objectType = 'Nodes'
+			objectType = 'nodes'  # like ('nodes', 'edges')
+			objectIndex = selectedNode
 		elif selectedEdge is not None:
 			print('    bStackWidget.setBadGood() set edge', selectedEdge, 'to bad:', setBad)
-			objectType = 'Edges'
+			objectType = 'edges' #  like ('nodes', 'edges')
+			objectIndex = selectedEdge
 		else:
 			print('  bStackWidget.setBadGood() did not find a (node, edge) to set bad?')
 
-		# follow right-click in tablewidget2
-		# myEvent: {'type': 'setIsBad', 'bobID0': 'nodes', 'newType': 'Bad', 'objectIdx': 7, 'isChecked': True}
-
 		if objectType is not None:
-			# copied from bTableWidget2.menuActionHandler
-			myEvent = {
-				'type': myType,
-				'bobID0': objectType,
-				'newType': 'Bad',
-				'objectIdx':int(objectIndex),
-				'isChecked': setBad,
-				}
-			self.mainWindow.getStackView().myEvent(myEvent)
+			# same as bTableWidget2.menuActionHandler
+			myEvent = {'type': myType, 'objectType': objectType,
+						'newValue': newValue,
+						'objectIdx':int(objectIndex)}
+			print(json.dumps(myEvent, indent=4))
+			self.getStackView().myEvent(myEvent)
 
 	# abb oct2020
 	# this is very new code using signal/slot
@@ -367,10 +381,6 @@ class bStackWidget(QtWidgets.QMainWindow):
 		print('===bStackWidget.myAction_callback() name:', name)
 
 		if name == 'Set Bad':
-			#print('generally follow code from table')
-			#print('  1) find selected object')
-			#print('  2) set it to bad')
-			#print('  3) emit a signal')
 			self.setBadGood(setBad=True)
 
 		elif name == 'Set Good':
@@ -608,47 +618,32 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.lineProfileWidget.updateLineProfile(value)
 
 		if signal == 'save':
-			startTime = time.time()
+			#startTime = time.time()
 			h5FilePath = self.mySimpleStack.saveAnnotations()
-			'''
-			if h5FilePath is not None:
-				with h5py.File(h5FilePath, "a") as f:
-					# slabs are in a dataset
-					#slabData = np.column_stack((self.x, self.y, self.z, self.d, self.int, self.edgeIdx, self.nodeIdx,))
-					#f.create_dataset('slabs', data=slabData)
-					print('    bStackWidget saving maskedNodes ...')
-					maskData = str(self.getStackView().maskedNodes)
-					f.create_dataset('masks', data=maskData)
-			'''
 			#print('   saving maskedNodes')
 			# see second answer: https://stackoverflow.com/questions/26646362/numpy-array-is-not-json-serializable
+			# oct 2020, masks are now saved in saveAnnotation()
+			'''
 			if h5FilePath is not None:
 				self.getStackView().saveMasks()
-				'''
-				maskFilePath = h5FilePath + '.pickle'
-				# json_dump = json.dumps({'a': a, 'aa': [2, (2, 3, 4), a], 'bb': [2]}, cls=NumpyEncoder)
-				print('    saving maskedNodes as:', maskFilePath)
-				with open(maskFilePath, 'wb') as fout:
-					#json.dump(self.getStackView().maskedNodes, fout, cls=myNumpyEncoder)
-					pickle.dump(self.getStackView().maskedNodes, fout)
-				'''
-			print('  saved', h5FilePath, 'in', round(time.time()-startTime,2), 'seconds')
+			'''
+			#print('  saved', h5FilePath, 'in', round(time.time()-startTime,2), 'seconds')
 
 		elif signal == 'load':
 			startTime = time.time()
 			h5FilePath = self.mySimpleStack.loadAnnotations()
+			# masks are now loaded in loadAnnotations()
+			'''
 			if h5FilePath is not None:
 				self.getStackView().loadMasks()
-				'''
-				maskFilePath = h5FilePath + '.pickle'
-				print('    loading maskedNodes from:', maskFilePath)
-				with open(maskFilePath, 'rb') as filename:
-					self.getStackView().maskedNodes = pickle.load(filename)
-				'''
-			print('  loaded in', round(time.time()-startTime,2), 'seconds')
+			'''
+
+			# todo: this is interface, not a good place to do it?
 			self.nodeTable2.populate(self.mySimpleStack.slabList.nodeDictList)
 			self.edgeTable2.populate(self.mySimpleStack.slabList.edgeDictList)
 			#self.editTable2.populate(self.mySimpleStack.slabList.editDictList)
+
+			print('  loaded in', round(time.time()-startTime,2), 'seconds')
 
 		elif signal == 'load_xml':
 			self.mySimpleStack.loadAnnotations_xml()
@@ -845,6 +840,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.updateDisplayedWidgets()
 		'''
 
+		# todo: remove this, replaced by bToolBar
 		if event.text() == '[':
 			self.options['Panels']['showLeftToolbar'] = not self.options['Panels']['showLeftToolbar']
 			self.updateDisplayedWidgets()
@@ -874,8 +870,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 			if self.mySearchAnnotation is not None:
 				self.mySearchAnnotation.continueSearch = False
 
-		elif event.text() == 'p':
-			self.showPlotWidget()
+		#elif event.text() == 'p':
+		#	self.showPlotWidget()
 
 		elif event.text() == 'i':
 			self.mySimpleStack.print()

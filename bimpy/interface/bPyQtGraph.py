@@ -15,10 +15,10 @@ from collections import OrderedDict
 
 import numpy as np
 
-import pickle # to load/save _pre computed masks
+#import pickle # to load/save _pre computed masks
+#import h5py
 
 from qtpy import QtCore, QtGui, QtWidgets
-#from PyQt5 import QtCore, QtGui, QtWidgets
 
 #from PyQt5.QtCore import QT_VERSION_STR
 #print('bPyQtGraph QT_VERSION_STR=', QT_VERSION_STR)
@@ -1522,7 +1522,6 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	# abb oct2020 to handle +/- tracing sliding z
 	def slot_OptionsStateChange(self, key1, key2, value):
 		print('    myPyQtGraphPlotWidget.slot_OptionsStateChange()', key1, key2, value)
-		print('      abb oct2020')
 		if key1 == 'Tracing':
 			if key2 in ['showTracingAboveSlices', 'showTracingBelowSlices']:
 				self.mainWindow.getStackView()._preComputeAllMasks()
@@ -1908,6 +1907,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		elif event['type']=='setType':
 			# see bTableWidget2.menuActionHandler
+			print('  bPyQtGraph.myEvent() type: setType')
 			objectType = event['objectType'] # like ('nodes', 'edges')
 			newValue = event['newValue'] # like (1,2,3,...)
 			objectIdx = event['objectIdx']
@@ -1985,6 +1985,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		load pickle file into self.maskedEdgesDict
 		"""
+		print('bPyQtGraph.loadMasks() now handled by bVascularTracing.load()')
+		return True
+
+		'''
 		pickleFile = self.mySimpleStack._getSavePath() # tiff file without extension
 		pickleFile += '.pickle'
 		if os.path.isfile(pickleFile):
@@ -2002,17 +2006,23 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		else:
 			#print('error: _preComputeAllMasks did not find pickle file:', pickleFile)
 			return False
+		'''
 
 	def saveMasks(self):
 		"""
 		save self.maskedEdgesDict to pickle file
 		"""
+		print('bPyQtGraph.saveMasks() now handled by bVascularTracing.save()')
+		return True
+
+		'''
 		pickleFile = self.mySimpleStack._getSavePath() # tiff file without extension
 		pickleFile += '.pickle'
 		print('    myPyQtGraphPlotWidget.saveMasks() saving maskedNodes as pickleFile:', pickleFile)
 		with open(pickleFile, 'wb') as fout:
 			#pickle.dump(self.maskedNodes, fout)
 			pickle.dump(self.maskedEdgesDict, fout)
+		'''
 
 def main():
 	app = QtWidgets.QApplication(sys.argv)
