@@ -86,7 +86,7 @@ class bLogFilePosition(threading.Thread):
 		else:
 			return None, None
 
-	def getPositionDict(Self):
+	def getPositionDict(self):
 		return self.myLogDict
 
 	def run(self):

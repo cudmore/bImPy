@@ -4,7 +4,7 @@
 
 from functools import partial
 
-from PyQt5 import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtWidgets, QtGui
 
 class myStatusToolbarWidget(QtWidgets.QToolBar):
 	def __init__(self, parent):
@@ -238,7 +238,7 @@ class myScopeToolbarWidget(QtWidgets.QToolBar):
 		crosshair_hBoxLayout.addWidget(centerCrosshairButton)
 
 		squareSizeLabel_ = QtWidgets.QLabel("Square Size")
-		comboBox = QtGui.QComboBox()
+		comboBox = QtWidgets.QComboBox()
 		comboBox.addItem("Video")
 		comboBox.addItem("1x")
 		comboBox.addItem("1.5x")
@@ -676,7 +676,7 @@ class myToolbarWidget(QtWidgets.QToolBar):
 		print('=== myToolbarWidget.on_button_click() name:', name)
 	'''
 
-	@QtCore.pyqtSlot()
+	#@QtCore.pyqtSlot()
 	def on_checkbox_click(self, name, checkBoxObject):
 		print('=== myToolbarWidget.on_checkbox_click() name:', name, 'checkBoxObject:', checkBoxObject)
 		checkState = checkBoxObject.checkState()

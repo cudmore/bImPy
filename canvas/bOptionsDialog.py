@@ -8,7 +8,7 @@ import json
 import copy
 from collections import OrderedDict
 
-from PyQt5 import QtCore, QtWidgets, QtGui
+from qtpy import QtCore, QtWidgets, QtGui
 
 def okCancelDialog(text, informativeText=''):
 	close = QtWidgets.QMessageBox()
@@ -162,7 +162,7 @@ class bOptionsDialog(QtWidgets.QDialog):
 					# motorNameList makes the dropdown list
 					# motorName is what we set
 					#print('  bOptionsDialog() making QComboBox:', key1, key2, value)
-					aComboBox = QtGui.QComboBox()
+					aComboBox = QtWidgets.QComboBox()
 					aComboBox.addItems(value) # assumnig value is a list of str
 					# set selected item
 					useThisKey2 = key2.replace('List', '')
