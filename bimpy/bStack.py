@@ -753,13 +753,16 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/xy512z1zoom5bi_00001_00010.tif'
 	path = '/Users/cudmore/data/canvas/20200913/20200913_aaa/xy512z1zoom5bi_00001_00009.tif'
-
-	if 0:
+	
+	# testing oir on olympus scope
+	path = 'C:/Users/Administrator/Desktop/Sites/canvas/20200311__0001.oir'
+	
+	if 1:
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
 
 	# test canvas video
-	if 1:
+	if 0:
 		path = '/Users/cudmore/data/canvas/20200921_xxx/20200921_xxx_video/v20200921_xxx_000.tif'
 		myStack = bStack(path)
 		myStack.print()

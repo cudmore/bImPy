@@ -820,6 +820,7 @@ class myQGraphicsView(QtWidgets.QGraphicsView):
 		# what about
 		# pixMapItem.setZValue(numItems)
 
+		# todo: on olympus the header will not have x/y motor, we need to look up in our watched folderPath
 		# THESE ARE FUCKING STRINGS !!!!!!!!!!!!!!!!!!!!
 		path = newScopeFile.path
 		fileName = newScopeFile.getFileName()

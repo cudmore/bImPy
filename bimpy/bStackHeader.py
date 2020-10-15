@@ -583,6 +583,7 @@ class bStackHeader:
 			'''
 
 			if bioformats is None:
+				print('bStackHeader.readOirHeader() did not find package bioformats. Is it installed?')
 				return
 
 			metaData = bioformats.get_omexml_metadata(path=self.path)

@@ -134,6 +134,7 @@ class bCanvas:
 		A new file is one that is not already in self.scopeFileList
 
 		watchDict: dictionary mapping file name to x/y/z motor position
+					passed when we are on Olympus
 
 		Return list of files/folders we imported
 		"""
@@ -219,17 +220,22 @@ class bCanvas:
 
 				# get motor position from dict
 				if watchDict is not None:
-					pass
-					'''
-					xPos, yPos = self.myCanvasWidget.myLogFilePositon.getFilePositon(potentialNewFile)
+					print('\n   when we are watching a folder, get motor position from myLogFilePositon')
+					print('  bCanvas.importNewScopeFiles is getting x/y motor for potentialNewFile:', potentialNewFile)
+					print('  watchDict:', watchDict)
+					#xPos, yPos = self.myCanvasWidget.myLogFilePositon.getFilePositon(potentialNewFile)
+					# zPos is ignored on olympus (it is controlled by olympus software)
+					xPos, yPos, zPos = self.getFilePositon(watchDict, potentialNewFile)
+					print('  got xPos:', xPos, 'yPos:', yPos)
+					if xPos is None or yPos is None:
+						print('\n\nCRITICAL ERROR IN bCanvas.import newScopeFile()\n\n')
 					if xPos is not None and yPos is not None:
 						newScopeStack.header.header['xMotor'] = xPos
 						newScopeStack.header.header['yMotor'] = yPos
 					else:
-						print('error: bCanvas.importNewScopeFiles() did not find file position for file:', potentialNewFile)
+						print('   error: bCanvas.importNewScopeFiles() did not find file position for file:', potentialNewFile)
 						newScopeStack.header.header['xMotor'] = None
 						newScopeStack.header.header['yMotor'] = None
-					'''
 
 				# append to return list
 				newStackList.append(newScopeStack)
@@ -238,6 +244,18 @@ class bCanvas:
 				#print('*** importNewScopeFiles() REMEMBER TO SAVE !!!')
 
 		return newStackList
+
+	# this parallels bLogFilePosition() but just uses a dictionary
+	def getFilePositon(self, logDict, fileName):
+		if fileName in logDict.keys():
+			print('bCanvas.getFilePositon()', fileName, logDict[fileName])
+			xPos = logDict[fileName]['xPos']
+			yPos = logDict[fileName]['yPos']
+			zPos = logDict[fileName]['zPos']
+			return xPos, yPos, zPos
+		else:
+			return None, None
+
 
 	@property
 	def videoFileList(self):
