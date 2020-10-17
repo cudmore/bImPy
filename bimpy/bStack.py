@@ -560,6 +560,8 @@ class bStack:
 			return True
 
 		basename, tmpExt = os.path.splitext(self.path)
+
+		#todo: I can't just replace str _ch1/_ch2, only replace if it is at end of filename !!!
 		basename = basename.replace('_ch1', '')
 		basename = basename.replace('_ch2', '')
 
@@ -753,10 +755,10 @@ if __name__ == '__main__':
 
 	path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/xy512z1zoom5bi_00001_00010.tif'
 	path = '/Users/cudmore/data/canvas/20200913/20200913_aaa/xy512z1zoom5bi_00001_00009.tif'
-	
+
 	# testing oir on olympus scope
 	path = 'C:/Users/Administrator/Desktop/Sites/canvas/20200311__0001.oir'
-	
+
 	if 1:
 		print('--- bstack __main__ is instantiating stack')
 		myStack = bStack(path)
