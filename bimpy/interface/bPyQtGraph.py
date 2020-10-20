@@ -127,6 +127,18 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		# self.plot() creates: <class 'pyqtgraph.graphicsItems.PlotDataItem.PlotDataItem'>
 
+		# a caiman selection
+		'''
+		caimanData = np.zeros((1,1,1))
+		self.myCaimanImage = pg.ImageItem(caimanData)
+		self.myCaimanImage.setZValue(10) # make sure this image is on top
+		#self.myCaimanImage.setOpacity(0.5)
+		self.addItem(self.myCaimanImage)
+		'''
+
+		#self.myCaimanROI = pg.PlotCurveItem()
+		self.myCaimanROI = pg.ScatterPlotItem()
+		self.addItem(self.myCaimanROI)
 		#
 		# slabs
 		# see: https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/scatterplotitem.html#pyqtgraph.ScatterPlotItem.setData
@@ -178,6 +190,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#
 		# annotations
+		self.myAnnotationPlotAllZ = True # abb caiman
 		self.myAnnotationPlot = self.plot([], [], pen=None, symbol='t', symbolSize=10, symbolBrush=('b'))
 		self.myAnnotationPlot.sigPointsClicked.connect(self.onMouseClicked_annotations)
 
@@ -260,6 +273,56 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#
 		self._preComputeAllMasks()
 		#self.setSlice()
+
+	def setCaimanImage(self, caimanIdx):
+		"""
+		caimanIdx : pass None to remove selection
+		"""
+		caimanDict = self.mySimpleStack.annotationList.caimanDict # caimanDict is loaded from h5f file
+																# see bimpy.analysis.caiman.readCaiman
+
+		if caimanDict is None:
+			# no caiman analysis loaded
+			return
+
+		#caimanData = bimpy.analysis.caiman.getImage(caimanDict, caimanIdx)
+		if caimanIdx is None:
+			caimanData = np.zeros((1,1))
+			caimanData[:] = np.nan
+		else:
+			caimanData = bimpy.analysis.caiman.getRing(caimanDict, caimanIdx)
+
+		'''
+		originalShape = caimanDict['originalShape']
+		caimanData = np.reshape(caimanDict['A'][:,caimanIdx].toarray(), originalShape, order='F')
+		'''
+
+		#self.myCaimanImage = pg.ImageItem(caimanData)
+		'''
+		levels = None
+		autoLevels = True
+		self.myCaimanImage.setImage(caimanData, levels=levels, autoLevels=autoLevels)
+		'''
+
+		# convert 2d image mask to list of (x,y) points
+		xyList = np.argwhere(caimanData).tolist()
+		#print('  xyList:', xyList)
+		xCaiman = [x for (x,y) in xyList] # make a list of x points (in the mask)
+		yCaiman = [y for (x,y) in xyList] # make a list of y points (in the mask)
+
+		#self.myCaimanROI.setData(xCaiman, yCaiman, connect='pairs')
+		#self.myCaimanROI.setData(xCaiman, yCaiman, pen=None, brush='r', connect='pairs')
+		#self.myCaimanROI.setData(pos=xyList)
+		self.myCaimanROI.setData(yCaiman, xCaiman, pen=None, brush='r') # flipped
+
+		'''
+		colorLut = self.myColorLutDict['red'] # like (green, red, blue, gray, gray_r, ...)
+		self.myCaimanImage.setLookupTable(colorLut, update=True)
+		'''
+
+		#
+		# force update?
+		self.update()
 
 	def getCurrentSlice(self):
 		return self.currentSlice
@@ -417,11 +480,16 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			yAnnotationArray = annotationMaskDict['y']
 			zAnnotationArray = annotationMaskDict['z']
 
-			zNodeMasked = np.ma.masked_inside(zAnnotationArray, firstSlice, lastSlice) # this unintentionally removes np.nan
-			zNodeMasked = zNodeMasked.mask
+			if self.myAnnotationPlotAllZ:
+				xNodeMasked = xAnnotationArray
+				yNodeMasked = yAnnotationArray
+			else:
+				# traditional
+				zNodeMasked = np.ma.masked_inside(zAnnotationArray, firstSlice, lastSlice) # this unintentionally removes np.nan
+				zNodeMasked = zNodeMasked.mask
 
-			xNodeMasked = np.where(zNodeMasked==True, xAnnotationArray, np.nan)
-			yNodeMasked = np.where(zNodeMasked==True, yAnnotationArray, np.nan)
+				xNodeMasked = np.where(zNodeMasked==True, xAnnotationArray, np.nan)
+				yNodeMasked = np.where(zNodeMasked==True, yAnnotationArray, np.nan)
 
 		#
 		# was triggering warning
@@ -434,10 +502,13 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			xNodeMasked = []
 			yNodeMasked = []
 
+		# annotations are sharing node pen size
+		nodePenSize = self.options['Tracing']['nodePenSize']
+
 		#
 		# update
 		#self.myAnnotationPlot.setData(xNodeMasked, yNodeMasked, symbolSize=nodePenSize)
-		self.myAnnotationPlot.setData(yNodeMasked, xNodeMasked) # flipped
+		self.myAnnotationPlot.setData(yNodeMasked, xNodeMasked, symbolSize=nodePenSize) # flipped
 
 	def drawSlabLine(self, slabIdx=None):
 		"""
@@ -482,6 +553,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.selectEdge(None, doEmit=True)
 		self.selectSlab(None, doEmit=True)
 		self.selectAnnotation(None, doEmit=True)
+
+		self.setCaimanImage(None)
 
 		self.displayStateDict['selectedNode'] = None
 		self.displayStateDict['selectedEdge'] = None
@@ -739,7 +812,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			y = [y]
 			self.myAnnotationPlotSelection.setData(y, x) # flipped
 
+			# select caiman, will fail if not loaded
+			self.setCaimanImage(annotationIdx)
+
 			QtCore.QTimer.singleShot(20, lambda:self.flashAnnotation(annotationIdx, 2))
+
 
 		if doEmit:
 			myEvent = bimpy.interface.bEvent('select annotation', nodeIdx=annotationIdx)
@@ -1598,6 +1675,16 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	def slot_selectAnnotation(self, myEvent):
 		myEvent.printSlot('myPyQtGraphPlotWidget.slot_selectAnnotation()')
+
+		'''
+		# todo: caimen is not a special event, look for loaded caimen in slots
+		if myEvent.eventType == 'select caiman':
+			print('pyqtgraph.slot_selectAnnotation() select caiman', myEvent.nodeIdx, '!!!')
+			caimanIdx = myEvent.nodeIdx
+			self.setCaimanImage(caimanIdx)
+		'''
+
+		# todo: logic here is bad, we already selected caiman and now alist?
 		if len(myEvent.nodeList) > 0:
 			self.selectNodeList(myEvent.nodeList)
 		else:
@@ -1937,6 +2024,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				self.mySimpleStack.slabList.setNodeIsBad(objectIdx, newValue)
 			elif objectType == 'edges':
 				self.mySimpleStack.slabList.setEdgeIsBad(objectIdx, newValue)
+			elif objectType == 'annotations':
+				self.mySimpleStack.annotationList.setAnnotationIsBad(objectIdx, newValue)
 			#
 			# emit a signal
 			if objectType == 'nodes':
@@ -1945,6 +2034,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			elif objectType == 'edges':
 				newEdgeDict = self.mySimpleStack.slabList.getEdge(objectIdx)
 				myEvent = bimpy.interface.bEvent('updateEdge', edgeIdx=objectIdx, edgeDict=newEdgeDict)
+			elif objectType == 'annotations':
+				newAnnotationDict = self.mySimpleStack.annotationList.getAnnotationDict(objectIdx)
+				myEvent = bimpy.interface.bEvent('updateAnnotation', nodeIdx=objectIdx, nodeDict=newAnnotationDict)
 			self.tracingEditSignal.emit(myEvent)
 
 		elif event['type'] == 'cancelSelection':

@@ -8,6 +8,9 @@ import json
 import csv
 
 import numpy as np
+import scipy
+
+import bimpy
 
 class bAnnotationList:
 	def __init__(self, path):
@@ -38,6 +41,11 @@ class bAnnotationList:
 		baseFileName = baseFileName.replace('_ch3', '')
 		self.baseFileName = baseFileName
 
+
+		# todo: save/load into main h5f file !!!!!!
+		print('\n\nbAnnotationList needs to save/load into main h5f file !!!!!!!\n\n')
+
+
 		# save by appending '_annotationList.csv'
 		saveBasePath = os.path.join(folderPath, baseFileName)
 		self.saveFilePath = saveBasePath + '_annotationList.csv'
@@ -48,8 +56,35 @@ class bAnnotationList:
 
 		#print('  bAnnotationList() self.saveFilePath:', self.saveFilePath)
 
+		self.caimanDict = None # see self.loadCaiman
+
 	def numItems(self):
 		return len(self.myList)
+
+	def setAnnotationIsBad(self, idx, newValue):
+		print('bAnnotationList.setAnnotationIsBad() idx:', idx, 'newValue:', newValue)
+		self.myList[idx]['isBad'] = newValue
+
+		print('\nNEED TO FIX THIS bAnnotationList ["isBad"] is getting cast to str !!!!!\n')
+
+		# whe using this to get a list of good caiman ROIs, always print the good list
+		goodList = []
+		for idx, item in enumerate(self.myList):
+			# 20201020 FUCK FUCK FUCK ... these are strings ???
+			#print(item['isBad'], type(item['isBad']))
+			isBad = item['isBad']
+			if isinstance(isBad, str):
+				if isBad == 'True':
+					pass
+				else:
+					goodList.append(idx)
+			else:
+				if item['isBad']:
+					pass
+				else:
+					goodList.append(idx)
+		print('good list is now:')
+		print(goodList)
 
 	def defaultDict(self):
 		theDict = OrderedDict()
@@ -62,6 +97,7 @@ class bAnnotationList:
 		theDict['rowNum'] = None # for napari grid
 		theDict['colNum'] = None
 		theDict['note'] = ''
+		theDict['isBad'] = False
 		# keep this at end
 		theDict['path'] = self.path
 		return theDict
@@ -82,23 +118,57 @@ class bAnnotationList:
 		"""
 		loadPath = self.saveFilePath
 
+		doLoad = True
 		if not os.path.isfile(loadPath):
 			#print('  warning: bAnnotationList.load() did not find file:', loadPath)
-			return
+			doLoad = False
 
 		self.myList = []
 
-		print(f'  bAnnotationList.load() loading from {loadPath}')
-		numLoadedLines = 0
-		with open(loadPath, 'r') as data:
-			for line in csv.DictReader(data):
-				#print('  ', line)
-				self.myList.append(line)
-				numLoadedLines += 1
+		if doLoad:
+			print(f'  bAnnotationList.load() loading from {loadPath}')
+			numLoadedLines = 0
+			with open(loadPath, 'r') as data:
+				for line in csv.DictReader(data):
+					#print('  ', line)
+					self.myList.append(line)
+					numLoadedLines += 1
 
-		self._preComputeMasks()
+			self._preComputeMasks()
 
-		print(f'    loaded {numLoadedLines} lines')
+			print(f'    loaded {numLoadedLines} lines')
+
+		forcePopulate = False
+		self.loadCaiman(forcePopulate=forcePopulate)
+
+	def loadCaiman(self, forcePopulate=False):
+		# try and load caiman
+		#caimanPath = '/home/cudmore/data/20201014/inferior/3_nif_inferior_cropped_results.hdf5'
+		caimanPath, fileExt = os.path.splitext(self.path)
+		caimanPath += '_results.hdf5'
+		print('bAnnotationList.loadCaiman() caimanPath:', caimanPath)
+		if not os.path.isfile(caimanPath):
+			return
+
+		self.caimanDict = bimpy.analysis.caiman.readCaiman(caimanPath)
+
+		if self.numItems() == 0 or forcePopulate:
+
+			self.myList = []
+
+			numROI = self.caimanDict['numROI']
+			print('  numROI:', numROI)
+			z = 1 # caiman roi do not have a z
+			for roiIdx in range(numROI):
+				(x, y) = bimpy.analysis.caiman.getCentroid(self.caimanDict, roiIdx)
+
+				# flip (x,y)
+				tmp = x
+				x = y
+				y = tmp
+
+				print(f'  loadCaiman() adding centroid {roiIdx} at', x, y)
+				self.addAnnotation(x, y, z, type='caiman')
 
 	def save(self):
 		"""
@@ -118,10 +188,11 @@ class bAnnotationList:
 			dict_writer.writeheader()
 			dict_writer.writerows(self.myList)
 
-	def addAnnotation(self, x, y, z, note='', rowNum=None, colNum=None):
+	def addAnnotation(self, x, y, z, note='', rowNum=None, colNum=None, type=None):
 		"""
 		x/y/z: pixels
 		rowNum/colNum: for napari grid
+		type: added for caiman
 		"""
 		x = round(x,4)
 		y = round(y,4)
@@ -129,11 +200,13 @@ class bAnnotationList:
 
 		newDict = self.defaultDict()
 		newDict['idx'] = self.numItems()
+		newDict['type'] = type
 		newDict['x'] = x
 		newDict['y'] = y
 		newDict['z'] = z
 		newDict['rowNum'] = rowNum
 		newDict['colNum'] = colNum
+		newDict['isBad'] = False
 		newDict['note'] = note
 
 		self.myList.append(newDict)
@@ -153,6 +226,10 @@ class bAnnotationList:
 	def _rebuildIdx(self):
 		for idx, item in enumerate(self.myList):
 			item['idx'] = idx
+
+	# abb caiman to standardize interface
+	def getAnnotationDict(self, idx):
+		return self.getItemDict(idx)
 
 	def getItemDict(self, annotationIdx):
 		return self.myList[annotationIdx]

@@ -87,6 +87,11 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		hBoxLayout2.addWidget(selectedSlab_)
 		hBoxLayout2.addWidget(self.selectedSlab, myAlign)
 
+		selectedAnnotation_ = QtWidgets.QLabel('Annotation')
+		self.selectedAnnotation = QtWidgets.QLabel("None")
+		hBoxLayout2.addWidget(selectedAnnotation_)
+		hBoxLayout2.addWidget(self.selectedAnnotation, myAlign)
+
 		# works but does not actually resize widgets?
 		'''numWidgets = hBoxLayout2.count()
 		for widgetIdx in range(numWidgets):
@@ -209,6 +214,12 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			slabIdxStr = str(slabIdx)
 			self.selectedSlab.setText(slabIdxStr)
 
+			self.repaint()
+
+		elif myEvent.eventType == 'select annotation':
+			nodeIdx = myEvent.nodeIdx
+			nodeIdxStr = str(nodeIdx)
+			self.selectedAnnotation.setText(nodeIdxStr)
 			self.repaint()
 
 	def setMousePosition(self, channel, sliceNumber, x, y):

@@ -741,7 +741,6 @@ class bPyQtPlot(pg.PlotWidget):
 def main(path):
 	myStack = bimpy.bStack(path, loadImages=False, loadTracing=True)
 
-	print(1)
 	app = QtWidgets.QApplication(sys.argv)
 
 	'''

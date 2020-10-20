@@ -167,7 +167,7 @@ class bToolBar(QtWidgets.QToolBar):
 		self.addWidget(myHamburger)
 
 		#toolNameList = ['Options', 'Help']
-		toolNameList = ['Search', 'Contrast', 'Line Profile', 'Plot', 'Status',
+		toolNameList = ['Search', 'Contrast', 'Line Profile', 'Caiman', 'Plot', 'Status',
 						'separator',
 						'Options', 'Help']
 		for toolName in toolNameList:
@@ -178,7 +178,7 @@ class bToolBar(QtWidgets.QToolBar):
 
 			isCheckable = False
 			useIcon = True
-			if toolName in ['Search', 'Contrast', 'Line Profile', 'Status']:
+			if toolName in ['Search', 'Contrast', 'Line Profile', 'Caiman', 'Status']:
 				isCheckable = True
 				# we have icons for these but they collide with state checkbox in menu
 				useIcon = False
@@ -206,6 +206,10 @@ class bToolBar(QtWidgets.QToolBar):
 				theAction.setShortcut('l')# or 'Ctrl+r' or '&r' for alt+r
 				theAction.setToolTip('Toggle Line Profile [l]')
 				theAction.setShortcutVisibleInContextMenu(True)
+			elif toolName == 'Caiman':
+				#theAction.setShortcut('l')# or 'Ctrl+r' or '&r' for alt+r
+				theAction.setToolTip('Toggle Caiman Annotation Analysis')
+				#theAction.setShortcutVisibleInContextMenu(True)
 			elif toolName == 'Plot':
 				theAction.setShortcut('p')# or 'Ctrl+r' or '&r' for alt+r
 				theAction.setToolTip('Plot [p]')
@@ -280,6 +284,8 @@ class bToolBar(QtWidgets.QToolBar):
 			self.myMainWindow.optionsChange('Panels', 'showContrast', toggle=True, doEmit=True)
 		elif id == 'Line Profile':
 			self.myMainWindow.optionsChange('Panels', 'showLineProfile', toggle=True, doEmit=True)
+		elif id == 'Caiman':
+			self.myMainWindow.optionsChange('Panels', 'showCaiman', toggle=True, doEmit=True)
 		elif id == 'Plot':
 			# todo: what happens when this is closed???
 			self.myMainWindow.showPlotWidget()

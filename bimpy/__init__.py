@@ -17,3 +17,5 @@ from .bLineProfile import bLineProfile
 from . import bVascularTracingAics
 
 from .bAnnotationList import bAnnotationList # 20200831
+
+from . import analysis

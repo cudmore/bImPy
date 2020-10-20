@@ -385,8 +385,13 @@ class bTableWidget2(QtWidgets.QTableWidget):
 				#item.setData(QtCore.Qt.EditRole, myString)
 
 				if header == 'isBad':
+					# isBad is a string from ('True', 'False')
 					isBad = theDict[header]
-
+					#print('isBad colIdx:', colIdx, isBad, type(isBad))
+					if isBad == 'True':
+						isBrad = True
+					else:
+						isBad = False
 			except (KeyError) as e:
 				pass
 			rowItems.append(item)
@@ -813,7 +818,17 @@ class bAnnotationTableWidget(bTableWidget2):
 			self.stopSelectionPropogation = False
 		else:
 			print('=== bAnnotationTableWidget.on_clicked_row() type:', self._type, 'row:', row, 'myIdx:', myIdx, 'isShift:', isShift)
-			myEvent = bimpy.interface.bEvent('select annotation', nodeIdx=myIdx, snapz=True, isShift=isShift)
+
+			# select caiman
+			typeColIdx = self._getColumnIdx('type')
+			myTypeItem = self.item(row, typeColIdx)
+			myTypeStr = myTypeItem.text()
+
+			eventName = 'select annotation'
+			if myTypeStr == 'caiman':
+				eventName = 'select caiman'
+
+			myEvent = bimpy.interface.bEvent(eventName, nodeIdx=myIdx, snapz=True, isShift=isShift)
 			colIdx = self._getColumnIdx('z')
 			myItem = self.item(row, colIdx)
 			myEvent._sliceIdx = int(float(myItem.text()))
@@ -860,6 +875,7 @@ class bAnnotationTableWidget(bTableWidget2):
 			self.repaint()
 
 		elif myEvent.eventType == 'updateAnnotation':
+			#print('  updating annotation with myEvent.nodeDict:', myEvent.nodeDict)
 			self.setRow(myEvent.nodeDict)
 
 def main():

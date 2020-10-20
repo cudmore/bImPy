@@ -154,6 +154,10 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.lineProfileWidget = bimpy.interface.bLineProfileWidget(mainWindow=self)
 		self.myVBoxLayout.addWidget(self.lineProfileWidget)
 
+		# abb caiman
+		self.myCaimanPlotWidget = bimpy.interface.bCaimanPlotWidget0(parent=None, stackObject=self.mySimpleStack)
+		self.myVBoxLayout.addWidget(self.myCaimanPlotWidget)
+
 		self.statusToolbarWidget = bimpy.interface.bStatusToolbarWidget(mainWindow=self, numSlices=self.mySimpleStack.numSlices)
 		#self.addToolBar(QtCore.Qt.BottomToolBarArea, self.statusToolbarWidget)
 		self.myVBoxLayout.addWidget(self.statusToolbarWidget) #, stretch = 9)
@@ -205,6 +209,10 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		self.nodeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
 		self.edgeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
+		self.annotationTable.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
+		# abb caiman
+		self.annotationTable.selectRowSignal.connect(self.myCaimanPlotWidget.slot_selectAnnotation)
+		self.mySliceSlider.updateSliceSignal.connect(self.myCaimanPlotWidget.slot_setSlice)
 
 		self.searchWidget.searchTable().selectRowSignal.connect(self.statusToolbarWidget.slot_select)
 
@@ -355,6 +363,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		selectedNode = self.getStackView().selectedNode()
 		selectedEdge = self.getStackView().selectedEdge()
+		selectedAnnotation = self.getStackView().selectedAnnotation()
 		objectType = None #  like ('nodes', 'edges')
 		if selectedNode is not None:
 			print('    bStackWidget.setBadGood() set node', selectedNode, 'to bad:', setBad)
@@ -364,8 +373,12 @@ class bStackWidget(QtWidgets.QMainWindow):
 			print('    bStackWidget.setBadGood() set edge', selectedEdge, 'to bad:', setBad)
 			objectType = 'edges' #  like ('nodes', 'edges')
 			objectIndex = selectedEdge
+		elif selectedAnnotation is not None:
+			print('    bStackWidget.setBadGood() set annotation', selectedAnnotation, 'to bad:', setBad)
+			objectType = 'annotations' #  like ('nodes', 'edges')
+			objectIndex = selectedAnnotation
 		else:
-			print('  bStackWidget.setBadGood() did not find a (node, edge) to set bad?')
+			print('  bStackWidget.setBadGood() did not find a (node, edge, annotation) to set bad?')
 
 		if objectType is not None:
 			# same as bTableWidget2.menuActionHandler
@@ -547,6 +560,13 @@ class bStackWidget(QtWidgets.QMainWindow):
 		else:
 			self.lineProfileWidget.hide()
 			self.lineProfileWidget.doUpdate = False
+
+		if self.options['Panels']['showCaiman']:
+			self.myCaimanPlotWidget.show()
+			self.myCaimanPlotWidget.doUpdate = True
+		else:
+			self.myCaimanPlotWidget.hide()
+			self.myCaimanPlotWidget.doUpdate = False
 
 		self.repaint()
 
@@ -928,7 +948,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		return self.options
 
 	def optionsVersion(self):
-		return 1.7
+		return 1.8
 
 	def options_defaults(self):
 		print('bStackWidget.options_defaults()')
@@ -992,6 +1012,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 			#'showFeedback': True,
 			'showStatus': True,
 			'showLineProfile': False,
+			'showCaiman': False,
 			})
 
 		self.options['Stack'] = OrderedDict()
@@ -1374,6 +1395,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.optionsChange('Panels', 'showLineProfile', toggle=True, doEmit=True)
 			#self.options['Panels']['showLineProfile'] = not self.options['Panels']['showLineProfile']
 			#self.mainWindow.updateDisplayedWidgets()
+		elif userActionStr == 'Caiman':
+			self.optionsChange('Panels', 'showCaiman', toggle=True, doEmit=True)
 
 		# other
 		elif userActionStr == 'Options':
