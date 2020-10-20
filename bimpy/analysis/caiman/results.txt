@@ -1,0 +1,59 @@
+===============================================
+thresh = 0.08
+refractoryPoints = 10
+
+superior
+
+numROI:72, numFrames:1000, meanNumSpikes:1.6805555555555556
+numROI:79, numFrames:1000, meanNumSpikes:2.2658227848101267
+numROI:57, numFrames:1000, meanNumSpikes:1.8070175438596492
+
+
+inferior
+
+numROI:48, numFrames:1000, meanNumSpikes:4.604166666666667
+numROI:115, numFrames:1000, meanNumSpikes:3.347826086956522
+
+===============================================
+thresh = 0.1
+refractoryPoints = 10
+
+superior
+
+numROI:72, numFrames:1000, meanNumSpikes:1.1666666666666667
+numROI:79, numFrames:1000, meanNumSpikes:1.5316455696202531
+numROI:57, numFrames:1000, meanNumSpikes:1.1578947368421053
+
+inferior
+
+numROI:48, numFrames:1000, meanNumSpikes:3.4166666666666665
+numROI:115, numFrames:1000, meanNumSpikes:2.226086956521739
+
+===============================================
+thresh = 0.12
+refractoryPoints = 10
+
+superior
+
+numROI:72, numFrames:1000, meanNumSpikes:0.875
+numROI:79, numFrames:1000, meanNumSpikes:1.0379746835443038
+numROI:57, numFrames:1000, meanNumSpikes:0.8245614035087719
+
+inferior
+
+numROI:48, numFrames:1000, meanNumSpikes:2.625
+numROI:115, numFrames:1000, meanNumSpikes:1.5217391304347827
+
+
+===
+SLOW KINETICS
+===
+thresh = 0.1 #0.1 #0.08
+refractoryPoints = 10
+
+sup numROI:60, numFrames:1000, meanNumSpikes:1.4
+sup numROI:77, numFrames:1000, meanNumSpikes:1.5584415584415585
+sup numROI:51, numFrames:1000, meanNumSpikes:1.2156862745098038
+
+inf numROI:43, numFrames:1000, meanNumSpikes:3.6511627906976742
+inf numROI:110, numFrames:1000, meanNumSpikes:2.2181818181818183

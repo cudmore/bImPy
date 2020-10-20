@@ -1,0 +1,61 @@
+       73660 [deprecation.py:            new_func():323] [42151] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+       73679 [deprecation.py:            new_func():506] [42151] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+       78277 [deprecation.py:            new_func():323] [44132] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+       78295 [deprecation.py:            new_func():506] [44132] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+       77824 [deprecation.py:            new_func():323] [45176] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+       77842 [deprecation.py:            new_func():506] [45176] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+      342453 [deprecation.py:            new_func():323] [45862] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+      342472 [deprecation.py:            new_func():506] [45862] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+      145713 [components_evaluation.py:classify_components_ep():245] [48198] Component 7 is only active jointly with neighboring components. Space correlation calculation might be unreliable.
+      145926 [deprecation.py:            new_func():323] [48156] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+      145944 [deprecation.py:            new_func():506] [48156] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+      145539 [components_evaluation.py:classify_components_ep():245] [49088] Component 7 is only active jointly with neighboring components. Space correlation calculation might be unreliable.
+      145758 [deprecation.py:            new_func():323] [49032] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+      145778 [deprecation.py:            new_func():506] [49032] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+      335728 [deprecation.py:            new_func():323] [77791] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+      335748 [deprecation.py:            new_func():506] [77791] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+      670264 [components_evaluation.py:classify_components_ep():245] [78427] Component 11 is only active jointly with neighboring components. Space correlation calculation might be unreliable.
+      299377 [components_evaluation.py:classify_components_ep():245] [79753] Component 2 is only active jointly with neighboring components. Space correlation calculation might be unreliable.
+      300361 [deprecation.py:            new_func():323] [79697] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+      300381 [deprecation.py:            new_func():506] [79697] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+      324761 [deprecation.py:            new_func():323] [83554] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/ops/resource_variable_ops.py:435: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+      324780 [deprecation.py:            new_func():506] [83554] From /home/cudmore/anaconda3/envs/caiman/lib/python3.7/site-packages/tensorflow/python/keras/layers/core.py:143: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+      647837 [components_evaluation.py:classify_components_ep():245] [84048] Component 11 is only active jointly with neighboring components. Space correlation calculation might be unreliable.
+      987611 [components_evaluation.py:classify_components_ep():245] [84765] Component 7 is only active jointly with neighboring components. Space correlation calculation might be unreliable.
+     1267986 [components_evaluation.py:classify_components_ep():245] [85135] Component 2 is only active jointly with neighboring components. Space correlation calculation might be unreliable.
