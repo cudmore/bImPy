@@ -42,10 +42,12 @@ def getRing(caimanDict, idx, iterations=1):
 											structure=None,
 											iterations=iterations)
 	caimanDataMask[erodedMask] = 0
+	'''
 	print('  caimanData:', caimanData.shape)
 	print('  caimanDataMask:', caimanDataMask.shape, caimanDataMask.dtype)
 	print('  erodedMask:', erodedMask.shape, erodedMask.dtype)
-
+	'''
+	
 	# when we overlay the image (with opacity=0.5 for example)
 	# 0 values actually dim the image
 	#caimanDataMask[caimanDataMask==0] = np.nan

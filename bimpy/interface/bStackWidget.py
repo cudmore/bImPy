@@ -491,6 +491,12 @@ class bStackWidget(QtWidgets.QMainWindow):
 		if self.napariViewer is None:
 			self.napariViewer = bimpy.interface.bNapari(path='', theStack=self.mySimpleStack, myStackWidget=self)
 
+	def saveMovie(self):
+		"""
+		save the current bPyQtGraph as a movie
+		"""
+		self.getStackView().saveStackMovie()
+
 	def getStatusToolbar(self):
 		return self.statusToolbarWidget
 
@@ -1257,6 +1263,11 @@ class bStackWidget(QtWidgets.QMainWindow):
 		napariAction = QtWidgets.QAction('Napari', self, checkable=False)
 		tmpMenuAction = menu.addAction(napariAction)
 
+		# save movie
+		menu.addSeparator()
+		saveMovieAction = QtWidgets.QAction('Save Movie', self, checkable=False)
+		tmpMenuAction = menu.addAction(saveMovieAction)
+
 		# options
 		'''
 		menu.addSeparator()
@@ -1403,6 +1414,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 			optionsDialog = bimpy.interface.bOptionsDialog(self, self)
 		elif userActionStr == 'Napari':
 			self.openNapari()
+		elif userActionStr == 'Save Movie':
+			self.saveMovie()
 		elif userActionStr == 'Refresh':
 			self.getStackView()._preComputeAllMasks()
 

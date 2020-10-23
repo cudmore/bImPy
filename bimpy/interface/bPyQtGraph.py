@@ -25,7 +25,10 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from pyqtgraph import PlotWidget, plot
 import pyqtgraph as pg
+import pyqtgraph.exporters # see saveStackMovie()
 
+from contextlib import ExitStack # for conditional with in saveStackMovie()
+import cv2 # to export avi files in saveStackMovie()
 import tifffile
 
 import bimpy
@@ -128,6 +131,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# self.plot() creates: <class 'pyqtgraph.graphicsItems.PlotDataItem.PlotDataItem'>
 
 		# a caiman selection
+		# first I tried an image but this caused opacity of raw data to get dimmed
+		# in the end I am using a pg.ScatterPlotItem()
 		'''
 		caimanData = np.zeros((1,1,1))
 		self.myCaimanImage = pg.ImageItem(caimanData)
@@ -138,6 +143,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#self.myCaimanROI = pg.PlotCurveItem()
 		self.myCaimanROI = pg.ScatterPlotItem()
+		self.myCaimanROI.setSize(4)
 		self.addItem(self.myCaimanROI)
 		#
 		# slabs
@@ -287,11 +293,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		#caimanData = bimpy.analysis.caiman.getImage(caimanDict, caimanIdx)
 		if caimanIdx is None:
-			caimanData = np.zeros((1,1))
-			caimanData[:] = np.nan
+			#caimanData = np.zeros((1,1))
+			#caimanData[:] = np.nan
+			xCaiman = []
+			yCaiman = []
 		else:
-			caimanData = bimpy.analysis.caiman.getRing(caimanDict, caimanIdx)
-
+			# get a list of rois
+			xCaiman = []
+			yCaiman = []
+			roiList = range(40)
+			print('setCaimanImage() from roiList:', roiList)
+			for roiIdx in roiList:
+				caimanData = bimpy.analysis.caiman.getRing(caimanDict, roiIdx)
+				xyList = np.argwhere(caimanData).tolist()
+				xCaiman += [x for (x,y) in xyList] # make a list of x points (in the mask)
+				yCaiman += [y for (x,y) in xyList] # make a list of y points (in the mask)
 		'''
 		originalShape = caimanDict['originalShape']
 		caimanData = np.reshape(caimanDict['A'][:,caimanIdx].toarray(), originalShape, order='F')
@@ -304,16 +320,23 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.myCaimanImage.setImage(caimanData, levels=levels, autoLevels=autoLevels)
 		'''
 
+		# was working for one roi
+		'''
 		# convert 2d image mask to list of (x,y) points
 		xyList = np.argwhere(caimanData).tolist()
 		#print('  xyList:', xyList)
 		xCaiman = [x for (x,y) in xyList] # make a list of x points (in the mask)
 		yCaiman = [y for (x,y) in xyList] # make a list of y points (in the mask)
+		'''
+
+
+		nodePenSize = self.options['Tracing']['nodePenSize']
 
 		#self.myCaimanROI.setData(xCaiman, yCaiman, connect='pairs')
 		#self.myCaimanROI.setData(xCaiman, yCaiman, pen=None, brush='r', connect='pairs')
 		#self.myCaimanROI.setData(pos=xyList)
-		self.myCaimanROI.setData(yCaiman, xCaiman, pen=None, brush='r') # flipped
+		self.myCaimanROI.setData(yCaiman, xCaiman,
+								pen=None, brush='r', size=nodePenSize) # flipped
 
 		'''
 		colorLut = self.myColorLutDict['red'] # like (green, red, blue, gray, gray_r, ...)
@@ -1024,6 +1047,125 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#
 		# force update?
 		self.update()
+
+		# this does not work because of recursion !!!
+		'''
+		print('\n\nbPyQtGraph debugging saveStackMovie() ... REMOVE\n\n')
+		self.saveStackMovie()
+		'''
+
+	def saveStackMovie(self):
+		"""
+		save  stack as a movie
+
+		for now this saves a number of files, need to process them in Fiji???
+
+		todo:
+		   when we are zoomed,
+		   it seems to save the full FOV with the movie in the middle?????????
+		"""
+		fileType = 'avi' #'tiff'
+		fps = 20.0
+		startSlice = 271
+		stopSlice = 477
+		stepSlice = 1
+
+		saveFolder = '/home/cudmore/Desktop/pyqtgraph-movie'
+
+		# get the name of our stack to make a file name
+		myStackPath = self.mySimpleStack.path
+		tmpFolder, stackFileName = os.path.split(myStackPath)
+		saveMoviewBaseName, tmpExt = os.path.splitext(stackFileName)
+
+		print('bPyQtGraph.saveStackMovie()')
+		print('  saving movie to multiple files in:', saveFolder)
+		print('  startSlice:', startSlice, 'stopSlice:', stopSlice)
+
+		# set to first slice
+		#self.setSlice(startSlice)
+
+		theSliceRange = range(startSlice, stopSlice, stepSlice)
+
+		# get width/height for cv2
+		exporter = pg.exporters.ImageExporter(self.scene())
+		theBytes = exporter.export(toBytes=True)
+		width = theBytes.width()
+		height = theBytes.height()
+		print('  width:', width)
+		print('  height:', height)
+
+		if fileType =='tif':
+			saveFile = saveMoviewBaseName + '_bimpy_movie.tif' #'/home/cudmore/Desktop/onetiff.tif'
+
+		elif fileType == 'avi':
+			saveFile = saveMoviewBaseName + '_bimpy_movie.avi' #'/home/cudmore/Desktop/onetiff.tif'
+			# REMEMBER, DO NOT USE cv2.VideoWriter_fourcc(*'MJPG')
+			myFile = cv2.VideoWriter(saveFile,
+									#cv2.VideoWriter_fourcc(*'MJPG'),
+									cv2.VideoWriter_fourcc('M','J','P','G'),
+									fps, (width,height), isColor=True)
+
+		print('  saving to saveFile:', saveFile)
+
+		#with tifffile.TiffWriter(oneTiffFile, bigtiff=True) as myTiffFile:
+		with ExitStack() as stack:
+
+			if fileType == 'tiff':
+				myFile = stack.enter_context(tifffile.TiffWriter(saveFile))
+			'''
+			elif fileType == 'avi':
+				myFile = stack.enter_context(cv2.VideoWriter(saveFile,
+										cv2.VideoWriter_fourcc(*'MJPG'),
+										fps, (width,height)))
+			'''
+
+			for i in theSliceRange:
+				self.setSlice(i)
+
+				# this works, to just save the image
+				#exporter = pg.exporters.ImageExporter(self.myImage)
+
+				# this works to save the scene
+				exporter = pg.exporters.ImageExporter(self.scene())
+
+				#exporter.export('/home/cudmore/Desktop/pyqtgraph-movie/fileName.png')
+				'''
+				iStr = str(i)
+				thisFileNameNumber = iStr.zfill(4)
+				thisFileName = saveMoviewBaseName + '_' + thisFileNameNumber + '.tif'
+				thisFilePath = os.path.join(saveFolder, thisFileName)
+				#print('  saving thisFilePath:', thisFilePath)
+				'''
+
+				# this works fine
+				#exporter.export(thisFilePath)
+
+				# toBytes returns <class 'PyQt5.QtGui.QImage'>
+				theBytes = exporter.export(toBytes=True)
+
+				theBytes = theBytes.convertToFormat(QtGui.QImage.Format.Format_RGB32)
+
+				#width = theBytes.width()
+				#height = theBytes.height()
+
+				ptr = theBytes.bits()
+				ptr.setsize(height * width * 4)
+				arr = np.frombuffer(ptr, np.uint8).reshape((height, width, 4))
+				#print(i, arr.shape, arr.dtype)
+
+				# append to open tiff file !!!
+				# newer version of tifffile us ethis
+				#myTiffFile.write(arr)
+				if fileType == 'tiff':
+					myFile.save(arr) # newer version of tifffile use write()
+				elif fileType == 'avi':
+					#print('  writing arr', arr.shape, arr.dtype)
+					myFile.write(arr[:,:,0:-1])
+					#myFile.write(arr)
+		#
+		if fileType == 'avi':
+			myFile.release()
+		print('  done')
 
 	'''
 	def setStackDisplay(self, stackNumber):
