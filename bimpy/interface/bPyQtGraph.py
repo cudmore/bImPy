@@ -1066,19 +1066,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		fileType = 'avi' #'tiff'
 		fps = 20.0
-		startSlice = 271
-		stopSlice = 477
-		stepSlice = 1
+		startSlice = 0 #271
+		stopSlice = self.mySimpleStack.numSlices #477
+		stepSlice =  1
 
-		saveFolder = '/home/cudmore/Desktop/pyqtgraph-movie'
+		#saveFolder = '/home/cudmore/Desktop/pyqtgraph-movie'
 
 		# get the name of our stack to make a file name
 		myStackPath = self.mySimpleStack.path
-		tmpFolder, stackFileName = os.path.split(myStackPath)
+		mySaveFolder, stackFileName = os.path.split(myStackPath)
 		saveMoviewBaseName, tmpExt = os.path.splitext(stackFileName)
 
 		print('bPyQtGraph.saveStackMovie()')
-		print('  saving movie to multiple files in:', saveFolder)
+		#print('  saving movie to multiple files in:', saveFolder)
+		print('  mySaveFolder:', mySaveFolder)
+		print('  saveMoviewBaseName:', saveMoviewBaseName)
 		print('  startSlice:', startSlice, 'stopSlice:', stopSlice)
 
 		# set to first slice
@@ -1096,22 +1098,23 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		if fileType =='tif':
 			saveFile = saveMoviewBaseName + '_bimpy_movie.tif' #'/home/cudmore/Desktop/onetiff.tif'
-
+			savePath = os.path.join(mySaveFolder,saveFile )
 		elif fileType == 'avi':
 			saveFile = saveMoviewBaseName + '_bimpy_movie.avi' #'/home/cudmore/Desktop/onetiff.tif'
+			savePath = os.path.join(mySaveFolder,saveFile)
 			# REMEMBER, DO NOT USE cv2.VideoWriter_fourcc(*'MJPG')
-			myFile = cv2.VideoWriter(saveFile,
+			myFile = cv2.VideoWriter(savePath,
 									#cv2.VideoWriter_fourcc(*'MJPG'),
 									cv2.VideoWriter_fourcc('M','J','P','G'),
 									fps, (width,height), isColor=True)
 
-		print('  saving to saveFile:', saveFile)
+		print('  saving to savePath:', savePath)
 
 		#with tifffile.TiffWriter(oneTiffFile, bigtiff=True) as myTiffFile:
 		with ExitStack() as stack:
 
 			if fileType == 'tiff':
-				myFile = stack.enter_context(tifffile.TiffWriter(saveFile))
+				myFile = stack.enter_context(tifffile.TiffWriter(savePath))
 			'''
 			elif fileType == 'avi':
 				myFile = stack.enter_context(cv2.VideoWriter(saveFile,

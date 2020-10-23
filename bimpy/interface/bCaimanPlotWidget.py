@@ -121,6 +121,8 @@ class bCaimanPlotWidget(pg.PlotWidget):
 		self.selectAnnotation(theIdx)
 
 	def selectAnnotation(self, idx=None):
+		if self.getCaimanDict() is None:
+			return
 		if idx == None:
 			idx = self.mySelectedAnnotation
 		print('bCaimanPlotWidget.selectAnnotation() idx:', idx)
