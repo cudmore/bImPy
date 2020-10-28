@@ -1,5 +1,10 @@
 """
 20200831
+
+manage, save, load a list of annotation
+
+this is created in bStack
+
 """
 
 import os
@@ -13,11 +18,12 @@ import scipy
 import bimpy
 
 class bAnnotationList:
-	def __init__(self, path):
+	def __init__(self, bStackObject):
 		"""
 		path: full path to either (_ch1.tif, _ch2.tif) stack
 		"""
-		self.path = path
+		self.mySimpleStack = bStackObject
+		self.path = bStackObject.path
 
 		saveBasePath, tmpExt = os.path.splitext(self.path)
 		folderPath, baseFileName = os.path.split(saveBasePath)
@@ -51,12 +57,20 @@ class bAnnotationList:
 		self.saveFilePath = saveBasePath + '_annotationList.csv'
 
 		self.myList = [] # list of defaultDict
+		self.myMetaDataList = [] # list of dict holding roi analysis
+
+		# bStack will hold an analysis object, run analysis with
+		# x, lineKymograph, lineDiameter = self.analysis.stackLineProfile(src, dst)
+		# and insert results into self.myMetaDataList
 
 		self.plotDict = None
 
 		#print('  bAnnotationList() self.saveFilePath:', self.saveFilePath)
 
 		self.caimanDict = None # see self.loadCaiman
+
+		# todo: not sure where to put this
+		# parallel of metaDataDict from ShapeAnalysisPlugin
 
 	def numItems(self):
 		return len(self.myList)
@@ -86,21 +100,35 @@ class bAnnotationList:
 		print('good list is now:')
 		print(goodList)
 
-	def defaultDict(self):
+	def _getDefaultDict(self):
+		"""
+		todo: this is problematic, it is out of sync with xxx
+		"""
 		theDict = OrderedDict()
 		theDict['idx'] = None # to work with bTableWidget2.py ... bAnnotationTableWidget()
-		theDict['baseFileName'] = self.baseFileName
-		theDict['channel'] = self.channel
+		theDict['type'] = None
 		theDict['x'] = None
 		theDict['y'] = None
 		theDict['z'] = None
 		theDict['rowNum'] = None # for napari grid
 		theDict['colNum'] = None
-		theDict['note'] = ''
 		theDict['isBad'] = False
+		theDict['channel'] = self.channel
+		theDict['note'] = ''
+		theDict['baseFileName'] = self.baseFileName
 		# keep this at end
 		theDict['path'] = self.path
 		return theDict
+
+	def _getDefaultMetaDataDict(self):
+		metaDataDict = {
+			'lineDiameter': np.zeros((0)),
+			'lineKymograph': np.zeros((1,1)),
+			'polygonMin': np.zeros((0)),
+			'polygonMax': np.zeros((0)),
+			'polygonMean': np.zeros((0)),
+		}
+		return metaDataDict
 
 	def printList(self):
 		print(f'bAnnotationList.printList() with {self.numItems()} items')
@@ -127,11 +155,18 @@ class bAnnotationList:
 
 		if doLoad:
 			print(f'  bAnnotationList.load() loading from {loadPath}')
+
+			# I want to keep the OrderedDict() of self._getDefaultDict
+
+			metaDataDict = self._getDefaultMetaDataDict()
+
 			numLoadedLines = 0
 			with open(loadPath, 'r') as data:
 				for line in csv.DictReader(data):
-					#print('  ', line)
+					# the keys are out of order from what I want
+					#print('    ', line)
 					self.myList.append(line)
+					self.myMetaDataList.append(metaDataDict)
 					numLoadedLines += 1
 
 			self._preComputeMasks()
@@ -142,13 +177,15 @@ class bAnnotationList:
 		self.loadCaiman(forcePopulate=forcePopulate)
 
 	def loadCaiman(self, forcePopulate=False):
-		# try and load caiman
+		"""
+		try and load caiman hdf5
+		"""
 		#caimanPath = '/home/cudmore/data/20201014/inferior/3_nif_inferior_cropped_results.hdf5'
 		caimanPath, fileExt = os.path.splitext(self.path)
 		caimanPath += '_results.hdf5'
-		print('bAnnotationList.loadCaiman() caimanPath:', caimanPath)
 		if not os.path.isfile(caimanPath):
 			return
+		print('bAnnotationList.loadCaiman() forcePopulate:', forcePopulate, 'is loading caimanPath:', caimanPath)
 
 		self.caimanDict = bimpy.analysis.caiman.readCaiman(caimanPath)
 
@@ -157,18 +194,20 @@ class bAnnotationList:
 			self.myList = []
 
 			numROI = self.caimanDict['numROI']
-			print('  numROI:', numROI)
+			print('  caimen numROI:', numROI)
 			z = 1 # caiman roi do not have a z
 			for roiIdx in range(numROI):
 				(x, y) = bimpy.analysis.caiman.getCentroid(self.caimanDict, roiIdx)
 
 				# flip (x,y)
+				'''
 				tmp = x
 				x = y
 				y = tmp
+				'''
 
 				print(f'  loadCaiman() adding centroid {roiIdx} at', x, y)
-				self.addAnnotation(x, y, z, type='caiman')
+				self.addAnnotation('caiman', x, y, z)
 
 	def save(self):
 		"""
@@ -188,7 +227,7 @@ class bAnnotationList:
 			dict_writer.writeheader()
 			dict_writer.writerows(self.myList)
 
-	def addAnnotation(self, x, y, z, note='', rowNum=None, colNum=None, type=None):
+	def addAnnotation(self, type, x, y, z, note='', rowNum=None, colNum=None, size=(20,20), lineWidth=1):
 		"""
 		x/y/z: pixels
 		rowNum/colNum: for napari grid
@@ -198,18 +237,24 @@ class bAnnotationList:
 		y = round(y,4)
 		z = int(z)
 
-		newDict = self.defaultDict()
+		newDict = self._getDefaultDict()
 		newDict['idx'] = self.numItems()
 		newDict['type'] = type
 		newDict['x'] = x
 		newDict['y'] = y
 		newDict['z'] = z
+		newDict['size'] = size
+		newDict['lineWidth'] = lineWidth
 		newDict['rowNum'] = rowNum
 		newDict['colNum'] = colNum
 		newDict['isBad'] = False
 		newDict['note'] = note
 
 		self.myList.append(newDict)
+
+		# each annotation also has metadata for analysis
+		metaDataDict = self._getDefaultMetaDataDict()
+		self.myMetaDataList.append(metaDataDict)
 
 		newAnnotationIdx = self.numItems() - 1
 
@@ -219,6 +264,7 @@ class bAnnotationList:
 
 	def deleteAnnotation(self, annotationIdx):
 		self.myList.pop(annotationIdx)
+		self.myMetaDataList.pop(annotationIdx)
 		self._rebuildIdx()
 		self._preComputeMasks()
 		return True
@@ -233,6 +279,9 @@ class bAnnotationList:
 
 	def getItemDict(self, annotationIdx):
 		return self.myList[annotationIdx]
+
+	def getMetadataDict(self, annotationIdx):
+		return self.myMetaDataList[annotationIdx]
 
 	def getAnnotation_xyz(self, annotationIdx):
 		x = self.myList[annotationIdx]['x']
@@ -267,11 +316,22 @@ class bAnnotationList:
 		indexList = [item['idx'] for item in self.myList]
 		indexArray = np.asarray(indexList, dtype=np.uint16)
 
+		typeList = [item['type'] for item in self.myList]
+
+		# annotation (x,y) are in numpy order (vert,horz)
+		# flipped
+		'''
+		tmpList = xList
+		xList = yList
+		yList = tmpList
+		'''
+
 		self.plotDict = {}
 		self.plotDict['x'] = xArray
 		self.plotDict['y'] = yArray
 		self.plotDict['z'] = zArray
 		self.plotDict['annotationIndex'] = indexArray
+		self.plotDict['typeList'] = typeList
 
 		#return self.plotDict
 

@@ -80,7 +80,7 @@ class bStack:
 
 		#
 		# load _annotationList.csv
-		self.annotationList = bimpy.bAnnotationList(self.path)
+		self.annotationList = bimpy.bAnnotationList(self)
 		self.annotationList.load() # will fail when not already saved
 
 		# load vesselucida analysis from .xml file

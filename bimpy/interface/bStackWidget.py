@@ -158,6 +158,11 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.myCaimanPlotWidget = bimpy.interface.bCaimanPlotWidget0(parent=None, stackObject=self.mySimpleStack)
 		self.myVBoxLayout.addWidget(self.myCaimanPlotWidget)
 
+		# roi analysis will be a seperate window
+		theAnnotationList = self.getMyStack().annotationList
+		self.myRoiAnalysisWidget = bimpy.interface.bRoiAnalysisWidget(theAnnotationList)
+		self.myRoiAnalysisWidget.show()
+
 		self.statusToolbarWidget = bimpy.interface.bStatusToolbarWidget(mainWindow=self, numSlices=self.mySimpleStack.numSlices)
 		#self.addToolBar(QtCore.Qt.BottomToolBarArea, self.statusToolbarWidget)
 		self.myVBoxLayout.addWidget(self.statusToolbarWidget) #, stretch = 9)
@@ -218,7 +223,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		self.nodeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
-		self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
+		#self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.nodeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		self.edgeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 		self.searchWidget.searchTable().selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
@@ -258,6 +263,10 @@ class bStackWidget(QtWidgets.QMainWindow):
 		# end abb PyQtGraph
 		##
 		##
+
+		#
+		# connect bRoiAnalysisWidget, self.myRoiAnalysisWidget
+		self.myStackView2.setSliceSignal.connect(self.myRoiAnalysisWidget.slot_updateSlice)
 
 		self.updateDisplayedWidgets()
 
@@ -1488,6 +1497,28 @@ class bStackWidget(QtWidgets.QMainWindow):
 			edgeIdx = idx
 			self.myStackView2.selectEdge(edgeIdx, snapz=True, isShift=False, doEmit=True)
 
+	def analyzeRoi(self, roiIdx):
+		"""
+		coming from key press "a" in annotation table
+		"""
+		print('bStackWidget.analyzeRoi() roiIdx:', roiIdx)
+		theAnnotationList = self.getMyStack().annotationList # backend list of annotations
+		itemDict = theAnnotationList.getItemDict(roiIdx)
+		type = itemDict['type']
+		x = itemDict['x']
+		y = itemDict['y']
+		pos = (x,y)
+		size = itemDict['size']
+		sliceNum = self.myStackView2.currentSlice
+		if type == 'lineROI':
+			stackData = self.mySimpleStack.getStack('raw', 1)
+			analysisObject = bimpy.bRoiAnalysis(stackData)
+			src = pos
+			dst = [sum(x) for x in zip(src, size)] #list(map(add, pos, size))
+			print('  sliceNum:', sliceNum, 'src:', src, 'dst:', dst)
+			x, oneProfile, fit, fwhm, leftIdx, rightIdx = analysisObject.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
+			print('  done:', x.shape)
+			self.myRoiAnalysisWidget.updateLinePlot(x, oneProfile, fit=fit, leftIdx=leftIdx, rightIdx=rightIdx)
 
 ################################################################################
 class myStackSlider(QtWidgets.QSlider):

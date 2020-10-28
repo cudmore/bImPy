@@ -141,5 +141,7 @@ if __name__ == '__main__':
 	# I need to crop first !!!!!!!!!
 	path = '/media/cudmore/data/20201014/superior/2_nif_superior_cropped.tif'
 
+	path = '/media/cudmore/data/20201014/superior_2p/tiff/preprocess/MAX_20201014__0001_ch1.tif'
+
 	pathList = [path]
 	caimanAlign(pathList)

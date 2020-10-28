@@ -185,5 +185,7 @@ if __name__ == '__main__':
 
 	path = '/media/cudmore/data/20201014/inferior/3_nif_inferior_cropped_aligned.tif'
 
+	path = '/media/cudmore/data/20201014/superior_2p/tiff/preprocess/v2/v2_Median_MAX_20201014__0001_aligned_ch1.tif'
+
 	pathList = [path]
 	caimanDetect(pathList)

@@ -11,6 +11,7 @@ import qdarkstyle
 
 import bimpy
 
+# this is the one used in bStackWidget, it holds a bCaimanPlotWidget(pg.PlotWidget)
 class bCaimanPlotWidget0(QtWidgets.QMainWindow):
 	#mainWindowSignal = QtCore.Signal(object)
 	toolbarChangedSignal = QtCore.Signal(object)
@@ -121,13 +122,18 @@ class bCaimanPlotWidget(pg.PlotWidget):
 		self.selectAnnotation(theIdx)
 
 	def selectAnnotation(self, idx=None):
-		if self.getCaimanDict() is None:
+		caimanDict = self.getCaimanDict()
+		if caimanDict is None:
 			return
 		if idx == None:
 			idx = self.mySelectedAnnotation
+		# check bound on caiman rois
+		numRegions = bimpy.analysis.caiman.bCaiman.getNumRegions(caimanDict)
+		if idx > numRegions-1:
+			return
+
 		print('bCaimanPlotWidget.selectAnnotation() idx:', idx)
-		print('  myThresh:', self.myThresh, 'myRefractoryPeriod:', self.myRefractoryPeriod)
-		print('  self.spikeDetectOn:', self.spikeDetectOn)
+		print('  myThresh:', self.myThresh, 'myRefractoryPeriod:', self.myRefractoryPeriod, 'self.spikeDetectOn:', self.spikeDetectOn)
 
 		self.mySelectedAnnotation = idx
 

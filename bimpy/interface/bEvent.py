@@ -4,9 +4,9 @@
 from qtpy import QtCore
 
 class bEvent(QtCore.QObject):
-	
-	# 
-	_verboseSlots = True # if true then 
+
+	#
+	_verboseSlots = True # if true then
 
 	def __init__(self, eventType, nodeIdx=None, edgeIdx=None, slabIdx=None,
 			edgeList=None,
@@ -23,6 +23,8 @@ class bEvent(QtCore.QObject):
 		self._srcNodeDict = None
 		self._dstNodeDict = None
 
+		#self._objectPointer = None # abb caiman and roi
+
 		# not sure what is happening here?
 		# When I construct bEvent a second time, we get (edgeList not equal to None) ???
 		# print('bEvent.__init__() with edgeList:', edgeList)
@@ -36,12 +38,12 @@ class bEvent(QtCore.QObject):
 		self.contrastDict = {}
 		#self._minContrast = None
 		#self._maxContrast = None
-		
+
 		self._sliceIdx = None
 
 		self._snapz = snapz
 		self._isShift = isShift
-		
+
 	def __str__(self):
 		retStr = 'bEvent eventType:' + str(self.eventType) + \
 			' nodeIdx:' + str(self.nodeIdx) + \
@@ -114,7 +116,7 @@ class bEvent(QtCore.QObject):
 	@property
 	def isShift(self):
 		return self._isShift
-		
+
 	def printSlot(self, str):
 		if self._verboseSlots:
 			print('    ', str, self)

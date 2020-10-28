@@ -5,6 +5,8 @@ from .bVascularTracing import bVascularTracing
 from .bFileUtil import bFileUtil
 from .bStackHeader import bStackHeader
 
+from .bRoiAnalysis import bRoiAnalysis # 20201027
+
 from .bJavaBridge import bJavaBridge
 
 # this is so freaking confusing, I need this import o/w/ will not run ???

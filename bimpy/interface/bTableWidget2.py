@@ -116,10 +116,14 @@ class bTableWidget2(QtWidgets.QTableWidget):
 			#print('    warning: bTableWidget2.populate() type:', self._type, 'adding num rows:', numRows, self._type)
 			return
 
+		#
 		# headers
+		ignoreTheseHeaders = ['baseFileName', 'path', 'rowNum', 'colNum']
 		firstDict = newDictList[0]
 		for k in firstDict.keys():
-			#print('populate() headerLabels.append k:', k)
+			print('bTableWidget2.populate() headerLabels.append k:', k)
+			if k in ignoreTheseHeaders:
+				continue
 			self.headerLabels.append(k)
 
 		#print('setColumnCount to len(self.headerLabels)', len(self.headerLabels))
@@ -273,8 +277,9 @@ class bTableWidget2(QtWidgets.QTableWidget):
 
 		rowIdx = self._findRow(theIdx=deleteRowIdx, theDict=None)
 		if rowIdx is None:
-			print('   \n\n\n                    !!! !!! THIS IS A BUG: bTableWidget2.deleteRowByIndex() rowIdx', rowIdx, 'theDict:', theDict)
-			print('\n\n\n')
+			print('\n\n')
+			print('\t\t\t !!! !!! THIS IS A BUG: bTableWidget2.deleteRowByIndex() ... got rowIdx None')
+			print('\n\n')
 		else:
 			self.removeRow(rowIdx)
 			# decriment remaining ['idx']
@@ -829,9 +834,15 @@ class bAnnotationTableWidget(bTableWidget2):
 				eventName = 'select caiman'
 
 			myEvent = bimpy.interface.bEvent(eventName, nodeIdx=myIdx, snapz=True, isShift=isShift)
+			# z
 			colIdx = self._getColumnIdx('z')
 			myItem = self.item(row, colIdx)
 			myEvent._sliceIdx = int(float(myItem.text()))
+			# objectPointer
+			# fuck, this is not going to work, we end up with a string
+			#colIdx = self._getColumnIdx('objectPointer')
+			#myItem = self.item(row, colIdx)
+			#myEvent._objectPointer = xxx
 			print('   emit myEvent:', myEvent)
 			self.selectRowSignal.emit(myEvent)
 
@@ -846,6 +857,12 @@ class bAnnotationTableWidget(bTableWidget2):
 			event = {'type':'deleteAnnotation', 'objectType': 'annotation', 'objectIdx':selectedObjectIdx}
 			self.mainWindow.getStackView().myEvent(event)
 			'''
+		elif key in [QtCore.Qt.Key_A]:
+			# completely wrong place to do this
+			#'a' is for analyze
+			objectIdx = self.getCellValue_int('idx') #, row=None):
+			self.mainWindow.analyzeRoi(objectIdx)
+
 		else:
 			super(bAnnotationTableWidget, self).keyPressEvent(event)
 
