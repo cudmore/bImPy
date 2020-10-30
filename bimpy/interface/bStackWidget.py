@@ -9,7 +9,6 @@ import json
 
 import numpy as np
 
-#from PyQt5 import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -23,9 +22,6 @@ import matplotlib.cm
 import tifffile
 import h5py
 #import pickle # to save masks
-
-# testing, remember to remove
-#import pyqtgraph as pg
 
 import qdarkstyle #see: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 
@@ -194,8 +190,11 @@ class bStackWidget(QtWidgets.QMainWindow):
 		# vertical layout for contrast/image/feedback
 		self.myHBoxLayout.addLayout(self.myVBoxLayout, stretch=5) #, stretch=7) # stretch=10, not sure on the units???
 
-		#
+		##
+		##
 		# signals and slots
+		##
+		##
 
 		# listen to bStackWidget
 		self.optionsStateChange.connect(self.myFeedbackWidget.slot_OptionsStateChange)
@@ -255,6 +254,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		#
 		# new annotation table using bAnnotationList (from bStack)
 		self.myStackView2.selectAnnotationSignal.connect(self.annotationTable.slot_select)
+		self.myStackView2.roiChangeFinishedSignal.connect(self.annotationTable.slot_roiChanged) # new 20201028 for pyqt roi
 		self.annotationTable.selectRowSignal.connect(self.myStackView2.slot_selectAnnotation)
 
 		self.myStackView2.tracingEditSignal.connect(self.nodeTable2.slot_updateTracing)
@@ -268,8 +268,11 @@ class bStackWidget(QtWidgets.QMainWindow):
 		# connect bRoiAnalysisWidget, self.myRoiAnalysisWidget
 		self.myStackView2.setSliceSignal.connect(self.myRoiAnalysisWidget.slot_updateSlice)
 
+		# show/hide widgets based on options
 		self.updateDisplayedWidgets()
 
+		#
+		# decide on window position
 		left = self.options['Window']['left']
 		top = self.options['Window']['top']
 		width = self.options['Window']['width']
@@ -278,12 +281,13 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.move(left,top)
 		self.resize(width, height)
 
-		'''
-		if self.myStackView is not None:
-			self.myStackView.setSlice(0)
-		'''
+		#
+		# set to slice 0
+
 		self.myStackView2.setSlice(0)
 
+		#
+		# scatter plot widget is another window
 		self.myScatterPlotWidget = None # see self.showScatterWidget()
 
 		##
@@ -293,7 +297,6 @@ class bStackWidget(QtWidgets.QMainWindow):
 		##
 
 		# todo: put this in self.addKeyboardActions()
-
 		self.initActions()
 
 	def initActions(self):

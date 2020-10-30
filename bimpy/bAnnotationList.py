@@ -7,12 +7,13 @@ this is created in bStack
 
 """
 
-import os
+import os, json
 from collections import OrderedDict
-import json
-import csv
+import csv # used to save
+import ast # used to convert string (from file) into dict
 
 import numpy as np
+import pandas as pd # used to load
 import scipy
 
 import bimpy
@@ -49,7 +50,7 @@ class bAnnotationList:
 
 
 		# todo: save/load into main h5f file !!!!!!
-		print('\n\nbAnnotationList needs to save/load into main h5f file !!!!!!!\n\n')
+		print('\ntodo: bAnnotationList needs to save/load into main h5f file !!!!!!!\n')
 
 
 		# save by appending '_annotationList.csv'
@@ -104,20 +105,40 @@ class bAnnotationList:
 		"""
 		todo: this is problematic, it is out of sync with xxx
 		"""
+
+		# this is tricky, annotations need a lot of things to please veryone
+		# including 'a'+click general annotation
+		# and pyqtgraph line/rect/circle roi
+
 		theDict = OrderedDict()
 		theDict['idx'] = None # to work with bTableWidget2.py ... bAnnotationTableWidget()
 		theDict['type'] = None
 		theDict['x'] = None
 		theDict['y'] = None
 		theDict['z'] = None
-		theDict['rowNum'] = None # for napari grid
-		theDict['colNum'] = None
+
 		theDict['isBad'] = False
 		theDict['channel'] = self.channel
 		theDict['note'] = ''
-		theDict['baseFileName'] = self.baseFileName
-		# keep this at end
-		theDict['path'] = self.path
+
+		# put all pyqtgraph roi into one key as a dict ???
+		theDict['roiParams'] = None
+		'''
+		theDict['pos'] = None # for pyqtgraph roi
+		theDict['size'] = None # for pyqtgraph roi
+		theDict['pnt1'] = None # for pyqtgraph roi
+		theDict['pnt2'] = None # for pyqtgraph roi
+		theDict['lineWidth'] = None # for pyqtgraph roi
+		'''
+
+		theDict['rowNum'] = None # for napari grid
+		theDict['colNum'] = None
+		# these might be needed in future when mergin annotations
+		# into a big table across many files
+		#theDict['baseFileName'] = self.baseFileName
+		#theDict['path'] = self.path
+
+		#
 		return theDict
 
 	def _getDefaultMetaDataDict(self):
@@ -139,42 +160,6 @@ class bAnnotationList:
 					continue
 				printRow += f'{k}:{v}, '
 			print('  ', printRow)
-
-	def load(self):
-		"""
-		load from _annotationList.csv
-		"""
-		loadPath = self.saveFilePath
-
-		doLoad = True
-		if not os.path.isfile(loadPath):
-			#print('  warning: bAnnotationList.load() did not find file:', loadPath)
-			doLoad = False
-
-		self.myList = []
-
-		if doLoad:
-			print(f'  bAnnotationList.load() loading from {loadPath}')
-
-			# I want to keep the OrderedDict() of self._getDefaultDict
-
-			metaDataDict = self._getDefaultMetaDataDict()
-
-			numLoadedLines = 0
-			with open(loadPath, 'r') as data:
-				for line in csv.DictReader(data):
-					# the keys are out of order from what I want
-					#print('    ', line)
-					self.myList.append(line)
-					self.myMetaDataList.append(metaDataDict)
-					numLoadedLines += 1
-
-			self._preComputeMasks()
-
-			print(f'    loaded {numLoadedLines} lines')
-
-		forcePopulate = False
-		self.loadCaiman(forcePopulate=forcePopulate)
 
 	def loadCaiman(self, forcePopulate=False):
 		"""
@@ -209,6 +194,68 @@ class bAnnotationList:
 				print(f'  loadCaiman() adding centroid {roiIdx} at', x, y)
 				self.addAnnotation('caiman', x, y, z)
 
+	def load(self):
+		"""
+		load from _annotationList.csv
+		"""
+		loadPath = self.saveFilePath
+
+		doLoad = True
+		if not os.path.isfile(loadPath):
+			#print('  warning: bAnnotationList.load() did not find file:', loadPath)
+			doLoad = False
+
+		self.myList = []
+
+		if doLoad:
+			print(f'  bAnnotationList.load() loading from {loadPath}')
+
+			# I want to keep the OrderedDict() of self._getDefaultDict
+
+			metaDataDict = self._getDefaultMetaDataDict()
+
+			#
+			# load with pandas
+			numLoadedLines = 0
+			try:
+				data = pd.read_csv(loadPath)
+			except(pd.errors.EmptyDataError) as e:
+				print('ERROR: bAnnotationList.load() got an empty file:', loadPath)
+			else:
+				# to convert the whole CSV file to a list of dict use
+				listOfDict = data.transpose().to_dict().values()
+				numLoadedLines = len(listOfDict)
+				for line in listOfDict:
+					print('pandas line:', line)
+					# convert dict value from string to dict
+					if 'roiParams' in line.keys():
+						#roiParamsLine = line['roiParams'].replace('\'', '\"')
+						#print('roiParamsLine:', roiParamsLine)
+						#line['roiParams'] = json.loads(roiParamsLine)
+						line['roiParams'] = ast.literal_eval(line['roiParams'])
+					self.myList.append(line)
+					self.myMetaDataList.append(metaDataDict) # empty on load
+
+			'''
+			numLoadedLines = 0
+			with open(loadPath, 'r') as data:
+				for line in csv.DictReader(data):
+					# the keys are out of order from what I want
+					print('bAnnotationList.load()')
+					print('    ', line)
+					self.myList.append(line)
+					self.myMetaDataList.append(metaDataDict) # empty on load
+					numLoadedLines += 1
+			'''
+
+			self._preComputeMasks()
+
+			print(f'    loaded {numLoadedLines} lines')
+
+		# caiman rois
+		forcePopulate = False
+		self.loadCaiman(forcePopulate=forcePopulate)
+
 	def save(self):
 		"""
 		save to _annotationList.csv
@@ -227,12 +274,16 @@ class bAnnotationList:
 			dict_writer.writeheader()
 			dict_writer.writerows(self.myList)
 
-	def addAnnotation(self, type, x, y, z, note='', rowNum=None, colNum=None, size=(20,20), lineWidth=1):
+	def addAnnotation(self, type, x, y, z, note='', rowNum=None, colNum=None, roiParams=None):
 		"""
 		x/y/z: pixels
 		rowNum/colNum: for napari grid
 		type: added for caiman
+
+		roiParams: dict describing a pyqtgraph roi from (lineROI, rectROI, circleROI)
 		"""
+		print('bAnnotationList.addAnnotation()')
+
 		x = round(x,4)
 		y = round(y,4)
 		z = int(z)
@@ -243,8 +294,12 @@ class bAnnotationList:
 		newDict['x'] = x
 		newDict['y'] = y
 		newDict['z'] = z
-		newDict['size'] = size
-		newDict['lineWidth'] = lineWidth
+
+		if roiParams is not None:
+			newDict['roiParams'] = dict(roiParams)
+		else:
+			newDict['roiParams'] = roiParams
+
 		newDict['rowNum'] = rowNum
 		newDict['colNum'] = colNum
 		newDict['isBad'] = False
@@ -257,6 +312,9 @@ class bAnnotationList:
 		self.myMetaDataList.append(metaDataDict)
 
 		newAnnotationIdx = self.numItems() - 1
+
+		print('  addAnnotation() added newDict:')
+		print('    ', json.dumps(newDict, indent=4))
 
 		self._preComputeMasks()
 

@@ -378,6 +378,8 @@ class bTableWidget2(QtWidgets.QTableWidget):
 					item.setData(myItemRole, float(theDict[header]))
 				elif isinstance(theDict[header], str):
 					item.setData(myItemRole, str(theDict[header]))
+				elif isinstance(theDict[header], dict):
+					item.setData(myItemRole, str(dict(theDict[header]))) # extra dict() here to convert OrderedDict
 				else:
 					if theDict[header] is None:
 						item.setData(myItemRole, '')
@@ -894,6 +896,10 @@ class bAnnotationTableWidget(bTableWidget2):
 		elif myEvent.eventType == 'updateAnnotation':
 			#print('  updating annotation with myEvent.nodeDict:', myEvent.nodeDict)
 			self.setRow(myEvent.nodeDict)
+
+	def slot_roiChanged(self, roiDict):
+		print('bAnnotationTableWidget.slot_roiChanged() roiDict:', roiDict)
+		self.setRow(roiDict)
 
 def main():
 	import sys
