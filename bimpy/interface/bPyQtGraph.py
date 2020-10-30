@@ -448,10 +448,11 @@ class bPyQtGraphRoiList(QtCore.QObject):
 		elif type == 'lineROI':
 			# pos1: The position of the center of the ROI’s left edge.
 			# pos2: The position of the center of the ROI’s right edge.
-			pos1 = notFlippedPos
+			pnt1 = notFlippedPos
 			if pnt2 is None:
-				pos2 = [sum(x) for x in zip(pos1, size)] #list(map(add, pos, size))
-			newROI = pg.LineROI(pos1, pnt2,
+				pnt2 = [sum(x) for x in zip(pnt1, size)] #list(map(add, pos, size))
+			print('making lineroi pnt1:', pnt1, 'pnt2:', pnt2)
+			newROI = pg.LineROI(pnt1, pnt2,
 								pen=(0,9), invertible=True, width=lineWidth)
 
 		#
