@@ -67,15 +67,16 @@ class bStack:
 
 		self._maxNumChannels = 3 # leave this for now
 		# pixel data, each channel is element in list
-		# *3 because we have (raw, mask, skel) for each stack#
-		self._stackList = [None for tmp in range(self._maxNumChannels * 3)]
-		self._maxList = [None for tmp in range(self._maxNumChannels * 3)]
+		# *3 because we have (raw, mask, edt, skel) for each stack#
+		self._stackList = [None for tmp in range(self._maxNumChannels * 4)]
+		self._maxList = [None for tmp in range(self._maxNumChannels * 4)]
 
 		#
 		# load image data
 		if loadImages:
 			self.loadStack2() # loads data into self._stackList
 			self.loadLabeled() # loads data into _labeledList
+			self.loadEdt() # loads data into _labeledList
 			self.loadSkel() # loads data into _labeledList
 
 		#
@@ -261,6 +262,8 @@ class bStack:
 			channelIdx += maxChannel
 		elif type == 'skel':
 			channelIdx += 2 * maxChannel
+		elif type == 'edt':
+			channelIdx += 3 * maxChannel
 		theRet = self._stackList[channelIdx]
 		return theRet
 
@@ -274,6 +277,20 @@ class bStack:
 		#print('  getImage2() channel:', channel, 'sliceNum:', sliceNum)
 
 		channelIdx = channel - 1
+
+		numStack = len(self._stackList)
+		if channelIdx > numStack-1:
+			print('ERROR: bStack.getImage2() out of bounds. Asked for channel:', channel, 'channelIdx:', channelIdx, 'but length of _stackList[] is', numStack)
+			# print all stack shape
+			for i in range(numStack):
+				tmpStack = self._stackList[i]
+				if tmpStack is None:
+					print('  ', i, 'None')
+				else:
+					print('  ', i, tmpStack.shape)
+
+			return None
+
 		if self._stackList[channelIdx] is None:
 			#print('   error: 0 bStack.getImage2() got None _stackList for channel:', channel, 'sliceNum:', sliceNum)
 			return None
@@ -407,31 +424,67 @@ class bStack:
 
 			chStr = '_ch' + str(channelNumber)
 			labeledPath = baseFilePath + chStr + '_labeled.tif'
+			maskPath = baseFilePath + chStr + '_mask.tif'
 
 			# if we find _labeeled.tif, load and make a mask
 			# o.w. if we find _mask.tif then load that
-			if os.path.isfile(labeledPath):
+			if os.path.isfile(maskPath):
+				print('  bStack.loadLabeled() loading _mask.tif channelNumber:', channelNumber, 'maskPath:', maskPath)
+				maskData = tifffile.imread(maskPath)
+				self._stackList[stackListIdx] = maskData
+			elif os.path.isfile(labeledPath):
 				print('  bStack.loadLabeled() loading channelNumber:', channelNumber, 'labeledPath:', labeledPath)
 				labeledData = tifffile.imread(labeledPath)
-				# mask is made of all labels
-				#print('    assigning self._stackList[stackListIdx] stackListIdx:', stackListIdx)
 				self._stackList[stackListIdx] = labeledData > maskFromLabelGreaterThan
-				#print('    shape is:', self._stackList[stackListIdx].shape)
 			else:
-				#print('  bStack.loadLabeled() did not find _labeled path:', labeledPath)
+				# did not find _mask or _labeled file
 				pass
-				maskPath = baseFilePath + chStr + '_mask.tif'
-				if os.path.isfile(maskPath):
-					print('  bStack.loadLabeled() loading _mask.tif channelNumber:', channelNumber, 'maskPath:', maskPath)
-					maskData = tifffile.imread(maskPath)
-					# mask is made of all labels
-					#print('    assigning self._stackList[stackListIdx] stackListIdx:', stackListIdx)
-					self._stackList[stackListIdx] = maskData
 
 		# erode _mask by 1 (before skel) as skel was getting mized up with z-collisions
 		#self._dvMask = bimpy.util.morphology.binary_erosion(self._dvMask, iterations=2)
 
 		# bVascularTracing.loadDeepVess() uses mask to make skel
+
+	def loadEdt(self):
+		"""
+		load _edt.tif for each (_ch1, _ch2, _ch3)
+		edt is type float32 (it is big)
+
+		"""
+
+		maxNumChannels = self._maxNumChannels # 4
+
+		baseFilePath, ext = os.path.splitext(self.path)
+		baseFilePath = baseFilePath.replace('_ch1', '')
+		baseFilePath = baseFilePath.replace('_ch2', '')
+
+		# load mask
+		#labeledPath = dvMaskPath + '_mask.tif'
+		#labeledData = tifffile.imread(labeledPath)
+
+		maskFromLabelGreaterThan = 0
+
+		edtMult = 3 # 3 because we have (raw==0, mask==1, skel==2, edt==3)
+
+		# load labeled
+		for channelIdx in range(maxNumChannels):
+			channelNumber = channelIdx + 1 # for _ch1, _ch2, ...
+			stackListIdx = maxNumChannels * edtMult + channelIdx # for index into self._stackList
+
+			chStr = '_ch' + str(channelNumber)
+			edtPath = baseFilePath + chStr + '_edt.tif'
+
+			# if we find _labeeled.tif, load and make a mask
+			# o.w. if we find _mask.tif then load that
+			if os.path.isfile(edtPath):
+				print('  bStack.loadEdt() loading channelNumber:', channelNumber,
+						'maxNumChannels:', maxNumChannels,
+						'stackListIdx:', stackListIdx,
+						'edtPath:', edtPath)
+				edtData = tifffile.imread(edtPath)
+				print('  edtData:', edtData.shape, edtData.dtype)
+				self._stackList[stackListIdx] = edtData
+				#print('    shape is:', self._stackList[stackListIdx].shape)
 
 	def loadSkel(self):
 		"""

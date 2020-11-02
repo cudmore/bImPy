@@ -121,7 +121,7 @@ class bTableWidget2(QtWidgets.QTableWidget):
 		ignoreTheseHeaders = ['baseFileName', 'path', 'rowNum', 'colNum']
 		firstDict = newDictList[0]
 		for k in firstDict.keys():
-			print('bTableWidget2.populate() headerLabels.append k:', k)
+			#print('bTableWidget2.populate() headerLabels.append k:', k)
 			if k in ignoreTheseHeaders:
 				continue
 			self.headerLabels.append(k)

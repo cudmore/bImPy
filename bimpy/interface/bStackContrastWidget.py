@@ -296,7 +296,8 @@ class bStackContrastWidget(QtWidgets.QWidget):
 
 		#
 		# bit depth
-		self._myBitDepths = [1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16] # don't include 32, it causes an over-run
+		# don't include 32, it causes an over-run
+		self._myBitDepths = [1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 		bitDepthIdx = self._myBitDepths.index(self.bitDepth) # will sometimes fail
 		bitDepthLabel = QtWidgets.QLabel('Bit Depth')
 		bitDepthComboBox = QtWidgets.QComboBox()

@@ -407,8 +407,11 @@ class bPyQtGraphRoiList(QtCore.QObject):
 		type: (rectROI, lineROI, circleROI)
 		pos: (x,y), position of roi (usually where user clicked)
 		roiParams: not used on new, used to load
+					On load all our points are in image coordinates
+					We are drawing with pyqt graph, need to image.mapToScene(pnt)
 		useThisIdxOnLoad: used by self.populate
-		emitNew:
+		emitNew: If true will emit and table slot will add a new roi
+				Use false when populating on Load (table is already populated)
 
 		use this when loading from bAnnotationList
 		todo: need param to ay emitNew=False
@@ -513,22 +516,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	# not implemented, what did this do? see class bStackView
 	displayStateChangeSignal = QtCore.Signal(str, object)
 
-	def roiChangeFinished(self, roiDict):
-		"""
-		called from bPyQtGraphRoiList.slot_changeFinished
-
-		expecting all (x,y) to be in numpy (vert,width)
-		"""
-
-		print('todo: (i) add handle position to dict and (ii) map scene coordinates of handle tim image coordinateds')
-		# roiDict has handles, we need to map from scene to image coordinates
-		# imagePos = self.myImage.mapFromScene(event.pos())
-
-		self.roiChangeFinishedSignal.emit(roiDict)
-
 	#def __init__(self, *args, **kwargs):
 	#	super(myPyQtGraphPlotWidget, self).__init__(*args, **kwargs)
 	def __init__(self, parent=None, mySimpleStack=None):
+		"""
+		parent: bStackWidget
+		"""
 		super(myPyQtGraphPlotWidget, self).__init__(parent=parent)
 
 		self.mainWindow = parent # usually bStackWidget
@@ -726,6 +719,18 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.myRoiList.populate(annotationList) # populate with bAnnotationList
 		self.myClickMode = 'drag' #(drag, lineROI, rectROI, circleROI)
 
+	def roiChangeFinished(self, roiDict):
+		"""
+		called from bPyQtGraphRoiList.slot_changeFinished
+
+		expecting all (x,y) to be in numpy (vert,width)
+		"""
+
+		print('todo: (i) add handle position to dict and (ii) map scene coordinates of handle tim image coordinateds')
+		# roiDict has handles, we need to map from scene to image coordinates
+		# imagePos = self.myImage.mapFromScene(event.pos())
+
+		self.roiChangeFinishedSignal.emit(roiDict)
 
 	def getMyImage(self):
 		"""
@@ -1447,15 +1452,18 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				downSlices = self.options['Stack']['downSlidingZSlices']
 				#print('upSlices:', upSlices, 'downSlices:', downSlices)
 				sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
+			#else:
+			#	sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
 			elif displayThisStack > maxNumChannels: #in [5,6,7,8]:
+				print('  setSlice() trying to display displayThisStack:', displayThisStack)
 				# mask + image ... need to set contrast of [0,1] mask !!!
 				sliceMaskImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
 				if sliceMaskImage is None:
-					print('warning: got None sliceMaskImage for displayThisStack:', displayThisStack)
+					print('warning: bPyQtGraph.setSlice() got None sliceMaskImage for displayThisStack:', displayThisStack)
 				else:
 					#imageChannel = displayThisStack-maxNumChannels
 					imageChannel = displayThisStack % maxNumChannels # remainder after division
-					#print('bPyQtGraph.setSlice() imageChannel:', imageChannel)
+					print('  bPyQtGraph.setSlice() imageChannel:', imageChannel)
 					sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
 					skelChannel = displayThisStack + maxNumChannels
 					sliceSkelImage = self.mySimpleStack.getImage2(channel=skelChannel, sliceNum=thisSlice)
@@ -1810,6 +1818,13 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		if event.text() == 'm':
 			print('=== bPyQtGraph.keyPressEvent() m')
 			self.slot_setClickMode('drag')
+			return
+
+		if event.text() == 'a':
+			print('=== bPyQtGraph.keyPressEvent() "a" -->> analyze selected roi')
+			#self.slot_setClickMode('drag')
+			annotationIdx = self.selectedAnnotation()
+			self.mainWindow.analyzeRoi(annotationIdx)
 			return
 
 		# event.key() is a number

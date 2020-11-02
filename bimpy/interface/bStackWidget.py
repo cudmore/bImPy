@@ -1121,7 +1121,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		todo: building and then responding to menu is too hard coded here, should generalize???
 		"""
-		print('showRightClickMenu()')
+		print('bStackWidget.showRightClickMenu()')
 		menu = QtWidgets.QMenu()
 		#self.menu = QtWidgets.QMenu()
 
@@ -1183,6 +1183,35 @@ class bStackWidget(QtWidgets.QMainWindow):
 			# add to menu
 			menuAction = menu.addAction(currentAction)
 
+		#
+		# do again for edt
+		edtIdx = 3 # (raw==0, mask==1, skel==2, edt==3)
+		actionsList = []
+		isEnabledList = []
+		isCheckedList = []
+		for i in range(numChannels):
+			chanNumber = i + 1
+			actionsList.append(f'Channel {chanNumber} EDT')
+			actualChanNumber = (maxNumChannels * edtIdx) + i + 1
+			isEnabled = self.mySimpleStack.hasChannelLoaded(actualChanNumber)
+			print('  edt actualChanNumber:', actualChanNumber, 'isEnabled:', isEnabled)
+			isEnabledList.append(isEnabled)
+			isChecked = self.getStackView().displayStateDict['displayThisStack'] == actualChanNumber
+			isCheckedList.append(isChecked)
+		for i, actionStr in enumerate(actionsList):
+			# make an action
+			currentAction = QtWidgets.QAction(actionStr, self, checkable=True)
+			# decide if it is checked
+			isEnabled = isEnabledList[i]
+			isChecked = self.getStackView().displayStateDict['displayThisStack'] == i+1
+			isChecked = isCheckedList[i]
+
+			currentAction.setEnabled(isEnabled)
+			currentAction.setChecked(isChecked)
+			# add to menu
+			menuAction = menu.addAction(currentAction)
+
+		#
 		menu.addSeparator()
 
 		#
@@ -1361,6 +1390,15 @@ class bStackWidget(QtWidgets.QMainWindow):
 			#doStackRefresh = True
 			self.getStackView().displayStateChange('displayThisStack', value=7+2)
 
+		# EDT
+		elif userActionStr == 'Channel 1 EDT':
+			self.getStackView().displayStateChange('displayThisStack', value=10)
+		elif userActionStr == 'Channel 2 EDT':
+			self.getStackView().displayStateChange('displayThisStack', value=10+1)
+		elif userActionStr == 'Channel 3 EDT':
+			self.getStackView().displayStateChange('displayThisStack', value=10+2)
+
+
 		elif userActionStr == 'RGB':
 			#self.getStackView().displayStateDict['displayThisStack'] = 'rgb'
 			#doStackRefresh = True
@@ -1504,20 +1542,26 @@ class bStackWidget(QtWidgets.QMainWindow):
 		"""
 		coming from key press "a" in annotation table
 		"""
-		print('bStackWidget.analyzeRoi() roiIdx:', roiIdx)
+		print('=== bStackWidget.analyzeRoi() roiIdx:', roiIdx)
 		theAnnotationList = self.getMyStack().annotationList # backend list of annotations
 		itemDict = theAnnotationList.getItemDict(roiIdx)
+		print('  itemDict:', itemDict)
 		type = itemDict['type']
 		x = itemDict['x']
 		y = itemDict['y']
 		pos = (x,y)
-		size = itemDict['size']
+
+		roiParams = itemDict['roiParams']
+		size = roiParams['size']
+		pnt1 = roiParams['pnt1']
+		pnt2 = roiParams['pnt1']
+
 		sliceNum = self.myStackView2.currentSlice
 		if type == 'lineROI':
 			stackData = self.mySimpleStack.getStack('raw', 1)
 			analysisObject = bimpy.bRoiAnalysis(stackData)
 			src = pos
-			dst = [sum(x) for x in zip(src, size)] #list(map(add, pos, size))
+			dst = pnt2 #[sum(x) for x in zip(src, size)] #list(map(add, pos, size))
 			print('  sliceNum:', sliceNum, 'src:', src, 'dst:', dst)
 			x, oneProfile, fit, fwhm, leftIdx, rightIdx = analysisObject.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
 			print('  done:', x.shape)

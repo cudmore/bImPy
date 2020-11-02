@@ -31,20 +31,24 @@ if __name__ == '__main__':
 	channelToAnalyze = 2
 	maskStartStop = (9,46)
 
+	path = '/media/cudmore/data/san-density/SAN3/SAN3_tail/aicsAnalysis/SAN3_tail_ch2.tif'
+	channelToAnalyze = 2
+	maskStartStop = (17, 41)
+
 	# load the stack
 	myStack = bimpy.bStack(path=path, loadImages=True, loadTracing=True)
 
 	#
 	# some options
-	remakeSkelFromMask = False
+	remakeSkelFromMask = True
 	saveAtEnd = True
 
 	# SLOW: load mask and make skel from mask
 	if remakeSkelFromMask:
-		myStack.slabList.loadDeepVess(vascChannel=2, maskStartStop=maskStartStop)
+		myStack.slabList.loadDeepVess(vascChannel=channelToAnalyze, maskStartStop=maskStartStop)
 
 	# remove edges based on criterion
-	if 0:
+	if 1:
 		#
 		# remove all nCon==0
 		edgeListToRemove = bimpy.bVascularTracingAics._getListFromCriterion(
@@ -102,7 +106,7 @@ if __name__ == '__main__':
 					verbose=True)
 
 	# anlyze all slab diameter in a cpu pool
-	if 1:
+	if 0:
 		b_mpAnalyzeSlabs.runDiameterPool(myStack, channelToAnalyze)
 
 	if 1:

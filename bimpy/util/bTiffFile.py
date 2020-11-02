@@ -20,6 +20,83 @@ from collections import OrderedDict
 
 import tifffile
 
+# abb 20201101 when working on sanode/ aicsCell, aicsVasc
+def imsave2(path, imageData, xVoxel, yVoxel, zVoxel, overwriteExisting=False):
+	"""
+	Save the 3d data into file path with tif header information
+
+	path: full path to file to save
+	imageData: 3d numpy ndarray with order (slices, x, y)
+	tifHeader: dictionary with keys ['xVoxel'], ['yVoxel'], ['zVoxel'] usually in um/pixel
+	"""
+
+	if os.path.isfile(path) and not overwriteExisting:
+		print('error: bTiffFile.imsave() file already exists and overwriteExisting is False, path:', path)
+		return None
+
+	# get metadata from StackHeader
+	#ijmetadata = {}
+	#ijmetadataStr = self.header.getMetaData()
+	#ijmetadata['Info'] = ijmetadataStr
+
+	# default
+	resolution = (1., 1.)
+	metadata = {'spacing':1, 'unit':'pixel'}
+
+	#if tifHeader is not None:
+	if 1:
+		#xVoxel = tifHeader['xVoxel']
+		#yVoxel = tifHeader['yVoxel']
+		#zVoxel = tifHeader['zVoxel']
+
+		resolution = (1./xVoxel, 1./yVoxel)
+		metadata = {
+			'spacing': zVoxel,
+			'unit': 'micron' #tifHeader['unit'], # could be ('micron', 'um', 'pixel')
+		}
+		# 20200915, add all from tifHeader
+		#for k,v in tifHeader.items():
+		#	metadata[k] = v
+
+	# my volumes are zxy, fiji wants TZCYXS
+	#volume.shape = 1, 57, 1, 256, 256, 1  # dimensions in TZCYXS order
+	if len(imageData.shape) == 2:
+		numSlices = 1
+		numx = imageData.shape[0]
+		numy = imageData.shape[1]
+	elif len(imageData.shape) == 3:
+		numSlices = imageData.shape[0]
+		numx = imageData.shape[1]
+		numy = imageData.shape[2]
+	else:
+		print('error, bTiffFile.imsave() can only save 2d or 3d images and stacks!')
+		return False
+
+	dtypeChar = imageData.dtype.char
+	if dtypeChar == 'e':
+		# see: https://github.com/matplotlib/matplotlib/issues/15432
+		print('warning: bTiffFile.imsave() is NOT saving as ImageJ .tif file (There will be no header information.')
+		print('    This happend with np.float16, dtype.char is "e". np.float16 will not open in Fiji or Matplotlib !!!')
+		tifffile.imwrite(path, imageData) #, ijmetadata=ijmetadata)
+	else:
+		# this might change in caller?
+		# this DOES change caller
+		imageData = imageData.copy()
+		# abb remove this crazy shape change ???
+		imageData.shape = 1, numSlices, 1, numx, numy, 1
+
+		#print('bTiffFile.imsave() is saving with metadata:')
+		#print(metadata)
+
+		if tifffile.__version__ == '0.15.1':
+			# older interface, used by aics-segmentation
+			tifffile.imsave(path, imageData, imagej=True, resolution=resolution, metadata=metadata) #, ijmetadata=ijmetadata)
+		else:
+			# newer interface, changed on 2018.11.6
+			tifffile.imwrite(path, imageData, imagej=True, resolution=resolution, metadata=metadata) #, ijmetadata=ijmetadata)
+
+	return True
+
 def imsave(path, imageData, tifHeader=None, overwriteExisting=False):
 	"""
 	Save the 3d data into file path with tif header information
