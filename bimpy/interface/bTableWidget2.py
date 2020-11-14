@@ -812,6 +812,11 @@ class bAnnotationTableWidget(bTableWidget2):
 		row = self.currentRow()
 
 		myItem = self.item(row, 0) # 0 is idx column
+
+		if myItem is None:
+			print('bAnnotationTableWidget.on_clicked_row() did not find an item at currentRow() row:', row)
+			return
+			
 		myIdx = myItem.text()
 		if myIdx=='':
 			return
@@ -825,6 +830,12 @@ class bAnnotationTableWidget(bTableWidget2):
 			self.stopSelectionPropogation = False
 		else:
 			print('=== bAnnotationTableWidget.on_clicked_row() type:', self._type, 'row:', row, 'myIdx:', myIdx, 'isShift:', isShift)
+
+			# debug roi
+			roiParamsIdx = self._getColumnIdx('roiParams')
+			roiItem = self.item(row, roiParamsIdx)
+			roiStr = roiItem.text()
+			print('\nroiStr:', roiStr)
 
 			# select caiman
 			typeColIdx = self._getColumnIdx('type')
@@ -853,12 +864,17 @@ class bAnnotationTableWidget(bTableWidget2):
 		print('=== bAnnotationTableWidget.keyPressEvent() in', self._type, 'key:', event.text())
 
 		if key in [QtCore.Qt.Key_D, QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
-			print('bAnnotationTableWidget delete not implemented ... please delete from the image')
 			'''
+			print('bAnnotationTableWidget delete not implemented ... please delete from the image')
 			selectedObjectIdx = self.getCellValue_int('idx') #, row=None):
 			event = {'type':'deleteAnnotation', 'objectType': 'annotation', 'objectIdx':selectedObjectIdx}
 			self.mainWindow.getStackView().myEvent(event)
 			'''
+			print('=== bAnnotationTableWidget.keyPressEvent() is deleting annotation')
+			self.stopSelectionPropogation = True
+			selectedObjectIdx = self.getCellValue_int('idx') #, row=None):
+			self.mainWindow.getStackView().deleteAnnotation(selectedObjectIdx)
+
 		elif key in [QtCore.Qt.Key_A]:
 			# completely wrong place to do this
 			#'a' is for analyze
@@ -898,7 +914,8 @@ class bAnnotationTableWidget(bTableWidget2):
 			self.setRow(myEvent.nodeDict)
 
 	def slot_roiChanged(self, roiDict):
-		print('bAnnotationTableWidget.slot_roiChanged() roiDict:', roiDict)
+		#print('*** bAnnotationTableWidget.slot_roiChanged()')
+		#print(json.dumps(roiDict, indent=2))
 		self.setRow(roiDict)
 
 def main():

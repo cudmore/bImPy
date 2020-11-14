@@ -5,7 +5,7 @@ import numpy as np
 import bimpy
 
 
-def bMakeSkelFromMask(path, channelToAnalyze, maskStartStop)
+def bMakeSkelFromMask(path, channelToAnalyze, maskStartStop):
 		# load the stack
 		myStack = bimpy.bStack(path=path, loadImages=True, loadTracing=True)
 

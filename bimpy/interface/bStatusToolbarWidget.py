@@ -223,6 +223,10 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			self.repaint()
 
 	def setMousePosition(self, channel, sliceNumber, x, y):
+		"""
+		(x,y): are in pyqt (horz, vert)
+			need to flip to get intensity from numpy
+		"""
 		#channel = channel - 1
 
 		#x = round(point.x(),0)
@@ -236,7 +240,8 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 		# todo: update pixel intensity
 		# self.mainWindow.myStackView
-		pixelIntensity = self.mainWindow.getStackView().mySimpleStack.getPixel(channel, sliceNumber, x, y)
+		pixelIntensity = self.mainWindow.getStackView().mySimpleStack.getPixel(channel, sliceNumber, y, x) # flipped
+		#pixelIntensity = self.mainWindow.getStackView().mySimpleStack.getPixel(channel, sliceNumber, x, y)
 		if np.isnan(pixelIntensity):
 			pixelIntensityStr = ''
 		else:

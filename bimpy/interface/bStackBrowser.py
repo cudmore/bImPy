@@ -304,11 +304,11 @@ def main(useBioformats=False):
 	# 20201101 turn one of these back on to debug ROI
 	path = '/home/cudmore/data/nathan/SAN4/aicsAnalysis/testing/SAN4_tail_ch2.tif'
 	path = '/home/cudmore/data/20201014/inferior/3_nif_inferior_cropped.tif'
-	path = '/media/cudmore/data/20201014/inferior/2_nif_inferior_cropped_aligned.tif'
 	'''
+	path = '/media/cudmore/data/20201014/inferior/2_nif_inferior_cropped_aligned.tif'
 
 	# 20201101 debugging edt
-	path = '/media/cudmore/data/san-density/SAN3/SAN3_tail/aicsAnalysis/SAN3_tail_ch2.tif'
+	#path = '/media/cudmore/data/san-density/SAN4/SAN4_head/aicsAnalysis/SAN4_head_ch2.tif'
 
 	try:
 		if useBioformats:

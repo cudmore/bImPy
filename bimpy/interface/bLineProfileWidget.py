@@ -1,5 +1,7 @@
 # 20200122
 
+import json
+
 #from PyQt5 import QtGui, QtCore, QtWidgets
 from qtpy import QtGui, QtCore, QtWidgets
 
@@ -30,7 +32,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		self.doUpdate = True # set to false to not update on signal/slot
 
-		self.setMaximumHeight(200)
+		self.setMaximumHeight(220) # if adding rows, make this bigger
 
 		self.myHBoxLayout = QtWidgets.QHBoxLayout(self)
 
@@ -126,7 +128,13 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.leftGridLayout.addWidget(self.mySNR, myRow, 0)
 		self.leftGridLayout.addWidget(self.myDiameter, myRow, 1)
 
-		self.myHBoxLayout.addLayout(self.leftGridLayout)
+		myRow += 1
+		myCommitButton = QtWidgets.QPushButton('Commit')
+		myCommitButton.setToolTip('Commit z and diameter (for ROIs)')
+		self.leftGridLayout.addWidget(myCommitButton, myRow, 0)
+
+		# add
+		self.myHBoxLayout.addLayout(self.leftGridLayout, stretch=2)
 
 		#
 		# to hold plot
@@ -138,7 +146,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 		self.figure.set_facecolor("black")
 
-		self.myHBoxLayout.addWidget(self.canvas)
+		self.myHBoxLayout.addWidget(self.canvas, stretch=8)
 
 	def getLineRadius(self):
 		return self.lineRadius
@@ -186,6 +194,105 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		#if self.updateDict is not None:
 		#	self.updateLineProfile(self.updateDict)
 
+	def slot_updateLineProfile(self, updateDict):
+		"""
+		update line ROI
+
+		updateDict: has info on ROI, fill in info from *this params
+			can be None
+		"""
+
+		print('bLineProfileWidget.slot_updateLineProfile()')
+
+		if updateDict is None:
+			# clear entire axes
+			self.axes.clear()
+			# refresh
+			self.canvas.draw()
+			return
+
+		# debug
+		#print('  updateDict:')
+		#print(json.dumps(updateDict, indent=2))
+
+		if not self.doUpdate:
+			print('  bLineProfileWidget.slot_updateLineProfile() not updating as self.doUpdate is False')
+			return None
+
+		if updateDict['type'] != 'lineROI':
+			return None
+
+		# copy current interface into line profile detection dict
+		updateDict['medianFilter'] = self.medianFilter
+		updateDict['lineWidth'] = self.lineWidth
+		updateDict['halfHeight'] = self.halfHeight
+		updateDict['plusMinusSlidingZ'] = self.plusMinusSlidingZ
+
+		lineProfileDict = self.mainWindow.getStack().myLineProfile.getLineProfile3(updateDict)
+		if lineProfileDict is None:
+			return None
+		intensityProfile = lineProfileDict['intensityProfile']
+		goodFit = lineProfileDict['goodFit']
+		minVal = lineProfileDict['minVal']
+		maxVal = lineProfileDict['maxVal']
+		leftIdx = lineProfileDict['leftIdx']
+		rightIdx = lineProfileDict['rightIdx']
+		snrVal = lineProfileDict['snrVal']
+		yFit = lineProfileDict['yFit']
+		xFit = lineProfileDict['xFit']
+
+		###
+		### abb start interface
+		###
+
+		minStr = 'Min: ' + str(minVal)
+		self.myMin.setText(minStr)
+		maxStr = 'Max: ' + str(maxVal)
+		self.myMax.setText(maxStr)
+		snrStr = 'SNR: ' + str(snrVal)
+		self.mySNR.setText(snrStr)
+
+		if goodFit:
+			left_y = intensityProfile[leftIdx]
+			# cludge because left/right threshold detection has different y ...
+			#right_y = oneProfile[rightIdx]
+			right_y = left_y
+			xPnt = [leftIdx, rightIdx]
+			yPnt = [left_y, right_y]
+
+			# interface
+			diamStr = 'Diameter (pixels): ' + str(int(rightIdx-leftIdx)) # points !!!
+			self.myDiameter.setText(diamStr) # points !!!
+		else:
+			print('warning: bLineProfileWidget.updateLineProfile() fit failed')
+			self.myDiameter.setText('Diameter (pixels): None')
+
+		# clear entire axes
+		self.axes.clear()
+
+		self.axes.patch.set_facecolor("black")
+		self.axes.spines['bottom'].set_color('white')
+		self.axes.spines['left'].set_color('white')
+		self.axes.xaxis.label.set_color('white')
+		self.axes.tick_params(axis='x', colors='white')
+		self.axes.tick_params(axis='y', colors='white')
+
+		zorder = 1
+		c = self.mainWindow.getStackView().options['Tracing']['lineProfileColor']
+		self.axes.plot(xFit, intensityProfile,'o-', color=c, zorder=zorder) # Returns a tuple of line objects, thus the comma
+		if goodFit:
+			zorder = 2
+			self.axes.plot(xFit, yFit,'r-', zorder=zorder) # gaussian
+			zorder = 3
+			self.axes.plot(xPnt, yPnt,'ob-', zorder=zorder)
+
+		self.axes.set_xlabel('Line Pixels')
+		self.axes.set_ylabel('Intensity')
+
+		# refresh
+		self.canvas.draw()
+
+	# this is a slot !!!
 	def updateLineProfile(self, updateDict):
 		"""
 		Update the line profile
@@ -199,7 +306,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			print('  bLineProfileWidget.updateLineProfile() not updating as self.doUpdate is False')
 			return None
 
-		# copy curent interface into line profile detection dict
+		# copy current interface into line profile detection dict
 		updateDict['medianFilter'] = self.medianFilter
 		updateDict['lineWidth'] = self.lineWidth
 		updateDict['halfHeight'] = self.halfHeight

@@ -498,6 +498,7 @@ class bPyQtPlot(pg.PlotWidget):
 		xType = xDict['type'] # from (nodes, edges, annotations)
 		xStat = xDict['stat'] # the name of the stat, corresponds to 'key'
 
+		#xData is a list (not nump.ndarray)
 		if xType == 'Nodes':
 			xData = [node[xStat] for node in self.myStack.slabList.nodeDictList]
 		elif xType == 'Edges':
@@ -509,9 +510,22 @@ class bPyQtPlot(pg.PlotWidget):
 			print('bPyQtPlot.doPlotHist() is ignoring x-data type:', xType, 'for key:', xStat)
 			return
 
+		# check if all nan and bail
+		isAllNaN = np.isnan(xData).all()
+		if isAllNaN:
+			print(f'bPyQtPlot.doPlotHist() is not plotting {xStat}, it is all np.nan')
+			return
+
+		# remove nan
+		# xData is a list
+		#xData = xData[~np.isnan(xData)]
+		xData = [x for x in xData if str(x) != 'nan']
+
 		# plot
-		theMin = np.min(xData)
-		theMax = np.max(xData)
+		theMin = np.nanmin(xData)
+		theMax = np.nanmax(xData)
+
+		print(f'doPlotHist() plotting {xStat} hist with len:{len(xData)} min:{theMin} max:{theMax}')
 		#bins = bins=np.linspace(theMin, theMax, 40)
 		bins = 'auto'
 		y,x = np.histogram(xData, bins=bins)

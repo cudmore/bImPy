@@ -6,7 +6,7 @@ from qtpy import QtCore
 class bEvent(QtCore.QObject):
 
 	#
-	_verboseSlots = True # if true then
+	_verboseSlots = False # if true then have slots print when they get called
 
 	def __init__(self, eventType, nodeIdx=None, edgeIdx=None, slabIdx=None,
 			edgeList=None,

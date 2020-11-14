@@ -10,7 +10,7 @@ see
 
 """
 
-import sys, os, math
+import sys, os, math, json
 from collections import OrderedDict
 
 import numpy as np
@@ -142,14 +142,14 @@ class bPyQtGraphRoiList(QtCore.QObject):
 		todo: stop keeping 2 copies of these object lists
 		todo: look into using data list widget rather than list widget
 		"""
-		print('_decriment_bAnnotationIndex() deletedAnnotationIdx:', deletedAnnotationIdx)
+		print('bPyQtGraphRoiList._decriment_bAnnotationIndex() deletedAnnotationIdx:', deletedAnnotationIdx)
 
 		# I am not sure what allChildren() is returning
 		# I just want a list of pyqtgraph rio and not sure how to get it
 		items = self.parentPlotWidget.getViewBox().allChildren()
 
 		for item in items:
-			print('  item is type:', type(item))
+			#print('  item is type:', type(item))
 
 			# I am not sure the scope/extent of items
 			if isinstance(item, QtWidgets.QGraphicsRectItem):
@@ -159,7 +159,7 @@ class bPyQtGraphRoiList(QtCore.QObject):
 			# todo: lots of items here, not all are roi with property 'bAnnotationIndex'
 			if bAnnotationIndex is None:
 				continue
-			print('_decriment_bAnnotationIndex bAnnotationIndex:', bAnnotationIndex, 'type:', type(bAnnotationIndex))
+			#print('_decriment_bAnnotationIndex bAnnotationIndex:', bAnnotationIndex, 'type:', type(bAnnotationIndex))
 			if bAnnotationIndex > deletedAnnotationIdx:
 				newAnnotationIdx = bAnnotationIndex - 1
 				print('  decrementing bAnnotationIndex:', bAnnotationIndex, 'to newAnnotationIdx:', newAnnotationIdx)
@@ -175,6 +175,7 @@ class bPyQtGraphRoiList(QtCore.QObject):
 		print('bPyQtGraphRoiList.selectByIdx() annotationIdx:', annotationIdx)
 		if annotationIdx is None:
 			self.selectRoi(None)
+			theRet = None
 		else:
 			# I want this to be items()
 			item = self._findItemByIndex(annotationIdx)
@@ -187,6 +188,9 @@ class bPyQtGraphRoiList(QtCore.QObject):
 				if bAnnotationIndex == annotationIdx:
 					self.selectRoi(item) # make it 'blue'
 			'''
+			theRet = self.getState(item)
+		#
+		return theRet
 
 	def selectRoi(self, roiObject=None):
 		"""
@@ -207,7 +211,7 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 			# update selected roi
 			self.mySelectedRoi = roiObject
-			self.mySelectedRoi.setPen(pg.mkPen('b'))
+			self.mySelectedRoi.setPen(pg.mkPen('y'))
 
 			# somehow we need to select an roi, like if it was created with 'a'+click
 			# like
@@ -259,19 +263,32 @@ class bPyQtGraphRoiList(QtCore.QObject):
 			# refresh ???
 
 	'''
-	def slot_changed(self, e):
+	def _mapToScene(self, xy):
 		"""
-		e: pyqtgraph.graphicsItems.ROI.RectROI
+		roi coordinates are saved in
+			- pyqt (horz, vert)
+			- relative to image (not scene)
+		map image coordinates to scene (do not swap x/y, we do that when we calculate e.g. line profile from image
 		"""
-		return
-		"""
-		state = e.getState() #self.myRectROI.getState()
-		pos = state['pos'] # (horizontal, vertical)
-		size = state['size']
-		print('myROI_changed() pos:', pos, 'size:', size)
-		"""
+		myImage = self.parentPlotWidget.getMyImage()
+		imagePnt = myImage.mapToScene(xy[0], xy[1])
+		newTuple = (imagePnt.x(), imagePnt.y())
+		return newTuple
 	'''
-
+	'''
+	def _mapFromScene(self, xy):
+		"""
+		roi coordinates are saved in
+			- pyqt (horz, vert)
+			- relative to image (not scene)
+		map image coordinates to scene (do not swap x/y, we do that when we calculate e.g. line profile from image
+		"""
+		myImage = self.parentPlotWidget.getMyImage()
+		imagePnt = myImage.mapFromScene(xy[0], xy[1])
+		newTuple = (imagePnt.x(), imagePnt.y())
+		return newTuple
+	'''
+	'''
 	def _xySwapTuple(self, t, doSwap=False, mapToParentImage=True):
 		"""
 		swap an (x,y) tuple to convert between
@@ -287,9 +304,9 @@ class bPyQtGraphRoiList(QtCore.QObject):
 		if mapToParentImage:
 			myImage = self.parentPlotWidget.getMyImage()
 			imagePnt = myImage.mapFromScene(t[0], t[1])
-			imagePnt = (imagePnt.x(), imagePnt.y())
+			t = (imagePnt.x(), imagePnt.y())
 		return t
-
+	'''
 	def getState(self, e):
 		"""
 		get state of roi e
@@ -300,10 +317,14 @@ class bPyQtGraphRoiList(QtCore.QObject):
 		this is a very tricky function
 		"""
 
+		#print('*** bPyQtGraphRoiList.getStat()')
+
+		roiObject = e
+
 		roiType = None
 		if isinstance(e, pyqtgraph.graphicsItems.ROI.RectROI):
 			roiType = 'rectROI'
-		elif isinstance(e, pyqtgraph.graphicsItems.ROI.LineROI):
+		elif isinstance(e, pyqtgraph.graphicsItems.ROI.LineROI) or isinstance(e, pyqtgraph.graphicsItems.ROI.LineSegmentROI):
 			roiType = 'lineROI'
 		elif isinstance(e, pyqtgraph.graphicsItems.ROI.CircleROI):
 			roiType = 'circleROI'
@@ -314,6 +335,10 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 		# roiState is in pyqtgraph coordinates (horz, vert)
 		roiState = e.getState() # dict with 'pos(Point)', 'size(Point)', 'angle(FLoat)'
+			# for a lineROI: {'pos': Point(68.623608, 1.950603), 'size': Point(1.000000, 1.000000), 'angle': 0.0}
+
+		#print('  roiState:', roiState)
+			# this seems to be in image coordinates (horz, vert)
 
 		retDict = {} #OrderedDict()
 
@@ -323,53 +348,83 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 		retDict['type'] = roiType
 
-		retDict['x'] = roiState['pos'].x() # not flipped
-		retDict['y'] = roiState['pos'].y() # not flipped
-		retDict['z'] = 1 #roiState['pos'].x() # not flipped # to do, use property to stroe z on creation
+		xy = (roiState['pos'].x(), roiState['pos'].y())
+		#print('  before _mapFromScene() xy:', xy)
+		#xy = self._mapFromScene(xy)
+		#print('  after _mapFromScene() xy:', xy)
+		retDict['x'] = xy[0]
+		retDict['y'] = xy[1]
+		retDict['z'] = 1 # to do, use property to store z on creation
 
 		#
 		# roiParams
-		roiParams = {}
+		roiParams = {
+			'pos': None,
+			'size': None,
+			'pnt1': None,
+			'pnt2': None,
+			'lineWidth': None,
+		}
 
-		thePos = (roiState['pos'].x(), roiState['pos'].y())
-		roiParams['pos'] = self._xySwapTuple(thePos) #swapped
+		if roiType != 'lineROI':
+			thePos = (roiState['pos'].x(), roiState['pos'].y())
+			#theSize = (roiState['size'].x(), -roiState['size'].y()) # y-flipped
+			theSize = (roiState['size'].x(), roiState['size'].y())
+			roiParams['pos'] = thePos #swapped
+			roiParams['size'] = theSize
 
-		theSize = (roiState['size'].x(), roiState['size'].y())
-		roiParams['size'] = self._xySwapTuple(theSize) #swapped
-		# not used
-		#retDict['angle'] = roiState['angle'] # seem to need to divide by 360 to get it correct?
+		myImage = self.parentPlotWidget.getMyImage()
 
-		roiParams['pnt1'] = None
-		roiParams['pnt2'] = None
-		roiParams['lineWidth'] = None
 		if roiType == 'lineROI':
 			# first element of size is the line width
-			roiParams['lineWidth'] = roiParams['pos'][0]
+			roiParams['lineWidth'] = roiState['size'][0]
 			# handle[0] is one end, handle[1] is the other
 			sceneHandlePositions = e.getSceneHandlePositions()
-			#handleList = []
 			for idx, handle in enumerate(sceneHandlePositions):
-				thePnt = handle[1] # each handle is ('type', pos)
+				#print('  idx:', idx, 'handle:', handle)
+				#thePnt = handle.pos() #handle[1] # each handle is ('type', pos)
+				thePnt = handle[1] #handle[1] # each handle is ('type', pos)
+				#print('   before roiObject.mapToItem()', thePnt)
+				thePnt = myImage.mapFromScene(thePnt)
 				thePnt = (thePnt.x(), thePnt.y())
-				thePnt = self._xySwapTuple(thePnt) # swapped
-				#handleList.append(thePnt)
+				#print('   after roiObject.mapToItem()', thePnt)
 				if idx == 0:
 					roiParams['pnt1'] = thePnt
+					retDict['x'] = thePnt[0]
+					retDict['y'] = thePnt[1]
 				elif idx == 1:
 					roiParams['pnt2'] = thePnt
 
+		#
 		retDict['roiParams'] = roiParams
+
+		# we need save state to redraw on load, for example for lineroi
+		# it is not enough to specify (pnt1,pnt2) but we need 'size' and 'angle'
+		# I donlt really understand how size works for lineroi?
+		saveState = e.saveState()
+		print('  saveState:', saveState)
+		retDict['saveState'] = saveState
 
 		return retDict
 
+	def slot_changed(self, e):
+		"""
+		e: pyqtgraph.graphicsItems.ROI.RectROI
+		"""
+		# emit signal that roi has changed
+		emitState = self.getState(e)
+		self.parentPlotWidget.roiChanged(emitState)
+
+	'''
 	def slot_changeFinished(self, e):
 		print('=== myROI_changed_finished()')
 
-		# emit signal that roi has changed
+		# emit signal that roi has finished changed
 		emitState = self.getState(e)
 
 		#self.changeFinished.emit(emitState)
 		self.parentPlotWidget.roiChangeFinished(emitState)
+	'''
 
 	def populate(self, theAnnotationList):
 		"""
@@ -378,20 +433,26 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 		theAnnotationList: bimpy.bAnnotationList
 
-		annotation list is in numpy order !!!! need to reverese for pyqt
-
+		annotation list is in
+			- pyqt order (horz, vert)
+			- coordinates are wrt image, need to mapToScene
 		"""
 		print('bPyQtGraphRoiList.populate is trying to populate all pyqtGraph rois in theAnnotationList')
 		m = theAnnotationList.numItems()
 		for annotIdx in range(m):
 			itemDict = self.getAnnotationList().getAnnotationDict(annotIdx)
-			print('  populate()', annotIdx, itemDict)
+
+			print('  bPyQtGraphRoiList.populate() annotIdx:', annotIdx)
+			print(json.dumps(itemDict, indent=2))
+
 			type = itemDict['type']
 			x = itemDict['x']
 			y = itemDict['y']
+			z = itemDict['y']
 			roiParams = itemDict['roiParams'] # a state dict for a pyqtgraph roi (in numpy order of (vert, horz))
-			pos = (x, y)
-			self.newROI(type, pos, roiParams=roiParams, useThisIdxOnLoad=annotIdx, emitNew=False)
+			saveState = itemDict['saveState']
+			pos = (x, y) # todo: not needed when using roiParams
+			self.newROI(type, pos, z=z, roiParams=roiParams, saveState=saveState, useThisIdxOnLoad=annotIdx, emitNew=False)
 
 	"""
 	This is getting way to complicated
@@ -399,16 +460,19 @@ class bPyQtGraphRoiList(QtCore.QObject):
 	And new on load from file
 	How do I do this and make it easy to come back and edit the code ???????????????????????????
 	"""
-	def newROI(self, type, pos, roiParams=None, useThisIdxOnLoad=None, emitNew=True):
+	#def newRoiOnClick(self, type, xPos, yPos):
+
+	def newROI(self, type, pos, z=0, roiParams=None, saveState=None, useThisIdxOnLoad=None, emitNew=True):
 		"""
 		make a new roi
 			if roiState then recreate from a saved pyqtgraph rio getState()
 
 		type: (rectROI, lineROI, circleROI)
 		pos: (x,y), position of roi (usually where user clicked)
-		roiParams: not used on new, used to load
+		roiParams: NOT used on new, used to load
 					On load all our points are in image coordinates
 					We are drawing with pyqt graph, need to image.mapToScene(pnt)
+		saveState: used when populating from file
 		useThisIdxOnLoad: used by self.populate
 		emitNew: If true will emit and table slot will add a new roi
 				Use false when populating on Load (table is already populated)
@@ -416,62 +480,90 @@ class bPyQtGraphRoiList(QtCore.QObject):
 		use this when loading from bAnnotationList
 		todo: need param to ay emitNew=False
 		"""
-		print(f'  bPyQtGraphRoiList.newROI() type:{type}, pos:{pos}, roiParams:{roiParams}')
+		print(f'=== bPyQtGraphRoiList.newROI() type:{type}, pos:{pos}, roiParams:{roiParams}')
 
 		# not used
 		# what the user is looking at
 		#viewRect = self.parentPlotWidget.getViewBox().viewRect() # (l, t, w, h)
 
-		size = (20,20) # default size
-		lineWidth = 1
+		size = (100,-100) # default size, y-flipped
+		lineWidth = 5
 
 		# on load, roiParams is a string !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		pnt1 = None
 		pnt2 = None
+		useRoiParams = False
 		if roiParams is not None:
 			print('  roi.newROI() roiParams:', roiParams)
+			useRoiParams = True
 			#print('  roiParams is of type:', type(roiParams))
 			pos = roiParams['pos']
 			size = roiParams['size']
-			pnt1 = roiParams['pnt1']
+			pnt1 = roiParams['pnt1'] # need to map to scene
 			pnt2 = roiParams['pnt2']
 			lineWidth = roiParams['lineWidth']
 
-		# pos is in numpy (vert, horz)
-		#flippedPos = (pos[1], pos[0]) # flipped
-		notFlippedPos = pos # NOT flipped
-
 		if type == 'rectROI':
 			# centered: If True, scale handles affect the ROI relative to its center, rather than its origin.
-			newROI = pg.RectROI(notFlippedPos, size,
+			newROI = pg.RectROI(pos, size,
 								pen=(0,9), invertible=True, centered=False)
 		elif type == 'circleROI':
-			newROI = pg.CircleROI(notFlippedPos, size,
+			newROI = pg.CircleROI(pos, size,
 								pen=(0,9), invertible=True)
 		elif type == 'lineROI':
 			# pos1: The position of the center of the ROI’s left edge.
 			# pos2: The position of the center of the ROI’s right edge.
-			pnt1 = notFlippedPos
-			if pnt2 is None:
-				pnt2 = [sum(x) for x in zip(pnt1, size)] #list(map(add, pos, size))
-			print('making lineroi pnt1:', pnt1, 'pnt2:', pnt2)
-			newROI = pg.LineROI(pnt1, pnt2,
-								pen=(0,9), invertible=True, width=lineWidth)
+			if useRoiParams:
+				# pnt2 is NOT coordinates, it is size
+				'''
+				pnt2_width = pnt2[0]-pnt1[0]
+				pnt2_height = pnt2[1]-pnt1[1]
+				pnt2 = (pnt2_width, pnt2_height) # y-flipped
+				'''
+			else:
+				pnt1 = pos
+				#pnt2 = [sum(x) for x in zip(pnt1, size)]
+				pnt2 = (pos[0]+size[0], pos[1]+size[1])
+
+			#print('  !!! making new LineSegmentROI with pnt1:', pnt1, 'pnt2:', pnt2)
+			#newROI = pg.LineSegmentROI(pnt1, pnt2,
+			#					pen=(0,9), invertible=True)#,
+			#					#parent=self.parentPlotWidget.getViewBox())
+			print('  !!! making new LineROI with pnt1:', pnt1, 'pnt2:', pnt2)
+			# when we create, we have to flip pnt1 y, y-flipped
+			#pnt2 = (pnt2[0], -pnt2[1]) # y-flipped
+
+			newROI = pg.LineROI(pnt1, pnt2, width=lineWidth,
+								pen=(0,9), invertible=True)
+			if saveState is not None:
+				print('    saveState:', saveState)
+				newROI.setState(saveState)
+
+			# select on user click new ROI, if we have saveState, we are loading from a file
+			if saveState is None:
+				self.selectRoi(newROI)
+				#self.parentPlotWidget.selectAnnotation()
+
+			#newROI.removeHandle(1)
+			#savedState = {'pos': (-36.08899064899988, 1170.768775111201), 'size': (1289.8493786288518, 1.0), 'angle': -67.70784968514852}
+			#newROI.setState(savedState)
 
 		#
 		# add signals to interact with the roi
-		newROI.sigRegionChangeFinished.connect(self.slot_changeFinished)
+		# this works but I am using slot_changed instead
+		#newROI.sigRegionChangeFinished.connect(self.slot_changeFinished)
 		# clicking is disabled by default to prevent stealing clicks from objects behind the ROI
 		newROI.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
 		newROI.sigClicked.connect(self.slot_clicked)
-		# other signal/clots that are not used
+		# other signal/slots that are not used
 		#newROI.sigHoverEvent.connect(self.slot_hover) # not needed
-		#newROI.sigRegionChanged.connect(self.slot_changed) # not needed
+		newROI.sigRegionChanged.connect(self.slot_changed) # not needed
 		# handled by parent
 		#newROI.sigRemoveRequested.connect(self.slot_removeRequested)
 
 		#
-		# add to parent
+		# add to parent viewbox
 		self.parentPlotWidget.getViewBox().addItem(newROI)
 
 		#
@@ -483,16 +575,22 @@ class bPyQtGraphRoiList(QtCore.QObject):
 											# 2) parses lineROI
 											# 3) maps to image coordinates
 
-			# 20201029, no longer flipped
-			x = pos[0] # pos is already in numpy (vert,horz)
+			x = pos[0]
 			y = pos[1]
-			z = 0
+			z = z
 
 			roiParams = stateDict['roiParams'] # todo: this is buggy
+			saveState = stateDict['saveState'] # todo: this is buggy
 
-			newAnnotationIdx = self.getAnnotationList().addAnnotation(type, x, y, z, roiParams=roiParams)
+			newAnnotationIdx = self.getAnnotationList().addAnnotation(type, x, y, z,
+								roiParams=roiParams, saveState=saveState)
 
 		newROI.setProperty('bAnnotationIndex', newAnnotationIdx)
+
+		# select the new annotation in parent
+		# todo: this is super fucking sloppy
+		print('xxxyyy bPyQtGraphRoiList.newROI() is selecting new annotation in parentPlotWidget()')
+		self.parentPlotWidget.selectAnnotation(newAnnotationIdx)
 
 		return newAnnotationIdx
 
@@ -505,11 +603,14 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 ###########################################################################
 class myPyQtGraphPlotWidget(pg.PlotWidget):
-	roiChangeFinishedSignal = QtCore.Signal(object)
+	roiChangedSignal = QtCore.Signal(object) # ROI
+	roiChangeFinishedSignal = QtCore.Signal(object) # ROI
 	setSliceSignal = QtCore.Signal(str, object)
 	selectNodeSignal = QtCore.Signal(object)
 	selectEdgeSignal = QtCore.Signal(object)
 	selectAnnotationSignal = QtCore.Signal(object)
+	selectRoiSignal = QtCore.Signal(object)
+
 	#
 	tracingEditSignal = QtCore.Signal(object) # on new/delete/edit of node, edge, slab
 	#
@@ -554,14 +655,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		# this is required for mouse callbacks to have proper x/y position !!!
 		# hide bottom/left axis, works
-		self.hideAxis('left')
-		self.hideAxis('bottom')
+		#self.hideAxis('left')
+		#self.hideAxis('bottom')
 
 		# Instances of ImageItem can be used inside a ViewBox or GraphicsView.
 		fakeData = np.zeros((1,1,1))
 		self.myImage = pg.ImageItem(fakeData)
 		self.addItem(self.myImage)
 
+		#self.sigMouseClicked.connect(self.onMouseClicked_self)
 		# self.plot() creates: <class 'pyqtgraph.graphicsItems.PlotDataItem.PlotDataItem'>
 
 		# a caiman selection
@@ -714,10 +816,20 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self._preComputeAllMasks()
 
 		# 20201024 playing with rois to extract GCaMP6 signals
+
+		# need to refresh before drawing?
+		self.setSlice()
+
 		self.myRoiList = bPyQtGraphRoiList(self)
 		annotationList = self.mySimpleStack.annotationList
 		self.myRoiList.populate(annotationList) # populate with bAnnotationList
 		self.myClickMode = 'drag' #(drag, lineROI, rectROI, circleROI)
+
+	def roiChanged(self, roiDict):
+		# todo: need to update the backend annotation in self.mySimpleStack.annotationList
+		self.mySimpleStack.annotationList.updateRoi(roiDict)
+
+		self.roiChangedSignal.emit(roiDict)
 
 	def roiChangeFinished(self, roiDict):
 		"""
@@ -726,7 +838,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		expecting all (x,y) to be in numpy (vert,width)
 		"""
 
-		print('todo: (i) add handle position to dict and (ii) map scene coordinates of handle tim image coordinateds')
+		#print('todo: (i) add handle position to dict and (ii) map scene coordinates of handle tim image coordinateds')
 		# roiDict has handles, we need to map from scene to image coordinates
 		# imagePos = self.myImage.mapFromScene(event.pos())
 
@@ -1283,29 +1395,29 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# select a pyqtgraph roi (can be none)
 		# todo: this is redundant, *this is being called when user clicks
 		# via self.myRoiList.slot_Clicked()
-		self.myRoiList.selectByIdx(annotationIdx)
+		roiStateDict = self.myRoiList.selectByIdx(annotationIdx)
 
 		if annotationIdx is None:
 			x = []
 			y = []
-			self.myAnnotationPlotSelection.setData(y, x) # flipped
+			#self.myAnnotationPlotSelection.setData(y, x) # flipped
+			self.myAnnotationPlotSelection.setData(x, y)
 		else:
-			#x,y,z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
 			x, y, z = self.mySimpleStack.annotationList.getAnnotation_xyz(annotationIdx)
 
 			if snapz:
 				z = int(z)
 				self.setSlice(z)
 
-				#self._zoomToPoint(x, y)
-				self._zoomToPoint(y, x) # flipped
+				#self._zoomToPoint(y, x) # flipped
+				self._zoomToPoint(x, y)
 
 			# update
 			x = [x]
 			y = [y]
 			# abb 20201026
-			self.myAnnotationPlotSelection.setData(y, x) # flipped
-			#self.myAnnotationPlotSelection.setData(x, y) # flipped
+			#self.myAnnotationPlotSelection.setData(y, x) # flipped
+			self.myAnnotationPlotSelection.setData(x, y)
 
 			# select caiman, will fail if not loaded
 			self.setCaimanImage(annotationIdx)
@@ -1317,6 +1429,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		if doEmit:
 			myEvent = bimpy.interface.bEvent('select annotation', nodeIdx=annotationIdx)
 			self.selectAnnotationSignal.emit(myEvent)
+			self.selectRoiSignal.emit(roiStateDict)
 
 	def flashNode(self, nodeIdx, numberOfFlashes):
 		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
@@ -1386,12 +1499,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		if annotationIdx is None:
 			return
 		if numberOfFlashes>0:
-			if self.mySimpleStack.slabList is not None:
+			#if self.mySimpleStack.slabList is not None:
+			if self.mySimpleStack.annotationList is not None:
 				#x, y, z = self.mySimpleStack.slabList.getNode_xyz(nodeIdx)
 				x, y, z = self.mySimpleStack.annotationList.getAnnotation_xyz(annotationIdx)
 				x = [x]
 				y = [y]
-				self.myAnnotationSelectionFlash.setData(y, x) # flipped
+				#self.myAnnotationSelectionFlash.setData(y, x) # flipped
+				self.myAnnotationSelectionFlash.setData(x, y)
 				#self.myNodeSelectionFlash.set_offsets(np.c_[y, x])
 				#
 				QtCore.QTimer.singleShot(20, lambda:self.flashAnnotation(annotationIdx, numberOfFlashes-1))
@@ -1719,8 +1834,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		padding = 0.0
 		self.setRange(viewRect, padding=padding)
 
-		print('  zoomPoint:', type(zoomPoint), zoomPoint)
-		print('  viewRect:', type(viewRect), viewRect)
+		#print('  zoomPoint:', type(zoomPoint), zoomPoint)
+		#print('  viewRect:', type(viewRect), viewRect)
 
 	def _myTranslate(self, direction):
 		"""
@@ -2050,18 +2165,35 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.setSliceSignal.emit('set slice', self.currentSlice)
 
 	def onMouseClicked_scene(self, event):
+
 		eKeyIsDown = self.keyIsDown == 'e'
 
 
-		imagePos = self.myImage.mapFromScene(event.pos())
-		slabPos = self.mySlabPlot.mapFromScene(event.pos())
+		print('=== onMouseClicked_scene()')
+		'''
+		pos = event.pos()
+		print('  before pos:', pos)
+		pos = self.mapToItem(self.myImage, pos)
+		print('  1 after self.mapToItem(self.myImage) pos:', pos)
+		pos = self.myImage.mapFromScene(event.pos())
+		print('  2 after pos:', pos)
+		pos2 = self.myImage.mapToScene(pos)
+		print('  3 after pos2:', pos2)
+		'''
+		#pos = event.pos()
+		pos = event.scenePos()
+
+		imagePos = self.myImage.mapFromScene(pos)
+		#slabPos = self.mySlabPlot.mapFromScene(event.pos())
 
 		# pyqtgraph coords (horz,vert)
 		x = imagePos.x()
 		y = imagePos.y()
 		z = self.currentSlice
 
-		print('=== myPyQtGraphPlotWidget.onMouseClicked_scene() imagePos is x:', x, 'y:', y, 'eKeyIsDown:', eKeyIsDown)
+		print('=== myPyQtGraphPlotWidget.onMouseClicked_scene()')
+		print('  imagePos is x:', x, 'y:', y)
+		print('  eKeyIsDown:', eKeyIsDown)
 
 		# abb 20201024 working on rois
 		# moved this to self.mousePressEvent()
@@ -2134,7 +2266,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		elif self.keyIsDown == 'a':
 			# new annotation
-			self.newAnnotation(y, x, z) # flipped
+			#self.newAnnotation(y, x, z) # flipped
+			self.newAnnotation(x, y, z)
 
 	def onMouseMoved_scene(self, pos):
 
@@ -2158,7 +2291,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			# don't do this
 			return
 
-		self.mainWindow.getStatusToolbar().setMousePosition(displayThisStack, self.currentSlice, yPos, xPos) # flipped
+		#self.mainWindow.getStatusToolbar().setMousePosition(displayThisStack, self.currentSlice, yPos, xPos) # flipped
+		self.mainWindow.getStatusToolbar().setMousePosition(displayThisStack, self.currentSlice, xPos, yPos)
 
 	'''
 	def sceneClicked(self, event):
@@ -2659,6 +2793,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					self.selectNodeSignal.emit(myEvent)
 
 			elif selectedAnnotationIdx is not None:
+				# todo: add function to self.deleteAnnotation()
+				#						self.deleteNode()
+				#						etc
 				deleteAnnotationIdx = selectedAnnotationIdx
 				print('\n=== myPyQtGraphPlotWidget.myEvent() ... deleteSelection delete annotation:', deleteAnnotationIdx)
 				print('  todo: move this annotationList.deleteAnnotation into bPyQtGraphRoiList')
@@ -2697,10 +2834,17 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.tracingEditSignal.emit(myEvent)
 
 		elif event['type']=='setType':
+			"""
+			20201113, this is empty except for setType
+			if we have a (node, edge,annotation) selected then set its type
+			"""
 			# see bTableWidget2.menuActionHandler
-			print('  bPyQtGraph.myEvent() type: setType')
-			objectType = event['objectType'] # like ('nodes', 'edges')
 			newValue = event['newValue'] # like (1,2,3,...)
+
+			print('  bPyQtGraph.myEvent() event type: setType newValue:', newValue)
+			self.setSelectedType(newValue)
+			'''
+			objectType = event['objectType'] # like ('nodes', 'edges')
 			objectIdx = event['objectIdx']
 			#
 			# make backend change
@@ -2717,7 +2861,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				newEdgeDict = self.mySimpleStack.slabList.getEdge(objectIdx)
 				myEvent = bimpy.interface.bEvent('updateEdge', edgeIdx=objectIdx, edgeDict=newEdgeDict)
 			self.tracingEditSignal.emit(myEvent)
-
+			'''
 		elif event['type']=='setIsBad':
 			objectType = event['objectType'] # like ('nodes', 'edges')
 			newValue = event['newValue'] # like (True, False)
@@ -2756,6 +2900,73 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		return theRet
 
+	# abb 20201113
+	def getSelectedObject(self):
+		"""
+		get currently selected object
+		there is order here: slabs -> edges -> nodes -> annotations
+
+		todo: only allow one type of selected object and get rid of this
+		"""
+		selectDict = {'objectType': None, 'idx': None}
+		selectedSlabIdx = self.selectedSlab()
+		selectedEdgeIdx = self.selectedEdge()
+		selectedNodeIdx = self.selectedNode()
+		selectedAnnotationIdx = self.selectedAnnotation()
+
+		if selectedSlabIdx is not None and self.options['Panels']['showLineProfile']:
+			selectDict['objectType'] = 'slab'
+			selectDict['idx'] = selectedSlabIdx
+		elif selectedEdgeIdx is not None:
+			selectDict['objectType'] = 'edge'
+			selectDict['idx'] = selectedEdgeIdx
+		elif selectedNodeIdx is not None:
+			selectDict['objectType'] = 'node'
+			selectDict['idx'] = selectedNodeIdx
+		elif selectedAnnotationIdx is not None:
+			selectDict['objectType'] = 'annotation'
+			selectDict['idx'] = selectedAnnotationIdx
+		else:
+			selectDict = None
+		#
+		return selectDict
+
+	def setSelectedType(self, newValue):
+		"""
+		coming from bToolbar, set selected object to new type 'newValue'
+		"""
+		selectedDict = self.getSelectedObject()
+
+		if selectedDict is None:
+			print('bPyQtGraph.setSelectedType() did not find any selection with self.getSelectedObject()')
+			return
+
+		# todo: not setting type for slabs
+
+		print('bPyQtGraph.setSelectedType() newValue:', newValue, 'selectedDict:', selectedDict)
+
+		objectType = selectedDict['objectType']
+		objectIdx = selectedDict['idx']
+
+		if selectedDict['objectType'] == 'edge':
+			self.mySimpleStack.slabList.setEdgeType(objectIdx, newValue)
+			# emit
+			newEdgeDict = self.mySimpleStack.slabList.getEdge(objectIdx)
+			myEvent = bimpy.interface.bEvent('updateEdge', edgeIdx=objectIdx, edgeDict=newEdgeDict)
+			self.tracingEditSignal.emit(myEvent)
+		elif selectedDict['objectType'] == 'node':
+			self.mySimpleStack.slabList.setNodeType(objectIdx, newValue)
+			# emit
+			newNodeDict = self.mySimpleStack.slabList.getNode(objectIdx)
+			myEvent = bimpy.interface.bEvent('updateNode', nodeIdx=objectIdx, nodeDict=newNodeDict)
+			self.tracingEditSignal.emit(myEvent)
+		elif selectedDict['objectType'] == 'annotation':
+			newAnnotationDict = self.mySimpleStack.annotationList.setAnnotationType(objectIdx, newValue)
+			# emit
+			#newAnnotationDict = self.mySimpleStack.annotationList.getItemDict(objectIdx)
+			myEvent = bimpy.interface.bEvent('updateAnnotation', nodeIdx=objectIdx, nodeDict=newAnnotationDict)
+			self.tracingEditSignal.emit(myEvent)
+
 	def newAnnotation(self, x, y, z, type='annotation'):
 		"""
 		add a generic annotation
@@ -2770,13 +2981,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			# generic point annotation
 			print('  making a generic annotation')
 			# I AM SO FUCKING CONFUSED WITH THIS X/Y CRAP
-			#newAnnotationIdx = self.mySimpleStack.annotationList.addAnnotation(type, x, y, z)
-			newAnnotationIdx = self.mySimpleStack.annotationList.addAnnotation(type, x, y, z) # flipped
+			#newAnnotationIdx = self.mySimpleStack.annotationList.addAnnotation(type, y, x, z) # flipped
+			newAnnotationIdx = self.mySimpleStack.annotationList.addAnnotation(type, x, y, z)
 		else:
 			print('  making an roi annotation with type:', type, 'in self.myRoiList')
-			print('    this will show up as a pyqtgraph roi (line,square, circle)')
 
-			newAnnotationIdx = self.myRoiList.newROI(type, pos=(x,y))
+			newAnnotationIdx = self.myRoiList.newROI(type, pos=(x,y), z=z)
 
 		#
 		self.setSlice()
@@ -2787,6 +2997,35 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		print('  tracingEditSignal.emit() with annotationDict:', annotationDict)
 		myEvent = bimpy.interface.bEvent('newAnnotation', nodeIdx=newAnnotationIdx, nodeDict=annotationDict)
 		self.tracingEditSignal.emit(myEvent)
+
+	# abb 20201113
+	def deleteAnnotation(self, deleteAnnotationIdx):
+		"""
+		delete annotation from backend annotationList and emit changes
+
+		todo: it seems to me, backend objects like bAnnotationList need to
+				derive from xxx
+				emit
+				respond to slots
+		"""
+		wasDeleted = self.mySimpleStack.annotationList.deleteAnnotation(deleteAnnotationIdx)
+		if wasDeleted:
+			#
+			self.selectAnnotation(None) # the old v1 blue selection (not pyqtgraph rois)
+			self.myRoiList.deleteByIndex(deleteAnnotationIdx) # the new list of pyqtgraph roi
+
+			# all we need is set slice
+			#doUpdate = True
+			self.setSlice()
+
+			#
+			#deleteNodeDict = self.mySimpleStack.slabList.getNode(self.selectedNode())
+			#deleteAnnotationDict = self.mySimpleStack.annotationList.getItemDict(xxx)
+			myEvent = bimpy.interface.bEvent('deleteAnnotation', nodeIdx=deleteAnnotationIdx) #, nodeDict=deleteAnnotationDict)
+			self.tracingEditSignal.emit(myEvent)
+			#
+			myEvent = bimpy.interface.bEvent('select annotation', nodeIdx=None)
+			self.selectAnnotationSignal.emit(myEvent)
 
 	def loadMasks(self):
 		"""

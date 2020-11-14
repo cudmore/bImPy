@@ -172,10 +172,95 @@ class bLineProfile:
 		}
 		return lineProfileDict
 
+	def getLineProfile3(self, lineProfileDict):
+		"""
+		used for ROI
+		"""
+		displayThisStack = 1
+
+		slice = lineProfileDict['z']
+
+		medianFilter = lineProfileDict['medianFilter']
+		lineWidth = lineProfileDict['lineWidth']
+		halfHeight = lineProfileDict['halfHeight']
+		plusMinusSlidingZ = lineProfileDict['plusMinusSlidingZ']
+
+		x1 = lineProfileDict['roiParams']['pnt1'][0] # these are in pyqt (horz, vert)
+		y1 = lineProfileDict['roiParams']['pnt1'][1]
+		x2 = lineProfileDict['roiParams']['pnt2'][0]
+		y2 = lineProfileDict['roiParams']['pnt2'][1]
+
+		src = (y1, x1) # swapped
+		dst = (y2, x2)
+
+		# get the image
+		if plusMinusSlidingZ > 0:
+			upSlices = plusMinusSlidingZ
+			downSlices = plusMinusSlidingZ
+			imageSlice = self.mySimpleStack.getSlidingZ2(channel=displayThisStack,
+											sliceNumber=slice,
+											upSlices=upSlices,
+											downSlices=downSlices)
+		else:
+			imageSlice = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=slice)
+
+		# get the line profile
+		try:
+			# abb aics added mode='constant'
+			# Specifies how to compute any values falling outside of the image.
+			intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=lineWidth, mode='constant')
+		except(ValueError) as e:
+			print('ERROR: bLineProfile.getLineProfile23) got nan calling profile.profile_line()')
+			return None
+
+		# smooth the line profile
+		if medianFilter > 0:
+			intensityProfile = scipy.ndimage.median_filter(intensityProfile, medianFilter)
+
+		xFit = np.asarray([a for a in range(len(intensityProfile))])
+
+		##
+		# todo: Do The Fit
+		##
+		yFit, FWHM, leftIdx, rightIdx = self._fit(xFit, intensityProfile, halfHeight=halfHeight)
+		goodFit = not np.isnan(leftIdx)
+		minVal = round(np.nanmin(intensityProfile),2)
+		maxVal = round(np.nanmax(intensityProfile),2)
+
+		if goodFit:
+			yTmpInt_left = intensityProfile[leftIdx]
+			yTmpInt_right = intensityProfile[rightIdx]
+			yTmpInt = max(yTmpInt_left, yTmpInt_right)
+			snrVal = yTmpInt - minVal
+			snrVal = round(snrVal,2)
+		else:
+			snrVal = np.nan
+
+		myDiam = np.nan
+		if goodFit:
+			myDiam = rightIdx - leftIdx + 1
+
+		returnDict = OrderedDict()
+		returnDict['intensityProfile'] = intensityProfile
+		returnDict['goodFit'] = goodFit
+		returnDict['diam'] = myDiam # pixels
+		returnDict['minVal'] = minVal
+		returnDict['maxVal'] = maxVal
+		returnDict['leftIdx'] = leftIdx
+		returnDict['rightIdx'] = rightIdx
+		returnDict['snrVal'] = snrVal # depends on good fit
+		returnDict['yFit'] = yFit
+		returnDict['xFit'] = xFit
+
+		return returnDict
 	def getLineProfile2(self, lineProfileDict, verbose=False):
 		"""
 		extract a line profile and return the fit
+
+		used for tracing
 		"""
+
+		verboseError = False # 20201103
 
 		if verbose:
 			print('bLineProfile.getLineProfile2()')
@@ -239,19 +324,50 @@ class bLineProfile:
 
 		if np.isnan(intensityProfile[0]):
 			print('\nERROR: bLineProfile.getLineProfile2() got line profile nan?\n')
-			return
+			return None
 		'''
 		print('   intensityProfile:', type(intensityProfile), intensityProfile.shape, intensityProfile)
 		print('   x:', type(x), x.shape, x)
 		'''
 
+		#
 		# do the fit
-		yFit, FWHM, leftIdx, rightIdx = self._fit(xFit,intensityProfile, halfHeight=halfHeight)
-		#print('   yFit:', yFit, 'FWHM:', FWHM, 'leftIdx:', leftIdx, 'rightIdx:', rightIdx)
+		yFit, FWHM, leftIdx, rightIdx = self._fit(xFit, intensityProfile, halfHeight=halfHeight)
 
 		goodFit = not np.isnan(leftIdx)
 		minVal = round(np.nanmin(intensityProfile),2)
 		maxVal = round(np.nanmax(intensityProfile),2)
+
+		# abb 20201103
+		if goodFit:
+			if leftIdx==0 or rightIdx==len(intensityProfile)-1:
+				if verboseError:
+					print(f'  ERROR: getLineProfile2() rejecting slab {slabIdx}, got left/right index fell at beginning/end of line')
+				goodFit = False
+				#return None
+		# abb 20201103
+		if goodFit:
+			# expand by 2 pixels (make the line just below 50% max height)
+			leftIdx -= 1
+			rightIdx += 1
+
+		# abb 20201103
+		# this strategy is rejecting too many
+		'''
+		if goodFit:
+			tmpLeftRightPixels = 5
+			if len(intensityProfile) > 2 * tmpLeftRightPixels:
+				leftMean = np.nanmean(intensityProfile[0:tmpLeftRightPixels])
+				leftStd = np.nanstd(intensityProfile[0:tmpLeftRightPixels])
+				rightMean = np.nanmean(intensityProfile[-tmpLeftRightPixels:])
+				rightStd = np.nanstd(intensityProfile[-tmpLeftRightPixels:])
+				leftRightDiff = abs(leftMean-rightMean)
+				thisStd = leftStd if leftStd>rightStd else rightStd # use the larger Std
+				if leftRightDiff > 4*thisStd:
+					print(f'  *** ERROR: getLineProfile2() rejecting slab {slabIdx}, std of left/right is too large')
+					print(f'      leftMean:{leftMean}, rightMean:{rightMean}, leftStd:{leftStd}, rightStd:{rightStd}')
+					goodFit = False
+		'''
 
 		# abb oct2020
 		# was this
@@ -278,10 +394,10 @@ class bLineProfile:
 
 		returnDict = OrderedDict()
 		returnDict['intensityProfile'] = intensityProfile
+		returnDict['goodFit'] = goodFit
 		returnDict['diam'] = myDiam # pixels
 		returnDict['minVal'] = minVal
 		returnDict['maxVal'] = maxVal
-		returnDict['goodFit'] = goodFit
 		returnDict['leftIdx'] = leftIdx
 		returnDict['rightIdx'] = rightIdx
 		returnDict['snrVal'] = snrVal # depends on good fit

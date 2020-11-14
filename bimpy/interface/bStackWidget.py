@@ -257,6 +257,14 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.myStackView2.roiChangeFinishedSignal.connect(self.annotationTable.slot_roiChanged) # new 20201028 for pyqt roi
 		self.annotationTable.selectRowSignal.connect(self.myStackView2.slot_selectAnnotation)
 
+		self.myStackView2.roiChangeFinishedSignal.connect(self.lineProfileWidget.slot_updateLineProfile)
+		# crap, this is already sending a bEvent, I need to send state() dict of ROI
+		#self.myStackView2.selectAnnotationSignal.connect(self.lineProfileWidget.slot_updateLineProfile)
+		self.myStackView2.selectRoiSignal.connect(self.lineProfileWidget.slot_updateLineProfile)
+		self.myStackView2.roiChangedSignal.connect(self.lineProfileWidget.slot_updateLineProfile)
+		self.myStackView2.roiChangedSignal.connect(self.annotationTable.slot_roiChanged)
+
+
 		self.myStackView2.tracingEditSignal.connect(self.nodeTable2.slot_updateTracing)
 		self.myStackView2.tracingEditSignal.connect(self.edgeTable2.slot_updateTracing)
 		self.myStackView2.tracingEditSignal.connect(self.annotationTable.slot_updateTracing)

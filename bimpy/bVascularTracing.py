@@ -53,7 +53,7 @@ class bVascularTracing:
 		"""
 		path: path to file
 		"""
-		print('bVascularTracing.__init__() loadTracing:', loadTracing, 'path:', path)
+		#print('bVascularTracing.__init__() loadTracing:', loadTracing, 'path:', path)
 		self.parentStack = parentStack
 		self.path = path
 

@@ -1,7 +1,7 @@
 """
 multiprocessor code to analyze all slab diameters in parallel
 """
-import os, sys, time, copy
+import os, sys, time, json, copy
 import multiprocessing as mp
 import numpy as np
 
@@ -42,6 +42,9 @@ def runDiameterPool(stackObject, channel):
 	#detectionDict = gLineProfile.getDefaultDetectionParams()
 	detectionDict = gStackObject.myLineProfile.getDefaultDetectionParams()
 	detectionDict['displayThisStack'] = channel
+
+	print('detectionDict:')
+	json.dumps(detectionDict, indent=2)
 
 	nEdges = gStackObject.slabList.numEdges()
 	print('  nEdges:', nEdges)

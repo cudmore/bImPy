@@ -50,7 +50,7 @@ class bAnnotationList:
 
 
 		# todo: save/load into main h5f file !!!!!!
-		print('\ntodo: bAnnotationList needs to save/load into main h5f file !!!!!!!\n')
+		#print('\ntodo: bAnnotationList needs to save/load into main h5f file !!!!!!!\n')
 
 
 		# save by appending '_annotationList.csv'
@@ -75,6 +75,16 @@ class bAnnotationList:
 
 	def numItems(self):
 		return len(self.myList)
+
+	def setAnnotationType(self, idx, newValue):
+		print('bAnnotationList.setAnnotationType() idx:', idx, 'newValue:', newValue)
+		print('  type(idx)', type(idx))
+		print('  type(newValue)', type(newValue))
+
+		# set
+		self.myList[idx]['userType'] = newValue
+
+		return self.getAnnotationDict(idx)
 
 	def setAnnotationIsBad(self, idx, newValue):
 		print('bAnnotationList.setAnnotationIsBad() idx:', idx, 'newValue:', newValue)
@@ -118,6 +128,7 @@ class bAnnotationList:
 		theDict['z'] = None
 
 		theDict['isBad'] = False
+		theDict['userType'] = None # we are using type for (caiman, lineRoi, etc)
 		theDict['channel'] = self.channel
 		theDict['note'] = ''
 
@@ -233,6 +244,8 @@ class bAnnotationList:
 						#print('roiParamsLine:', roiParamsLine)
 						#line['roiParams'] = json.loads(roiParamsLine)
 						line['roiParams'] = ast.literal_eval(line['roiParams'])
+					if 'saveState' in line.keys():
+						line['saveState'] = ast.literal_eval(line['saveState'])
 					self.myList.append(line)
 					self.myMetaDataList.append(metaDataDict) # empty on load
 
@@ -274,7 +287,23 @@ class bAnnotationList:
 			dict_writer.writeheader()
 			dict_writer.writerows(self.myList)
 
-	def addAnnotation(self, type, x, y, z, note='', rowNum=None, colNum=None, roiParams=None):
+	# update the annotation as user drags it around
+	def updateRoi(self, roiParams):
+		"""
+		called when user is dragging ROI
+		"""
+
+		#print('bAnnotationList.updateRoi() with roiParams')
+		#print(json.dumps(roiParams, indent=2))
+
+		idx = roiParams['idx']
+
+		self.myList[idx]['x'] = roiParams['x']
+		self.myList[idx]['y'] = roiParams['y']
+		self.myList[idx]['roiParams'] = roiParams['roiParams']
+		self.myList[idx]['saveState'] = roiParams['saveState']
+
+	def addAnnotation(self, type, x, y, z, note='', rowNum=None, colNum=None, roiParams=None, saveState=None):
 		"""
 		x/y/z: pixels
 		rowNum/colNum: for napari grid
@@ -298,7 +327,12 @@ class bAnnotationList:
 		if roiParams is not None:
 			newDict['roiParams'] = dict(roiParams)
 		else:
-			newDict['roiParams'] = roiParams
+			newDict['roiParams'] = roiParams # None
+
+		if saveState is not None:
+			newDict['saveState'] = dict(saveState)
+		else:
+			newDict['saveState'] = saveState # None
 
 		newDict['rowNum'] = rowNum
 		newDict['colNum'] = colNum
@@ -313,8 +347,8 @@ class bAnnotationList:
 
 		newAnnotationIdx = self.numItems() - 1
 
-		print('  addAnnotation() added newDict:')
-		print('    ', json.dumps(newDict, indent=4))
+		#print('  addAnnotation() added newDict:')
+		#print('    ', json.dumps(newDict, indent=4))
 
 		self._preComputeMasks()
 
