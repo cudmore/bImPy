@@ -12,6 +12,8 @@ bImPy_env
 __pycache__
 .pynb_checkpoints
 
+.ipynb_checkpoints
+
 
 # this is the image we will save during video preview
 bimpy/interface/oneimage.tif
