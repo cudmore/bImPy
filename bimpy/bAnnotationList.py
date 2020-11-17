@@ -123,7 +123,7 @@ class bAnnotationList:
 		theDict = OrderedDict()
 		theDict['idx'] = None # to work with bTableWidget2.py ... bAnnotationTableWidget()
 		theDict['type'] = None
-		theDict['x'] = None
+		theDict['x'] = None # (x,y) is roi position
 		theDict['y'] = None
 		theDict['z'] = None
 
@@ -221,11 +221,8 @@ class bAnnotationList:
 		if doLoad:
 			print(f'  bAnnotationList.load() loading from {loadPath}')
 
-			# I want to keep the OrderedDict() of self._getDefaultDict
-
 			metaDataDict = self._getDefaultMetaDataDict()
 
-			#
 			# load with pandas
 			numLoadedLines = 0
 			try:

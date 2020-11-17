@@ -22,6 +22,8 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.mainWindow = mainWindow # usually bStackWidget
 
 		self.updateDict = None
+		self.currSlabIdx = None # so we can commit
+		self.currentSlice = None # so we can commit
 
 		# grab local copies, do not change options
 		self.lineRadius = self.mainWindow.getOptions()['LineProfile']['lineRadius'] #12 # pixels
@@ -119,7 +121,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		self.myMin = QtWidgets.QLabel('Min: None')
 		self.myMax = QtWidgets.QLabel('Max: None')
 		self.mySNR = QtWidgets.QLabel('SNR: None')
-		self.myDiameter = QtWidgets.QLabel('Diameter (pixels): None')
+		self.myDiameter = QtWidgets.QLabel('Diam(pixels): None')
 		self.leftGridLayout.addWidget(self.myMin, myRow, 0)
 		self.leftGridLayout.addWidget(self.myMax, myRow, 1)
 
@@ -131,7 +133,11 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		myRow += 1
 		myCommitButton = QtWidgets.QPushButton('Commit')
 		myCommitButton.setToolTip('Commit z and diameter (for ROIs)')
+
+		self.myDiameter_um = QtWidgets.QLabel('Diam(um): None')
+
 		self.leftGridLayout.addWidget(myCommitButton, myRow, 0)
+		self.leftGridLayout.addWidget(self.myDiameter_um, myRow, 1)
 
 		# add
 		self.myHBoxLayout.addLayout(self.leftGridLayout, stretch=2)
@@ -211,6 +217,14 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			self.canvas.draw()
 			return
 
+		channel = updateDict['channel']
+		if channel in [1,2,3]:
+			# ok
+			pass
+		else:
+			print('  slot_updateLineProfile() only works for channel in (1,2,3), got channel:', channel)
+			return None
+
 		# debug
 		#print('  updateDict:')
 		#print(json.dumps(updateDict, indent=2))
@@ -228,6 +242,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		updateDict['halfHeight'] = self.halfHeight
 		updateDict['plusMinusSlidingZ'] = self.plusMinusSlidingZ
 
+		print('  using myLinePRofile.getLineProfile3()')
 		lineProfileDict = self.mainWindow.getStack().myLineProfile.getLineProfile3(updateDict)
 		if lineProfileDict is None:
 			return None
@@ -261,11 +276,18 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			yPnt = [left_y, right_y]
 
 			# interface
-			diamStr = 'Diameter (pixels): ' + str(int(rightIdx-leftIdx)) # points !!!
+			diamStr = 'Diam(pixels): ' + str(int(rightIdx-leftIdx+1)) # points !!!
 			self.myDiameter.setText(diamStr) # points !!!
+
+			xVoxel = self.mainWindow.getStack().xVoxel
+			diamUm = (rightIdx-leftIdx+1) * xVoxel
+			diamUm = round(diamUm,2)
+			diamStr = 'Diam(um): ' + str(diamUm) # points !!!
+			self.myDiameter_um.setText(diamStr) # points !!!
 		else:
 			print('warning: bLineProfileWidget.updateLineProfile() fit failed')
-			self.myDiameter.setText('Diameter (pixels): None')
+			self.myDiameter.setText('Diam(pixels): None')
+			self.myDiameter_um.setText('Diam(um): None')
 
 		# clear entire axes
 		self.axes.clear()
@@ -300,11 +322,23 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		slot responding to main window signal 'update line profile'
 
 		before doing the fit, we need to grab parameters from our interface
+
+		profileDict = {
+			'slabIdx': slabIdx,
+			'slice': self.currentSlice,
+			'displayThisStack': displayThisStack,
+			'xSlabPlot': xSlabPlot,
+			'ySlabPlot': ySlabPlot,
+		}
 		"""
+
 
 		if not self.doUpdate:
 			print('  bLineProfileWidget.updateLineProfile() not updating as self.doUpdate is False')
 			return None
+
+		self.currSlabIdx = updateDict['slabIdx'] # so we can commit
+		self.currentSlice = updateDict['slice'] # so we can commit
 
 		# copy current interface into line profile detection dict
 		updateDict['medianFilter'] = self.medianFilter
@@ -312,7 +346,8 @@ class bLineProfileWidget(QtWidgets.QWidget):
 		updateDict['halfHeight'] = self.halfHeight
 		updateDict['plusMinusSlidingZ'] = self.plusMinusSlidingZ
 
-		print('bLineProfileWidget.updateLineProfile() is calling ...myLineProfile.getLineProfile2()')
+		print('bLineProfileWidget.updateLineProfile()')
+		print('  using myLineProfile.getLineProfile2()')
 		#print('  updateDict:', updateDict)
 
 		# get the results of the fit
@@ -351,11 +386,18 @@ class bLineProfileWidget(QtWidgets.QWidget):
 			yPnt = [left_y, right_y]
 
 			# interface
-			diamStr = 'Diameter (pixels): ' + str(int(rightIdx-leftIdx)) # points !!!
+			diamStr = 'Diam(pixels): ' + str(int(rightIdx-leftIdx+1)) # points !!!
 			self.myDiameter.setText(diamStr) # points !!!
+
+			xVoxel = self.mainWindow.getStack().xVoxel
+			diamUm = (rightIdx-leftIdx+1) * xVoxel
+			diamUm = round(diamUm,2)
+			diamStr = 'Diam(um): ' + str(diamUm) # points !!!
+			self.myDiameter_um.setText(diamStr) # points !!!
 		else:
 			print('warning: bLineProfileWidget.updateLineProfile() fit failed')
-			self.myDiameter.setText('Diameter (pixels): None')
+			self.myDiameter.setText('Diam(pixels): None')
+			self.myDiameter_um.setText('Diam(um): None')
 
 		# clear entire axes
 		self.axes.clear()

@@ -155,9 +155,12 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.myVBoxLayout.addWidget(self.myCaimanPlotWidget)
 
 		# roi analysis will be a seperate window
+		self.myRoiAnalysisWidget = None
+		'''
 		theAnnotationList = self.getMyStack().annotationList
 		self.myRoiAnalysisWidget = bimpy.interface.bRoiAnalysisWidget(theAnnotationList)
 		self.myRoiAnalysisWidget.show()
+		'''
 
 		self.statusToolbarWidget = bimpy.interface.bStatusToolbarWidget(mainWindow=self, numSlices=self.mySimpleStack.numSlices)
 		#self.addToolBar(QtCore.Qt.BottomToolBarArea, self.statusToolbarWidget)
@@ -274,7 +277,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 		#
 		# connect bRoiAnalysisWidget, self.myRoiAnalysisWidget
-		self.myStackView2.setSliceSignal.connect(self.myRoiAnalysisWidget.slot_updateSlice)
+		if self.myRoiAnalysisWidget is not None:
+			self.myStackView2.setSliceSignal.connect(self.myRoiAnalysisWidget.slot_updateSlice)
 
 		# show/hide widgets based on options
 		self.updateDisplayedWidgets()
@@ -1573,7 +1577,10 @@ class bStackWidget(QtWidgets.QMainWindow):
 			print('  sliceNum:', sliceNum, 'src:', src, 'dst:', dst)
 			x, oneProfile, fit, fwhm, leftIdx, rightIdx = analysisObject.lineProfile(sliceNum, src, dst, linewidth=1, doFit=True)
 			print('  done:', x.shape)
-			self.myRoiAnalysisWidget.updateLinePlot(x, oneProfile, fit=fit, leftIdx=leftIdx, rightIdx=rightIdx)
+			if self.myRoiAnalysisWidget is None:
+				print('TODO: need to re-activate self.myRoiAnalysisWidget')
+			else:
+				self.myRoiAnalysisWidget.updateLinePlot(x, oneProfile, fit=fit, leftIdx=leftIdx, rightIdx=rightIdx)
 
 ################################################################################
 class myStackSlider(QtWidgets.QSlider):

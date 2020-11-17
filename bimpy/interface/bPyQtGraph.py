@@ -348,13 +348,21 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 		retDict['type'] = roiType
 
+		# get the channel we are looking at
+		# we will only analyze roi if displayThisStack in channel (1,2,3)
+		# if viewing sliding-z, we will still get channel (1,2,3)
+		# if rgb then we get rgb
+		displayThisStack = self.parentPlotWidget.displayStateDict['displayThisStack']
+		print('bPyQtGraphRoiList.getState() got displayThisStack:', displayThisStack)
+		retDict['channel'] = displayThisStack
+
 		xy = (roiState['pos'].x(), roiState['pos'].y())
 		#print('  before _mapFromScene() xy:', xy)
 		#xy = self._mapFromScene(xy)
 		#print('  after _mapFromScene() xy:', xy)
 		retDict['x'] = xy[0]
 		retDict['y'] = xy[1]
-		retDict['z'] = 1 # to do, use property to store z on creation
+		retDict['z'] = self.parentPlotWidget.getCurrentSlice()
 
 		#
 		# roiParams
@@ -594,6 +602,16 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 		return newAnnotationIdx
 
+	def setSlice(self):
+		"""
+		when user changes slice, we need to update selected rois to
+		show their analysis in the new slice
+
+		strange: because it is grabbing slice from parent
+		"""
+		if self.mySelectedRoi is not None:
+			self.slot_changed(self.mySelectedRoi)
+
 	'''
 	def keyReleaseEvent(self, event):
 		print(f'=== bPyQtGraphRoiList.keyReleaseEvent() event.text() {event.text()}')
@@ -812,18 +830,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		self.contrastDict = None # assigned in self.slot_contrastChange()
 
-		#
-		self._preComputeAllMasks()
-
 		# 20201024 playing with rois to extract GCaMP6 signals
-
-		# need to refresh before drawing?
-		self.setSlice()
 
 		self.myRoiList = bPyQtGraphRoiList(self)
 		annotationList = self.mySimpleStack.annotationList
 		self.myRoiList.populate(annotationList) # populate with bAnnotationList
 		self.myClickMode = 'drag' #(drag, lineROI, rectROI, circleROI)
+
+		# do these at the end
+
+		#
+		self._preComputeAllMasks()
+
+		#
+		# need to refresh before drawing?
+		self.setSlice()
 
 	def roiChanged(self, roiDict):
 		# todo: need to update the backend annotation in self.mySimpleStack.annotationList
@@ -1426,10 +1447,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 
 		# self.myRoiList does NOT respond to this
+		# always emit
+		# responders will be bPyQtGraphRoiList, bLineProfileWidget
+		self.selectRoiSignal.emit(roiStateDict)
+
 		if doEmit:
 			myEvent = bimpy.interface.bEvent('select annotation', nodeIdx=annotationIdx)
 			self.selectAnnotationSignal.emit(myEvent)
-			self.selectRoiSignal.emit(roiStateDict)
+			#self.selectRoiSignal.emit(roiStateDict)
 
 	def flashNode(self, nodeIdx, numberOfFlashes):
 		#todo rewrite this to use a copy of selected edge coordinated, rather than grabbing them each time (slow)
@@ -1522,122 +1547,6 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#self.maskedAnnotationDict = self.mySimpleStack.annotationList._preComputeMasks()
 
 		self.setSlice() #refresh
-
-	def setSlice(self, thisSlice=None):
-
-		#timeIt = bimpy.util.bTimer(' setSlice()')
-
-		if thisSlice is None:
-			thisSlice = self.currentSlice
-		else:
-			self.currentSlice = thisSlice
-
-		maxNumChannels = self.mySimpleStack.maxNumChannels
-
-		#
-		# image
-		if self.displayStateDict['showImage']:
-			displayThisStack = self.displayStateDict['displayThisStack'] # (1,2,3, ... 5,6,7)
-
-			#print('=== myPyQtGraphPlotWidget.setSlice() displayThisStack:', displayThisStack)
-
-			sliceImage = None
-			autoLevels = True
-			levels = None
-
-			if displayThisStack == 'rgb':
-				sliceImage1 = self.mySimpleStack.getImage2(channel=1, sliceNum=thisSlice)
-				if sliceImage1 is None:
-					print('errror setSlice() showing rgb, sliceImage1 is None')
-					return False
-				sliceImage2 = self.mySimpleStack.getImage2(channel=2, sliceNum=thisSlice)
-				if sliceImage2 is None:
-					print('errror setSlice() showing rgb, sliceImage2 is None')
-					return False
-				m = sliceImage1.shape[0]
-				n = sliceImage1.shape[1]
-				dtype = sliceImage1.dtype # assuming both have same dtype
-				sliceImage = np.ndarray((m,n,3), dtype=dtype)
-				# assuming we want channel 1 as green and channel 2 as magenta
-				sliceImage[:,:,0] = sliceImage2 # red
-				sliceImage[:,:,1] = sliceImage1 # green
-				sliceImage[:,:,2] = sliceImage2 # blue
-			elif self.displayStateDict['displaySlidingZ']:
-				upSlices = self.options['Stack']['upSlidingZSlices']
-				downSlices = self.options['Stack']['downSlidingZSlices']
-				#print('upSlices:', upSlices, 'downSlices:', downSlices)
-				sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
-			#else:
-			#	sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
-			elif displayThisStack > maxNumChannels: #in [5,6,7,8]:
-				print('  setSlice() trying to display displayThisStack:', displayThisStack)
-				# mask + image ... need to set contrast of [0,1] mask !!!
-				sliceMaskImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
-				if sliceMaskImage is None:
-					print('warning: bPyQtGraph.setSlice() got None sliceMaskImage for displayThisStack:', displayThisStack)
-				else:
-					#imageChannel = displayThisStack-maxNumChannels
-					imageChannel = displayThisStack % maxNumChannels # remainder after division
-					print('  bPyQtGraph.setSlice() imageChannel:', imageChannel)
-					sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
-					skelChannel = displayThisStack + maxNumChannels
-					sliceSkelImage = self.mySimpleStack.getImage2(channel=skelChannel, sliceNum=thisSlice)
-					m = sliceMaskImage.shape[0]
-					n = sliceMaskImage.shape[1]
-					sliceImage = np.zeros((m,n,3), dtype=np.uint8)
-					# assuming we want channel 1 as green and channel 2 as magenta
-					sliceImage[:,:,0] = sliceChannelImage # red
-					if sliceSkelImage is not None:
-						sliceImage[:,:,1] = sliceSkelImage # green
-					sliceImage[:,:,2] = sliceMaskImage # blue
-					# contrast for [0,1] mask
-					autoLevels = False
-					levels = [[0,255], [0,2], [0,2]]
-					#self.myImage.setLevels(levels, update=True)
-			else:
-				sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
-
-			if sliceImage is None:
-				#print('setSlice() got None image for displayThisStack:', displayThisStack, 'thisSlice:', thisSlice)
-				sliceImage = np.ndarray((1,1,1), dtype=np.uint8)
-
-			# use fliplr if using
-			#   pg.setConfigOption('imageAxisOrder','row-major')
-			#   self.getViewBox().invertX(True)
-			#   self.getViewBox().invertY(True)
-			#sliceImage = np.fliplr(sliceImage)
-			#no sliceImage = np.flipud(sliceImage)
-
-			self.myImage.setImage(sliceImage, levels=levels, autoLevels=autoLevels)
-
-			# todo: fix this and put back in
-			if displayThisStack in [1,2,3]:
-				if self.contrastDict is not None:
-					minContrast = self.contrastDict['minContrast']
-					maxContrast = self.contrastDict['maxContrast']
-					self.myImage.setLevels([minContrast,maxContrast], update=True)
-
-					colorLutStr = self.contrastDict['colorLut']
-					try:
-						colorLut = self.myColorLutDict[colorLutStr] # like (green, red, blue, gray, gray_r, ...)
-						self.myImage.setLookupTable(colorLut, update=True)
-					except (KeyError) as e:
-						print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
-		else:
-			#print('not showing image')
-			fakeImage = np.ndarray((1,1,1), dtype=np.uint8)
-			self.myImage.setImage(fakeImage)
-
-		# plot slabs/nodes
-		self._drawEdges()
-		self._drawNodes()
-		self._drawAnnotation()
-
-		#print(timeIt.elapsed())
-
-		#
-		# force update?
-		self.update()
 
 	def saveStackMovie(self):
 		"""
@@ -2493,7 +2402,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			self.setCaimanImage(caimanIdx)
 		'''
 
-		# todo: logic here is bad, we already selected caiman and now alist?
+		# todo: logic here is bad, we already selected caiman and now list?
 		if len(myEvent.nodeList) > 0:
 			self.selectNodeList(myEvent.nodeList)
 		else:
@@ -2514,14 +2423,20 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# for debugging, just cycle mode
 		if self.myClickMode == 'drag':
 			newMode = 'lineROI'
+		else:
+			newMode = 'drag'
+
+		# put these back in
+		# for now we will limit to (drag, lineRoi)
+		'''
 		elif self.myClickMode == 'lineROI':
 			newMode = 'rectROI'
 		elif self.myClickMode == 'rectROI':
 			newMode = 'circleROI'
 		elif self.myClickMode == 'circleROI':
 			newMode = 'drag'
+		'''
 
-		# put this back in
 		self.myClickMode = newMode
 
 		print('slot_setClickMode() myClickMode:', self.myClickMode)
@@ -3069,6 +2984,131 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			#pickle.dump(self.maskedNodes, fout)
 			pickle.dump(self.maskedEdgesDict, fout)
 		'''
+
+	def setSlice(self, thisSlice=None):
+
+		#timeIt = bimpy.util.bTimer(' setSlice()')
+
+		if thisSlice is None:
+			thisSlice = self.currentSlice
+		else:
+			self.currentSlice = thisSlice
+
+		maxNumChannels = self.mySimpleStack.maxNumChannels
+
+		#
+		# image
+		if self.displayStateDict['showImage']:
+			displayThisStack = self.displayStateDict['displayThisStack'] # (1,2,3, ... 5,6,7)
+
+			#print('=== myPyQtGraphPlotWidget.setSlice() displayThisStack:', displayThisStack)
+
+			sliceImage = None
+			autoLevels = True
+			levels = None
+
+			if displayThisStack == 'rgb':
+				sliceImage1 = self.mySimpleStack.getImage2(channel=1, sliceNum=thisSlice)
+				if sliceImage1 is None:
+					print('errror setSlice() showing rgb, sliceImage1 is None')
+					return False
+				sliceImage2 = self.mySimpleStack.getImage2(channel=2, sliceNum=thisSlice)
+				if sliceImage2 is None:
+					print('errror setSlice() showing rgb, sliceImage2 is None')
+					return False
+				m = sliceImage1.shape[0]
+				n = sliceImage1.shape[1]
+				dtype = sliceImage1.dtype # assuming both have same dtype
+				sliceImage = np.ndarray((m,n,3), dtype=dtype)
+				# assuming we want channel 1 as green and channel 2 as magenta
+				sliceImage[:,:,0] = sliceImage2 # red
+				sliceImage[:,:,1] = sliceImage1 # green
+				sliceImage[:,:,2] = sliceImage2 # blue
+			elif self.displayStateDict['displaySlidingZ']:
+				upSlices = self.options['Stack']['upSlidingZSlices']
+				downSlices = self.options['Stack']['downSlidingZSlices']
+				#print('upSlices:', upSlices, 'downSlices:', downSlices)
+				sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
+			#else:
+			#	sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
+			elif displayThisStack > maxNumChannels: #in [5,6,7,8]:
+				print('  setSlice() trying to display displayThisStack:', displayThisStack)
+				# mask + image ... need to set contrast of [0,1] mask !!!
+				sliceMaskImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
+				if sliceMaskImage is None:
+					print('warning: bPyQtGraph.setSlice() got None sliceMaskImage for displayThisStack:', displayThisStack)
+				else:
+					#imageChannel = displayThisStack-maxNumChannels
+					imageChannel = displayThisStack % maxNumChannels # remainder after division
+					print('  bPyQtGraph.setSlice() imageChannel:', imageChannel)
+					sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
+					skelChannel = displayThisStack + maxNumChannels
+					sliceSkelImage = self.mySimpleStack.getImage2(channel=skelChannel, sliceNum=thisSlice)
+					m = sliceMaskImage.shape[0]
+					n = sliceMaskImage.shape[1]
+					sliceImage = np.zeros((m,n,3), dtype=np.uint8)
+					# assuming we want channel 1 as green and channel 2 as magenta
+					sliceImage[:,:,0] = sliceChannelImage # red
+					if sliceSkelImage is not None:
+						sliceImage[:,:,1] = sliceSkelImage # green
+					sliceImage[:,:,2] = sliceMaskImage # blue
+					# contrast for [0,1] mask
+					autoLevels = False
+					levels = [[0,255], [0,2], [0,2]]
+					#self.myImage.setLevels(levels, update=True)
+			else:
+				sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
+
+			if sliceImage is None:
+				#print('setSlice() got None image for displayThisStack:', displayThisStack, 'thisSlice:', thisSlice)
+				sliceImage = np.ndarray((1,1,1), dtype=np.uint8)
+
+			# use fliplr if using
+			#   pg.setConfigOption('imageAxisOrder','row-major')
+			#   self.getViewBox().invertX(True)
+			#   self.getViewBox().invertY(True)
+			#sliceImage = np.fliplr(sliceImage)
+			#no sliceImage = np.flipud(sliceImage)
+
+			self.myImage.setImage(sliceImage, levels=levels, autoLevels=autoLevels)
+
+			# todo: fix this and put back in
+			if displayThisStack in [1,2,3]:
+				if self.contrastDict is not None:
+					minContrast = self.contrastDict['minContrast']
+					maxContrast = self.contrastDict['maxContrast']
+					self.myImage.setLevels([minContrast,maxContrast], update=True)
+
+					colorLutStr = self.contrastDict['colorLut']
+					try:
+						colorLut = self.myColorLutDict[colorLutStr] # like (green, red, blue, gray, gray_r, ...)
+						self.myImage.setLookupTable(colorLut, update=True)
+					except (KeyError) as e:
+						print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
+		else:
+			#print('not showing image')
+			fakeImage = np.ndarray((1,1,1), dtype=np.uint8)
+			self.myImage.setImage(fakeImage)
+
+		# plot slabs/nodes
+		self._drawEdges()
+		self._drawNodes()
+		self._drawAnnotation()
+
+		#print(timeIt.elapsed())
+
+		# abb 20201115, update line as we change slice
+		# use 'commit' to actually set the z of current slab
+		# update line profile
+		self.drawSlabLine(slabIdx=self.selectedSlab())
+
+		# update any selected roi with new slice
+		# when viewing bLinePRofileWidget, this will update the profile
+		self.myRoiList.setSlice()
+
+		#
+		# force update?
+		self.update()
 
 def main():
 	app = QtWidgets.QApplication(sys.argv)

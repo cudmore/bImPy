@@ -176,7 +176,9 @@ class bLineProfile:
 		"""
 		used for ROI
 		"""
-		displayThisStack = 1
+
+		channel = lineProfileDict['channel']
+		displayThisStack = channel
 
 		slice = lineProfileDict['z']
 
@@ -192,6 +194,8 @@ class bLineProfile:
 
 		src = (y1, x1) # swapped
 		dst = (y2, x2)
+
+		print('bLineProfile.getLineProfile3() is getting profile from channel:', channel, 'slice:', slice)
 
 		# get the image
 		if plusMinusSlidingZ > 0:
@@ -210,7 +214,7 @@ class bLineProfile:
 			# Specifies how to compute any values falling outside of the image.
 			intensityProfile = profile.profile_line(imageSlice, src, dst, linewidth=lineWidth, mode='constant')
 		except(ValueError) as e:
-			print('ERROR: bLineProfile.getLineProfile23) got nan calling profile.profile_line()')
+			print('ERROR: bLineProfile.getLineProfile2 3) got nan calling profile.profile_line()')
 			return None
 
 		# smooth the line profile
@@ -345,11 +349,14 @@ class bLineProfile:
 					print(f'  ERROR: getLineProfile2() rejecting slab {slabIdx}, got left/right index fell at beginning/end of line')
 				goodFit = False
 				#return None
+
 		# abb 20201103
+		'''
 		if goodFit:
 			# expand by 2 pixels (make the line just below 50% max height)
 			leftIdx -= 1
 			rightIdx += 1
+		'''
 
 		# abb 20201103
 		# this strategy is rejecting too many
