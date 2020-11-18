@@ -215,6 +215,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 			return
 
 		savePath = self._optionsDict['Canvas']['savePath']
+		print('  savePath:', savePath)
+
 		dateStr = datetime.today().strftime('%Y%m%d')
 
 		#datePath = os.path.join(savePath, dateStr)
@@ -222,7 +224,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		folderName = dateStr + '_' + shortName
 		#folderPath = os.path.join(datePath, folderName)
 		folderPath = os.path.join(savePath, folderName)
-
+		print('  folderPath:', folderPath)
+		
 		videoFolderPath = os.path.join(folderPath, folderName + '_video')
 
 		fileName = dateStr + '_' + shortName + '_canvas.txt'
@@ -256,6 +259,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 				os.mkdir(datePath)
 			'''
 			if not os.path.isdir(folderPath):
+				print('  making dir folderPath:', folderPath)
 				os.mkdir(folderPath)
 
 			# made when we actually acquire a video

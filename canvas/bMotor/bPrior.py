@@ -25,7 +25,11 @@ class bPrior(bMotor):
 		if self.ser is not None:
 			print('port already opened')
 		else:
-			self.ser = serial.Serial(port=self.port, timeout=self.timeout)
+			self.ser = None
+			try:
+				self.ser = serial.Serial(port=self.port, timeout=self.timeout)
+			except (serial.serialutil.SerialException) as e:
+				print('ERROR: exception in bPrior.open() e:', e)
 		return self.ser
 
 	def close(self):
@@ -145,7 +149,7 @@ class bPrior(bMotor):
 			#todo: print current motor coordinates
 			theRet = self.readPosition()
 			return theRet
-			
+
 		except Exception as e:
 			print('exception in priorMove():', e)
 			raise
