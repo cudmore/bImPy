@@ -70,7 +70,7 @@ class bPrior(bMotor):
 			try:
 				xPos, yPos, zPos = resp.split(',')
 
-				print(xPos)
+				#print(xPos)
 				# when prior is at -18937.0 um we get -189370
 				xPos = float(xPos)
 				yPos = float(yPos)
@@ -81,7 +81,7 @@ class bPrior(bMotor):
 				# need to *10 the microns we specify in canvas interface
 
 			except:
-				print('   bPrior.readPosition() exception')
+				print('   ERROR: bPrior.readPosition() exception')
 				xPos = 'Nan'
 				yPos = 'Nan'
 			'''
@@ -95,14 +95,14 @@ class bPrior(bMotor):
 			#self.close()
 
 		except Exception as e:
-			print('exception in bPrior.readPosition():', e)
+			print('  exception in bPrior.readPosition():', e)
 			raise
 		finally:
 			self.close()
 
 		xPos = float(xPos)
 		yPos = float(yPos)
-		print('bPrior.readPosition() returning:', xPos, yPos)
+		print('  bPrior.readPosition() returning:', xPos, yPos)
 		return xPos, yPos, None
 
 	def move(self, direction, umDistance):

@@ -231,11 +231,14 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		# grab single image from camera
 		imageData = self.myCanvasApp.getCurentImage()
 		if imageData is None:
+			print('  got empty imageData from  self.myCanvasApp.getCurentImage() -->> aborting')
 			return
 
 		# user speciified video with/height (um)
 		umWidth = self.myCanvasApp.options['video']['umWidth']
 		umHeight = self.myCanvasApp.options['video']['umHeight']
+
+		print('  umWidth:', umWidth, 'umHeight:', umHeight)
 
 		# todo: do we need to swap x/y here?
 		# maybe add readPosiitonn(preSwap=True) to get swapped
@@ -244,7 +247,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 		#xMotor, yMotor, zMotor = self.myCanvasApp.xyzMotor.readPosition()
 		xMotor, yMotor, zMotor = self.readMotorPosition()
 		if xMotor is None or yMotor is None: # or zMotor is None:
-			print('error: bCanvasWidget.grabImage() got bad motor position')
+			print('  error: bCanvasWidget.grabImage() got bad motor position')
 			return False
 
 		imageHeader = {
@@ -363,7 +366,7 @@ class bCanvasWidget(QtWidgets.QMainWindow):
 			self.grabImage()
 
 		elif event =='Import From Scope':
-			print('=== bCanvasWidget.userEvent() event:', event)
+			print('\n=== bCanvasWidget.userEvent() event:', event)
 
 			# todo: build a list of all (.tif and folder)
 			# pass this to self.myCanvas.addNEwScopeFile()

@@ -285,6 +285,7 @@ class bStackHeader:
 		self.header['numImages'] = numImages
 		self.header['numFrames'] = None
 		#
+		print('****** bStackHeader.loadHeader() got xVoxel:', xVoxel, 'yVoxel:', yVoxel)
 		self.header['xVoxel'] = xVoxel # um/pixel
 		self.header['yVoxel'] = yVoxel
 		self.header['zVoxel'] = zVoxel

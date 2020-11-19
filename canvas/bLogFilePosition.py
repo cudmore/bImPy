@@ -90,12 +90,12 @@ class bLogFilePosition(threading.Thread):
 		return self.myLogDict
 
 	def run(self):
-		print('bLogFilePosition.run()')
+		print('starting while loop in bLogFilePosition.run()')
 		while not self._stop_event.is_set():
 			while not self.outQueue.empty():
 				# item is file name
 				item = self.outQueue.get(block=False)
-				print('bLogFilePosition.run() found outQueue item:', item)
+				print('\n=== bLogFilePosition.run() found outQueue file:', item)
 				# read position of motor from prior stage
 				xPos, yPos, zPos = self.myStageController.readPosition()
 				#print('xPos:', xPos, 'yPos:', yPos)
@@ -121,7 +121,7 @@ class bLogFilePosition(threading.Thread):
 				watchFileName = os.path.basename(os.path.normpath(watchPath))
 				watchFileName += '_watched.txt'
 				watchFileLogPath = os.path.join(watchPath, watchFileName)
-				print('   watchFileLogPath:', watchFileLogPath)
+				print('   appending to watchFileLogPath:', watchFileLogPath)
 				with open(watchFileLogPath, 'w') as f:
 					#f.write(logLine + '\n')
 					json.dump(self.myLogDict, f, indent=4) #, sort_keys=True)

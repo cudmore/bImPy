@@ -104,7 +104,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		self.showingCamera = not self.showingCamera
 		if self.showingCamera:
 			if self.camera is None:
-				saveAtInterval = self._optionsDict['video']['saveAtInterval']
+				saveAtInterval = self._optionsDict['video']['saveAtInterval'] # Boolean
 				saveIntervalSeconds = self._optionsDict['video']['saveIntervalSeconds']
 				left = self._optionsDict['video']['left']
 				top  = self._optionsDict['video']['top']
@@ -203,8 +203,26 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		new canvas(s) are always saved in options['Canvas']['savePath']
 			options['Canvas']['savePath']/<date>_<name>
 		"""
+
+		# path where we will save on new
+		savePath = self._optionsDict['Canvas']['savePath']
+
 		if shortName=='':
-			# setInformativeText("This is additional information")
+			# if our savePath is bogus then abort
+			if not os.path.isdir(savePath):
+				# savepath from options is bogus
+				print('bCanvasApp.newCanvas() error')
+				print('  save path folder does not exist, savePath:', savePath)
+				print('  Please specify a valid folder in main interface with menu "Options - Set Data Path ..."')
+
+				msgBox = QtWidgets.QMessageBox()
+				msgBox.setWindowTitle('Save Path Not Found')
+				msgBox.setText('Did not find data path folder:\n  ' + savePath)
+				msgBox.setInformativeText('Please specify a valid folder in main interface with menu "Options - Set Data Path ..."')
+				retval = msgBox.exec_()
+				return
+
+			# ask user for the name of the canvas
 			text, ok = QtWidgets.QInputDialog.getText(self,
 							'New Canvas', 'Enter a new canvas name (no spaces):')
 			text = text.replace(' ', '')
@@ -214,9 +232,6 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		if shortName == '':
 			return
 
-		savePath = self._optionsDict['Canvas']['savePath']
-		print('  savePath:', savePath)
-
 		dateStr = datetime.today().strftime('%Y%m%d')
 
 		#datePath = os.path.join(savePath, dateStr)
@@ -224,8 +239,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
 		folderName = dateStr + '_' + shortName
 		#folderPath = os.path.join(datePath, folderName)
 		folderPath = os.path.join(savePath, folderName)
-		print('  folderPath:', folderPath)
-		
+		#print('  folderPath:', folderPath)
+
 		videoFolderPath = os.path.join(folderPath, folderName + '_video')
 
 		fileName = dateStr + '_' + shortName + '_canvas.txt'
@@ -557,8 +572,13 @@ if __name__ == '__main__':
 
 	withJavaBridge = False
 
+	okGo = True
 	if len(sys.argv) > 1:
 		if sys.argv[1] == 'javabridge':
 			withJavaBridge = True
+		else:
+			okGo = False
+			print('ERROR: did not understand command line:', sys.argv[1])
 
-	main(withJavaBridge)
+	if okGo:
+		main(withJavaBridge)

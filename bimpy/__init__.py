@@ -21,3 +21,6 @@ from . import bVascularTracingAics
 from .bAnnotationList import bAnnotationList # 20200831
 
 from . import analysis
+
+# added while debugging canvas 20201118
+from . import interface

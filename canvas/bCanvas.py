@@ -160,6 +160,9 @@ class bCanvas:
 				if tmpFile == videoFolderName:
 					# don't load _video folder
 					continue
+				if tmpFile == 'max':
+					# don't load max folder
+					continue
 				print('  tmpFile is a folder, potentialFolder:', potentialFolder)
 				# load from folder of tif
 				fileList = glob.glob(potentialFolder + '/*.tif')
