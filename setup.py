@@ -35,6 +35,7 @@ setup(
         'plotly',
         'pyqtgraph',
         'qdarkstyle',
+		'opencv-python',
         #'javabridge',
         #'python-bioformats',
     ],

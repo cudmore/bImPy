@@ -36,14 +36,14 @@ from caiman.motion_correction import MotionCorrect
 
 import caimanOptions # my file, set motion correction (and caimanDetect) parameters here
 
-def caimanAlign(fnames):
+def caimanAlign(fnames, frameRate=20):
 	"""
 	fnames: list of file path
 	"""
 
 	startSeconds = time.time()
 
-	opts = caimanOptions.createParams(fnames)
+	opts = caimanOptions.createParams(fnames, frameRate=frameRate)
 
 	#start a cluster for parallel processing (if a cluster already exists it will be closed and a new session will be opened)
 	if 'dview' in locals():
@@ -109,7 +109,7 @@ def caimanAlign(fnames):
 	tmpSavePath, tmpExt = os.path.splitext(fnames[0])
 	tmpSavePath += '_aligned.tif' # need to be _aligned_ch1.tif
 	print('    saving aligned .tif', images_8bit.shape, images_8bit.dtype, 'tmpSavePath:', tmpSavePath)
-	tifffile.imsave(tmpSavePath, images_8bit)
+	tifffile.imsave(tmpSavePath, images_8bit, bigtiff=True)
 
 	# shut down the cluster
 	if 'dview' in locals():
@@ -140,8 +140,41 @@ if __name__ == '__main__':
 
 	# I need to crop first !!!!!!!!!
 	path = '/media/cudmore/data/20201014/superior/2_nif_superior_cropped.tif'
-
 	path = '/media/cudmore/data/20201014/superior_2p/tiff/preprocess/MAX_20201014__0001_ch1.tif'
 
-	pathList = [path]
-	caimanAlign(pathList)
+	path = '/media/cudmore/data/20201111/tif1d.tif'
+
+	path = '/media/cudmore/data/20201124/9.tif'
+	frameRate = 18
+
+	#pathList = [path]
+	#caimanAlign(pathList, frameRate=frameRate)
+
+	# process all video files from one day. Each file takes 25 min * 15 = 375 min
+	# this is 6 1/4 hours, maybe 8 because some files are bigger
+	frameRate = 18
+	masterPathList = [
+		#'/media/cudmore/data/20201124/1.tif',
+		#'/media/cudmore/data/20201124/2.tif',
+		#'/media/cudmore/data/20201124/3.tif',
+		#'/media/cudmore/data/20201124/4.tif',
+		#'/media/cudmore/data/20201124/5.tif',
+		#'/media/cudmore/data/20201124/6.tif',
+		#'/media/cudmore/data/20201124/7.tif',
+		#'/media/cudmore/data/20201124/8.tif',
+		#'/media/cudmore/data/20201124/9.tif',
+		#'/media/cudmore/data/20201124/10.tif',
+		'/media/cudmore/data/20201124/11.tif',
+		'/media/cudmore/data/20201124/12.tif',
+		'/media/cudmore/data/20201124/13.tif',
+		'/media/cudmore/data/20201124/14.tif',
+		'/media/cudmore/data/20201124/15.tif',
+	]
+	for path in masterPathList:
+		if os.path.isfile(path):
+			pass
+			onePathList = [path]
+			print('\n\n=== caimanAlign starting on path:', path)
+			caimanAlign(onePathList, frameRate=frameRate)
+		else:
+			print('error: did not find path:', path)

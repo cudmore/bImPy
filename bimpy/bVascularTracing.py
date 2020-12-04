@@ -376,7 +376,7 @@ class bVascularTracing:
 
 		newEdgeIdx = self.numEdges()
 
-		edgeDict = self._defaultEdgeDict(edgeIdx=newEdgeIdx, srcNode=srcNode, dstNode=dstNode)
+		edgeDict = self.bimp(edgeIdx=newEdgeIdx, srcNode=srcNode, dstNode=dstNode)
 
 		print('newEdge() edgeDict:', edgeDict)
 

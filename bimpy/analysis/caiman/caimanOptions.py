@@ -4,14 +4,16 @@ used by both (caimanAlign, caimanDetect)
 
 from caiman.source_extraction.cnmf import params as params
 
-def createParams(fnames):
+def createParams(fnames, frameRate=20):
 	# dataset dependent parameters
 	#fr = 30                             # imaging rate in frames per second
 
 	# VIDEO
 	#fr = 20                             # imaging rate in frames per second
 	# 2p
-	fr = 15                             # imaging rate in frames per second
+	#fr = 15                             # imaging rate in frames per second
+
+	fr = frameRate
 
 	# first pass analysis was this
 	#decay_time = 1.2 #0.4                    # length of a typical transient in seconds
