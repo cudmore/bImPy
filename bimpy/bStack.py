@@ -287,7 +287,7 @@ class bStack:
 				if tmpStack is None:
 					print('  ', i, 'None')
 				else:
-					print('  ', i, tmpStack.shape)
+					print('  ', i, tmpStack.shape, tmpStack.dtype)
 
 			return None
 

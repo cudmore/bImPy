@@ -63,17 +63,25 @@ class myColorButton(QtWidgets.QPushButton):
 	"""
 
 ############################################################################
+"""
+display imageData as a histogram
+
+does not know about any other widgets!!!
+"""
 class bStackContrastWidget(QtWidgets.QWidget):
-	#contrastChangeSignal = QtCore.pyqtSignal(object) # object can be a dict
 	contrastChangeSignal = QtCore.Signal(object) # object can be a dict
 
 
-	def __init__(self, mainWindow=None, parent=None):
+	def __init__(self, mainWindow=None, parent=None, imageData=None):
+		"""
+		imageData: )channels x rows, cols) tells us bit depth and number of hist
+		"""
 		super(bStackContrastWidget, self).__init__(parent)
 
 		self.mainWindow = mainWindow
 
-		self.setMaximumHeight(200)
+		self.myMaxHeight = 200 # adjust based on number of channel
+		self.setMaximumHeight(self.myMaxHeight)
 
 		self.myDoUpdate = True # set to false to not update on signal/slot
 		self.plotLogHist = True
@@ -115,6 +123,40 @@ class bStackContrastWidget(QtWidgets.QWidget):
 			sliceIdx = myEvent.sliceIdx
 			self.setSlice(sliceIdx)
 
+	def setImage(self, sliceImage):
+		"""
+		can be 1 or 3 planes, 3 is for rgb
+		"""
+
+		if len(sliceImage.shape) == 2:
+			self.numChannels = 1
+		else:
+			self.numChannels = sliceImage.shape[0]
+
+
+		for i in range(self.numChannels):
+			self.axes[i].clear() # clear entire axes
+			self.axes[i].patch.set_facecolor("black")
+
+		doLog = self.plotLogHist
+		# we need histtype='stepfilled', otherwise is SUPER SLOW
+		for i in range(self.numChannels):
+			if self.numChannels == 1:
+				data = sliceImage[:,:]
+			else:
+				data = sliceImage[i,:,:]
+			data = data.ravel()
+			num_bins = 2 ** self.bitDepth
+			n, bins, patches = self.axes[i].hist(data, num_bins,
+									histtype='stepfilled',
+									log=doLog,
+									color='white',
+									alpha=1.0)
+
+		#
+		self.canvasHist.draw()
+		#self.canvasHist.draw_idle()
+
 	def setSlice(self, sliceNumber=None):
 		if not self.myDoUpdate:
 			return
@@ -148,25 +190,22 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		#doLog = True
 
 		# clear entire axes
-		self.axes.clear()
-
-		# from buildUI()
-		'''
-		self.axes.patch.set_facecolor("black")
-		self.figure.set_facecolor("black")
-		'''
-
-		self.axes.patch.set_facecolor("black")
+		for i in range(self.numChannels):
+			self.axes[i].clear()
+			self.axes[i].patch.set_facecolor("black")
 
 		# we need histtype='stepfilled', otherwise is SUPER SLOW
 		if data is not None:
 			doLog = self.plotLogHist
-			n, bins, patches = self.axes.hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=1.0)
+			n, bins, patches = self.axes[0].hist(data, num_bins, histtype='stepfilled', log=doLog, color='white', alpha=1.0)
 
 
 		#
 		self.canvasHist.draw()
 		#self.canvasHist.draw_idle()
+
+	def getContrastDict(self):
+		return self.contrastDict
 
 	def emitChange(self):
 		myEvent = bimpy.interface.bEvent('contrast change')
@@ -413,8 +452,11 @@ class bStackContrastWidget(QtWidgets.QWidget):
 		self.figure = Figure() # need size otherwise square image gets squished in y?
 		self.canvasHist = backend_qt5agg.FigureCanvas(self.figure)
 		#self.axes = self.figure.add_subplot(111)
-		self.axes = self.figure.add_axes([0, 0, 1, 1]) #remove white border
-		self.axes.patch.set_facecolor("black")
+		self.numChannels = 3
+		self.axes = [None] * self.numChannels
+		for i in range(self.numChannels):
+			self.axes[i] = self.figure.add_axes([0, 0, 1, 1]) #remove white border
+			self.axes[i].patch.set_facecolor("black")
 		self.figure.set_facecolor("black")
 
 		#histHBoxLayout = QtWidgets.QHBoxLayout()

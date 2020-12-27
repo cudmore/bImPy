@@ -57,7 +57,6 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		hBoxLayout.addWidget(self.lastActionLabel)
 		'''
 
-
 		#
 		# seconds row
 		hBoxLayout2 = QtWidgets.QHBoxLayout()
@@ -93,7 +92,8 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		hBoxLayout2.addWidget(self.selectedAnnotation, myAlign)
 
 		# works but does not actually resize widgets?
-		'''numWidgets = hBoxLayout2.count()
+		'''
+		numWidgets = hBoxLayout2.count()
 		for widgetIdx in range(numWidgets):
 			# itemAt() returns an item, need to call widget() to get the widget
 			theWidget = hBoxLayout2.itemAt(widgetIdx).widget()
@@ -101,28 +101,26 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			theWidget.setFixedWidth(fixedWidth)
 		'''
 
-		"""
 		#
 		# third row
-		hBoxLayout3 = QtWidgets.QHBoxLayout()
+		#hBoxLayout3 = QtWidgets.QHBoxLayout()
 
-		spinBoxWidth = 64
-
+		# abb dec 2020 sliding z +/- slices
 		# here we set one value for both
-		showTracingAboveSlices = self.mainWindow.options['Tracing']['showTracingAboveSlices']
+		showZAboveSlices = self.mainWindow.options['Stack']['upSlidingZSlices'] # downSlidingZSlices
 
-		plusMinusLabel_ = QtWidgets.QLabel("+/- Slices")
+		plusMinusLabel_ = QtWidgets.QLabel("+/- Z-Slices")
 		self.plusMinusSpinBox = QtWidgets.QSpinBox()
+		spinBoxWidth = 64
 		self.plusMinusSpinBox.setMaximumWidth(spinBoxWidth)
-		self.plusMinusSpinBox.setMinimum(0)
+		self.plusMinusSpinBox.setMinimum(1)
 		self.plusMinusSpinBox.setMaximum(1e6)
-		self.plusMinusSpinBox.setValue(showTracingAboveSlices)
-		self.plusMinusSpinBox.setProperty('bobID_1', 'Tracing')
-		self.plusMinusSpinBox.setProperty('bobID_2', 'showTracingAboveSlices')
+		self.plusMinusSpinBox.setValue(showZAboveSlices)
+		self.plusMinusSpinBox.setProperty('bobID_1', 'Stack')
+		self.plusMinusSpinBox.setProperty('bobID_2', 'upSlidingZSlices')
 		self.plusMinusSpinBox.valueChanged.connect(self.old_valueChanged)
-		hBoxLayout3.addWidget(plusMinusLabel_, myAlign)
-		hBoxLayout3.addWidget(self.plusMinusSpinBox, myAlign)
-		"""
+		hBoxLayout2.addWidget(plusMinusLabel_, myAlign)
+		hBoxLayout2.addWidget(self.plusMinusSpinBox, myAlign)
 
 		#
 		# add all rows to vBoxLayout
@@ -135,6 +133,12 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		#myGroupBox.setLayout(hBoxLayout)
 		#self.addWidget(myGroupBox)
 
+	def slot_OptionsStateChange(self, key1, key2, value):
+		print('bStatusToolbarWidget.slot_OptionsStateChange()', key1, key2, value)
+		if key1 == 'Stack':
+			if key2 in ['upSlidingZSlices', 'downSlidingZSlices']:
+				self.plusMinusSpinBox.setValue(value)
+
 	def old_valueChanged(self, value):
 		"""
 		Set value in our local copy of options, self.localOptions
@@ -143,7 +147,18 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		bobID_2 = self.sender().property('bobID_2')
 		print(f'valueChanged() value: {value} type(value), bobID_1:{bobID_1}, bobID_2:{bobID_2}')
 
-		if bobID_2 == 'showTracingAboveSlices':
+		if bobID_2 == 'upSlidingZSlices':
+			key1 = 'Stack'
+			key2 = 'upSlidingZSlices'
+			doEmit = False
+			self.mainWindow.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+			key1 = 'Stack'
+			key2 = 'downSlidingZSlices'
+			doEmit = True
+			self.mainWindow.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+		elif bobID_2 == 'showTracingAboveSlices':
 			# abb oct2020 new
 			key1 = 'Tracing'
 			key2 = 'showTracingAboveSlices'

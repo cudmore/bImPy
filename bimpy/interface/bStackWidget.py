@@ -35,7 +35,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 	A widget to display a stack. This includes a bStackView and a bAnnotationTable.
 	"""
 
-	optionsStateChange = QtCore.Signal(str, str, bool) # object can be a dict
+	optionsStateChange = QtCore.Signal(str, str, int) # (key1, key2, value))
 
 	def __init__(self, mainWindow=None, parent=None, path=''):
 		super(bStackWidget, self).__init__()
@@ -128,7 +128,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 		# abb
 		self.myStackView2 = bimpy.interface.bPyQtGraph.myPyQtGraphPlotWidget(self, self.mySimpleStack) # a visual stack
 
-		self.myContrastWidget = bimpy.interface.bStackContrastWidget(mainWindow=self)
+		#tmpChannelImage = self.mySimpleStack.getImage2(channel=1, sliceNum=0)
+		self.myContrastWidget = bimpy.interface.bStackContrastWidget2()
 
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout()
 
@@ -200,8 +201,10 @@ class bStackWidget(QtWidgets.QMainWindow):
 		##
 
 		# listen to bStackWidget
+		# emits (key1, key2, value)
 		self.optionsStateChange.connect(self.myFeedbackWidget.slot_OptionsStateChange)
 		self.optionsStateChange.connect(self.myStackView2.slot_OptionsStateChange)
+		self.optionsStateChange.connect(self.statusToolbarWidget.slot_OptionsStateChange)
 		#self.optionsStateChange.connect(self.myToolbar.slot_OptionsStateChange)
 
 		#
@@ -212,7 +215,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		'''
 		#self.mySliceSlider.updateSliceSignal.connect(self.bLeftToolbarWidget.slot_StateChange)
 		self.mySliceSlider.updateSliceSignal.connect(self.statusToolbarWidget.slot_StateChange)
-		self.mySliceSlider.updateSliceSignal.connect(self.myContrastWidget.slot_setSlice)
+		#self.mySliceSlider.updateSliceSignal.connect(self.myContrastWidget.slot_setSlice)
 
 		self.nodeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
 		self.edgeTable2.selectRowSignal.connect(self.statusToolbarWidget.slot_select)
@@ -226,14 +229,15 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.nodeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
 		#self.edgeTable2.selectRowSignal.connect(self.mySliceSlider.slot_UpdateSlice2)
-		self.nodeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
-		self.edgeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
-		self.searchWidget.searchTable().selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
+		#self.nodeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
+		#self.edgeTable2.selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
+		#self.searchWidget.searchTable().selectRowSignal.connect(self.myContrastWidget.slot_UpdateSlice2)
 
 		##
 		##
 		# abb PyQtGraph
 		self.myContrastWidget.contrastChangeSignal.connect(self.myStackView2.slot_contrastChange)
+		self.myStackView2.setSliceSignal2.connect(self.myContrastWidget.slot_setImage)
 
 		self.mySliceSlider.updateSliceSignal.connect(self.myStackView2.slot_StateChange)
 		self.nodeTable2.selectRowSignal.connect(self.myStackView2.slot_selectNode)
@@ -296,7 +300,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		#
 		# set to slice 0
 
-		self.myStackView2.setSlice(0)
+		self.myStackView2.setSlice(0, switchingChannels=True)
 
 		#
 		# scatter plot widget is another window
@@ -352,7 +356,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 		myName = 'Increase Tracing Sliding-Z'
 		toggleBadAction = QtWidgets.QAction(myName, self)
 		#toggleBadAction.setShortcut('Shift+QtCore.Qt.Key_Plus')# or 'Ctrl+r' or '&r' for alt+r
-		myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Shift + QtCore.Qt.Key_G)
+		#myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Shift + QtCore.Qt.Key_G)
 		myKeySequence = '.'
 		toggleBadAction.setShortcut(myKeySequence)# or 'Ctrl+r' or '&r' for alt+r
 		toggleBadAction.setToolTip('Increase Tracing Sliding-Z [.]')
@@ -362,10 +366,28 @@ class bStackWidget(QtWidgets.QMainWindow):
 		myName = 'Decrease Tracing Sliding-Z'
 		toggleBadAction = QtWidgets.QAction(myName, self)
 		#toggleBadAction.setShortcut('Shift+QtCore.Qt.Key_Plus')# or 'Ctrl+r' or '&r' for alt+r
-		myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Shift + QtCore.Qt.Key_G)
+		#myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Shift + QtCore.Qt.Key_G)
 		myKeySequence = ','
 		toggleBadAction.setShortcut(myKeySequence)# or 'Ctrl+r' or '&r' for alt+r
 		toggleBadAction.setToolTip('Decrease Tracing Sliding-Z [,]')
+		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
+		self.addAction(toggleBadAction)
+
+		#
+		myName = 'Increase Sliding-Z'
+		toggleBadAction = QtWidgets.QAction(myName, self)
+		myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Greater)
+		toggleBadAction.setShortcut(myKeySequence)# or 'Ctrl+r' or '&r' for alt+r
+		toggleBadAction.setToolTip('Increase Tracing Sliding-Z [>]')
+		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
+		self.addAction(toggleBadAction)
+
+		myName = 'Decrease Sliding-Z'
+		toggleBadAction = QtWidgets.QAction(myName, self)
+		#toggleBadAction.setShortcut('Shift+QtCore.Qt.Key_Plus')# or 'Ctrl+r' or '&r' for alt+r
+		myKeySequence = QtGui.QKeySequence(QtCore.Qt.Key_Less)
+		toggleBadAction.setShortcut(myKeySequence)# or 'Ctrl+r' or '&r' for alt+r
+		toggleBadAction.setToolTip('Decrease Sliding-Z [<]')
 		toggleBadAction.triggered.connect(lambda state, myName=myName: self.myAction_callback(myName))
 		self.addAction(toggleBadAction)
 
@@ -424,7 +446,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.setBadGood(setBad=False)
 
 		elif name == 'Increase Tracing Sliding-Z':
-			# increase the value
+			# increase the value, we are keeping above/below the same
 			value = self.getOptions()['Tracing']['showTracingAboveSlices']
 			value += 1
 
@@ -439,7 +461,7 @@ class bStackWidget(QtWidgets.QMainWindow):
 			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
 
 		elif name == 'Decrease Tracing Sliding-Z':
-			# increase the value
+			# increase the value, we are keeping above/below the same
 			value = self.getOptions()['Tracing']['showTracingAboveSlices']
 			value -= 1
 
@@ -450,6 +472,36 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 			key1 = 'Tracing'
 			key2 = 'showTracingBelowSlices'
+			doEmit = True
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+		elif name == 'Increase Sliding-Z':
+			# increase the value, we are keeping above/below the same
+			value = self.getOptions()['Stack']['upSlidingZSlices']
+			value += 1
+
+			key1 = 'Stack'
+			key2 = 'upSlidingZSlices'
+			doEmit = False
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+			key1 = 'Stack'
+			key2 = 'downSlidingZSlices'
+			doEmit = True
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+		elif name == 'Decrease Sliding-Z':
+			# increase the value, we are keeping above/below the same
+			value = self.getOptions()['Stack']['upSlidingZSlices']
+			value -= 1
+
+			key1 = 'Stack'
+			key2 = 'upSlidingZSlices'
+			doEmit = False
+			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
+
+			key1 = 'Stack'
+			key2 = 'downSlidingZSlices'
 			doEmit = True
 			self.optionsChange(key1, key2, value=value, toggle=False, doEmit=doEmit)
 
@@ -853,14 +905,6 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.mySearchAnnotation.searchNewHitSignal.connect(self.searchWidget.searchTable().slot_newSearchHit)
 		self.mySearchAnnotation.start()
 
-	def optionsChange(self, key1, key2, value=None, toggle=False, doEmit=False):
-		if toggle:
-			value = not self.options[key1][key2]
-		self.options[key1][key2] = value
-		self.updateDisplayedWidgets()
-		if doEmit:
-			self.optionsStateChange.emit(key1, key2, value)
-
 	# abb aics
 	def repopulateAllTables(self):
 		self.nodeTable2.populate(self.mySimpleStack.slabList.nodeDictList)
@@ -979,6 +1023,20 @@ class bStackWidget(QtWidgets.QMainWindow):
 
 	def optionsVersion(self):
 		return 1.8
+
+	def optionsChange(self, key1, key2, value=None, toggle=False, doEmit=False):
+		print(f'bStackWidget.optionsChange() key1:{key1}, key2:{key2}, value:{value}, toggle:{toggle}, doEmit:{doEmit}')
+		if toggle:
+			if type(self.options[key1][key2]) == bool:
+				print('  toggling value')
+				value = not self.options[key1][key2]
+			else:
+				print('  error: trying to toggle a non bool at', key1, key2, 'value:', value, 'self.options[key1][key2]:', self.options[key1][key2])
+		self.options[key1][key2] = value
+		self.updateDisplayedWidgets()
+		if doEmit:
+			self.optionsStateChange.emit(key1, key2, value)
+
 
 	def options_defaults(self):
 		print('bStackWidget.options_defaults()')

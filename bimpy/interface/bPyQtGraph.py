@@ -624,6 +624,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	roiChangedSignal = QtCore.Signal(object) # ROI
 	roiChangeFinishedSignal = QtCore.Signal(object) # ROI
 	setSliceSignal = QtCore.Signal(str, object)
+	setSliceSignal2 = QtCore.Signal(object)
 	selectNodeSignal = QtCore.Signal(object)
 	selectEdgeSignal = QtCore.Signal(object)
 	selectAnnotationSignal = QtCore.Signal(object)
@@ -829,6 +830,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.myColorLutDict['blue'] = lut
 
 		self.contrastDict = None # assigned in self.slot_contrastChange()
+		self.sliceImage = None # set in setSlice()
 
 		# 20201024 playing with rois to extract GCaMP6 signals
 
@@ -2321,6 +2323,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			if key2 in ['showTracingAboveSlices', 'showTracingBelowSlices']:
 				self.mainWindow.getStackView()._preComputeAllMasks()
 				self.mainWindow.getStackView().setSlice()
+		if key1 == 'Stack':
+			if key2 in ['upSlidingZSlices', 'downSlidingZSlices']:
+				self.mainWindow.getStackView()._preComputeAllMasks()
+				self.mainWindow.getStackView().setSlice()
 
 	def slot_StateChange(self, signalName, signalValue):
 		#print(' myPyQtGraphPlotWidget.slot_StateChange() signalName:', signalName, 'signalValue:', signalValue)
@@ -2985,7 +2991,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			pickle.dump(self.maskedEdgesDict, fout)
 		'''
 
-	def setSlice(self, thisSlice=None):
+	def setSlice(self, thisSlice=None, switchingChannels=False):
+		"""
+		switchingChannels: True on stack window init OR user just switched channels
+		"""
 
 		#timeIt = bimpy.util.bTimer(' setSlice()')
 
@@ -3027,7 +3036,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			elif self.displayStateDict['displaySlidingZ']:
 				upSlices = self.options['Stack']['upSlidingZSlices']
 				downSlices = self.options['Stack']['downSlidingZSlices']
-				#print('upSlices:', upSlices, 'downSlices:', downSlices)
+				print('myPyQtGraphPlotWidget() upSlices:', upSlices, 'downSlices:', downSlices)
 				sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
 			#else:
 			#	sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
@@ -3054,7 +3063,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					sliceImage[:,:,2] = sliceMaskImage # blue
 					# contrast for [0,1] mask
 					autoLevels = False
-					levels = [[0,255], [0,2], [0,2]]
+					minContrast = 0
+					maxContrast = 255
+					#minContrast = self.contrastDict['minContrast']
+					#maxContrast = self.contrastDict['maxContrast']
+					levels = [[minContrast,maxContrast], [0,2], [0,2]]
 					#self.myImage.setLevels(levels, update=True)
 			else:
 				sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
@@ -3063,16 +3076,26 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				#print('setSlice() got None image for displayThisStack:', displayThisStack, 'thisSlice:', thisSlice)
 				sliceImage = np.ndarray((1,1,1), dtype=np.uint8)
 
-			# use fliplr if using
-			#   pg.setConfigOption('imageAxisOrder','row-major')
-			#   self.getViewBox().invertX(True)
-			#   self.getViewBox().invertY(True)
-			#sliceImage = np.fliplr(sliceImage)
-			#no sliceImage = np.flipud(sliceImage)
+			# slice image is cols,rows,slices (np is slices, rows, cols)
+			self.sliceImage = sliceImage
 
+			print('pyqt self.sliceImage:', self.sliceImage.shape)
+
+			# slice image can be single channel OR 3-channel RGB
 			self.myImage.setImage(sliceImage, levels=levels, autoLevels=autoLevels)
 
-			# todo: fix this and put back in
+			#
+			# adjust the contrast
+
+			# when switching channels we need to update the contrastDict
+			print('setSlice() switchingChannels:', switchingChannels)
+			if switchingChannels:
+				# new we know sliceImage to display
+				# update contrast bar to make correct number of channels and limits
+				self.mainWindow.myContrastWidget.slot_setImage(sliceImage)
+				self.contrastDict = self.mainWindow.myContrastWidget.getContrastDict()
+
+			# to do, include this in above and pass to self.myImage.setImage
 			if displayThisStack in [1,2,3]:
 				if self.contrastDict is not None:
 					minContrast = self.contrastDict['minContrast']
@@ -3085,6 +3108,21 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 						self.myImage.setLookupTable(colorLut, update=True)
 					except (KeyError) as e:
 						print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
+			elif displayThisStack in ['rgb']:
+				if self.contrastDict is not None:
+					minContrast = self.contrastDict['minContrast']
+					maxContrast = self.contrastDict['maxContrast']
+					self.myImage.setLevels([minContrast,maxContrast], update=True)
+
+					# LUT are not compatible with 3-channel rgb
+					'''
+					colorLutStr = self.contrastDict['colorLut']
+					try:
+						colorLut = self.myColorLutDict[colorLutStr] # like (green, red, blue, gray, gray_r, ...)
+						self.myImage.setLookupTable(colorLut, update=True)
+					except (KeyError) as e:
+						print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
+					'''
 		else:
 			#print('not showing image')
 			fakeImage = np.ndarray((1,1,1), dtype=np.uint8)
@@ -3109,6 +3147,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#
 		# force update?
 		self.update()
+
+		self.setSliceSignal2.emit(self.sliceImage)
 
 def main():
 	app = QtWidgets.QApplication(sys.argv)

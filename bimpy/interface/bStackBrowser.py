@@ -307,6 +307,8 @@ def main(useBioformats=False):
 	'''
 	path = '/media/cudmore/data/20201014/inferior/2_nif_inferior_cropped_aligned.tif'
 
+	path = '/media/cudmore/data1/san-density/SAN7/SAN7_head/aicsAnalysis/20201202__0002_ch2.tif'
+	
 	# 20201101 debugging edt
 	#path = '/media/cudmore/data/san-density/SAN4/SAN4_head/aicsAnalysis/SAN4_head_ch2.tif'
 
