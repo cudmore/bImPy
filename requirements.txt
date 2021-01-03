@@ -43,4 +43,9 @@ PyQtGraph
 #20200908
 qdarkstyle
 
-opencv-python
+# conflicts with qtpy
+#opencv-python
+# does not caintain video writer
+#opencv-python-headless
+# working 20210102 on macOS
+opencv-contrib-python-headless

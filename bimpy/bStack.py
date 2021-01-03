@@ -183,9 +183,11 @@ class bStack:
 		"""
 		key(s) are ALWAYS lower case
 		"""
-		key = key.lower()
+		lowerKey = key.lower()
 		if key in self.header.header.keys():
 			return self.header.header[key]
+		elif lowerKey in self.header.header.keys():
+			return self.header.header[lowerKey]
 		else:
 			print('error: bStack.getHeaderVal() did not find key "' + key + '" in self.header.header. Available keys are:', self.header.header.keys())
 			return None
@@ -377,6 +379,10 @@ class bStack:
 			#print('    getSlidingZ2() startSlice:', startSlice, 'stopSlice:', stopSlice)
 
 			img = self._stackList[channelIdx][startSlice:stopSlice, :, :] #.copy()
+
+			#print('bStack.getSlidingZ2() channelIdx', channelIdx, 'startSlice:', startSlice, 'xstopSlic:', stopSlice)
+			#print('  img:', img.shape)
+
 			img = np.max(img, axis=0)
 		else:
 			print('  bStack.getSlidingZ2() is broken !!!')

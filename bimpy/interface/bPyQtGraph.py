@@ -3,10 +3,10 @@
 NEEDS PyQt 5.13.0 !!!!!
 
 see here for class diagram:
-    https://stackoverflow.com/questions/45879148/pyqtgraph-help-understanding-source-code#:~:text=PyQtGraph%20will%20create%20a%20QGraphicsScene,of%20that%20view%20for%20you.
+	https://stackoverflow.com/questions/45879148/pyqtgraph-help-understanding-source-code#:~:text=PyQtGraph%20will%20create%20a%20QGraphicsScene,of%20that%20view%20for%20you.
 
 see
-    https://stackoverflow.com/questions/58526980/how-to-connect-mouse-clicked-signal-to-pyqtgraph-plot-widget
+	https://stackoverflow.com/questions/58526980/how-to-connect-mouse-clicked-signal-to-pyqtgraph-plot-widget
 
 """
 
@@ -32,6 +32,36 @@ import cv2 # to export avi files in saveStackMovie()
 import tifffile
 
 import bimpy
+
+################################################################
+# trying to get the view to remain square (on window resize)
+#see: https://stackoverflow.com/questions/30005540/keeping-the-aspect-ratio-of-a-sub-classed-qwidget-during-resize
+class AspectRatioWidget(QtWidgets.QWidget):
+	def __init__(self, widget, parent):
+		super().__init__(parent)
+		self.aspect_ratio = widget.size().width() / widget.size().height()
+		self.setLayout(QtWidgets.QBoxLayout(QtWidgets.QBoxLayout.LeftToRight, self))
+		#  add spacer, then widget, then spacer
+		self.layout().addItem(QtWidgets.QSpacerItem(0, 0))
+		self.layout().addWidget(widget)
+		self.layout().addItem(QtWidgets.QSpacerItem(0, 0))
+
+	def resizeEvent(self, e):
+		w = e.size().width()
+		h = e.size().height()
+
+		if w / h > self.aspect_ratio:  # too wide
+			self.layout().setDirection(QtWidgets.QBoxLayout.LeftToRight)
+			widget_stretch = h * self.aspect_ratio
+			outer_stretch = (w - widget_stretch) / 2 + 0.5
+		else:  # too tall
+			self.layout().setDirection(QtWidgets.QBoxLayout.TopToBottom)
+			widget_stretch = w / self.aspect_ratio
+			outer_stretch = (h - widget_stretch) / 2 + 0.5
+
+		self.layout().setStretch(0, outer_stretch)
+		self.layout().setStretch(1, widget_stretch)
+		self.layout().setStretch(2, outer_stretch)
 
 ################################################################
 class myPyQtGraphWindow2(QtWidgets.QMainWindow):
@@ -545,7 +575,7 @@ class bPyQtGraphRoiList(QtCore.QObject):
 			newROI = pg.LineROI(pnt1, pnt2, width=lineWidth,
 								pen=(0,9), invertible=True)
 			if saveState is not None:
-				print('    saveState:', saveState)
+				print('	saveState:', saveState)
 				newROI.setState(saveState)
 
 			# select on user click new ROI, if we have saveState, we are loading from a file
@@ -621,6 +651,7 @@ class bPyQtGraphRoiList(QtCore.QObject):
 
 ###########################################################################
 class myPyQtGraphPlotWidget(pg.PlotWidget):
+	zoomChangedSignal = QtCore.Signal(object, object) # pixel (width,height)
 	roiChangedSignal = QtCore.Signal(object) # ROI
 	roiChangeFinishedSignal = QtCore.Signal(object) # ROI
 	setSliceSignal = QtCore.Signal(str, object)
@@ -636,12 +667,43 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 	# not implemented, what did this do? see class bStackView
 	displayStateChangeSignal = QtCore.Signal(str, object)
 
+	# trying to get fixed aspect ratio
+	# (hasHeightForWidth, heightForWidth, resizeEvent, _resizeImage)
+	'''
+	def hasHeightForWidth(self):
+		# This tells the layout manager that the banner's height does depend on its width
+		return True
+
+	def heightForWidth(self, width):
+		print('myPyQtGraphPlotWidget.heightForWidth() width:', width)
+		return width
+
+	def resizeEvent(self, event):
+		print('resizeEvent() event:', event)
+		super(myPyQtGraphPlotWidget, self).resizeEvent(event)
+		# For efficiency, we pass the size from the event to _resizeImage()
+		if event is None:
+			return
+		else:
+			self._resizeImage(event.size())
+
+	def _resizeImage(self, size):
+		print('_resizeImage() size:', size)
+		# Since we're keeping _heightForWidthFactor, we can code a more efficient implementation of this, too
+		width = size.width()
+		height = self.heightForWidth(width)
+		#self._label.setFixedSize(width, height)
+		self.setFixedSize(width, height)
+	'''
+
 	#def __init__(self, *args, **kwargs):
 	#	super(myPyQtGraphPlotWidget, self).__init__(*args, **kwargs)
 	def __init__(self, parent=None, mySimpleStack=None):
 		"""
 		parent: bStackWidget
 		"""
+		#lockAspect = True
+		#super(myPyQtGraphPlotWidget, self).__init__(parent=parent, lockAspect=lockAspect)
 		super(myPyQtGraphPlotWidget, self).__init__(parent=parent)
 
 		self.mainWindow = parent # usually bStackWidget
@@ -654,6 +716,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# (3) flip ALL (x,y) we get from *this view (e.g. needs x/y swapped in all plots)
 		##
 		##
+
+		# not needed ???
+		#self.setAspectLocked(True)
 
 		#
 		pg.setConfigOption('imageAxisOrder','row-major')
@@ -674,8 +739,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		# this is required for mouse callbacks to have proper x/y position !!!
 		# hide bottom/left axis, works
-		#self.hideAxis('left')
-		#self.hideAxis('bottom')
+		self.hideAxis('left')
+		self.hideAxis('bottom')
 
 		# Instances of ImageItem can be used inside a ViewBox or GraphicsView.
 		fakeData = np.zeros((1,1,1))
@@ -1131,7 +1196,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		"""
 		draw one slab as a line orthogonal to edge
 		"""
-		print('bPyQtGraph.drawSlabLine() slabIdx:', slabIdx)
+		#print('bPyQtGraph.drawSlabLine() slabIdx:', slabIdx)
 
 		if slabIdx is None:
 			slabIdx = self.selectedSlab()
@@ -1550,6 +1615,36 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		self.setSlice() #refresh
 
+	def saveImage(self):
+		"""
+		save the current view (just the image) as an image
+		"""
+		myStackPath = self.mySimpleStack.path
+		mySaveFolder, stackFileName = os.path.split(myStackPath)
+		saveImageBaseName, tmpExt = os.path.splitext(stackFileName)
+		saveImageFileName = saveImageBaseName + '_xxx.svg'
+
+		saveImagePath = os.path.join(mySaveFolder, saveImageFileName)
+
+		print('Asking user for file name to save...', saveImagePath)
+		savefilePath, tmp = QtWidgets.QFileDialog.getSaveFileName(self, 'Save File', saveImagePath)
+		if len(savefilePath) > 0:
+
+			# Enable antialiasing for prettier plots
+			pg.setConfigOptions(antialias=True)
+			self.setSlice()
+
+			print('saving:', saveImagePath)
+
+			if savefilePath.endswith('.svg'):
+				ex = pg.exporters.SVGExporter(self.scene())
+				ex.export(savefilePath)
+			elif savefilePath.endswith(('.png', '.tif')):
+				ex = pg.exporters.ImageExporter(win.scene())
+				ex.export(savefilePath)
+		else:
+			print('no file saved')
+
 	def saveStackMovie(self):
 		"""
 		save  stack as a movie
@@ -1599,9 +1694,10 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			saveFile = saveMoviewBaseName + '_bimpy_movie.avi' #'/home/cudmore/Desktop/onetiff.tif'
 			savePath = os.path.join(mySaveFolder,saveFile)
 			# REMEMBER, DO NOT USE cv2.VideoWriter_fourcc(*'MJPG')
+			myFourCC = cv2.VideoWriter_fourcc('M','J','P','G')
 			myFile = cv2.VideoWriter(savePath,
 									#cv2.VideoWriter_fourcc(*'MJPG'),
-									cv2.VideoWriter_fourcc('M','J','P','G'),
+									myFourCC,
 									fps, (width,height), isColor=True)
 
 		print('  saving to savePath:', savePath)
@@ -1748,6 +1844,22 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#print('  zoomPoint:', type(zoomPoint), zoomPoint)
 		#print('  viewRect:', type(viewRect), viewRect)
 
+	def slot_zoomChanged(self, width, height):
+		"""
+		(width,height): pixels
+		"""
+		print('pyqtGraph.slot_zoomChanged() width:', width, 'height:', height)
+		viewRect = self.viewRect()
+		origCenter = viewRect.center()
+
+		viewRect.setWidth(width)
+		viewRect.setHeight(height)
+
+		viewRect.moveCenter(origCenter)
+
+		padding = 0.0
+		self.setRange(viewRect, padding=padding)
+
 	def _myTranslate(self, direction):
 		"""
 		pan image in response to arrow keys
@@ -1780,6 +1892,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		padding = 0.0
 		self.setRange(imageBoundingRect, padding=padding)
 		self.myZoom = 1
+
+		viewRect = self.viewRect()
+		width = viewRect.width()
+		height = viewRect.height()
+		#print('viewRect width:', width, 'height:', height)
+		self.zoomChangedSignal.emit(width,height)
 
 	def toggleTracing(self):
 		self.displayStateDict['showNodes'] = not self.displayStateDict['showNodes']
@@ -2030,9 +2148,39 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		modifiers = QtWidgets.QApplication.keyboardModifiers()
 		if modifiers == QtCore.Qt.ControlModifier:
+			#origCenter = self.viewRect().center()
+
+			'''
+			viewRect = self.viewRect()
+			height = viewRect.height()
+			width = viewRect.width()
+			center = viewRect.center()
+			print('wheelEvent() BEFORE viewRect:', viewRect)
+			print('  height:', height)
+			print('  width:', width)
+			print('  center:', center)
+			'''
+
 			# zoom in/out with mouse
 			super(myPyQtGraphPlotWidget, self).wheelEvent(event)
 
+			# trying to get it to stay square, same aspect ratio
+			'''
+			viewRect = self.viewRect()
+			print('  wheelEvent() AFTER viewRect:', viewRect)
+			#viewRect.moveCenter(origCenter)
+			height = viewRect.height()
+			width = viewRect.width()
+			center = viewRect.center()
+			print('    height:', height)
+			print('    width:', width)
+			print('    center:', center)
+
+			viewRect.setWidth(height)
+			padding = 0.0
+			self.setRange(viewRect, padding=padding)
+			'''
+			
 			'''
 			viewRect = self.viewRect()
 			print('  - viewRect:', viewRect)
@@ -2051,6 +2199,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			elif mouseDown:
 				self.myZoom -= 1
 			#print('  self.myZoom:', self.myZoom)
+
+			# 20210102, this seems to be in image coord pixels!!!
+			# easy to convert to um
+			viewRect = self.viewRect()
+			width = viewRect.width()
+			height = viewRect.height()
+			#print('wheelEvent() viewRect width:', width, 'height:', height)
+			self.zoomChangedSignal.emit(width,height)
+			#type(viewRect), viewRect)
 
 		else:
 			# set slice
@@ -2118,7 +2275,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		else:
 			if self.myClickMode in ['lineROI', 'rectROI', 'circleROI']:
 				print('  user clicked in empty area ... make a new roi with ... self.newAnnotation()')
-				print('    THIS IS NO LONGER HANDLING CLICKS ON EXISTING V1 blue ANNOTATIONS !!!!!!!!!!!!!!!!!!!')
+				print('	THIS IS NO LONGER HANDLING CLICKS ON EXISTING V1 blue ANNOTATIONS !!!!!!!!!!!!!!!!!!!')
 				#self.myRoiList.newROI(self.myClickMode, pos=(x,y))
 
 				# flip it
@@ -2185,7 +2342,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		doDebug = False
 
 		if doDebug: print('=== onMouseMoved_scene()')
-		if doDebug: print('       pos:', pos)
+		if doDebug: print('	   pos:', pos)
 
 		imagePos = self.myImage.mapFromScene(pos)
 
@@ -2196,7 +2353,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#thePoint = QtCore.QPoint(xPos, yPos)
 
 		displayThisStack = self.displayStateDict['displayThisStack'] # (ch1, ch2, ch2, rgb)
-		if doDebug: print('       displayThisStack:', displayThisStack, type(displayThisStack))
+		if doDebug: print('	   displayThisStack:', displayThisStack, type(displayThisStack))
 
 		if displayThisStack == 'RGB':
 			# don't do this
@@ -2318,7 +2475,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	# abb oct2020 to handle +/- tracing sliding z
 	def slot_OptionsStateChange(self, key1, key2, value):
-		print('    myPyQtGraphPlotWidget.slot_OptionsStateChange()', key1, key2, value)
+		print('	myPyQtGraphPlotWidget.slot_OptionsStateChange()', key1, key2, value)
 		if key1 == 'Tracing':
 			if key2 in ['showTracingAboveSlices', 'showTracingBelowSlices']:
 				self.mainWindow.getStackView()._preComputeAllMasks()
@@ -2358,11 +2515,13 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			print('myPyQtGraphPlotWidget.slot_StateChange() did not understand signalName:', signalName)
 		'''
 
-	def slot_contrastChange(self, myEvent):
-		myEvent.printSlot('myPyQtGraphPlotWidget.slot_contrastChange()')
-		self.contrastDict = myEvent.contrastDict
+	def slot_contrastChange(self, contrastDict):
+		self.contrastDict = contrastDict
+
+		# images do not change, just their contrast
+		self.setContrast()
 		# refresh
-		self.setSlice() # refresh
+		#self.setSlice() # refresh
 
 	def slot_selectNode(self, myEvent):
 		myEvent.printSlot('myPyQtGraphPlotWidget.slot_selectNode()')
@@ -2448,11 +2607,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		print('slot_setClickMode() myClickMode:', self.myClickMode)
 
 	def displayStateChange(self, key1, value=None, toggle=False):
-		#print('displayStateChange() key1:', key1, 'value:', value, 'toggle:', toggle)
+		print('displayStateChange() key1:', key1, 'value:', value, 'toggle:', toggle)
 		if toggle:
 			value = not self.displayStateDict[key1]
 		self.displayStateDict[key1] = value
-		self.setSlice()
+		self.setSlice(switchingChannels=True)
 		self.displayStateChangeSignal.emit(key1, self.displayStateDict)
 
 	def myEvent(self, event):
@@ -2965,7 +3124,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			with open(pickleFile, 'rb') as filename:
 				#self.maskedNodes = pickle.load(filename)
 				self.maskedEdgesDict = pickle.load(filename)
-			print('    loaded mask file from', pickleFile)
+			print('	loaded mask file from', pickleFile)
 			timer.elapsed()
 			#
 			return True
@@ -2985,7 +3144,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		'''
 		pickleFile = self.mySimpleStack._getSavePath() # tiff file without extension
 		pickleFile += '.pickle'
-		print('    myPyQtGraphPlotWidget.saveMasks() saving maskedNodes as pickleFile:', pickleFile)
+		print('	myPyQtGraphPlotWidget.saveMasks() saving maskedNodes as pickleFile:', pickleFile)
 		with open(pickleFile, 'wb') as fout:
 			#pickle.dump(self.maskedNodes, fout)
 			pickle.dump(self.maskedEdgesDict, fout)
@@ -3005,6 +3164,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 		maxNumChannels = self.mySimpleStack.maxNumChannels
 
+		keyList = None
+
 		#
 		# image
 		if self.displayStateDict['showImage']:
@@ -3016,12 +3177,24 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			autoLevels = True
 			levels = None
 
+			showSlidingZ = self.displayStateDict['displaySlidingZ']
+			upSlices = self.options['Stack']['upSlidingZSlices']
+			downSlices = self.options['Stack']['downSlidingZSlices']
+			#print('myPyQtGraphPlotWidget() upSlices:', upSlices, 'downSlices:', downSlices)
+			#sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
+
 			if displayThisStack == 'rgb':
-				sliceImage1 = self.mySimpleStack.getImage2(channel=1, sliceNum=thisSlice)
+				if showSlidingZ:
+					sliceImage1 = self.mySimpleStack.getSlidingZ2(1, thisSlice, upSlices, downSlices)
+				else:
+					sliceImage1 = self.mySimpleStack.getImage2(channel=1, sliceNum=thisSlice)
 				if sliceImage1 is None:
 					print('errror setSlice() showing rgb, sliceImage1 is None')
 					return False
-				sliceImage2 = self.mySimpleStack.getImage2(channel=2, sliceNum=thisSlice)
+				if showSlidingZ:
+					sliceImage2 = self.mySimpleStack.getSlidingZ2(2, thisSlice, upSlices, downSlices)
+				else:
+					sliceImage2 = self.mySimpleStack.getImage2(channel=2, sliceNum=thisSlice)
 				if sliceImage2 is None:
 					print('errror setSlice() showing rgb, sliceImage2 is None')
 					return False
@@ -3033,26 +3206,41 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				sliceImage[:,:,0] = sliceImage2 # red
 				sliceImage[:,:,1] = sliceImage1 # green
 				sliceImage[:,:,2] = sliceImage2 # blue
-			elif self.displayStateDict['displaySlidingZ']:
-				upSlices = self.options['Stack']['upSlidingZSlices']
-				downSlices = self.options['Stack']['downSlidingZSlices']
-				print('myPyQtGraphPlotWidget() upSlices:', upSlices, 'downSlices:', downSlices)
-				sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
+
+				keyList = [2, 1, 2]
+
+			# abb removed 20201228
+			#elif self.displayStateDict['displaySlidingZ']:
+			#	upSlices = self.options['Stack']['upSlidingZSlices']
+			#	downSlices = self.options['Stack']['downSlidingZSlices']
+			#	print('myPyQtGraphPlotWidget() upSlices:', upSlices, 'downSlices:', downSlices)
+			#	sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
 			#else:
 			#	sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
 			elif displayThisStack > maxNumChannels: #in [5,6,7,8]:
-				print('  setSlice() trying to display displayThisStack:', displayThisStack)
+				#print('  setSlice() trying to display displayThisStack:', displayThisStack)
 				# mask + image ... need to set contrast of [0,1] mask !!!
-				sliceMaskImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
+				if showSlidingZ:
+					sliceMaskImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
+				else:
+					sliceMaskImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
 				if sliceMaskImage is None:
 					print('warning: bPyQtGraph.setSlice() got None sliceMaskImage for displayThisStack:', displayThisStack)
 				else:
 					#imageChannel = displayThisStack-maxNumChannels
 					imageChannel = displayThisStack % maxNumChannels # remainder after division
-					print('  bPyQtGraph.setSlice() imageChannel:', imageChannel)
-					sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
+					#print('  bPyQtGraph.setSlice() imageChannel:', imageChannel)
+					if showSlidingZ:
+						sliceChannelImage = self.mySimpleStack.getSlidingZ2(imageChannel, thisSlice, upSlices, downSlices)
+					else:
+						sliceChannelImage = self.mySimpleStack.getImage2(channel=imageChannel, sliceNum=thisSlice)
+
 					skelChannel = displayThisStack + maxNumChannels
-					sliceSkelImage = self.mySimpleStack.getImage2(channel=skelChannel, sliceNum=thisSlice)
+					if showSlidingZ:
+						sliceSkelImage = self.mySimpleStack.getSlidingZ2(skelChannel, thisSlice, upSlices, downSlices)
+					else:
+						sliceSkelImage = self.mySimpleStack.getImage2(channel=skelChannel, sliceNum=thisSlice)
+
 					m = sliceMaskImage.shape[0]
 					n = sliceMaskImage.shape[1]
 					sliceImage = np.zeros((m,n,3), dtype=np.uint8)
@@ -3061,6 +3249,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					if sliceSkelImage is not None:
 						sliceImage[:,:,1] = sliceSkelImage # green
 					sliceImage[:,:,2] = sliceMaskImage # blue
+
+					'''
 					# contrast for [0,1] mask
 					autoLevels = False
 					minContrast = 0
@@ -3069,8 +3259,16 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					#maxContrast = self.contrastDict['maxContrast']
 					levels = [[minContrast,maxContrast], [0,2], [0,2]]
 					#self.myImage.setLevels(levels, update=True)
+					'''
+
+					keyList = [imageChannel, None, displayThisStack]
 			else:
-				sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
+				# channel 1/2/3
+				if showSlidingZ:
+					sliceImage = self.mySimpleStack.getSlidingZ2(displayThisStack, thisSlice, upSlices, downSlices)
+				else:
+					sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
+				keyList = [displayThisStack]
 
 			if sliceImage is None:
 				#print('setSlice() got None image for displayThisStack:', displayThisStack, 'thisSlice:', thisSlice)
@@ -3078,8 +3276,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 			# slice image is cols,rows,slices (np is slices, rows, cols)
 			self.sliceImage = sliceImage
+			self.keyList = keyList
 
-			print('pyqt self.sliceImage:', self.sliceImage.shape)
+			#print('pyqt.setSlice() self.sliceImage.shape:', self.sliceImage.shape)
 
 			# slice image can be single channel OR 3-channel RGB
 			self.myImage.setImage(sliceImage, levels=levels, autoLevels=autoLevels)
@@ -3088,14 +3287,37 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			# adjust the contrast
 
 			# when switching channels we need to update the contrastDict
-			print('setSlice() switchingChannels:', switchingChannels)
+			#print('setSlice() switchingChannels:', switchingChannels)
 			if switchingChannels:
 				# new we know sliceImage to display
 				# update contrast bar to make correct number of channels and limits
-				self.mainWindow.myContrastWidget.slot_setImage(sliceImage)
-				self.contrastDict = self.mainWindow.myContrastWidget.getContrastDict()
+				self.contrastDict = self.mainWindow.myContrastWidget.slot_setImage_new(keyList=keyList, sliceImage=sliceImage)
 
+			'''
+			print('setSlice() displayThisStack:', displayThisStack)
+			print('setSlice() keyList:', keyList)
+			print('setSlice() self.contrastDict:')
+			print(json.dumps(self.contrastDict, indent=2))
+			'''
+
+			# moved to set contrast
+			self.setContrast()
+			'''
 			# to do, include this in above and pass to self.myImage.setImage
+			if self.contrastDict is not None:
+				levelsList = []
+				for key in keyList:
+					minContrast = self.contrastDict[key]['minContrast']
+					maxContrast = self.contrastDict[key]['maxContrast']
+					levelsList.append([minContrast, maxContrast])
+				if len(keyList) == 1:
+					# special case, we do not wanto pass a list of list
+					levelsList = levelsList[0]
+				print('levelsList:', levelsList)
+				self.myImage.setLevels(levelsList, update=True)
+			'''
+
+			'''
 			if displayThisStack in [1,2,3]:
 				if self.contrastDict is not None:
 					minContrast = self.contrastDict['minContrast']
@@ -3115,14 +3337,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					self.myImage.setLevels([minContrast,maxContrast], update=True)
 
 					# LUT are not compatible with 3-channel rgb
-					'''
+					"""
 					colorLutStr = self.contrastDict['colorLut']
 					try:
 						colorLut = self.myColorLutDict[colorLutStr] # like (green, red, blue, gray, gray_r, ...)
 						self.myImage.setLookupTable(colorLut, update=True)
 					except (KeyError) as e:
 						print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
-					'''
+					"""
+			'''
 		else:
 			#print('not showing image')
 			fakeImage = np.ndarray((1,1,1), dtype=np.uint8)
@@ -3149,6 +3372,22 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.update()
 
 		self.setSliceSignal2.emit(self.sliceImage)
+
+	def setContrast(self):
+		# moved to set contrast
+		# to do, include this in above and pass to self.myImage.setImage
+		keyList = self.keyList
+		if self.contrastDict is not None:
+			levelsList = []
+			for key in keyList:
+				minContrast = self.contrastDict[key]['minContrast']
+				maxContrast = self.contrastDict[key]['maxContrast']
+				levelsList.append([minContrast, maxContrast])
+			if len(keyList) == 1:
+				# special case, we do not wan to pass a list of list
+				levelsList = levelsList[0]
+			#print('setContrast() levelsList:', levelsList)
+			self.myImage.setLevels(levelsList, update=True)
 
 def main():
 	app = QtWidgets.QApplication(sys.argv)

@@ -18,6 +18,8 @@ from .bDialog import *
 
 # abb 20200828
 from .bPyQtGraph import myPyQtGraphPlotWidget
+from .bPyQtGraph import AspectRatioWidget
+
 from .bToolBar import bToolBar
 from .bSearchWidget import bSearchWidget
 

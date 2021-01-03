@@ -53,7 +53,7 @@ class bCaimanPlotWidget0(QtWidgets.QMainWindow):
 		self.toolbarChangedSignal.emit(theDict)
 
 	def slot_setSlice(self, myEvent, myValue):
-		print('bCaimanPlotWidget0.slot_setSlice() needs to set slice to myValue:', myValue)
+		#print('bCaimanPlotWidget0.slot_setSlice() needs to set slice to myValue:', myValue)
 		self.myPlotWidget.slot_SetSlice(myValue)
 
 class bCaimanPlotWidget(pg.PlotWidget):
@@ -167,7 +167,7 @@ class bCaimanPlotWidget(pg.PlotWidget):
 		"""
 		sliceNumber: pass None to not update self.sliceLineNum
 		"""
-		print('bCaimanPlotWidget.slotSetSlice() sliceNumber:', sliceNumber)
+		#print('bCaimanPlotWidget.slotSetSlice() sliceNumber:', sliceNumber)
 
 		if sliceNumber is not None:
 			self.sliceLineNum = sliceNumber

@@ -125,11 +125,15 @@ class bStackWidget(QtWidgets.QMainWindow):
 		# testing pyqtgraph (removing self.myStackView on 20200829)
 		#self.myStackView = None
 		#self.myStackView = bStackView(self.mySimpleStack, mainWindow=self) # a visual stack
-		# abb
+		# 20210102 was this
 		self.myStackView2 = bimpy.interface.bPyQtGraph.myPyQtGraphPlotWidget(self, self.mySimpleStack) # a visual stack
+		# trying to make it stay square (as window isresized)
+		#self.myStackView3 = bimpy.interface.AspectRatioWidget(self.myStackView2, parent)
 
 		#tmpChannelImage = self.mySimpleStack.getImage2(channel=1, sliceNum=0)
-		self.myContrastWidget = bimpy.interface.bStackContrastWidget2()
+		tmpChannelImage = None
+		self.myContrastWidget = bimpy.interface.bStackContrastWidget2(
+								sliceData=tmpChannelImage, usePyQtGraphIndex=True)
 
 		self.myHBoxLayout2 = QtWidgets.QHBoxLayout()
 
@@ -140,12 +144,15 @@ class bStackWidget(QtWidgets.QMainWindow):
 		if self.myStackView is not None:
 			self.myHBoxLayout2.addWidget(self.myStackView)
 		'''
-		self.myHBoxLayout2.addWidget(self.myStackView2)
-		self.myHBoxLayout2.addWidget(self.mySliceSlider)
+		self.myHBoxLayout2.addWidget(self.myContrastWidget)#, stretch=1)
+		# 20210102 was this
+		self.myHBoxLayout2.addWidget(self.myStackView2, stretch=2)
+		#self.myHBoxLayout2.addWidget(self.myStackView3)#, stretch=2)
+		self.myHBoxLayout2.addWidget(self.mySliceSlider)#, stretch=1)
 
 		#
-		self.myVBoxLayout.addWidget(self.myContrastWidget) #, stretch=0.1)
-		#self.myVBoxLayout.addWidget(self.bLeftToolbarWidget) #, stretch=0.1)
+		# abb 20201230, was this
+		#self.myVBoxLayout.addWidget(self.myContrastWidget) #, stretch=0.1)
 		self.myVBoxLayout.addLayout(self.myHBoxLayout2) #, stretch = 9)
 
 		self.lineProfileWidget = bimpy.interface.bLineProfileWidget(mainWindow=self)
@@ -257,6 +264,9 @@ class bStackWidget(QtWidgets.QMainWindow):
 		self.myStackView2.selectEdgeSignal.connect(self.statusToolbarWidget.slot_select)
 		self.myStackView2.selectEdgeSignal.connect(self.nodeTable2.slot_select)
 		self.myStackView2.selectEdgeSignal.connect(self.edgeTable2.slot_select)
+
+		self.myStackView2.zoomChangedSignal.connect(self.statusToolbarWidget.slot_ZoomChanged)
+		self.statusToolbarWidget.zoomChangeSignal.connect(self.myStackView2.slot_zoomChanged)
 
 		#
 		# new annotation table using bAnnotationList (from bStack)
@@ -566,6 +576,12 @@ class bStackWidget(QtWidgets.QMainWindow):
 	def openNapari(self):
 		if self.napariViewer is None:
 			self.napariViewer = bimpy.interface.bNapari(path='', theStack=self.mySimpleStack, myStackWidget=self)
+
+	def saveImage(self):
+		"""
+		save the current bPyQtGraph as a movie
+		"""
+		self.getStackView().saveImage()
 
 	def saveMovie(self):
 		"""
@@ -1374,8 +1390,13 @@ class bStackWidget(QtWidgets.QMainWindow):
 		napariAction = QtWidgets.QAction('Napari', self, checkable=False)
 		tmpMenuAction = menu.addAction(napariAction)
 
-		# save movie
 		menu.addSeparator()
+
+		# save image
+		saveImageAction = QtWidgets.QAction('Save Image', self, checkable=False)
+		tmpMenuAction = menu.addAction(saveImageAction)
+
+		# save movie
 		saveMovieAction = QtWidgets.QAction('Save Movie', self, checkable=False)
 		tmpMenuAction = menu.addAction(saveMovieAction)
 
@@ -1534,6 +1555,8 @@ class bStackWidget(QtWidgets.QMainWindow):
 			optionsDialog = bimpy.interface.bOptionsDialog(self, self)
 		elif userActionStr == 'Napari':
 			self.openNapari()
+		elif userActionStr == 'Save Image':
+			self.saveImage()
 		elif userActionStr == 'Save Movie':
 			self.saveMovie()
 		elif userActionStr == 'Refresh':
@@ -1712,6 +1735,7 @@ if __name__ == '__main__':
 		# works well
 		path = '/Users/cudmore/box/data/bImpy-Data/deepvess/mytest.tif'
 		path = '/Users/cudmore/box/data/bImpy-Data/vesselucida/20191017__0001.tif'
+		path = '/Users/cudmore/data/san-density/SAN7/SAN7_head/aicsAnalysis/20201202__0002_ch2.tif'
 
 		# for this one, write code to revover tracing versus image scale
 		# x/y=0.3107, z=0.5
@@ -1723,7 +1747,7 @@ if __name__ == '__main__':
 
 	sw = bStackWidget(mainWindow=app, parent=None, path=path)
 	sw.show()
-	sw.myStackView.setSlice(0)
+	sw.myStackView2.setSlice(0)
 
 	'''
 	sw2 = bStackWidget(mainWindow=app, parent=None, path=path)

@@ -10,6 +10,8 @@ from qtpy import QtGui, QtCore, QtWidgets
 
 #class bStatusToolbarWidget(QtWidgets.QToolBar):
 class bStatusToolbarWidget(QtWidgets.QWidget):
+	zoomChangeSignal = QtCore.Signal(object, object) # (width, height)
+
 	def __init__(self, mainWindow, numSlices):
 		#print('bStatusToolbarWidget.__init__')
 		#super(QtWidgets.QToolBar, self).__init__(parent)
@@ -23,6 +25,8 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		myGroupBox = QtWidgets.QGroupBox(self)
 		myGroupBox.setTitle('')
 		'''
+
+		self.settingInSlot = False # so we can use spinbox setValue() and not trigger signal emit
 
 		hBoxLayout = QtWidgets.QHBoxLayout()
 
@@ -111,7 +115,7 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 
 		plusMinusLabel_ = QtWidgets.QLabel("+/- Z-Slices")
 		self.plusMinusSpinBox = QtWidgets.QSpinBox()
-		spinBoxWidth = 64
+		spinBoxWidth = 48
 		self.plusMinusSpinBox.setMaximumWidth(spinBoxWidth)
 		self.plusMinusSpinBox.setMinimum(1)
 		self.plusMinusSpinBox.setMaximum(1e6)
@@ -121,6 +125,38 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		self.plusMinusSpinBox.valueChanged.connect(self.old_valueChanged)
 		hBoxLayout2.addWidget(plusMinusLabel_, myAlign)
 		hBoxLayout2.addWidget(self.plusMinusSpinBox, myAlign)
+
+		# image width
+		imageWidthUm = self.mainWindow.getStack().getHeaderVal2('umWidth') # todo: calculate
+		imageWidthLabel_ = QtWidgets.QLabel("Width (um)")
+		self.imageWidthSpinBox = QtWidgets.QSpinBox()
+		spinBoxWidth = 100
+		self.imageWidthSpinBox.setMaximumWidth(spinBoxWidth)
+		self.imageWidthSpinBox.setMinimum(0.1)
+		self.imageWidthSpinBox.setMaximum(1e6)
+		self.imageWidthSpinBox.setValue(imageWidthUm)
+		self.imageWidthSpinBox.setProperty('bobID_1', 'Stack')
+		self.imageWidthSpinBox.setProperty('bobID_2', 'setImageWidth')
+		self.imageWidthSpinBox.setKeyboardTracking(False)
+		self.imageWidthSpinBox.valueChanged.connect(self.old_valueChanged)
+		hBoxLayout2.addWidget(imageWidthLabel_, myAlign)
+		hBoxLayout2.addWidget(self.imageWidthSpinBox, myAlign)
+
+		# image Height
+		imageHeightUm = self.mainWindow.getStack().getHeaderVal2('umHeight') # todo: calculate
+		imageHeightLabel_ = QtWidgets.QLabel("Height (um)")
+		self.imageHeightSpinBox = QtWidgets.QSpinBox()
+		spinBoxWidth = 100
+		self.imageHeightSpinBox.setMaximumWidth(spinBoxWidth)
+		self.imageHeightSpinBox.setMinimum(0.1)
+		self.imageHeightSpinBox.setMaximum(1e6)
+		self.imageHeightSpinBox.setValue(imageHeightUm)
+		self.imageHeightSpinBox.setProperty('bobID_1', 'Stack')
+		self.imageHeightSpinBox.setProperty('bobID_2', 'setImageHeight')
+		self.imageHeightSpinBox.setKeyboardTracking(False)
+		self.imageHeightSpinBox.valueChanged.connect(self.old_valueChanged)
+		hBoxLayout2.addWidget(imageHeightLabel_, myAlign)
+		hBoxLayout2.addWidget(self.imageHeightSpinBox, myAlign)
 
 		#
 		# add all rows to vBoxLayout
@@ -132,6 +168,29 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		# finish
 		#myGroupBox.setLayout(hBoxLayout)
 		#self.addWidget(myGroupBox)
+
+	def slot_ZoomChanged(self, width, height):
+		"""
+		(width,height): image pixels
+		"""
+		#print('bStatusToolbarWidget.slot_ZoomChanged()', width, height)
+		xVoxel = self.mainWindow.getStack().getHeaderVal2('xVoxel') # todo: calculate
+		yVoxel = self.mainWindow.getStack().getHeaderVal2('yVoxel') # todo: calculate
+
+		imageWidthUm = width * xVoxel
+		imageHeightUm = height * yVoxel
+
+		#
+		self.settingInSlot = True
+
+		self.imageWidthSpinBox.setValue(imageWidthUm)
+		self.imageHeightSpinBox.setValue(imageHeightUm)
+
+		self.imageWidthSpinBox.update()
+		self.imageHeightSpinBox.update()
+
+		#
+		self.settingInSlot = False
 
 	def slot_OptionsStateChange(self, key1, key2, value):
 		print('bStatusToolbarWidget.slot_OptionsStateChange()', key1, key2, value)
@@ -145,9 +204,30 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 		"""
 		bobID_1 = self.sender().property('bobID_1')
 		bobID_2 = self.sender().property('bobID_2')
-		print(f'valueChanged() value: {value} type(value), bobID_1:{bobID_1}, bobID_2:{bobID_2}')
+		#print(f'valueChanged() value: {value} type(value), bobID_1:{bobID_1}, bobID_2:{bobID_2}')
 
-		if bobID_2 == 'upSlidingZSlices':
+		if bobID_2 in ['setImageWidth','setImageHeight']:
+			if self.settingInSlot:
+				pass
+				#self.settingInSlot = False
+			else:
+				print('old_valueChanged() setImageWidth', value)
+				width = self.imageWidthSpinBox.value() # um
+				height = self.imageHeightSpinBox.value() # um
+
+				xVoxel = self.mainWindow.getStack().getHeaderVal2('xVoxel') # todo: calculate
+				yVoxel = self.mainWindow.getStack().getHeaderVal2('yVoxel') # todo: calculate
+
+				width = width / xVoxel
+				height = height / yVoxel
+
+				#self.zoomChangeSignal.emit(width, height)
+				self.zoomChangeSignal.emit(width, width)
+
+		#elif bobID_2 == 'setImageHeight':
+		#	print('old_valueChanged() setImageHeight', value)
+
+		elif bobID_2 == 'upSlidingZSlices':
 			key1 = 'Stack'
 			key2 = 'upSlidingZSlices'
 			doEmit = False
@@ -178,6 +258,9 @@ class bStatusToolbarWidget(QtWidgets.QWidget):
 			self.mainWindow.getStackView()._preComputeAllMasks()
 			self.mainWindow.getStackView().setSlice()
 			'''
+
+		else:
+			print('old_valueChanged() did not understand bobID_2:', bobID_2)
 
 	def slot_DisplayStateChange(self, key, theDict):
 		"""
