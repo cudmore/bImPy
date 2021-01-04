@@ -696,19 +696,31 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		self.setFixedSize(width, height)
 	'''
 
+	def resizeEvent(self, event):
+		self.aspectLocked = True
+		print('resizeEvent() aspectLocked', self.aspectLocked)#, self.getAspectRatio())
+		if event is not None:
+			if self.forceSquareImage:
+				# Create a square base size of 10x10 and scale it to the new size
+				# maintaining aspect ratio.
+				new_size = QtCore.QSize(10, 10)
+				new_size.scale(event.size(), QtCore.Qt.KeepAspectRatio)
+				self.resize(new_size)
+			super(myPyQtGraphPlotWidget, self).resizeEvent(event)
+
 	#def __init__(self, *args, **kwargs):
 	#	super(myPyQtGraphPlotWidget, self).__init__(*args, **kwargs)
 	def __init__(self, parent=None, mySimpleStack=None):
 		"""
 		parent: bStackWidget
 		"""
-		#lockAspect = True
+		#lockAspect = 1.0
 		#super(myPyQtGraphPlotWidget, self).__init__(parent=parent, lockAspect=lockAspect)
 		super(myPyQtGraphPlotWidget, self).__init__(parent=parent)
 
 		self.mainWindow = parent # usually bStackWidget
 		self.myZoom = 1 # to control point size of tracing plot() and setdata()
-
+		self.forceSquareImage = False
 		##
 		##
 		# (1) set imageAxisOrder to row-major
@@ -718,7 +730,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		##
 
 		# not needed ???
-		#self.setAspectLocked(True)
+		self.setAspectLocked(True)
 
 		#
 		pg.setConfigOption('imageAxisOrder','row-major')
@@ -726,6 +738,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		# do this, also flips image, DOES NOT needs setSLice() with sliceImage = np.fliplr(sliceImage)
 		#no self.getViewBox().invertX(True)
 		self.getViewBox().invertY(True)
+
+		#print(type(self.getViewBox()))
+		# <class 'pyqtgraph.graphicsItems.ViewBox.ViewBox.ViewBox'>
+
+		self.getViewBox().setAspectLocked()
+		#print('getAspectRatio:', self.getViewBox().getAspectRatio())
+
+		# this works, useful for debugging
+		#self.getViewBox().setBackgroundColor(pg.mkColor('r'))
 
 		self.setAspectLocked()
 
@@ -883,16 +904,19 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		map = pg.ColorMap(pos, greenColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['green'] = lut
+		self.myColorLutDict['g'] = lut
 
 		redColor = np.array([[0,0,0,255], [128,0,0,255], [255,0,0,255]], dtype=np.ubyte)
 		map = pg.ColorMap(pos, redColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['red'] = lut
+		self.myColorLutDict['r'] = lut
 
 		blueColor = np.array([[0,0,0,255], [0,0,128,255], [0,0,266,255]], dtype=np.ubyte)
 		map = pg.ColorMap(pos, blueColor)
 		lut = map.getLookupTable(0.0, 1.0, 256)
 		self.myColorLutDict['blue'] = lut
+		self.myColorLutDict['b'] = lut
 
 		self.contrastDict = None # assigned in self.slot_contrastChange()
 		self.sliceImage = None # set in setSlice()
@@ -912,6 +936,11 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		#
 		# need to refresh before drawing?
 		self.setSlice()
+
+	def toggleMakeSquare(self):
+		self.forceSquareImage = not self.forceSquareImage
+		self.resizeEvent(QtGui.QResizeEvent(self.size(), QtCore.QSize()))
+		self.repaint()
 
 	def roiChanged(self, roiDict):
 		# todo: need to update the backend annotation in self.mySimpleStack.annotationList
@@ -1640,7 +1669,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				ex = pg.exporters.SVGExporter(self.scene())
 				ex.export(savefilePath)
 			elif savefilePath.endswith(('.png', '.tif')):
-				ex = pg.exporters.ImageExporter(win.scene())
+				ex = pg.exporters.ImageExporter(self.scene())
 				ex.export(savefilePath)
 		else:
 			print('no file saved')
@@ -1661,6 +1690,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		stopSlice = self.mySimpleStack.numSlices #477
 		stepSlice =  1
 
+		smd = bimpy.interface.setMovieDialog(startSlice, stopSlice, stepSlice, fps)
+		ok = smd.exec_()
+		answer = smd.getAnswer()
+
+		startSlice = answer['startSlice']
+		stopSlice = answer['stopSlice']
+		stepSlice = answer['stepSlice']
+		fps = answer['fps']
+
 		#saveFolder = '/home/cudmore/Desktop/pyqtgraph-movie'
 
 		# get the name of our stack to make a file name
@@ -1680,7 +1718,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		theSliceRange = range(startSlice, stopSlice, stepSlice)
 
 		# get width/height for cv2
-		exporter = pg.exporters.ImageExporter(self.scene())
+		exporter = pg.exporters.ImageExporter(self.getViewBox())
+		#exporter = pg.exporters.ImageExporter(self.myImage)
+		#exporter = pg.exporters.ImageExporter(self.scene())
 		theBytes = exporter.export(toBytes=True)
 		width = theBytes.width()
 		height = theBytes.height()
@@ -1721,7 +1761,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				#exporter = pg.exporters.ImageExporter(self.myImage)
 
 				# this works to save the scene
-				exporter = pg.exporters.ImageExporter(self.scene())
+				exporter = pg.exporters.ImageExporter(self.getViewBox())
+				#exporter = pg.exporters.ImageExporter(self.myImage)
+				#exporter = pg.exporters.ImageExporter(self.scene())
 
 				#exporter.export('/home/cudmore/Desktop/pyqtgraph-movie/fileName.png')
 				'''
@@ -2172,15 +2214,15 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			height = viewRect.height()
 			width = viewRect.width()
 			center = viewRect.center()
-			print('    height:', height)
-			print('    width:', width)
-			print('    center:', center)
+			print('	height:', height)
+			print('	width:', width)
+			print('	center:', center)
 
 			viewRect.setWidth(height)
 			padding = 0.0
 			self.setRange(viewRect, padding=padding)
 			'''
-			
+
 			'''
 			viewRect = self.viewRect()
 			print('  - viewRect:', viewRect)
@@ -3165,6 +3207,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		maxNumChannels = self.mySimpleStack.maxNumChannels
 
 		keyList = None
+		colorList = None
 
 		#
 		# image
@@ -3208,7 +3251,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				sliceImage[:,:,2] = sliceImage2 # blue
 
 				keyList = [2, 1, 2]
-
+				colorList = ['red', 'green', 'blue']
 			# abb removed 20201228
 			#elif self.displayStateDict['displaySlidingZ']:
 			#	upSlices = self.options['Stack']['upSlidingZSlices']
@@ -3261,7 +3304,13 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					#self.myImage.setLevels(levels, update=True)
 					'''
 
-					keyList = [imageChannel, None, displayThisStack]
+					colorList = ['red', 'green', 'blue']
+					if imageChannel == 1:
+						keyList = [None, imageChannel, displayThisStack]
+					elif imageChannel == 2:
+						keyList = [imageChannel, None, displayThisStack]
+					else:
+						keyList = [imageChannel, None, displayThisStack]
 			else:
 				# channel 1/2/3
 				if showSlidingZ:
@@ -3269,6 +3318,12 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				else:
 					sliceImage = self.mySimpleStack.getImage2(channel=displayThisStack, sliceNum=thisSlice)
 				keyList = [displayThisStack]
+				if displayThisStack == 1:
+					colorList = ['green']
+				elif displayThisStack == 2:
+					colorList = ['red']
+				else:
+					colorList = ['blue']
 
 			if sliceImage is None:
 				#print('setSlice() got None image for displayThisStack:', displayThisStack, 'thisSlice:', thisSlice)
@@ -3277,6 +3332,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			# slice image is cols,rows,slices (np is slices, rows, cols)
 			self.sliceImage = sliceImage
 			self.keyList = keyList
+			self.colorList = colorList
 
 			#print('pyqt.setSlice() self.sliceImage.shape:', self.sliceImage.shape)
 
@@ -3291,7 +3347,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			if switchingChannels:
 				# new we know sliceImage to display
 				# update contrast bar to make correct number of channels and limits
-				self.contrastDict = self.mainWindow.myContrastWidget.slot_setImage_new(keyList=keyList, sliceImage=sliceImage)
+				self.contrastDict = self.mainWindow.myContrastWidget.slot_setImage_new(keyList=keyList, colorList=colorList, sliceImage=sliceImage)
 
 			'''
 			print('setSlice() displayThisStack:', displayThisStack)
@@ -3386,6 +3442,14 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 			if len(keyList) == 1:
 				# special case, we do not wan to pass a list of list
 				levelsList = levelsList[0]
+				# monochrome
+				colorLutStr = self.colorList[0] #self.contrastDict[key]['colorLut']
+				try:
+					colorLut = self.myColorLutDict[colorLutStr] # like (green, red, blue, gray, gray_r, ...)
+					self.myImage.setLookupTable(colorLut, update=True)
+				except (KeyError) as e:
+					print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
+
 			#print('setContrast() levelsList:', levelsList)
 			self.myImage.setLevels(levelsList, update=True)
 

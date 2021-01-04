@@ -31,3 +31,5 @@ from .bScatterPlotWidget import bScatterPlotWidget
 from .bCaimanPlotWidget import bCaimanPlotWidget0
 from .bRoiAnalysisWidget import bRoiAnalysisWidget # 20201027
 #from .bCaimanPlotWidget import bCaimanPlotWidget
+
+from .bDialog import setMovieDialog

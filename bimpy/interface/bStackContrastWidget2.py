@@ -84,6 +84,7 @@ class bHistogramWidget(QtWidgets.QWidget):
 		self.sliceImage = sliceData
 
 		self.channelKey = None
+		self.channelColor = None
 
 		self.myMaxHeight = 120 # adjust based on number of channel
 		self.myMaxWidth = 300 # adjust based on number of channel
@@ -93,7 +94,7 @@ class bHistogramWidget(QtWidgets.QWidget):
 
 		self.bitDepth = 8
 
-		self.brush = (128, 128, 128, 80)
+		#self.brush = (128, 128, 128, 80)
 		self.contrastDict = {
 					'channelKey': None,
 					'minContrast': 0,
@@ -101,18 +102,22 @@ class bHistogramWidget(QtWidgets.QWidget):
 					'colorLut': 'gray',
 					'minColor': None,
 					'maxColor': None,
-					'brush': (0.6, 0.6, 0.6, 0.8)
+					#'brush': (0.6, 0.6, 0.6, 0.8)
 					}
 
 		self.buildUI()
 
-	def setChannelKey(self, channelKey, brush=None):
+	def setChannelColor(self, channelColor):
+		#self.contrastDict['colorLut'] = channelColor
+		self.channelColor = channelColor
+
+	def setChannelKey(self, channelKey): #, brush=None):
 		"""
 		channelKey is 1/2/3 then 4/5/6 then 7/8/9
 			for (raw, mask, skel, edt)
 		"""
-		if brush is not None:
-			self.brush = brush
+		#if brush is not None:
+		#	self.brush = brush
 		self.channelKey = channelKey
 		self.contrastDict['channelKey'] = channelKey
 
@@ -137,7 +142,18 @@ class bHistogramWidget(QtWidgets.QWidget):
 			y = np.log10(y)
 
 		self.pgHist.setData(x=x, y=y)
-		self.pgHist.setBrush(self.contrastDict['brush'])
+
+		# color
+		colorLut = self.channelColor #self.contrastDict['colorLut'] # in ('r', 'g', 'b')
+		print('bHistogramWidget.slot_setImage() colorLut:', colorLut)
+		#brushColor = pg.mkColor(colorLut)
+		if colorLut == 'gray':
+			colorLut = 0.7
+		else:
+			colorLut = colorLut[0] # this is a huge cludge, doesn not work for blaack (k)
+		#
+		self.pgHist.setBrush(colorLut)
+		#self.pgHist.setBrush(self.contrastDict['brush'])
 
 		self.update()
 
@@ -188,6 +204,14 @@ class bHistogramWidget(QtWidgets.QWidget):
 
 		#print('bHistogramWidget.emitChange()')
 		#print(json.dumps(self.contrastDict, indent=2))
+
+		# todo: fix this, I am having problems with
+		# specifying  channels in pyqtgraph.setSlice()
+		# I need to map them way beyond ch 1/2/3
+		# onto all of mask/skel/edt
+		self.contrastDict['colorLut'] = self.channelColor
+
+		#print(json.dumps(self.contrastDict))
 
 		self.contrastChangeSignal.emit(self.channelKey, self.contrastDict)
 
@@ -287,6 +311,7 @@ class bHistogramWidget(QtWidgets.QWidget):
 		self.minSpinBox.setMinimum(-1e6) # si user can specify whatever they want
 		self.minSpinBox.setMaximum(1e6)
 		self.minSpinBox.setValue(minVal)
+		self.minSpinBox.setKeyboardTracking(False)
 		self.minSpinBox.valueChanged.connect(self.spinBoxValueChanged)
 		#
 		self.minContrastSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -351,6 +376,7 @@ class bHistogramWidget(QtWidgets.QWidget):
 		self.maxSpinBox.setMinimum(-1e6) # si user can specify whatever they want
 		self.maxSpinBox.setMaximum(1e6)
 		self.maxSpinBox.setValue(maxVal)
+		self.maxSpinBox.setKeyboardTracking(False)
 		self.maxSpinBox.valueChanged.connect(self.spinBoxValueChanged)
 		#
 		self.maxContrastSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -429,8 +455,10 @@ class bHistogramWidget(QtWidgets.QWidget):
 			y = np.log10(y)
 		'''
 
+		brush = 0.7 #pgColor = 0.7
+
 		self.pgPlotWidget = pg.PlotWidget()
-		self.pgHist = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=self.brush)
+		self.pgHist = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=brush)
 		self.pgPlotWidget.addItem(self.pgHist)
 
 		# remove the y-axis, it is still not ligned up perfectly !!!
@@ -476,7 +504,7 @@ class bStackContrastWidget2(QtWidgets.QWidget):
 					'colorLut': 'gray',
 					'minColor': None,
 					'maxColor': None,
-					'brush': (0.6, 0.6, 0.6, 0.8),
+					#'brush': (0.6, 0.6, 0.6, 0.8),
 			}
 
 		self.buildUI2()
@@ -484,17 +512,20 @@ class bStackContrastWidget2(QtWidgets.QWidget):
 	def getKeyDict(self):
 		return self.contrastDict
 
-	def slot_setImage_new(self, keyList=None, sliceImage=None):
+	def slot_setImage_new(self, keyList=None, colorList=None, sliceImage=None):
 		"""
 		keyList: list of len 1 or 3
 		"""
-		print('slot_setImage_new() keyList:', keyList)
+		print('slot_setImage_new()')
+		print('  keyList:', keyList)
+		print('  colorList:', colorList)
 		if sliceImage is None:
 			print('  sliceImage: None')
 		else:
 			print('  sliceImage:', sliceImage.shape)
 
 		self.keyList = keyList
+		self.colorList = colorList
 
 		# hide all 3
 		for hist in self.histList:
@@ -507,15 +538,16 @@ class bStackContrastWidget2(QtWidgets.QWidget):
 							'channelKey': key,
 							'minContrast': 0,
 							'maxContrast': 255,
-							'colorLut': 'gray',
+							'colorLut': colorList[idx],
 							'minColor': None,
 							'maxColor': None,
-							'brush': (0.6, 0.6, 0.6, 0.8)
+							#'brush': (0.6, 0.6, 0.6, 0.8)
 							}
 
 			self.histList[idx].show()
 			self.histList[idx].setChannelKey(key)
 			self.histList[idx].setContrastDict(self.contrastDict[key])
+			self.histList[idx].setChannelColor(colorList[idx])
 			#print('  todo: slot_setImage_new() needs to set hist', idx, 'to key', key)
 			self.histList[idx].slot_setImage(sliceImage)
 
@@ -560,7 +592,7 @@ class bStackContrastWidget2(QtWidgets.QWidget):
 		"""
 		signal to pyqt graph that the contrast has changed"
 		"""
-		print('  bStackContrastWidget2.emitChange')
+		#print('  bStackContrastWidget2.emitChange')
 		self.contrastDict[channelKey] = contrastDict
 
 		self.contrastChangeSignal.emit(self.contrastDict)

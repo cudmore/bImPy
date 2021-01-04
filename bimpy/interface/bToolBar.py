@@ -176,6 +176,7 @@ class bToolBar(QtWidgets.QToolBar):
 				myHamburger.addAction(theAction)
 				continue
 
+			isChecked = False
 			isCheckable = False
 			useIcon = True
 			if toolName in ['Search', 'Contrast', 'Line Profile', 'Caiman', 'Status']:
@@ -192,6 +193,9 @@ class bToolBar(QtWidgets.QToolBar):
 			theAction.setCheckable(isCheckable)
 			callbackFn = functools.partial(self.oneCallback, toolName)
 			theAction.triggered.connect(callbackFn)
+
+			if toolName == 'Status':
+				theAction.setChecked(True)
 
 			# set shortcuts and tooltip
 			if toolName == 'Search':
@@ -213,6 +217,10 @@ class bToolBar(QtWidgets.QToolBar):
 			elif toolName == 'Plot':
 				theAction.setShortcut('p')# or 'Ctrl+r' or '&r' for alt+r
 				theAction.setToolTip('Plot [p]')
+				theAction.setShortcutVisibleInContextMenu(True)
+			elif toolName == 'Status':
+				theAction.setShortcut('s')# or 'Ctrl+r' or '&r' for alt+r
+				theAction.setToolTip('Status Bar [s]')
 				theAction.setShortcutVisibleInContextMenu(True)
 
 			# add to hamburger QToolButton

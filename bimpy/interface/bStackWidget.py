@@ -1391,6 +1391,12 @@ class bStackWidget(QtWidgets.QMainWindow):
 		tmpMenuAction = menu.addAction(napariAction)
 
 		menu.addSeparator()
+		# make square
+		makeSquareAction = QtWidgets.QAction('Square', self, checkable=True)
+		makeSquareAction.setChecked(False)
+		tmpMenuAction = menu.addAction(makeSquareAction)
+
+		menu.addSeparator()
 
 		# save image
 		saveImageAction = QtWidgets.QAction('Save Image', self, checkable=False)
@@ -1555,6 +1561,10 @@ class bStackWidget(QtWidgets.QMainWindow):
 			optionsDialog = bimpy.interface.bOptionsDialog(self, self)
 		elif userActionStr == 'Napari':
 			self.openNapari()
+		elif userActionStr == 'Square':
+			self.myStackView2.toggleMakeSquare()
+			#self.resizeEvent(QtGui.QResizeEvent(self.size(), QtCore.QSize()))
+			#self.repaint()
 		elif userActionStr == 'Save Image':
 			self.saveImage()
 		elif userActionStr == 'Save Movie':
