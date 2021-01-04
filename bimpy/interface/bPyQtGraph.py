@@ -3250,7 +3250,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 				sliceImage[:,:,1] = sliceImage1 # green
 				sliceImage[:,:,2] = sliceImage2 # blue
 
-				keyList = [2, 1, 2]
+				#keyList = [2, 1, 2]
+				keyList = [2, 1, 3]
 				colorList = ['red', 'green', 'blue']
 			# abb removed 20201228
 			#elif self.displayStateDict['displaySlidingZ']:
@@ -3436,6 +3437,9 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 		if self.contrastDict is not None:
 			levelsList = []
 			for key in keyList:
+				if key is None:
+					levelsList.append([np.nan, np.nan])
+					continue
 				minContrast = self.contrastDict[key]['minContrast']
 				maxContrast = self.contrastDict[key]['maxContrast']
 				levelsList.append([minContrast, maxContrast])
@@ -3451,7 +3455,8 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 					print(f'warning: bPyQtSetSlice() color lut {colorLutStr} is not defined, possible colors are {self.myColorLutDict.keys()}')
 
 			#print('setContrast() levelsList:', levelsList)
-			self.myImage.setLevels(levelsList, update=True)
+			if levelsList:
+				self.myImage.setLevels(levelsList, update=True)
 
 def main():
 	app = QtWidgets.QApplication(sys.argv)

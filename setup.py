@@ -36,7 +36,7 @@ setup(
         'pyqtgraph',
         'qdarkstyle',
 		#'opencv-python',
-		'opencv-contrib-python-headless'.
+		'opencv-contrib-python-headless',
         #'javabridge',
         #'python-bioformats',
     ],

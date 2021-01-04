@@ -533,6 +533,8 @@ class bStackContrastWidget2(QtWidgets.QWidget):
 
 		# show from key list
 		for idx, key in enumerate(keyList):
+			if key is None:
+				continue
 			if not key in self.contrastDict.keys():
 				self.contrastDict[key] = {
 							'channelKey': key,
