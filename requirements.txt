@@ -23,8 +23,10 @@ h5py
 #javabridge
 #python-bioformats
 
-skan # skeleton tracing (requires numba and pandas)
-numba
+# reserve this for scripting
+#skan # skeleton tracing (requires numba and pandas)
+#numba
+
 pandas
 
 chart_studio

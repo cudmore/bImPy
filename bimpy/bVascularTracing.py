@@ -11,8 +11,16 @@ from xml.dom import minidom # to load vesselucida xml file
 
 from skimage import morphology
 from scipy.sparse import csgraph # to get dijoint segments
-import skan
+
+# abb 20210104, removed
+#import skan
+
+# skan is used to make a skeleton from a mask. Like skeletonize in Fiji
+# it is super problematic fpr boring things like imports
+# reserve its use to just scripts, do NOT include it in the
+# main bImPy interface !!!!
 #from skan import draw # for plotting
+
 import tifffile
 
 import numpy as np
