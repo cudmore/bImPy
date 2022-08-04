@@ -21,7 +21,7 @@ class bMenu:
 		self.myCanvasApp = parent
 
 		if sys.platform.startswith('darwin') :
-			self.myMenuBar = QtGui.QMenuBar() # parentless menu bar for Mac OS
+			self.myMenuBar = QtWidgets.QMenuBar() # parentless menu bar for Mac OS
 		else :
 			self.myMenuBar = parent.menuBar() # refer to the default one
 

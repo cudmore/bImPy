@@ -10,20 +10,21 @@ setup(
     author='Robert H Cudmore',
     author_email='robert.cudmore@gmail.com',
     license='GNU GPLv3',
+    packages=find_packages(include=['bimpy', 'bimpy.*']),
     #packages = find_packages(),
     #packages = find_packages(exclude=['version']),
     #packages=[
     #    'pymapmanager',
     #    'pymapmanager.mmio'
     #],
-    setup_requires=[
-        "numpy>1.18",
-    ],
+    #setup_requires=[
+    #    "numpy>1.18",
+    #],
     install_requires=[
         'napari',
-        'PyQt5',
-        'qtpy',
-        'numpy>1.18',
+        #'PyQt5',
+        #'qtpy',
+        'numpy',
         'matplotlib',
         'tifffile',
         'scikit-image',

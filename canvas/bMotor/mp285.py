@@ -3,6 +3,9 @@ import traceback
 
 from bMotor import bMotor
 
+import logging
+logger = logging.getLogger('canvasApp')
+
 class mp285(bMotor):
 	def __init__(self, port='COM4'):
 		"""
@@ -114,7 +117,7 @@ class mp285(bMotor):
 		elif fastSlow == 'slow':
 			theVelocity = 1500
 		else:
-			print('mp285.setVelocity() did not understand fastSlow:', fastSlow)
+			logger.info(f'mp285.setVelocity() did not understand fastSlow: {fastSlow}')
 			return False
 
 		print('mp285.setVelocity() fastSlow:', fastSlow, 'theVelocity:', theVelocity)
