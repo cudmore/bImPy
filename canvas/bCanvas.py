@@ -9,7 +9,7 @@ import bimpy
 
 class bCanvas:
 	"""
-	A visuospatial convas that brings together different light paths of a scope.
+	A visuospatial canvas that brings together different light paths of a scope. USually video and laser-scanning confocal or two-photon.
 	"""
 	def __init__(self, filePath=None, folderPath=''):
 		"""
@@ -510,7 +510,7 @@ class bCanvas:
 		"""
 		#loadFilePath = os.path.join(self._folderPath, self.enclosingFolder + '_canvas.txt')
 
-		print('=== bCanvas.load() thisFile:', thisFile)
+		print('    bCanvas.load() thisFile:', thisFile)
 
 		if thisFile is not None:
 			if os.path.isfile(thisFile):
@@ -533,11 +533,11 @@ class bCanvas:
 		for key, item in data.items():
 			#print(key,item)
 			if key == 'canvasOptions':
-				print('bCanvas.load() key:', key, 'item:', item)
+				print('      bCanvas.load() key:', key, 'item:', item)
 			elif key=='videoFiles':
 				for fileName, fileDict in item.items():
 					videoFilePath = os.path.join(self.videoFolderPath, fileName)
-					print('  bCanvas.load() is loading videoFilePath:', videoFilePath)
+					print('      bCanvas.load() is loading videoFilePath:', videoFilePath)
 					videoStack = bimpy.bStack(videoFilePath, loadImages=True)
 
 					for headerStr,headerValue in fileDict.items():
@@ -555,7 +555,7 @@ class bCanvas:
 				for fileName, fileDict in item.items():
 					#folderPath = fileDict['folderPath'] # to load from folder
 					scopeFilePath = os.path.join(self._folderPath, fileName)
-					print('  bCanvas.load() is loading scopeFilePath:', scopeFilePath)
+					print('      bCanvas.load() is loading scopeFilePath:', scopeFilePath)
 
 					# todo: we need to load from folder
 

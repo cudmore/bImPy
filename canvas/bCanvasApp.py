@@ -13,7 +13,7 @@ import qdarkstyle
 from bLogger import bLogger
 
 import logging
-bLogger = logging.getLogger('canvasApp')
+logger = logging.getLogger('canvasApp')
 
 import bimpy
 
@@ -119,6 +119,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
                     scaleMult = scaleMult,
                     saveAtInterval = saveAtInterval,
                     saveIntervalSeconds = saveIntervalSeconds)
+                self.camera.setVideoOptions(self._optionsDict['video'])
                 self.camera.videoWindowSignal.connect(self.slot_VideoChanged)
             self.camera.show()
         else:
@@ -165,7 +166,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
     def mousePressEvent(self, event):
         print('=== bCanvasApp.mousePressEvent()')
-        bLogger.info('===')
+        logger.info('===')
         super().mousePressEvent(event)
         #event.setAccepted(False)
 
@@ -389,7 +390,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
 
         self._optionsDict['motor'] = OrderedDict()
         self._optionsDict['motor']['motorNameList'] = [motor for motor in dir(canvas.bMotor) if not (motor.endswith('__') or motor=='bMotor')]
-        self._optionsDict['motor']['motorName'] = 'mp285' #'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
+        self._optionsDict['motor']['motorName'] = 'fakeMotor' #'fakeMotor' #'mp285' #'bPrior' # the name of the class derived from bMotor
         self._optionsDict['motor']['portList'] = [f'COM{x+1}' for x in range(20)]
         self._optionsDict['motor']['port'] = 'COM4'
         #self._optionsDict['motor']['isReal'] = False
@@ -407,6 +408,8 @@ class bCanvasApp(QtWidgets.QMainWindow):
         self._optionsDict['video']['umWidth'] = 455.2 #693
         self._optionsDict['video']['umHeight'] = 341.4 #433
         self._optionsDict['video']['motorStepFraction'] = 0.15 # for motor moves
+        self._optionsDict['video']['flipHorizontal'] = True # for motor moves
+        self._optionsDict['video']['flipVertical'] = False # for motor moves
 
         self._optionsDict['Scope'] = OrderedDict()
         self._optionsDict['Scope']['zoomOneWidthHeight'] = 509.116882454314
@@ -435,16 +438,16 @@ class bCanvasApp(QtWidgets.QMainWindow):
             print('optionsLoad() got user file selection:', fname)
             if os.path.isfile(fname):
                 with open(fname) as f:
-                    self._optionsDict = json.load(f)
+                    self._optionsDict = json.load(f, object_pairs_hook=OrderedDict)
                 self.optionsFile = fname
         else:
             if not os.path.isfile(self.optionsFile):
                 self.optionsFile = self.defaultOptionsFile()
-                print('bCanvasApp.optionsLoad() is creating defaults options and saving them in:', self.optionsFile)
+                logger.info(f'bCanvasApp.optionsLoad() is creating defaults options and saving them in: {self.optionsFile}')
                 self.optionsDefault()
                 self.optionsSave()
             else:
-                print('bCanvasApp.optionsLoad() loading:', self.optionsFile)
+                logger.info(f'bCanvasApp.optionsLoad() loading: {self.optionsFile}')
                 with open(self.optionsFile) as f:
                     self._optionsDict = json.load(f, object_pairs_hook=OrderedDict)
                 # check if it is old
@@ -463,7 +466,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
             print('  making folder:', tmpPath)
             os.mkdir(tmpPath)
         with open(self.optionsFile, 'w') as outfile:
-            json.dump(self._optionsDict, outfile, indent=4, sort_keys=True)
+            json.dump(self._optionsDict, outfile, indent=4, sort_keys=False)
 
     def optionsSetSavePath(self, savePath):
         if not os.path.isdir(savePath):
@@ -486,6 +489,10 @@ class bCanvasApp(QtWidgets.QMainWindow):
         self._optionsDict = copy.deepcopy(optionsDict)
         #self._optionsDict = optionsDict
         self.optionsSave()
+
+        # update options in camera thread
+        if self.camera is not None:
+            self.camera.setVideoOptions(self._optionsDict['video'])
 
         # update the motore
         # todo: check if it has changed
@@ -514,7 +521,7 @@ class bCanvasApp(QtWidgets.QMainWindow):
         return bundle_dir
 
 
-def main(withJavaBridge=False):
+def main(withJavaBridge=False, canvasPath=None):
     try:
         if withJavaBridge:
             myJavaBridge = bimpy.bJavaBridge()
@@ -548,13 +555,14 @@ def main(withJavaBridge=False):
 
         #myCanvasApp.show()
         
-        # load an existing canvas
-        path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/20200911_aaa_canvas.txt'
-        path = ''
-        if os.path.isfile(path):
-            myCanvasApp.load(path)
+        # load an existing canvas (for debugging)
+        #path = '/Users/cudmore/data/canvas/20200911/20200911_aaa/20200911_aaa_canvas.txt'
+        #path = ''
+        if os.path.isfile(canvasPath):
+            myCanvasApp.load(canvasPath)
 
         sys.exit(app.exec_())
+
     except Exception as e:
         print('EXCEPTION: bCanvasApp.main()')
         print(traceback.format_exc())
@@ -564,7 +572,7 @@ def main(withJavaBridge=False):
         #bLogger.info('bCanvasApp.main() finally')
         if withJavaBridge:
             myJavaBridge.stop()
-    bLogger.info('bCanvasApp.main() last line .. bye bye')
+    logger.info('bCanvasApp.main() last line .. bye bye')
 
 
 if __name__ == '__main__':
@@ -583,4 +591,5 @@ if __name__ == '__main__':
             print('ERROR: did not understand command line:', sys.argv[1])
 
     if okGo:
-        main(withJavaBridge)
+        canvasPath = '/Users/cudmore/data/canvas/20220805_tmp13/20220805_tmp13_canvas.txt'
+        main(withJavaBridge, canvasPath=canvasPath)

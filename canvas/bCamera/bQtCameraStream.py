@@ -24,261 +24,272 @@ import qdarkstyle
 
 # todo: create this kind of thread for PointGray camera on Olympus scope
 class myVideoThread(QtCore.QThread):
-	changePixmap2 = QtCore.Signal(np.ndarray)
+    changePixmap2 = QtCore.Signal(np.ndarray)
 
-	def __init__(self, parent=None):
-		super(myVideoThread, self).__init__(parent)
-		self.myStop = False
+    def __init__(self, parent=None):
+        super(myVideoThread, self).__init__(parent)
+        self.myStop = False
 
-	def run(self):
-		cap = cv2.VideoCapture(0)
-		while not self.myStop:
-			ret, frame = cap.read() # frame is np.ndarray
-			if ret:
-				self.changePixmap2.emit(frame)
-			time.sleep(.02)
+    def run(self):
+        cap = cv2.VideoCapture(0)
+        while not self.myStop:
+            ret, frame = cap.read() # frame is np.ndarray
+            if ret:
+                self.changePixmap2.emit(frame)
+            time.sleep(.02)
 
-	def myStopThread(self):
-		self.myStop = True
+    def myStopThread(self):
+        self.myStop = True
 
 # todo: this will always be used by canvas
 class myVideoWidget(QtWidgets.QWidget):
 
-	videoWindowSignal = QtCore.Signal(object)
+    videoWindowSignal = QtCore.Signal(object)
 
-	def getVideoDict():
-		"""
-		pass this in self.videoWindowSignal.emit()
-		"""
-		theRet = {
-		'event': ''
-		}
-		return theRet
+    def getVideoDict():
+        """
+        pass this in self.videoWindowSignal.emit()
+        """
+        theRet = {
+        'event': ''
+        }
+        return theRet
 
-	def __init__(self, parent=None, videoSize=None, videoPos=None, scaleMult=1.0,
-					saveAtInterval=False,
-					saveIntervalSeconds=2):
-		"""
-		videoSize: (w,h) of actual video (pixels)
-		videoPos: (left,top) position on screen
-		scaleMult: final width is w * scaleMult
-		"""
+    def __init__(self, parent=None, videoSize=None, videoPos=None, scaleMult=1.0,
+                    saveAtInterval=False,
+                    saveIntervalSeconds=2):
+        """
+        videoSize: (w,h) of actual video (pixels)
+        videoPos: (left,top) position on screen
+        scaleMult: final width is w * scaleMult
+        """
 
-		# this is causing error on quit
-		# WARNING: QThread: Destroyed while thread is still running
-		#super().__init__(parent)
-		super().__init__()
+        # this is causing error on quit
+        # WARNING: QThread: Destroyed while thread is still running
+        #super().__init__(parent)
+        super().__init__()
 
-		self.title = 'Canvas Video Feed'
+        self.title = 'Canvas Video Feed'
 
-		self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
+        self.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyqt5'))
 
-		#self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-		self.setWindowFlags(QtCore.Qt.Tool)
+        #self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.Tool)
 
-		if videoSize is not None:
-			self.myWidth = videoSize[0]
-			self.myHeight = videoSize[1]
-		else:
-			self.myWidth = 640
-			self.myHeight = 480
+        if videoSize is not None:
+            self.myWidth = videoSize[0]
+            self.myHeight = videoSize[1]
+        else:
+            self.myWidth = 640
+            self.myHeight = 480
 
-		self.aspectRatio = self.myWidth / self.myHeight #640/480
+        self.aspectRatio = self.myWidth / self.myHeight #640/480
 
-		# set on self.moveEvent
-		if videoPos is not None:
-			self.videoPos = videoPos
-		else:
-			self.videoPos = (100,100)
+        # set on self.moveEvent
+        if videoPos is not None:
+            self.videoPos = videoPos
+        else:
+            self.videoPos = (100,100)
 
-		self.scaleMult = scaleMult # set on self.resizeEvent
+        self.scaleMult = scaleMult # set on self.resizeEvent
 
-		self.myCurrentImage = None # updated with new images (in thread)
+        self.myCurrentImage = None # updated with new images (in thread)
 
-		# save an image at an interval
-		#self.saveImageAtInterval = True
-		self.saveAtInterval = saveAtInterval
-		self.saveIntervalSeconds = saveIntervalSeconds #1
-		self.lastSaveSeconds = None
-		# save oneimage.tif in the same folder as source code
-		myPath = os.path.dirname(os.path.abspath(__file__))
-		self.mySaveFilePath = os.path.join(myPath, 'oneimage.tif')
+        # save an image at an interval
+        #self.saveImageAtInterval = True
+        self.saveAtInterval = saveAtInterval
+        self.saveIntervalSeconds = saveIntervalSeconds #1
+        self.lastSaveSeconds = None
+        # save oneimage.tif in the same folder as source code
+        myPath = os.path.dirname(os.path.abspath(__file__))
+        self.mySaveFilePath = os.path.join(myPath, 'oneimage.tif')
 
-		#print('  saveIntervalSeconds:', self.saveIntervalSeconds)
-		#print('  mySaveFilePath:', self.mySaveFilePath)
+        #print('  saveIntervalSeconds:', self.saveIntervalSeconds)
+        #print('  mySaveFilePath:', self.mySaveFilePath)
 
-		self.initUI()
+        self._videoOptions = None
 
-		#self.show()
+        self.initUI()
 
-	def myStopThread(self):
-		print('myVideoWidget.stopThread()')
-		self.th.myStopThread()
-		self.th.quit()
-		self.th.wait()
+        #self.show()
 
-	def getCurentImage(self):
-		return self.myCurrentImage
+    def setVideoOptions(self, videoOptions : dict):
+        self._videoOptions = videoOptions
 
-	def moveEvent(self, event):
-		#print('myVideoWidget.moveEvent()')
-		left = self.frameGeometry().left()
-		top = self.frameGeometry().top()
-		#w = self.frameGeometry().width()
-		#h = self.frameGeometry().height()
+    def myStopThread(self):
+        print('myVideoWidget.stopThread()')
+        self.th.myStopThread()
+        self.th.quit()
+        self.th.wait()
 
-		# emit
-		videoDict = myVideoWidget.getVideoDict()
-		videoDict['event'] = 'Move Window'
-		videoDict['left'] = left
-		videoDict['top'] = top
-		self.videoWindowSignal.emit(videoDict)
+    def getCurentImage(self):
+        return self.myCurrentImage
 
-	def resizeEvent(self, event):
-		"""
-		Maintain aspect ratio of window/widget to match aspect ration of video images
-		"""
-		if self.width() / self.height() > self.aspectRatio: # too wide
-			w = self.height() * self.aspectRatio
-			h = self.height()
-			self.resize(w, h)
-		else: # too tall
-			w = self.width()
-			h = self.width() / self.aspectRatio
-			self.resize(w, h)
+    def moveEvent(self, event):
+        #print('myVideoWidget.moveEvent()')
+        left = self.frameGeometry().left()
+        top = self.frameGeometry().top()
+        #w = self.frameGeometry().width()
+        #h = self.frameGeometry().height()
 
-		# emit
-		videoDict = myVideoWidget.getVideoDict()
-		videoDict['event'] = 'Resize Window'
-		videoDict['scaleMult'] = w / self.myWidth # myWidth does not change
-		self.videoWindowSignal.emit(videoDict)
+        # emit
+        videoDict = myVideoWidget.getVideoDict()
+        videoDict['event'] = 'Move Window'
+        videoDict['left'] = left
+        videoDict['top'] = top
+        self.videoWindowSignal.emit(videoDict)
 
-	#@QtCore.Slot(np.ndarray)
-	def setImage2(self, image):
-		"""
-		We got a new image from the camera.
+    def resizeEvent(self, event):
+        """
+        Maintain aspect ratio of window/widget to match aspect ration of video images
+        """
+        if self.width() / self.height() > self.aspectRatio: # too wide
+            w = self.height() * self.aspectRatio
+            h = self.height()
+            self.resize(w, h)
+        else: # too tall
+            w = self.width()
+            h = self.width() / self.aspectRatio
+            self.resize(w, h)
 
-		Parameters:
-			image: type is numpy.ndarray, shape is (height,width,3), dtype is 'uint8'
-		"""
+        # emit
+        videoDict = myVideoWidget.getVideoDict()
+        videoDict['event'] = 'Resize Window'
+        videoDict['scaleMult'] = w / self.myWidth # myWidth does not change
+        self.videoWindowSignal.emit(videoDict)
 
-		doDebug = False
+    #@QtCore.Slot(np.ndarray)
+    def setImage2(self, image):
+        """
+        We got a new image from the camera.
 
-		# (720, 1280, 3)
-		if doDebug: print('setImage2() image:', image.shape)
+        Parameters:
+            image: type is numpy.ndarray, shape is (height,width,3), dtype is 'uint8'
+        """
 
-		doFlip = True
-		if doFlip:
-			image = np.fliplr(image) # flip horizontal (flip on vertical line)
+        doDebug = False
 
-		if doDebug: print('  after flip:', image.shape)
+        # (720, 1280, 3)
+        if doDebug: print('setImage2() image:', image.shape)
 
-		# convert to Qt
-		# https://stackoverflow.com/a/55468544/6622587
-		rgbImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-		h, w, ch = rgbImage.shape
-		bytesPerLine = ch * w
+        #print(self._videoOptions)
 
-		if doDebug:
-			print('  rgbImage:', rgbImage.shape)
-			print('  w:', w)
-			print('  h:', h)
-			print('  bytesPerLine:', bytesPerLine)
+        flipHorizontal = self._videoOptions['flipHorizontal']
+        if flipHorizontal:
+            image = np.fliplr(image) # flip horizontal (flip on vertical line)
 
-		myQtImage = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
+        flipVertical = self._videoOptions['flipVertical']
+        if flipVertical:
+            image = np.flipud(image) # flip vertical
+
+        if doDebug: print('  after flip:', image.shape)
+
+        # convert to Qt
+        # https://stackoverflow.com/a/55468544/6622587
+        rgbImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgbImage.shape
+        bytesPerLine = ch * w
+
+        if doDebug:
+            print('  rgbImage:', rgbImage.shape)
+            print('  w:', w)
+            print('  h:', h)
+            print('  bytesPerLine:', bytesPerLine)
+
+        myQtImage = QtGui.QImage(rgbImage.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
 
 
-		# this does not work, i think because my webcam has 3 image planes, roughly RGB
-		'''
-		width = image.shape[1]
-		height = image.shape[0]
-		myQtImage = QtGui.QImage(image[:,:,0], width, height, QtGui.QImage.Format_Indexed8)
-		'''
+        # this does not work, i think because my webcam has 3 image planes, roughly RGB
+        '''
+        width = image.shape[1]
+        height = image.shape[0]
+        myQtImage = QtGui.QImage(image[:,:,0], width, height, QtGui.QImage.Format_Indexed8)
+        '''
 
-		if doDebug:
-			print('  myQtImage.width(), myQtImage.height():', myQtImage.width(), myQtImage.height())
-			print('  self.width(), self.height():', self.width(), self.height())
+        if doDebug:
+            print('  myQtImage.width(), myQtImage.height():', myQtImage.width(), myQtImage.height())
+            print('  self.width(), self.height():', self.width(), self.height())
 
-		# update qt interface
-		pixmap = QtGui.QPixmap.fromImage(myQtImage)
-		# scale pixmap
-		pixmap = pixmap.scaled(self.width(), self.height(), QtCore.Qt.KeepAspectRatio)
-		# set label
-		self.label.setPixmap(pixmap)
-		# scale label
-		self.label.resize(self.width(), self.height())
+        # update qt interface
+        pixmap = QtGui.QPixmap.fromImage(myQtImage)
+        # scale pixmap
+        pixmap = pixmap.scaled(self.width(), self.height(), QtCore.Qt.KeepAspectRatio)
+        # set label
+        self.label.setPixmap(pixmap)
+        # scale label
+        self.label.resize(self.width(), self.height())
 
-		# this can be grabbed by other code
-		self.myCurrentImage = image
+        # this can be grabbed by other code
+        self.myCurrentImage = image
 
-		if self.saveAtInterval:
-			now = time.time()
-			if self.lastSaveSeconds is None or ((now-self.lastSaveSeconds) > self.saveIntervalSeconds):
-				#print(now, 'saving type(image)', type(image), image.shape, image.dtype, self.mySaveFilePath)
-				self.lastSaveSeconds = now
-				# todo: make it so we receive a single plane grayscale image?
-				#cv2.imwrite(self.mySaveFilePath, image[:,:,0])
-				imageio.imwrite(self.mySaveFilePath, image[:,:,0])
+        if self.saveAtInterval:
+            now = time.time()
+            if self.lastSaveSeconds is None or ((now-self.lastSaveSeconds) > self.saveIntervalSeconds):
+                #print(now, 'saving type(image)', type(image), image.shape, image.dtype, self.mySaveFilePath)
+                self.lastSaveSeconds = now
+                # todo: make it so we receive a single plane grayscale image?
+                #cv2.imwrite(self.mySaveFilePath, image[:,:,0])
+                imageio.imwrite(self.mySaveFilePath, image[:,:,0])
 
-	def closeEvent(self, event):
-		"""
-		called when video window is closed
-		"""
-		#print('  bQtCameraStream.closeEvent()')
-		videoDict = myVideoWidget.getVideoDict()
-		videoDict['event'] = 'Close Window'
-		self.videoWindowSignal.emit(videoDict)
-		#if self.canvasApp is not None:
-		#	self.canvasApp.closeVideo()
+    def closeEvent(self, event):
+        """
+        called when video window is closed
+        """
+        #print('  bQtCameraStream.closeEvent()')
+        videoDict = myVideoWidget.getVideoDict()
+        videoDict['event'] = 'Close Window'
+        self.videoWindowSignal.emit(videoDict)
+        #if self.canvasApp is not None:
+        #    self.canvasApp.closeVideo()
 
-	def _getScaledWithHeight(self):
-		scaledWidth = self.myWidth * self.scaleMult
-		scaledHeight = self.myHeight * self.scaleMult
-		return scaledWidth, scaledHeight
+    def _getScaledWithHeight(self):
+        scaledWidth = self.myWidth * self.scaleMult
+        scaledHeight = self.myHeight * self.scaleMult
+        return scaledWidth, scaledHeight
 
-	def keyPressEvent(self, event):
-		print('=== myVideoWidget.keyPressEvent()', event.text())
+    def keyPressEvent(self, event):
+        print('=== myVideoWidget.keyPressEvent()', event.text())
 
-		modifiers = QtWidgets.QApplication.keyboardModifiers()
-		isShift = modifiers == QtCore.Qt.ShiftModifier
-		isControl = modifiers == QtCore.Qt.ControlModifier
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        isShift = modifiers == QtCore.Qt.ShiftModifier
+        isControl = modifiers == QtCore.Qt.ControlModifier
 
-		if event.key() == QtCore.Qt.Key_S:
-			print('  todo: implement grab/save a single image')
+        if event.key() == QtCore.Qt.Key_S:
+            print('  todo: implement grab/save a single image')
 
-	def initUI(self):
-		self.setWindowTitle(self.title)
+    def initUI(self):
+        self.setWindowTitle(self.title)
 
-		scaledWith, scaledHeight = self._getScaledWithHeight()
-		self.setGeometry(self.videoPos[0], self.videoPos[1], scaledWith, scaledHeight)
-		#self.resize(640, 480)
-		# create a label
-		self.label = QtWidgets.QLabel(self)
-		self.label.move(0, 0)
-		#self.label.resize(640, 480)
-		self.label.resize(scaledWith, scaledHeight)
+        scaledWith, scaledHeight = self._getScaledWithHeight()
+        self.setGeometry(self.videoPos[0], self.videoPos[1], scaledWith, scaledHeight)
+        #self.resize(640, 480)
+        # create a label
+        self.label = QtWidgets.QLabel(self)
+        self.label.move(0, 0)
+        #self.label.resize(640, 480)
+        self.label.resize(scaledWith, scaledHeight)
 
-		print('  myVideoWidget.initUI() creating myVideoThread()')
+        print('  myVideoWidget.initUI() creating myVideoThread()')
 
-		# by having the thread as a member (Self.th)
-		# it gets garbage collected on quit and stops dreaded
-		# WARNING: QThread: Destroyed while thread is still running
-		self.th = myVideoThread(self)
-		self.th.changePixmap2.connect(self.setImage2)
-		self.th.start()
+        # by having the thread as a member (Self.th)
+        # it gets garbage collected on quit and stops dreaded
+        # WARNING: QThread: Destroyed while thread is still running
+        self.th = myVideoThread(self)
+        self.th.changePixmap2.connect(self.setImage2)
+        self.th.start()
 
 if __name__ == '__main__':
-	w = 1280 #640
-	h = 720 #480
+    w = 1280 #640
+    h = 720 #480
 
-	app = QtWidgets.QApplication(sys.argv)
-	mvw = myVideoWidget(videoSize=(w,h),
-						videoPos=(100,500),
-						scaleMult=0.5)
-	mvw.show()
+    app = QtWidgets.QApplication(sys.argv)
+    mvw = myVideoWidget(videoSize=(w,h),
+                        videoPos=(100,500),
+                        scaleMult=0.5)
+    mvw.show()
 
-	def slot_test(videoDict):
-		print('slot_test() videoDict:', videoDict)
-	mvw.videoWindowSignal.connect(slot_test)
+    def slot_test(videoDict):
+        print('slot_test() videoDict:', videoDict)
+    mvw.videoWindowSignal.connect(slot_test)
 
-	sys.exit(app.exec_())
+    sys.exit(app.exec_())

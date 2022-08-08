@@ -76,7 +76,8 @@ class bNapari:
 		# nope, now it does not workk???
 		#self.viewer.close()
 
-		self.viewer.window._qt_window.hide()
+		#self.viewer.window._qt_window.hide()
+		self.viewer.window._qt_window.close()
 		#return False
 
 		# this gives

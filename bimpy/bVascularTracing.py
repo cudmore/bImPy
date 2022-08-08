@@ -2061,7 +2061,7 @@ class bVascularTracing:
 		else:
 			thisEdgeDictList = [self.edgeDictList[thisEdgeIdx]]
 
-		print('  bVascularTracing._analyze() thisEdgeIdx:', thisEdgeIdx, 'len(thisEdgeDictList):', len(thisEdgeDictList))
+		print('      bVascularTracing._analyze() thisEdgeIdx:', thisEdgeIdx, 'len(thisEdgeDictList):', len(thisEdgeDictList))
 
 		for edgeIdx, edge in enumerate(thisEdgeDictList):
 			#print('    edge:', edge)
@@ -2356,7 +2356,7 @@ class bVascularTracing:
 
 		h5FilePath = self._getSavePath() + '.h5f'
 
-		print('=== bVascularTracing.load()', h5FilePath)
+		print('    === bVascularTracing.load()', h5FilePath)
 
 		if not os.path.isfile(h5FilePath):
 			#print('   file not found:', h5FilePath)
@@ -2452,7 +2452,7 @@ class bVascularTracing:
 		"""
 		Fill in missing pre/post nodes from Vesselucia
 		"""
-		print('bVascularTracing.fixMissingNodes() numNodes:', self.numNodes())
+		print('    bVascularTracing.fixMissingNodes() numNodes:', self.numNodes())
 		for edgeIdx, edge in enumerate(self.edgeIter()):
 			preNode = edge['preNode']
 			if preNode is None:

@@ -2,6 +2,9 @@ import serial, time
 
 from bMotor import bMotor
 
+import logging
+logger = logging.getLogger('fakeMotor')
+
 class fakeMotor(bMotor):
 	def __init__(self, port):
 		bMotor.__init__(self, type='fakeMotor')
@@ -29,7 +32,7 @@ class fakeMotor(bMotor):
 
 			xPos = float(xPos)
 			yPos = float(yPos)
-			print('fakeMotor.readPosition() returning:', xPos, yPos)
+			logger.info(f'fakeMotor.readPosition() returning:{xPos}, {yPos}')
 			return xPos, yPos, None
 
 	def move(self, direction, umDistance):
@@ -52,7 +55,7 @@ class fakeMotor(bMotor):
 				directionStr = 'B'
 			if len(directionStr)==0:
 				# error
-				print('error: fakeMotor.move() got bad direcion:', direction)
+				logger.error(f'error: fakeMotor.move() got bad direcion:{direction}')
 				return
 
 			startTime = time.time()
@@ -74,12 +77,12 @@ class fakeMotor(bMotor):
 
 			stopTime = time.time()
 			elapsedTime = stopTime - startTime
-			print('fakeMotor.move() direction:', direction, 'umDistance:', umDistance, 'took', round(elapsedTime,2), 'seconds')
+			logger.info(f'fakeMotor.move() direction:{direction} umDistance:{umDistance} took {round(elapsedTime,2)} seconds')
 
 			print('  fake_x:', self.fake_x, 'fake_y:', self.fake_y)
 
 		except Exception as e:
-			print('exception in fakeMotor.move():', e)
+			logger.error(f'exception in fakeMotor.move():{e}')
 			raise
 		finally:
 			self.close()
@@ -90,13 +93,13 @@ class fakeMotor(bMotor):
 
 	def open(self):
 		if self.ser is not None:
-			print('mp285.open(), port already opened')
+			logger.info('mp285.open(), port already opened')
 		else:
 			self.ser = True
 		return self.ser
 
 	def close(self):
 		if self.ser is None:
-			print ('fakeMotor.close(), port not opened')
+			logger.info('fakeMotor.close(), port not opened')
 		else:
 			self.ser = None
