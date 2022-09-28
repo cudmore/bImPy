@@ -145,7 +145,7 @@ class bHistogramWidget(QtWidgets.QWidget):
 
 		# color
 		colorLut = self.channelColor #self.contrastDict['colorLut'] # in ('r', 'g', 'b')
-		print('bHistogramWidget.slot_setImage() colorLut:', colorLut)
+		#print('bHistogramWidget.slot_setImage() colorLut:', colorLut)
 		#brushColor = pg.mkColor(colorLut)
 		if colorLut == 'gray':
 			colorLut = 0.7

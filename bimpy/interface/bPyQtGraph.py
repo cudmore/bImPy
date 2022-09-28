@@ -698,7 +698,7 @@ class myPyQtGraphPlotWidget(pg.PlotWidget):
 
 	def resizeEvent(self, event):
 		self.aspectLocked = True
-		print('resizeEvent() aspectLocked', self.aspectLocked)#, self.getAspectRatio())
+		#print('resizeEvent() aspectLocked', self.aspectLocked)#, self.getAspectRatio())
 		if event is not None:
 			if self.forceSquareImage:
 				# Create a square base size of 10x10 and scale it to the new size

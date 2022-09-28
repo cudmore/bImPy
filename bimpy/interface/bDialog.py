@@ -21,6 +21,7 @@ class myOkCancelDialog:
 		#msg.setText("Sure you want to close? Unsaved changes will be lost...")
 		#msg.setInformativeText("This is additional information")
 		msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+		msg.setDefaultButton(QtWidgets.QMessageBox.Ok)
 		retval = msg.exec_()
 		if retval == QtWidgets.QMessageBox.Cancel:
 			self._ok = False

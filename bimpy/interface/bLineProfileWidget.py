@@ -334,7 +334,7 @@ class bLineProfileWidget(QtWidgets.QWidget):
 
 
 		if not self.doUpdate:
-			print('  bLineProfileWidget.updateLineProfile() not updating as self.doUpdate is False')
+			#print('  bLineProfileWidget.updateLineProfile() not updating as self.doUpdate is False')
 			return None
 
 		self.currSlabIdx = updateDict['slabIdx'] # so we can commit

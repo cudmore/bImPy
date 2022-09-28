@@ -181,6 +181,12 @@ class bVascularTracing:
 		z = self.z[slabIdx]
 		return (x, y, z)
 
+	def getSlab_xyz_scaled(self, slabIdx):
+		x = self.x[slabIdx] * self.parentStack.xVoxel
+		y = self.y[slabIdx] * self.parentStack.yVoxel
+		z = self.z[slabIdx] * self.parentStack.zVoxel
+		return (x, y, z)
+
 	def getSlabEdgeIdx(self, slabIdx):
 		"""
 		Can be nan !
@@ -1146,6 +1152,10 @@ class bVascularTracing:
 
 		todo: rename this makeSkelFromMask()
 		"""
+
+		# 20210111
+		import skan
+
 		print('bVascularTracing.loadDeepVess() maskStartStop:', maskStartStop)
 		print('  todo: rename this to makeSkelFromMask()')
 		dvMaskPath, ext = os.path.splitext(self.path)
@@ -2062,6 +2072,8 @@ class bVascularTracing:
 			thisEdgeDictList = [self.edgeDictList[thisEdgeIdx]]
 
 		print('  bVascularTracing._analyze() thisEdgeIdx:', thisEdgeIdx, 'len(thisEdgeDictList):', len(thisEdgeDictList))
+		print('    abb 20210125 now calculating everything in um (euclidean distance, len 2d, len 3d, slab diam)')
+		print('    ', self.parentStack.xVoxel, self.parentStack.yVoxel, self.parentStack.zVoxel)
 
 		for edgeIdx, edge in enumerate(thisEdgeDictList):
 			#print('    edge:', edge)
@@ -2080,39 +2092,47 @@ class bVascularTracing:
 				#print('edgeIdx:', edgeIdx, 'preNode:', preNode, 'postNode:', postNode)
 				x1,y1,z1 = self.getNode_xyz(preNode)
 				x2,y2,z2 = self.getNode_xyz(postNode)
-				euclideanDist = self.euclideanDistance(x1,y1,z1,x2,y2,z2)
-
+				# this is for display purposes, in SLICES NOT um
 				z = (z1+z2)/2
 				z = int(round(z))
 				edge['z'] = z
+
+				# abb 20210125 fix diam
+				xum1,yum1,zum1 = self.getNode_xyz_scaled(preNode)
+				xum2,yum2,zum2 = self.getNode_xyz_scaled(postNode)
+				euclideanDist_um = self.euclideanDistance(xum1,yum1,zum1,xum2,yum2,zum2)
+
 			else:
 				euclideanDist = np.nan
 
 			slabList = edge['slabList']
 			for j, slabIdx in enumerate(slabList):
 
-				x1, y1, z1 = self.getSlab_xyz(slabIdx)
+				# abb 20210125 fix diam
+				#x1, y1, z1 = self.getSlab_xyz(slabIdx)
+				xum1, yum1, zum1 = self.getSlab_xyz_scaled(slabIdx)
 
 				if j>0:
-					len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, x1, y1, z1)
-					len2d = len2d + self.euclideanDistance(prev_x1, prev_y1, None, x1, y1, None)
+					len3d = len3d + self.euclideanDistance(prev_x1, prev_y1, prev_z1, xum1, yum1, zum1)
+					len2d = len2d + self.euclideanDistance(prev_x1, prev_y1, None, xum1, yum1, None)
 					#len3d_nathan = len3d_nathan + self.euclideanDistance(prev_orig_x1, prev_orig_y1, prev_orig_z1, orig_x, orig_y, orig_z)
 
 				# increment
-				prev_x1 = x1
-				prev_y1 = y1
-				prev_z1 = z1
+				prev_x1 = xum1
+				prev_y1 = yum1
+				prev_z1 = zum1
 
 			edge['Len 2D'] = round(len2d,2)
 			edge['Len 3D'] = round(len3d,2)
 			#edge['Len 3D Nathan'] = round(len3d_nathan,2)
 
-			if euclideanDist == 0:
+			#if euclideanDist == 0:
+			if euclideanDist_um == 0:
 				# todo: writ emore real-time code to find these (just sort the edge list!!!)
 				#print('WARNING: bVascularTracing._analyze() euclideanDist==0 for edgeIdx:', edgeIdx)
 				tort = np.nan
 			else:
-				tort = round(len3d / euclideanDist,2)
+				tort = round(len3d / euclideanDist_um,2)
 			edge['Tort'] = tort
 
 			# diameter, pyqt does not like to display np.float, cast to float()
@@ -2850,33 +2870,68 @@ class bVascularTracing:
 
 		return self.maskedEdgesDict
 
+def testAnalyzeInUm():
+	# abb 20210125 fix diam
+	# testing new diam/diam2 in um (not pixels)
+	# see saNode aicsAnalyzeSlabDiameter
+	channelToAnalyze = 2
+	rootPath = '/media/cudmore/data/'
+	path = f'{rootPath}san-density/SAN1/SAN1_head/aicsAnalysis/SAN1_head_ch2.tif'
+	myStack = bimpy.bStack(path=path, loadImages=True, loadTracing=True)
+
+	# put this back in
+	# it assigns .d2 in um! .d is still in pixels
+	print('running mp pool on', len(myStack.slabList.d), 'myStack.slabList.d ... please wait')
+	bimpy.analysis.b_mpAnalyzeSlabs.runDiameterPool(myStack, channelToAnalyze)
+
+	myStack.slabList._preComputeAllMasks()
+	myStack.slabList._analyze() # analyze all edges to get 'diam2' updated
+
+	print('  example slabList.d is now:')
+	print('    d:', myStack.slabList.d[0:10])
+	print('  example slabList.d2 is now:')
+	print('    d2:', myStack.slabList.d2[0:10])
+	print('  the first three edges are now:')
+	for i in range(3):
+		print(myStack.slabList.edgeDictList[i])
+		#print(json.dumps(node, indent=4))
+		# getting notorious error: "TypeError: Object of type int64 is not JSON serializable"
+		#print('    ', json.dumps(myStack.slabList.edgeDictList[i]))
+
 if __name__ == '__main__':
-	path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
+	if 1:
+		# abb 20210125 fix diam
+		# testing new diam/diam2 in um (not pixels)
+		# see saNode aicsAnalyzeSlabDiameter
+		testAnalyzeInUm()
 
-	global myStack
-	stack = bimpy.bStack(path=path)
-	stack.slabList.fixMissingNodes()
+	if 0:
+		path = '/home/cudmore/data/nathan/20200814_SAN3_BOTTOM_tail/aicsAnalysis/20200814_SAN3_BOTTOM_tail_ch2.tif'
 
-	# do this once then save
-	'''
-	removeSmallerThan = 3
-	bimpy.bVascularTracingAics.removeShortEdges(stack.slabList, removeSmallerThan=removeSmallerThan)
+		global myStack
+		stack = bimpy.bStack(path=path)
+		stack.slabList.fixMissingNodes()
 
-	stack.saveAnnotations()
-	'''
+		# do this once then save
+		'''
+		removeSmallerThan = 3
+		bimpy.bVascularTracingAics.removeShortEdges(stack.slabList, removeSmallerThan=removeSmallerThan)
 
-	type = 'Analyze All Diameters'
-	paramDict = {
-		'radius': 12,
-		'lineWidth': 5,
-		'medianFilter': 5,
-	}
-	bimpy.bVascularTracingAics.myWorkThread(stack.slabList, type, paramDict)
+		stack.saveAnnotations()
+		'''
 
-	# after this we should have diam of all slabs
-	#stack.saveAnnotations()
+		type = 'Analyze All Diameters'
+		paramDict = {
+			'radius': 12,
+			'lineWidth': 5,
+			'medianFilter': 5,
+		}
+		bimpy.bVascularTracingAics.myWorkThread(stack.slabList, type, paramDict)
 
-	stack.saveAnnotations()
+		# after this we should have diam of all slabs
+		#stack.saveAnnotations()
+
+		stack.saveAnnotations()
 
 	if 0:
 		nodeIdx1 = 34

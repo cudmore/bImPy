@@ -4,6 +4,7 @@ import numpy as np
 
 import bimpy
 
+import skan
 
 def bMakeSkelFromMask(path, channelToAnalyze, maskStartStop):
 		# load the stack

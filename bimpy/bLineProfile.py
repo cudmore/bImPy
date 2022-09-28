@@ -43,7 +43,7 @@ class bLineProfile:
 
 		return detectionDict
 
-	def getSlabLine2(self, slabIdx, verbose=True):
+	def getSlabLine2(self, slabIdx, verbose=False):
 		"""
 		get line to take intensity analysis and draw in widget
 
@@ -395,6 +395,7 @@ class bLineProfile:
 		snrVal = round(maxVal/tmpMinVal, 2)
 		'''
 
+		# abb 20210125 fix diam, make ['diamUm']
 		myDiam = np.nan
 		if goodFit:
 			myDiam = rightIdx - leftIdx + 1

@@ -285,7 +285,7 @@ class bStackHeader:
 		self.header['numImages'] = numImages
 		self.header['numFrames'] = None
 		#
-		print('****** bStackHeader.loadHeader() got xVoxel:', xVoxel, 'yVoxel:', yVoxel)
+		#print('****** bStackHeader.loadHeader() got xVoxel:', xVoxel, 'yVoxel:', yVoxel, 'zVoxel:', zVoxel)
 		self.header['xVoxel'] = xVoxel # um/pixel
 		self.header['yVoxel'] = yVoxel
 		self.header['zVoxel'] = zVoxel
@@ -515,7 +515,8 @@ class bStackHeader:
 		#bitDepth = self.header['bitDepth']
 		bitDepth = self.bitDepth # this will trigger warning if not already assigned
 		#if bitDepth is not None:
-		if type(self.bitDepth) is not 'NoneType':
+		#if type(self.bitDepth) is not 'NoneType':
+		if type(self.bitDepth) != 'NoneType':
 			#print('bStackHeader.assignToShape() bitDepth is already', self.bitDepth, type(self.bitDepth))
 			pass
 		else:
@@ -548,7 +549,8 @@ class bStackHeader:
 		#bitDepth = self.header['bitDepth']
 		bitDepth = self.bitDepth # this will trigger warning if not already assigned
 		#if bitDepth is not None:
-		if type(self.bitDepth) is not 'NoneType':
+		#if type(self.bitDepth) is not 'NoneType':
+		if type(self.bitDepth) != 'NoneType':
 			#print('bStackHeader.assignToShape() bitDepth is already', self.bitDepth, type(self.bitDepth))
 			pass
 		else:
